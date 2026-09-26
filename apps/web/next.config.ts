@@ -39,17 +39,27 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["unpdf", "livekit-server-sdk"],
   poweredByHeader: false,
   async headers() {
+    const common = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), payment=()" },
+      { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+    ];
     return [
       {
-        source: "/:path*",
+        // Everything except embeds: never framed.
+        source: "/:path((?!embed/).*)",
         headers: [
           { key: "Content-Security-Policy", value: csp },
-          { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), payment=()" },
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          ...common,
         ],
+      },
+      {
+        // Embeds of private links the creator made embeddable (the page checks that): framable by https sites,
+        // and the link token is never sent on as a referrer.
+        source: "/embed/:token",
+        headers: [{ key: "Content-Security-Policy", value: csp.replace("frame-ancestors 'none'", "frame-ancestors https:") }, { key: "Referrer-Policy", value: "no-referrer" }, ...common],
       },
     ];
   },

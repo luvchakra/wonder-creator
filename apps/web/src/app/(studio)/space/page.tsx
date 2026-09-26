@@ -67,7 +67,10 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
         title="My Creative Space"
         subtitle="Ideas, materials and creations — all in one place."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
+              Shared with you
+            </Link>
             <Link href="/space/references" className={buttonClasses({ variant: "secondary" })}>
               Reference Shelf
             </Link>

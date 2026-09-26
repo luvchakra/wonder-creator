@@ -325,17 +325,6 @@ export async function lineageGraph(db: Db, artifactId: string, maxDepth = 4): Pr
 // ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
-export function exportFilename(title: string, ext: "md" | "txt"): string {
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "artifact";
-  return `${slug}.${ext}`;
-}
-
-export function exportMarkdown(a: Pick<Artifact, "title" | "artifact_type" | "description">, v: Pick<ArtifactVersion, "content" | "version_number" | "created_at">): string {
-  const header = [`# ${a.title}`, "", `*${artifactType(a.artifact_type).label} · v${v.version_number} · ${v.created_at.slice(0, 10)}*`, ""];
-  if (a.description) header.push(`> ${a.description}`, "");
-  return `${header.join("\n")}\n${v.content}\n`;
-}
-
 // ---------------------------------------------------------------------------
 // Derivatives: what carries over from the source (P0.1-06)
 // ---------------------------------------------------------------------------

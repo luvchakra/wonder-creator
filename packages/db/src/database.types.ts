@@ -178,6 +178,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"artifact_shares": {
+                  Row: {
+                    "allow_download": boolean,"allow_embed": boolean,"artifact_id": string,"created_at": string,"creator_id": string,"expires_at": string | null,"id": string,"kind": string,"label": string | null,"last_accessed_at": string | null,"recipient_creator_id": string | null,"revoked_at": string | null,"token_hash": string | null,"version_id": string | null
+                  }
+                  Insert: {
+                    "allow_download"?: boolean,"allow_embed"?: boolean,"artifact_id": string,"created_at"?: string,"creator_id": string,"expires_at"?: string | null,"id"?: string,"kind": string,"label"?: string | null,"last_accessed_at"?: string | null,"recipient_creator_id"?: string | null,"revoked_at"?: string | null,"token_hash"?: string | null,"version_id"?: string | null
+                  }
+                  Update: {
+                    "allow_download"?: boolean,"allow_embed"?: boolean,"artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"expires_at"?: string | null,"id"?: string,"kind"?: string,"label"?: string | null,"last_accessed_at"?: string | null,"recipient_creator_id"?: string | null,"revoked_at"?: string | null,"token_hash"?: string | null,"version_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "artifact_shares_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_shares_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_shares_recipient_creator_id_fkey"
+      columns: ["recipient_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_shares_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"artifact_versions": {
                   Row: {
                     "artifact_id": string,"author_kind": string,"change_summary": string | null,"content": string,"created_at": string,"created_by_ai_run_id": string | null,"created_by_creator_id": string | null,"creator_id": string,"generation_metadata": Json | null,"id": string,"label": string,"parent_version_id": string | null,"restored_from_version_id": string | null,"structured_content": Json | null,"version_number": number
@@ -1485,6 +1522,12 @@ isOneToOne: false
               "huddle_id": string,"participant_count": number,"participant_ids": (string)[],"participant_names": (string)[],"started_at": string,"topic": string,"viewer_state": string
             }[]
                            },
+"open_creator_share":
+{ Args: { "p_share": string }; Returns: Json
+                           },
+"open_share_link":
+{ Args: { "p_token": string }; Returns: Json
+                           },
 "rate_limit_hit":
 { Args: { "p_key": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
                            },
@@ -1516,9 +1559,37 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"revoke_artifact_share":
+{ Args: { "p_share": string }; Returns: {
+              "allow_download": boolean,
+"allow_embed": boolean,
+"artifact_id": string,
+"created_at": string,
+"creator_id": string,
+"expires_at": string | null,
+"id": string,
+"kind": string,
+"label": string | null,
+"last_accessed_at": string | null,
+"recipient_creator_id": string | null,
+"revoked_at": string | null,
+"token_hash": string | null,
+"version_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "artifact_shares"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "semantic_search":
 { Args: { "p_limit"?: number,"p_min_similarity"?: number,"p_query": string }; Returns: {
               "similarity": number,"subject_id": string,"subject_type": string
+            }[]
+                           },
+"shared_with_me":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "artifact_type": string,"creator_name": string,"expires_at": string,"share_id": string,"shared_at": string,"title": string
             }[]
                            },
 "similar_materials":

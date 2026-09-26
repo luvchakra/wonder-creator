@@ -39,6 +39,8 @@ test.describe("mobile layout @mobile", () => {
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],
       ["/approvals", (p) => expect(p.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible()],
+      ["/shared", (p) => expect(p.getByRole("heading", { name: "Shared with you", level: 1 })).toBeVisible()],
+      [`${studio.replace(/\/studio$/, "")}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
       ["/settings", (p) => expect(p.getByRole("heading", { name: "Account & Profile" })).toBeVisible()],
     ];
     for (const [path, ready] of screens) {
