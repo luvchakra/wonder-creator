@@ -335,3 +335,88 @@ export function exportMarkdown(a: Pick<Artifact, "title" | "artifact_type" | "de
   if (a.description) header.push(`> ${a.description}`, "");
   return `${header.join("\n")}\n${v.content}\n`;
 }
+
+// ---------------------------------------------------------------------------
+// Derivatives: what carries over from the source (P0.1-06)
+// ---------------------------------------------------------------------------
+export interface Inheritance {
+  sourceArtifactId: string;
+  sourceVersionId: string | null;
+  sourceVersionNumber: number | null;
+  materials: number;
+  contributors: number;
+  rights: { ownershipKind: string; attributionRequired: boolean; derivativesAllowed: boolean; owners: string[] } | null;
+}
+
+/**
+ * A derivative answers: what was I made from, which version, which material contributed, who contributed,
+ * and which rights constraints followed me. Called after the derivative exists (with its lineage to the
+ * source artifact and version). Material and contributors carry over only from the creator's own work;
+ * rights always carry over: ownership and co-owners from the creator's own source, and attribution to the
+ * original creator when the source belongs to someone else.
+ */
+export async function inheritFromSource(
+  db: Db,
+  creatorId: string,
+  derivativeId: string,
+  source: { id: string; title: string; creator_id: string },
+  version: { id: string; number: number } | null,
+): Promise<Inheritance> {
+  const own = source.creator_id === creatorId;
+  let materials = 0;
+  let contributors = 0;
+
+  if (own) {
+    // The source's material now also informs the derivative.
+    const edges = await db.from("lineage_edges").select("source_id").eq("target_type", "artifact").eq("target_id", source.id).eq("source_type", "material");
+    for (const e of edges.data ?? []) {
+      await addLineage(db, creatorId, { type: "material", id: e.source_id, relationship: "references" }, { type: "artifact", id: derivativeId });
+      materials++;
+    }
+    const cs = await db.from("artifact_contributors").select("contributor_creator_id, role").eq("artifact_id", source.id);
+    if (cs.data?.length) {
+      const ins = await db.from("artifact_contributors").upsert(
+        cs.data.map((c) => ({ artifact_id: derivativeId, contributor_creator_id: c.contributor_creator_id, role: c.role, added_by_creator_id: creatorId })),
+        { onConflict: "artifact_id,contributor_creator_id", ignoreDuplicates: true },
+      );
+      if (ins.error) throw fromDbError(ins.error);
+      contributors = cs.data.length;
+    }
+  } else {
+    const ins = await db.from("artifact_contributors").upsert({ artifact_id: derivativeId, contributor_creator_id: source.creator_id, role: "Original creator", added_by_creator_id: creatorId }, { onConflict: "artifact_id,contributor_creator_id", ignoreDuplicates: true });
+    if (ins.error) throw fromDbError(ins.error);
+    contributors = 1;
+  }
+
+  const src = await db.from("rights_records").select("ownership_kind, copyright_holder, attribution_required, derivatives_allowed, rights_owners(owner_creator_id, owner_name, share_percent)").eq("artifact_id", source.id).maybeSingle();
+  const mine = must(await db.from("rights_records").select("id").eq("artifact_id", derivativeId).maybeSingle(), "We couldn't find the rights record.");
+  const from = `Derived from “${source.title}”${version ? ` (v${version.number})` : ""}.`;
+  let rights: Inheritance["rights"] = null;
+  if (src.data && own) {
+    const owners = (src.data.rights_owners as Array<{ owner_creator_id: string | null; owner_name: string; share_percent: number }>) ?? [];
+    const up = await db
+      .from("rights_records")
+      .update({
+        ownership_kind: src.data.ownership_kind,
+        copyright_holder: src.data.copyright_holder,
+        attribution_required: src.data.attribution_required,
+        derivatives_allowed: src.data.derivatives_allowed,
+        notes: `${from} Ownership, co-owners and attribution carry over from the source.`,
+      })
+      .eq("id", mine.id);
+    if (up.error) throw fromDbError(up.error);
+    if (owners.length) {
+      await db.from("rights_owners").delete().eq("rights_id", mine.id);
+      const ins = await db.from("rights_owners").insert(owners.map((o) => ({ rights_id: mine.id, creator_id: creatorId, owner_creator_id: o.owner_creator_id, owner_name: o.owner_name, share_percent: o.share_percent })));
+      if (ins.error) throw fromDbError(ins.error);
+    }
+    rights = { ownershipKind: src.data.ownership_kind, attributionRequired: src.data.attribution_required, derivativesAllowed: src.data.derivatives_allowed, owners: owners.map((o) => o.owner_name) };
+  } else {
+    // Someone else's work (with their permission): the original creator must be credited.
+    const holder = src.data?.copyright_holder ?? "the original creator";
+    const up = await db.from("rights_records").update({ attribution_required: true, derivatives_allowed: false, notes: `${from} Adapted from work by ${holder}, who allowed derivatives; credit them when sharing.` }).eq("id", mine.id);
+    if (up.error) throw fromDbError(up.error);
+    rights = { ownershipKind: "sole", attributionRequired: true, derivativesAllowed: false, owners: [] };
+  }
+  return { sourceArtifactId: source.id, sourceVersionId: version?.id ?? null, sourceVersionNumber: version?.number ?? null, materials, contributors, rights };
+}

@@ -209,7 +209,17 @@ export function ArtifactView(props: {
             ) : null}
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-ink-subtle">Created from</dt>
-              <dd className="text-ink">{createdFrom.length ? `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}` : derivedFrom.length ? `“${derivedFrom[0].title}”` : "A blank page"}</dd>
+              <dd className="text-ink">
+                {derivedFrom.length ? (
+                  <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
+                    “{derivedFrom[0].title}”
+                  </Link>
+                ) : createdFrom.length ? (
+                  `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}`
+                ) : (
+                  "A blank page"
+                )}
+              </dd>
               <dt className="text-ink-subtle">Version</dt>
               <dd className="text-ink">
                 v{current?.version_number ?? 1} · {props.versions.length} total
@@ -327,7 +337,20 @@ export function ArtifactView(props: {
       {isOwner ? (
         <>
           <ShareDialog key={shareOpen ? "open" : "closed"} open={shareOpen} onOpenChange={setShareOpen} artifact={a} onSave={patch} />
-          <TransformDialog open={transformOpen} onOpenChange={setTransformOpen} artifactId={a.id} currentType={a.artifact_type} />
+          <TransformDialog
+            open={transformOpen}
+            onOpenChange={setTransformOpen}
+            artifactId={a.id}
+            currentType={a.artifact_type}
+            source={{
+              title: a.title,
+              currentVersionId: a.current_version_id,
+              versions: props.versions.map((v) => ({ id: v.id, number: v.version_number, label: v.label })),
+              materials: props.materials.length,
+              contributors: props.contributors.map((c) => `${c.name} (${c.role})`),
+              rights: props.rights ? { ownershipKind: props.rights.ownership_kind, owners: props.rights.rights_owners.map((o) => o.owner_name), attributionRequired: props.rights.attribution_required } : null,
+            }}
+          />
           <ConfirmDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
@@ -597,36 +620,115 @@ function ShareDialog({
   );
 }
 
-export function TransformDialog({ open, onOpenChange, artifactId, currentType, initialType }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string; currentType: string; initialType?: string }) {
+/** What a derivative inherits, shown before it's made. */
+export interface TransformSource {
+  title: string;
+  currentVersionId: string | null;
+  versions: Array<{ id: string; number: number; label: string }>;
+  materials: number;
+  contributors: string[];
+  rights: { ownershipKind: string; owners: string[]; attributionRequired: boolean } | null;
+}
+
+export function TransformDialog({
+  open,
+  onOpenChange,
+  artifactId,
+  currentType,
+  initialType,
+  source,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  artifactId: string;
+  currentType: string;
+  initialType?: string;
+  source?: TransformSource;
+}) {
   const router = useRouter();
   const [type, setType] = useState(initialType ?? "");
   const [instruction, setInstruction] = useState("");
+  const [versionId, setVersionId] = useState(source?.currentVersionId ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const suggested = actionsFor(currentType).filter((a) => a.kind === "transform" && a.targetType);
+  const others = ARTIFACT_TYPES.filter((t) => t.type !== currentType && !suggested.some((s) => s.targetType === t.type));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Create a derivative" description="A new piece adapted from this one. The original stays unchanged and the new piece records where it came from." wide>
-        <div className="flex flex-wrap gap-2">
-          {suggested.map((s) => (
-            <button key={s.key} type="button" aria-pressed={type === s.targetType} onClick={() => setType(s.targetType!)} className={cn("min-h-11 rounded-full border px-4 text-sm", type === s.targetType ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink-muted")}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <Field label="Or choose any kind of piece" htmlFor="target" className="mt-4">
-          <Select id="target" value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="">Choose…</option>
-            {ARTIFACT_TYPES.filter((t) => t.type !== currentType).map((t) => (
-              <option key={t.type} value={t.type}>
-                {t.label} — {t.description}
-              </option>
+        {source ? (
+          <div className="rounded-2xl bg-surface-muted p-3 text-sm">
+            <p className="text-ink">
+              From <span className="font-medium">“{source.title}”</span>
+            </p>
+            {source.versions.length > 1 ? (
+              <Field label="Version to adapt" htmlFor="source-version" className="mt-2">
+                <Select id="source-version" value={versionId} onChange={(e) => setVersionId(e.target.value)}>
+                  {source.versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      v{v.number} {v.label}
+                      {v.id === source.currentVersionId ? " (current)" : ""}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
+          </div>
+        ) : null}
+
+        <fieldset className="mt-4">
+          <legend className="mb-2 text-sm font-medium text-ink">Turn it into</legend>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {suggested.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                aria-pressed={type === s.targetType}
+                onClick={() => setType(s.targetType!)}
+                className={cn("flex min-h-16 flex-col items-start justify-center rounded-2xl border px-4 py-2 text-left text-sm", type === s.targetType ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink hover:border-[#cfd0ff]")}
+              >
+                <span className="font-medium">{s.label}</span>
+                <span className="text-xs text-ink-subtle">{artifactTypeLabel(s.targetType!)}</span>
+              </button>
             ))}
-          </Select>
-        </Field>
+          </div>
+          <details className="mt-3" open={!!type && !suggested.some((s) => s.targetType === type)}>
+            <summary className="cursor-pointer text-sm text-accent-ink">More kinds of piece</summary>
+            <Field label="Any kind of piece" htmlFor="target" className="mt-2">
+              <Select id="target" value={type} onChange={(e) => setType(e.target.value)}>
+                <option value="">Choose…</option>
+                {others.map((t) => (
+                  <option key={t.type} value={t.type}>
+                    {t.label} — {t.description}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </details>
+        </fieldset>
+
         <Field label="Anything to keep in mind? (optional)" htmlFor="instr" className="mt-4">
           <Textarea id="instr" value={instruction} onChange={(e) => setInstruction(e.target.value)} placeholder="Keep the opening image; make it feel like a lullaby." />
         </Field>
+
+        {source ? (
+          <section aria-label="What carries over" className="mt-4 rounded-2xl border border-border-soft p-3 text-sm">
+            <p className="font-medium text-ink">What carries over</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-muted">
+              <li>A link back to this piece and the version you chose.</li>
+              <li>{source.materials ? `${source.materials} piece${source.materials === 1 ? "" : "s"} of material it was made from.` : "No material was attached to this piece."}</li>
+              {source.contributors.length ? <li>Contributors: {source.contributors.join(", ")}.</li> : null}
+              {source.rights ? (
+                <li>
+                  Rights: {source.rights.ownershipKind === "joint" ? `jointly owned (${source.rights.owners.join(", ")})` : "your ownership"}
+                  {source.rights.attributionRequired ? ", attribution required" : ""}.
+                </li>
+              ) : null}
+              <li>The new piece starts as a private draft — you review it before sharing or publishing.</li>
+            </ul>
+          </section>
+        ) : null}
+
         {error ? (
           <p role="alert" className="mt-3 text-sm text-danger">
             {error}
@@ -643,7 +745,7 @@ export function TransformDialog({ open, onOpenChange, artifactId, currentType, i
               setBusy(true);
               setError(null);
               try {
-                const r = await api<{ artifact: { id: string } }>(`/api/v1/artifacts/${artifactId}/transform`, { method: "POST", json: { targetType: type, instruction } });
+                const r = await api<{ artifact: { id: string } }>(`/api/v1/artifacts/${artifactId}/transform`, { method: "POST", json: { targetType: type, instruction, versionId: versionId || null } });
                 router.push(`/artifacts/${r.artifact.id}`);
               } catch (e) {
                 setError(errorMessage(e));
@@ -657,6 +759,10 @@ export function TransformDialog({ open, onOpenChange, artifactId, currentType, i
       </DialogContent>
     </Dialog>
   );
+}
+
+function artifactTypeLabel(type: string): string {
+  return ARTIFACT_TYPES.find((t) => t.type === type)?.description ?? "";
 }
 
 function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: string; rights: Rights | null; disclaimer: string; isOwner: boolean }) {
@@ -714,6 +820,12 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
                 <span className="block text-xs text-ink-subtle">{rights.derivatives_allowed ? "Derivatives allowed" : "No derivatives by others"}</span>
               </dd>
             </div>
+            {rights.notes ? (
+              <div className="rounded-xl bg-surface-muted p-3 sm:col-span-full">
+                <dt className="text-xs text-ink-subtle">Notes</dt>
+                <dd className="mt-1 whitespace-pre-wrap text-sm text-ink">{rights.notes}</dd>
+              </div>
+            ) : null}
           </dl>
         ) : (
           <form

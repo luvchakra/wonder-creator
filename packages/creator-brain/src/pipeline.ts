@@ -1,6 +1,6 @@
-import { DomainError, fromDbError, isDomainError, log } from "@wonder/core";
+import { DomainError, fromDbError, isDomainError, log, must } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
-import { artifactType, createArtifact, createVersion, getArtifact, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
+import { artifactType, createArtifact, createVersion, getArtifact, inheritFromSource, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
@@ -435,14 +435,26 @@ export async function refine(
 // ---------------------------------------------------------------------------
 // Transform: always a new, derived artifact (lineage preserved; never passed off as original)
 // ---------------------------------------------------------------------------
-export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null }) {
+export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null }) {
   if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
   const source = await getArtifact(deps.db, input.artifactId);
+  // Someone else's work can only be adapted when they allowed derivatives.
+  if (source.creator_id !== deps.creatorId) {
+    const r = await deps.db.from("rights_records").select("derivatives_allowed").eq("artifact_id", source.id).maybeSingle();
+    if (!r.data?.derivatives_allowed) throw new DomainError("forbidden", "The creator of this piece hasn't allowed derivatives.");
+  }
   const def = artifactType(input.targetType);
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "transform", instruction: input.instruction, artifactType: def.type, artifactIds: [source.id], conversationId: input.conversationId });
-  const src = ctx.selectedArtifacts[0];
-  if (!src) throw new DomainError("not_found", "We couldn't find that piece.");
-  const run = await startRun(deps, "transform", { artifactId: source.id, conversationId: input.conversationId, inputCategory: "artifact" });
+  const current = ctx.selectedArtifacts[0];
+  if (!current) throw new DomainError("not_found", "We couldn't find that piece.");
+  // Any version of the source can be adapted; the current one by default.
+  let src = { content: current.content, versionId: current.versionId, versionNumber: current.versionNumber };
+  if (input.versionId && input.versionId !== current.versionId) {
+    const v = must(await deps.db.from("artifact_versions").select("id, version_number, content").eq("id", input.versionId).eq("artifact_id", source.id).maybeSingle(), "We couldn't find that version.");
+    src = { content: v.content, versionId: v.id, versionNumber: v.version_number };
+  }
+  // A run is recorded against the creator's own piece; adapting someone else's is recorded without it.
+  const run = await startRun(deps, "transform", { artifactId: source.creator_id === deps.creatorId ? source.id : null, conversationId: input.conversationId, inputCategory: "artifact" });
   return runGuarded(run, async () => {
     const decision = await authorizeTool(deps.db, deps.creatorId, "derive_artifact", run.id);
     if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
@@ -469,16 +481,18 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
       authorKind: "ai",
       aiRunId: run.id,
       generationMetadata: { provider: deps.provider.name, offline: !deps.provider.live, sourceVersionId: src.versionId },
-      coverMaterialId: source.cover_material_id,
+      coverMaterialId: source.creator_id === deps.creatorId ? source.cover_material_id : null,
       sources: [
         { type: "artifact", id: source.id, relationship: "adapted_from" },
         ...(src.versionId ? [{ type: "artifact_version" as const, id: src.versionId, relationship: "derived_from" as const }] : []),
       ],
-      provenance: { origin: "derived", aiRunId: run.id, details: { sourceArtifactId: source.id, sourceVersionId: src.versionId } },
+      provenance: { origin: "derived", aiRunId: run.id, details: { sourceArtifactId: source.id, sourceVersionId: src.versionId, sourceVersionNumber: src.versionNumber } },
     });
+    // Material, contributors and rights constraints follow the derivative.
+    const inherited = await inheritFromSource(deps.db, deps.creatorId, artifact.id, source, src.versionId ? { id: src.versionId, number: src.versionNumber ?? 0 } : null);
     await saveQualityReport(deps, artifact.id, artifact.current_version_id!, run.id, checks);
     await run.finish({ outputCategory: "artifact", artifactId: artifact.id });
-    return { artifact, runId: run.id, offline: !deps.provider.live };
+    return { artifact, runId: run.id, offline: !deps.provider.live, inherited };
   });
 }
 
