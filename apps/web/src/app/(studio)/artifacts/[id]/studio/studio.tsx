@@ -1,7 +1,7 @@
 "use client";
 import type { StudioAction } from "@wonder/creator-studio/types";
-import { Badge, Button, ErrorState, Input, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, Check, CircleAlert, ClipboardCheck, Save, Share2, Sparkles, Wand2 } from "lucide-react";
+import { Button, ErrorState, Input, buttonClasses, cn } from "@wonder/ui";
+import { ArrowLeft, Save, Share2, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,6 +9,7 @@ import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { TransformDialog } from "../view";
+import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 
 export function Studio({
   artifact,
@@ -25,8 +26,8 @@ export function Studio({
   actions: StudioAction[];
   initialAction: string | null;
   materials: MaterialCardData[];
-  quality: { checks: Array<{ key: string; label: string; status: string; note: string }>; suggestions: Array<{ title: string; detail: string }>; versionId: string } | null;
-  pendingProposal: { id: string; preview: string; baseVersionId: string } | null;
+  quality: QualityReportView | null;
+  pendingProposal: QualityProposal | null;
   offline: boolean;
 }) {
   const router = useRouter();
@@ -38,8 +39,15 @@ export function Studio({
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("");
-  const [proposal, setProposal] = useState(pendingProposal);
+  const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
   const [q, setQ] = useState(quality);
+  // Keep the panel in sync with server data after refreshes (dismiss, apply).
+  const [lastQuality, setLastQuality] = useState(quality);
+  if (quality !== lastQuality) {
+    setLastQuality(quality);
+    setQ(quality);
+  }
+  const [kept, setKept] = useState<{ versionNumber: number; titles: string[] } | null>(null);
   const [transformType, setTransformType] = useState<string | null>(() => {
     const a = actions.find((x) => x.key === initialAction);
     return a?.kind === "transform" ? (a.targetType ?? null) : null;
@@ -108,9 +116,30 @@ export function Studio({
       if (decision === "approve" && r.versionId) {
         setContent(proposal.preview);
         setBase({ id: r.versionId, number: r.versionNumber ?? (base?.number ?? 0) + 1, content: proposal.preview });
+        setKept({ versionNumber: r.versionNumber ?? (base?.number ?? 0) + 1, titles: proposal.quality?.titles ?? [] });
+      } else {
+        setKept(null);
       }
       setProposal(null);
       router.refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  /** Discard this preview and ask for a fresh one applying the same suggestions. */
+  async function regenerate() {
+    if (!proposal?.quality) return;
+    const { reportId, keys, titles } = proposal.quality;
+    setWorking("regenerate");
+    setError(null);
+    try {
+      await api(`/api/v1/brain/proposals/${proposal.id}`, { method: "POST", json: { decision: "reject" } });
+      setProposal(null);
+      const r = await api<{ proposal?: { id: string }; preview?: string }>(`/api/v1/artifacts/${artifact.id}/quality/apply`, { method: "POST", json: { reportId, keys } });
+      if (r.proposal) setProposal({ id: r.proposal.id, preview: r.preview ?? "", baseVersionId: base?.id ?? "", quality: { reportId, keys, titles } });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -122,8 +151,8 @@ export function Studio({
     setWorking("quality");
     setError(null);
     try {
-      const r = await api<{ checks: Array<{ key: string; label: string; status: string; note: string }>; suggestions: Array<{ title: string; detail: string }> }>(`/api/v1/artifacts/${artifact.id}/quality`, { method: "POST" });
-      setQ({ ...r, versionId: base?.id ?? "" });
+      const r = await api<{ reportId: string; versionId: string; checks: QualityReportView["checks"]; findings: QualityReportView["findings"] }>(`/api/v1/artifacts/${artifact.id}/quality`, { method: "POST" });
+      setQ({ reportId: r.reportId, versionId: r.versionId, checks: r.checks, findings: r.findings });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -161,21 +190,38 @@ export function Studio({
 
       {offline ? <p className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-2 text-sm text-warning-ink">Offline development model: CreatorBrain actions produce placeholder revisions.</p> : null}
       {error ? <ErrorState title="That didn't work" body={error} /> : null}
+      {kept ? (
+        <p role="status" className="flex flex-wrap items-center gap-x-3 rounded-2xl bg-success-soft px-4 py-2 text-sm text-success-ink">
+          Saved as v{kept.versionNumber}
+          {kept.titles.length ? ` with: ${kept.titles.join("; ")}` : ""}.
+          <Link href={`/artifacts/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center font-medium underline">
+            Compare with the previous version
+          </Link>
+        </p>
+      ) : null}
 
       <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1fr_320px]">
         <section aria-label="Editor" className="rounded-3xl border border-border-soft bg-surface p-2 shadow-[var(--shadow-card)]">
           {proposal ? (
             <div className="p-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-accent-softer px-4 py-3">
-                <p className="text-[15px] text-ink">
-                  <Sparkles className="mr-1.5 inline size-4 text-accent-ink" aria-hidden />
-                  CreatorBrain suggested a revision. Your current version stays in history either way.
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" loading={working === "approve"} onClick={() => decide("approve")}>
+                <div className="min-w-0 text-[15px] text-ink">
+                  <p>
+                    <Sparkles className="mr-1.5 inline size-4 text-accent-ink" aria-hidden />
+                    {proposal.quality ? "Preview of the suggestions you chose." : "CreatorBrain suggested a revision."} Your current version stays in history either way.
+                  </p>
+                  {proposal.quality ? <p className="mt-1 text-sm text-ink-muted">Applying: {proposal.quality.titles.join("; ")}</p> : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" loading={working === "approve"} disabled={!!working} onClick={() => decide("approve")}>
                     Keep revision
                   </Button>
-                  <Button size="sm" variant="ghost" loading={working === "reject"} onClick={() => decide("reject")}>
+                  {proposal.quality ? (
+                    <Button size="sm" variant="secondary" loading={working === "regenerate"} disabled={!!working} onClick={regenerate}>
+                      Try another version
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="ghost" loading={working === "reject"} disabled={!!working} onClick={() => decide("reject")}>
                     Discard
                   </Button>
                 </div>
@@ -252,40 +298,16 @@ export function Studio({
             </form>
           </section>
 
-          <section className="rounded-3xl border border-border-soft bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-ink">Quality</h2>
-              <Button size="sm" variant="ghost" onClick={review} loading={working === "quality"} disabled={!!working || dirty}>
-                <ClipboardCheck className="size-4" aria-hidden /> Review
-              </Button>
-            </div>
-            {q ? (
-              <>
-                {q.versionId !== base?.id ? <Badge className="mt-2">From an earlier version</Badge> : null}
-                <ul className="mt-2 space-y-1.5 text-sm">
-                  {q.checks.map((c) => (
-                    <li key={c.key} className="flex items-start gap-2">
-                      {c.status === "good" ? <Check className="mt-0.5 size-4 shrink-0 text-success-ink" aria-label="Good" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-label="Worth a look" />}
-                      <span>
-                        <span className="font-medium text-ink">{c.label}</span> <span className="text-ink-muted">— {c.note}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {q.suggestions.length ? (
-                  <ul className="mt-3 space-y-1 border-t border-border-soft pt-3 text-sm text-ink-muted">
-                    {q.suggestions.map((s) => (
-                      <li key={s.title}>
-                        <span className="font-medium text-ink">{s.title}:</span> {s.detail}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </>
-            ) : (
-              <p className="mt-2 text-sm text-ink-muted">Run a review for structure, voice and pacing suggestions. Nothing is rewritten.</p>
-            )}
-          </section>
+          <QualityPanel
+            artifactId={artifact.id}
+            report={q}
+            currentVersionId={base?.id ?? null}
+            blocked={dirty ? "Save your edits first to apply suggestions." : proposal ? "Keep or discard the current revision first." : null}
+            reviewing={working === "quality"}
+            onReview={review}
+            onPreview={(p) => setProposal(p)}
+            onChanged={() => router.refresh()}
+          />
         </aside>
       </div>
 

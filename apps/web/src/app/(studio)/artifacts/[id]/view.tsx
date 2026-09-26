@@ -85,11 +85,12 @@ export function ArtifactView(props: {
   rightsDisclaimer: string;
   contributors: Array<{ role: string; name: string; handle: string | null }>;
   quality: { checks: Array<{ key: string; label: string; status: string; note: string }>; suggestions: Array<{ title: string; detail: string }>; createdAt: string } | null;
+  initialTab?: string;
 }) {
   const { artifact: a, isOwner } = props;
   const router = useRouter();
   const current = props.versions.find((v) => v.id === a.current_version_id) ?? props.versions[0];
-  const [tab, setTab] = useState("details");
+  const [tab, setTab] = useState(["details", "material", "versions", "lineage", "references", "rights"].includes(props.initialTab ?? "") ? props.initialTab! : "details");
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [transformOpen, setTransformOpen] = useState(false);

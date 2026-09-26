@@ -1,7 +1,7 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { actionsFor, artifactType } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
-import { providerReadiness } from "@wonder/creator-brain";
+import { findingsOf, providerReadiness } from "@wonder/creator-brain";
 import { requireSession } from "@/lib/session";
 import { Studio } from "./studio";
 
@@ -33,8 +33,17 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
       actions={actionsFor(a.artifact_type)}
       initialAction={action ?? null}
       materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? urls[m.storage_object_id] ?? null : null }))}
-      quality={quality ? { checks: quality.checks as never, suggestions: quality.suggestions as never, versionId: quality.version_id } : null}
-      pendingProposal={proposal ? { id: proposal.id, preview: String((proposal.payload as { content?: string }).content ?? ""), baseVersionId: String((proposal.payload as { baseVersionId?: string }).baseVersionId ?? "") } : null}
+      quality={quality ? { reportId: quality.id, versionId: quality.version_id, checks: quality.checks as never, findings: findingsOf(quality) } : null}
+      pendingProposal={
+        proposal
+          ? {
+              id: proposal.id,
+              preview: String((proposal.payload as { content?: string }).content ?? ""),
+              baseVersionId: String((proposal.payload as { baseVersionId?: string }).baseVersionId ?? ""),
+              quality: (proposal.payload as { quality?: { reportId: string; keys: string[]; titles: string[] } }).quality,
+            }
+          : null
+      }
       offline={!providerReadiness().live}
     />
   );

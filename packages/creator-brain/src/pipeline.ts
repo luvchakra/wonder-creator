@@ -2,6 +2,7 @@ import { DomainError, fromDbError, isDomainError, log } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { artifactType, createArtifact, createVersion, getArtifact, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
+import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
 import { authorizeTool, createProposal, getPendingProposal, resolveProposal, type Proposal } from "./governance";
 import { artifactBrief, renderMaterials, systemPrompt, TASKS } from "./prompts";
@@ -286,7 +287,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     });
 
     progress(deps, "critique");
-    const quality = await qualityChecks(deps, ctx, run, def.type, draft);
+    const quality = await qualityChecks(deps, ctx, run, def.type, draft, [...ctx.selectedMaterials, ...ctx.references].map((m) => m.id));
 
     progress(deps, "render");
     const collectionId = input.conversationId
@@ -324,7 +325,7 @@ export interface QualityResult {
   suggestions: Array<{ title: string; detail: string }>;
 }
 
-async function qualityChecks(deps: BrainDeps, ctx: CreativeContext, run: RunTracker, type: string, content: string): Promise<QualityResult> {
+async function qualityChecks(deps: BrainDeps, ctx: CreativeContext, run: RunTracker, type: string, content: string, sourceMaterialIds: string[]): Promise<QualityResult> {
   const heuristic = heuristicChecks(type, content, { avoid: ctx.creativeIdentity.avoid });
   const modelChecks = await run.step("critique", async () => {
     const r = await deps.provider.structured({
@@ -337,10 +338,12 @@ async function qualityChecks(deps: BrainDeps, ctx: CreativeContext, run: RunTrac
     run.addUsage(r.usage, r.model);
     return r.value;
   }, (c) => ({ checks: c.checks.length, suggestions: c.suggestions.length }));
-  return { checks: mergeChecks(heuristic, modelChecks.checks), suggestions: modelChecks.suggestions.slice(0, 3) };
+  // Rights & provenance come from where the material came from, never from the model or the draft.
+  const rights = await provenanceCheck(deps.db, sourceMaterialIds);
+  return { checks: withRightsCheck(mergeChecks(heuristic, modelChecks.checks), rights), suggestions: modelChecks.suggestions.slice(0, 3) };
 }
 
-async function saveQualityReport(deps: BrainDeps, artifactId: string, versionId: string, runId: string, r: QualityResult) {
+async function saveQualityReport(deps: BrainDeps, artifactId: string, versionId: string, runId: string, r: QualityResult): Promise<string> {
   const res = await deps.db.from("quality_reports").insert({
     artifact_id: artifactId,
     version_id: versionId,
@@ -348,8 +351,9 @@ async function saveQualityReport(deps: BrainDeps, artifactId: string, versionId:
     ai_run_id: runId,
     checks: r.checks as unknown as JsonValue,
     suggestions: r.suggestions as unknown as JsonValue,
-  });
+  }).select("id").single();
   if (res.error) throw fromDbError(res.error);
+  return res.data.id;
 }
 
 /** On-demand quality review of the current version (suggestions only, never a rewrite). */
@@ -362,10 +366,10 @@ export async function reviewQuality(deps: BrainDeps, artifactId: string) {
   const run = await startRun(deps, "critique", { artifactId });
   return runGuarded(run, async () => {
     progress(deps, "critique");
-    const result = await qualityChecks(deps, ctx, run, a.artifact_type, art.content);
-    await saveQualityReport(deps, a.id, art.versionId!, run.id, result);
+    const result = await qualityChecks(deps, ctx, run, a.artifact_type, art.content, await artifactSourceMaterials(deps.db, a.id));
+    const reportId = await saveQualityReport(deps, a.id, art.versionId!, run.id, result);
     await run.finish({ outputCategory: "quality_report" });
-    return result;
+    return { ...result, reportId, versionId: art.versionId!, findings: findingsOf({ ...result, dismissed: [], applied: [] }) };
   });
 }
 
@@ -376,7 +380,12 @@ export type RefineResult =
   | { kind: "version"; artifactId: string; versionId: string; versionNumber: number; runId: string }
   | { kind: "proposal"; proposal: Proposal; runId: string; preview: string };
 
-export async function refine(deps: BrainDeps, input: { artifactId: string; instruction: string; action?: string | null; conversationId?: string | null }): Promise<RefineResult> {
+export async function refine(
+  deps: BrainDeps,
+  input: { artifactId: string; instruction: string; action?: string | null; conversationId?: string | null },
+  /** previewOnly: always a proposal to review, whatever the autonomy setting (selective quality refinement). */
+  opts: { previewOnly?: boolean; changeSummary?: string; quality?: { reportId: string; keys: string[]; titles: string[] } } = {},
+): Promise<RefineResult> {
   const artifact = await getArtifact(deps.db, input.artifactId);
   if (artifact.creator_id !== deps.creatorId) throw new DomainError("forbidden", "You can only refine your own pieces.");
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "refine", instruction: input.instruction, artifactIds: [artifact.id], conversationId: input.conversationId });
@@ -402,14 +411,14 @@ export async function refine(deps: BrainDeps, input: { artifactId: string; instr
     deps.onProgress?.({ step: "deciding", label: "Checking your autonomy settings" });
     const decision = await authorizeTool(deps.db, deps.creatorId, "apply_revision", run.id);
     if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
-    const summary = `CreatorBrain: ${input.instruction.slice(0, 200)}`;
-    if (decision.outcome === "needs_approval") {
+    const summary = opts.changeSummary ?? `CreatorBrain: ${input.instruction.slice(0, 200)}`;
+    if (decision.outcome === "needs_approval" || opts.previewOnly) {
       const proposal = await createProposal(deps.db, deps.creatorId, {
         tool: "apply_revision",
-        understood: `You asked: “${input.instruction.slice(0, 300)}”`,
+        understood: opts.quality ? `Apply: ${opts.quality.titles.join("; ").slice(0, 280)}` : `You asked: “${input.instruction.slice(0, 300)}”`,
         plan: `Save this revision of “${artifact.title}” as a new version.`,
         impact: `Your current v${current.versionNumber} stays in history; you can restore it anytime.`,
-        payload: { artifactId: artifact.id, baseVersionId: current.versionId, content: revised, changeSummary: summary, runId: run.id },
+        payload: { artifactId: artifact.id, baseVersionId: current.versionId, content: revised, changeSummary: summary, runId: run.id, ...(opts.quality ? { quality: opts.quality } : {}) },
         runId: run.id,
         conversationId: input.conversationId,
       });
@@ -450,7 +459,7 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
     });
     if (!text) throw new DomainError("provider_failed", "The adaptation came back empty. Your original is unchanged — try again.");
     progress(deps, "critique");
-    const checks = await qualityChecks(deps, ctx, run, def.type, text);
+    const checks = await qualityChecks(deps, ctx, run, def.type, text, await artifactSourceMaterials(deps.db, source.id));
     progress(deps, "render");
     const artifact = await createArtifact(deps.db, deps.creatorId, {
       artifactType: def.type,
@@ -494,6 +503,8 @@ export async function approveProposal(deps: BrainDeps, proposalId: string) {
         changeSummary: String(payload.changeSummary ?? "Approved revision."),
       });
       await resolveProposal(deps.db, p.id, "executed");
+      const q = payload.quality as { reportId: string; keys: string[] } | undefined;
+      if (q) await markApplied(deps.db, q.reportId, q.keys);
       return { kind: "version" as const, artifactId, versionId: v.id, versionNumber: v.version_number };
     }
     if (p.action === "create_artifact") {
@@ -516,3 +527,25 @@ export async function rejectProposal(deps: BrainDeps, proposalId: string) {
 }
 
 export type { Intent };
+
+// ---------------------------------------------------------------------------
+// Selective quality refinement (P0.1-05)
+// ---------------------------------------------------------------------------
+/**
+ * Preview a revision that applies only the findings the creator chose. Always a proposal: the creator
+ * compares it with the current version and keeps or discards it; keeping it makes a new version whose
+ * summary lists what was applied. Rights/provenance findings can't be "applied" by rewriting.
+ */
+export async function applyQualityFindings(deps: BrainDeps, artifactId: string, input: { reportId: string; keys: string[] }): Promise<RefineResult> {
+  const artifact = await getArtifact(deps.db, artifactId);
+  if (artifact.creator_id !== deps.creatorId) throw new DomainError("forbidden", "Only the creator can apply suggestions.");
+  const report = await getReport(deps.db, artifactId, input.reportId);
+  if (report.version_id !== artifact.current_version_id) throw new DomainError("conflict", "This review is for an earlier version. Review the current version first.");
+  const findings = findingsOf(report);
+  const chosen = findings.filter((f) => input.keys.includes(f.key));
+  if (!chosen.length) throw new DomainError("validation", "Choose at least one suggestion to apply.");
+  if (chosen.some((f) => f.locked)) throw new DomainError("validation", "Rights and provenance notes can't be fixed by rewriting. Check your permissions or set the piece's rights.");
+  if (chosen.some((f) => f.state !== "open")) throw new DomainError("conflict", "Some of those suggestions were already applied or set aside.");
+  const { instruction, summary } = selectiveInstruction(chosen);
+  return refine(deps, { artifactId, instruction, action: "quality" }, { previewOnly: true, changeSummary: summary, quality: { reportId: report.id, keys: chosen.map((f) => f.key), titles: chosen.map((f) => f.title) } });
+}

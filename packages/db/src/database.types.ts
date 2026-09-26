@@ -1094,13 +1094,13 @@ isOneToOne: false
                   ]
                 },"quality_reports": {
                   Row: {
-                    "ai_run_id": string | null,"artifact_id": string,"checks": NonNullable<Json>,"created_at": string,"creator_id": string,"id": string,"suggestions": NonNullable<Json>,"version_id": string
+                    "ai_run_id": string | null,"applied": NonNullable<Json>,"artifact_id": string,"checks": NonNullable<Json>,"created_at": string,"creator_id": string,"dismissed": NonNullable<Json>,"id": string,"suggestions": NonNullable<Json>,"version_id": string
                   }
                   Insert: {
-                    "ai_run_id"?: string | null,"artifact_id": string,"checks"?: NonNullable<Json>,"created_at"?: string,"creator_id": string,"id"?: string,"suggestions"?: NonNullable<Json>,"version_id": string
+                    "ai_run_id"?: string | null,"applied"?: NonNullable<Json>,"artifact_id": string,"checks"?: NonNullable<Json>,"created_at"?: string,"creator_id": string,"dismissed"?: NonNullable<Json>,"id"?: string,"suggestions"?: NonNullable<Json>,"version_id": string
                   }
                   Update: {
-                    "ai_run_id"?: string | null,"artifact_id"?: string,"checks"?: NonNullable<Json>,"created_at"?: string,"creator_id"?: string,"id"?: string,"suggestions"?: NonNullable<Json>,"version_id"?: string
+                    "ai_run_id"?: string | null,"applied"?: NonNullable<Json>,"artifact_id"?: string,"checks"?: NonNullable<Json>,"created_at"?: string,"creator_id"?: string,"dismissed"?: NonNullable<Json>,"id"?: string,"suggestions"?: NonNullable<Json>,"version_id"?: string
                   }
                   Relationships: [
                     {
