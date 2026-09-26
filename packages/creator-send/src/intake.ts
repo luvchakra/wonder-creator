@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { DomainError, fromDbError, isDomainError, log, must, publishEvent } from "@wonder/core";
-import { inspectUpload, parseExternalUrl, safeFetch, safeFilename, type MediaKind } from "@wonder/core/server";
+import { inspectUpload, parseExternalUrl, safeFetch, safeFilename, selectMalwareScanner, type MalwareScanner, type MediaKind } from "@wonder/core/server";
 import { indexStaleSubjects, understandMaterial, type CreativeModelProvider } from "@wonder/creator-brain";
 import { createMaterial, MATERIAL_BUCKET, type MaterialType } from "@wonder/creator-library";
 import type { Db, JsonValue, Tables } from "@wonder/db";
@@ -22,6 +22,8 @@ export interface IntakeDeps {
   service: Db;
   creatorId: string;
   provider: CreativeModelProvider;
+  /** Defaults to the configured scanner (or none). */
+  scanner?: MalwareScanner;
 }
 
 const KIND_TO_TYPE: Record<MediaKind, MaterialType> = {
@@ -156,6 +158,15 @@ export async function receiveFile(
   item = must(await deps.service.from("intake_items").update({ input_kind: kindForInput }).eq("id", item.id).select("*").single());
   item = await transition(deps, item, "security_review");
 
+  // Hash reputation check before anything is stored. Known malware is never kept.
+  const scan = await (deps.scanner ?? selectMalwareScanner()).scan({ sha256: inspected.sha256, size: inspected.size, mime: inspected.mime });
+  if (scan.verdict === "malicious") {
+    const message = "This file matches known malware, so we didn't keep it.";
+    await transition(deps, item, "quarantined", { error_code: "security_rejected", error_message: message });
+    await publishEvent(deps.db, { type: "CreativeMaterialSecurityRejected", aggregate: "material", aggregateId: null, payload: { reason: "malware", intakeId: item.id, provider: scan.provider } });
+    throw new DomainError("security_rejected", message);
+  }
+
   // Store the original privately. Path is opaque and never shown to clients.
   const path = input.existingPath ?? `${deps.creatorId}/${randomUUID()}`;
   const up = input.existingPath ? { error: null } : await deps.service.storage.from(MATERIAL_BUCKET).upload(path, input.bytes, { contentType: inspected.mime, upsert: false });
@@ -174,7 +185,7 @@ export async function receiveFile(
         size_bytes: inspected.size,
         sha256: inspected.sha256,
         original_filename: name,
-        // Content-type allow-list + size limits passed. No malware scanner is configured; see docs/security.md.
+        // Allow-list, size limits and (when configured) hash reputation passed; see docs/security.md.
         security_status: "clean",
       })
       .select("id")
@@ -187,7 +198,7 @@ export async function receiveFile(
     title: name ? name.replace(/\.[a-z0-9]{1,5}$/i, "") : input.kind === "camera" ? "Photo" : input.kind === "voice" ? "Voice note" : "Untitled",
     storageObjectId: obj.id,
     sourceType: input.kind ?? "upload",
-    metadata: { mime: inspected.mime, size: inspected.size },
+    metadata: { mime: inspected.mime, size: inspected.size, malwareScan: { provider: scan.provider, verdict: scan.verdict } },
     provenance: { origin: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice_recording" : "upload", originalFilename: name, sha256: inspected.sha256 },
   });
   await deps.service.from("creative_materials").update({ security_status: "clean" }).eq("id", material.id).eq("creator_id", deps.creatorId);
