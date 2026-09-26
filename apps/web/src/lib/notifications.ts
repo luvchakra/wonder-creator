@@ -38,6 +38,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .from("huddle_invitations")
       .select("huddle_id, created_at, creators!huddle_invitations_invited_by_creator_id_fkey(display_name)")
       .eq("invitee_creator_id", creatorId)
+      .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(10),
     liveCards(db, { limit: 100 }).catch(() => []),

@@ -93,28 +93,48 @@ test.describe("Huddles", () => {
     await say(b, fromB);
     await expect(chat(a).getByRole("listitem").filter({ hasText: fromB })).toContainText(creatorB.name, { timeout: 20_000 });
 
-    // B saves A's line as an idea.
-    await chat(b).getByRole("listitem").filter({ hasText: fromA }).getByRole("button", { name: "Save as idea" }).click();
-    const preserve = b.getByRole("dialog", { name: "Save from this Huddle" });
-    await expect(preserve.getByLabel("What do you want to keep?")).toHaveValue(fromA);
-    await expect(preserve.getByLabel("Save as")).toHaveValue("idea");
-    await preserve.getByRole("button", { name: "Save" }).click();
-    await expect(preserve.getByText("Saved to your Creative Space.")).toBeVisible();
-    const savedHref = await preserve.getByRole("link", { name: "View it" }).getAttribute("href");
-    expect(savedHref).toMatch(/^\/space\/materials\/[0-9a-f-]{36}$/);
-    await preserve.getByRole("button", { name: "Back to Huddle" }).click();
-    await expect(preserve).toBeHidden();
+    // Nothing is assumed: B can save their own line, but not A's (saving chat is off).
+    await expect(b.getByText("Nothing is recorded or transcribed. You can save only your own messages.")).toBeVisible();
+    await expect(chat(b).getByRole("listitem").filter({ hasText: fromA }).getByRole("button", { name: /^Save/ })).toHaveCount(0);
+    await chat(b).getByRole("listitem").filter({ hasText: fromB }).getByRole("button", { name: /^Save/ }).click();
+    await expect(b.getByRole("status").filter({ hasText: "Saved to your Creative Space." })).toBeVisible();
 
-    // B leaves; A is alone, the Huddle is still live.
+    // The host allows saving from now on; A's next line can be saved by B, credited to A.
+    await a.getByRole("button", { name: "More" }).click();
+    await a.getByRole("menuitem", { name: "Let people save chat from now on" }).click();
+    await expect(a.getByText(/Anyone can save chat messages sent since/)).toBeVisible();
+    const later = `The keeper keeps a logbook. ${uid()}`;
+    await say(a, later);
+    const laterItem = chat(b).getByRole("listitem").filter({ hasText: later });
+    await expect(laterItem).toBeVisible({ timeout: 20_000 });
+    await expect(chat(b).getByRole("listitem").filter({ hasText: fromA }).getByRole("button", { name: /^Save/ })).toHaveCount(0);
+    const saving = b.waitForResponse((r) => r.url().endsWith(`/api/v1/huddles/${huddleId}/moments`) && r.request().method() === "POST");
+    await laterItem.getByRole("button", { name: /^Save/ }).click();
+    const savedId = ((await (await saving).json()) as { material: { id: string } }).material.id;
+    const savedHref = `/space/materials/${savedId}`;
+    await expect(b.getByRole("status").filter({ hasText: "Saved to your Creative Space." }).getByRole("link", { name: "View it" })).toHaveAttribute("href", savedHref);
+
+    // B leaves → B's summary; A is alone, the Huddle is still live.
     await b.getByRole("button", { name: "Leave" }).click();
-    await b.waitForURL(/\/huddles$/);
+    await b.waitForURL(new RegExp(`/huddles/${huddleId}/summary$`));
+    await expect(b.getByRole("heading", { level: 1, name: `Talking about ${topic}` })).toBeVisible();
+    await expect(b.getByText("You left this Huddle.")).toBeVisible();
+    await expect(b.getByRole("region", { name: "What you saved" }).getByRole("listitem")).toHaveCount(2);
+    await b.goto("/huddles");
     await expect(liveCard(b, topic)).toContainText("1 creator");
     await expect(a.getByRole("region", { name: "Participants" })).not.toContainText(creatorB.name, { timeout: 20_000 });
 
-    // A leaves → the Huddle dissolves.
+    // A leaves → the Huddle dissolves; A's summary shows who they met.
     await a.getByRole("button", { name: "Leave" }).click();
-    await a.waitForURL(/\/huddles$/);
+    await a.waitForURL(new RegExp(`/huddles/${huddleId}/summary$`));
+    await expect(a.getByText("This Huddle has ended.")).toBeVisible();
+    await expect(a.getByRole("region", { name: "People you met" })).toContainText(creatorB.name);
+    await a.getByLabel("Add a note from this Huddle").fill("Try the lighthouse as narrator.");
+    await a.getByRole("button", { name: "Save note" }).click();
+    await expect(a.getByRole("region", { name: "What you saved" }).getByRole("listitem")).toHaveCount(1);
+    await a.goto("/huddles");
     await expect(liveCard(a, topic)).toHaveCount(0);
+    await expect(a.getByRole("region", { name: "Your recent Huddles" })).toContainText(`Talking about ${topic}`);
     await b.reload();
     await expect(liveCard(b, topic)).toHaveCount(0);
 
@@ -122,15 +142,13 @@ test.describe("Huddles", () => {
       await p.goto(`/huddles/${huddleId}`);
       await expect(p.getByRole("heading", { name: "This Huddle has ended" })).toBeVisible();
       await expect(p.getByRole("button", { name: "Request to Join" })).toHaveCount(0);
+      await expect(p.getByRole("link", { name: "Your Huddle summary" })).toHaveAttribute("href", `/huddles/${huddleId}/summary`);
     }
 
-    // What B saved outlives the Huddle.
-    await b.goto("/space");
-    const idea = b.getByRole("link").filter({ hasText: fromA.slice(0, 30) });
-    await expect(idea).toBeVisible();
-    await expect(idea).toContainText("Idea");
+    // What B saved outlives the Huddle, credited to A.
     await b.goto(savedHref!);
     await expect(b.getByText("Preserved from a Huddle")).toBeVisible();
+    await expect(b.getByText(`— ${creatorA.name}`)).toBeVisible();
   });
 
   test("an invite-only Huddle is not discoverable by other creators", async ({ page: a, creator: _creatorA, openContext }) => {
@@ -162,6 +180,43 @@ test.describe("Huddles", () => {
     await expect(a.getByRole("link", { name: "Return to your live Huddle" })).toHaveAttribute("href", `/huddles/${huddleId}`);
     await a.goto(`/huddles/${huddleId}`);
     await a.getByRole("button", { name: "Leave" }).click();
-    await a.waitForURL(/\/huddles$/);
+    await a.waitForURL(new RegExp(`/huddles/${huddleId}/summary$`));
+  });
+
+  test("start about a piece, with a description and an invite; the invitee can decline", async ({ page: a, creator: _creatorA, openContext }) => {
+    test.setTimeout(120_000);
+    const { page: b } = await openContext("B");
+    const creatorB = await newCreator(b, { name: `Mira ${uid()}` });
+    const res = await a.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Tide poem ${uid()}` } });
+    const art = (await res.json()).artifact as { id: string; title: string };
+
+    await a.goto(`/artifacts/${art.id}`);
+    await a.getByRole("button", { name: "More actions" }).click();
+    await a.getByRole("menuitem", { name: "Start a Huddle about this" }).click();
+    const dialog = a.getByRole("dialog", { name: "Start a Huddle" });
+    await expect(dialog.getByLabel("What are you talking about? (optional)")).toHaveValue(art.title);
+    await expect(dialog.getByRole("switch", { name: `Talk about ${art.title}` })).toHaveAttribute("aria-checked", "true");
+    await expect(dialog.getByRole("switch", { name: "Let people save chat moments" })).toHaveAttribute("aria-checked", "false");
+    await dialog.getByLabel("Anything else? (optional)").fill("A first read-through.");
+    await dialog.getByLabel("Invite creators (optional)").fill(creatorB.handle);
+    await dialog.getByRole("button", { name: `Add ${creatorB.name}` }).click();
+    await expect(dialog.getByRole("list", { name: "Inviting" })).toContainText(creatorB.name);
+    await dialog.getByRole("button", { name: /^Go live as / }).click();
+    await a.waitForURL(/\/huddles\/[0-9a-f-]{36}$/);
+    const huddleId = a.url().split("/").pop()!;
+    await expect(a.getByText("A first read-through.")).toBeVisible();
+    await expect(a.getByRole("link", { name: art.title })).toHaveAttribute("href", `/artifacts/${art.id}`);
+    await expect(a.getByRole("region", { name: "Invitations" })).toContainText(`${creatorB.name} · invited`);
+
+    // B is invited, and declines.
+    await b.goto(`/huddles/${huddleId}`);
+    await expect(b.getByText("You're invited.")).toBeVisible();
+    await b.getByRole("button", { name: "Decline" }).click();
+    await expect(b.getByText("You're invited.")).toHaveCount(0);
+    await expect(a.getByRole("region", { name: "Invitations" })).toContainText(`${creatorB.name} · declined`, { timeout: 20_000 });
+
+    await a.getByRole("button", { name: "Leave" }).click();
+    await a.waitForURL(new RegExp(`/huddles/${huddleId}/summary$`));
+    await expect(a.getByText("Nobody else joined this time.")).toBeVisible();
   });
 });

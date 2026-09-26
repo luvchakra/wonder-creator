@@ -779,15 +779,34 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"huddle_invitations": {
+                },"huddle_history": {
                   Row: {
-                    "created_at": string,"huddle_id": string,"invited_by_creator_id": string,"invitee_creator_id": string
+                    "creator_id": string,"ended_at": string | null,"huddle_id": string,"joined_at": string,"left_at": string | null,"met": NonNullable<Json>,"role": string,"started_at": string,"topic": string | null
                   }
                   Insert: {
-                    "created_at"?: string,"huddle_id": string,"invited_by_creator_id": string,"invitee_creator_id": string
+                    "creator_id": string,"ended_at"?: string | null,"huddle_id": string,"joined_at": string,"left_at"?: string | null,"met"?: NonNullable<Json>,"role": string,"started_at": string,"topic"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"huddle_id"?: string,"invited_by_creator_id"?: string,"invitee_creator_id"?: string
+                    "creator_id"?: string,"ended_at"?: string | null,"huddle_id"?: string,"joined_at"?: string,"left_at"?: string | null,"met"?: NonNullable<Json>,"role"?: string,"started_at"?: string,"topic"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "huddle_history_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"huddle_invitations": {
+                  Row: {
+                    "created_at": string,"huddle_id": string,"invited_by_creator_id": string,"invitee_creator_id": string,"responded_at": string | null,"status": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"huddle_id": string,"invited_by_creator_id": string,"invitee_creator_id": string,"responded_at"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"huddle_id"?: string,"invited_by_creator_id"?: string,"invitee_creator_id"?: string,"responded_at"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
@@ -924,16 +943,28 @@ isOneToOne: false
                   ]
                 },"huddles": {
                   Row: {
-                    "discoverability": string,"dissolved_at": string | null,"id": string,"media_room_id": string | null,"started_at": string,"started_by_creator_id": string | null,"status": string,"topic": string | null
+                    "chat_saving_since": string | null,"description": string | null,"discoverability": string,"dissolved_at": string | null,"id": string,"media_room_id": string | null,"related_artifact_id": string | null,"related_material_id": string | null,"started_at": string,"started_by_creator_id": string | null,"status": string,"topic": string | null
                   }
                   Insert: {
-                    "discoverability"?: string,"dissolved_at"?: string | null,"id"?: string,"media_room_id"?: string | null,"started_at"?: string,"started_by_creator_id"?: string | null,"status"?: string,"topic"?: string | null
+                    "chat_saving_since"?: string | null,"description"?: string | null,"discoverability"?: string,"dissolved_at"?: string | null,"id"?: string,"media_room_id"?: string | null,"related_artifact_id"?: string | null,"related_material_id"?: string | null,"started_at"?: string,"started_by_creator_id"?: string | null,"status"?: string,"topic"?: string | null
                   }
                   Update: {
-                    "discoverability"?: string,"dissolved_at"?: string | null,"id"?: string,"media_room_id"?: string | null,"started_at"?: string,"started_by_creator_id"?: string | null,"status"?: string,"topic"?: string | null
+                    "chat_saving_since"?: string | null,"description"?: string | null,"discoverability"?: string,"dissolved_at"?: string | null,"id"?: string,"media_room_id"?: string | null,"related_artifact_id"?: string | null,"related_material_id"?: string | null,"started_at"?: string,"started_by_creator_id"?: string | null,"status"?: string,"topic"?: string | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "huddles_related_artifact_id_fkey"
+      columns: ["related_artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "huddles_related_material_id_fkey"
+      columns: ["related_material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "huddles_started_by_creator_id_fkey"
       columns: ["started_by_creator_id"]
 isOneToOne: false
@@ -1633,6 +1664,30 @@ isOneToOne: false
 "huddle_cleanup_stale":
 { Args: { "p_timeout_seconds"?: number }; Returns: number
                            },
+"huddle_configure":
+{ Args: { "p_allow_saving_chat"?: boolean,"p_clear_related"?: boolean,"p_description"?: string,"p_huddle": string,"p_related_artifact"?: string,"p_related_material"?: string }; Returns: {
+              "chat_saving_since": string | null,
+"description": string | null,
+"discoverability": string,
+"dissolved_at": string | null,
+"id": string,
+"media_room_id": string | null,
+"related_artifact_id": string | null,
+"related_material_id": string | null,
+"started_at": string,
+"started_by_creator_id": string | null,
+"status": string,
+"topic": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "huddles"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"huddle_decline_invite":
+{ Args: { "p_huddle": string }; Returns: undefined
+                           },
 "huddle_end":
 { Args: { "p_huddle": string }; Returns: undefined
                            },
@@ -1647,6 +1702,12 @@ isOneToOne: false
                            },
 "huddle_leave":
 { Args: { "p_huddle": string }; Returns: boolean
+                           },
+"huddle_moment":
+{ Args: { "p_huddle": string,"p_message": string }; Returns: Json
+                           },
+"huddle_related":
+{ Args: { "p_huddle": string }; Returns: Json
                            },
 "huddle_remove_participant":
 { Args: { "p_creator": string,"p_huddle": string }; Returns: undefined

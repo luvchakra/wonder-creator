@@ -43,6 +43,6 @@ test.describe("hydration with a skewed device clock", () => {
     await expect(page.getByRole("button", { name: "Leave" })).toBeVisible();
     await page.clock.runFor(2_000);
     await page.getByRole("button", { name: "Leave" }).click();
-    await page.waitForURL(/\/huddles$/);
+    await page.waitForURL(/\/huddles\/[0-9a-f-]{36}\/summary$/);
   });
 });

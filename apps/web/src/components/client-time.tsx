@@ -40,3 +40,9 @@ export function RelativeTime({ iso }: { iso: string }) {
   const n = useNow();
   return <time dateTime={iso}>{n ? relativeTime(iso, n) : ""}</time>;
 }
+
+/** A time in the viewer's own locale and time zone, rendered after hydration (the server can't know either). */
+export function LocalTime({ iso, options }: { iso: string; options?: Intl.DateTimeFormatOptions }) {
+  const n = useNow();
+  return <time dateTime={iso}>{n ? new Date(iso).toLocaleString([], options ?? { dateStyle: "medium", timeStyle: "short" }) : ""}</time>;
+}

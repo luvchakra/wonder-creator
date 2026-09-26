@@ -1,4 +1,4 @@
-import { liveCards, roomState } from "@wonder/creator-huddle";
+import { liveCards, relatedItem, roomState } from "@wonder/creator-huddle";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
@@ -14,6 +14,19 @@ export default async function HuddlePage({ params }: { params: Promise<{ id: str
   const [state, cards] = await Promise.all([roomState(db, id, creator.id), liveCards(db, { limit: 100 })]);
   const card = cards.find((c) => c.huddleId === id) ?? null;
   const ids = [...state.participants.map((p) => p.creator_id), ...state.requests.map((r) => r.requester_creator_id)];
-  const avatars = await avatarUrls(db, ids);
-  return <HuddleRoom huddleId={id} me={{ id: creator.id, name: creator.display_name }} initial={{ ...state, media: { configured: selectMediaProvider().configured } }} card={card} avatars={avatars} />;
+  const [avatars, related, history] = await Promise.all([
+    avatarUrls(db, ids),
+    state.me?.status === "joined" ? relatedItem(db, id).catch(() => null) : Promise.resolve(null),
+    db.from("huddle_history").select("huddle_id").eq("huddle_id", id).maybeSingle(),
+  ]);
+  return (
+    <HuddleRoom
+      huddleId={id}
+      me={{ id: creator.id, name: creator.display_name }}
+      initial={{ ...state, related, media: { configured: selectMediaProvider().configured } }}
+      card={card}
+      avatars={avatars}
+      wasInIt={!!history.data}
+    />
+  );
 }
