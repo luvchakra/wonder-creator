@@ -3,6 +3,7 @@ import {
   applyCorrection,
   assembleContext,
   assessIntent,
+  authorizeTool,
   briefSchema,
   create,
   detectIntent,
@@ -281,10 +282,13 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
   // Learn only from the creator's own words, in the background of this turn.
   if (input.message && deps.provider.live) {
     try {
-      const ctx = await assembleContext(db, creatorId, { intent: "remember", instruction: input.message });
-      const { memories } = await extractMemories(deps.provider, systemPrompt(ctx, TASKS.memory), input.message);
-      for (const m of memories) {
-        await addMemory(db, creatorId, { category: m.category, statement: m.statement, sourceKind: "conversation", sourceId: conversation.id, sourceLabel: conversation.title, confidence: m.confidence });
+      // Remembering is organization work: it follows the creator's autonomy setting (memories stay drafts they can edit or remove).
+      if ((await authorizeTool(db, creatorId, "save_memory", null)).outcome === "allowed") {
+        const ctx = await assembleContext(db, creatorId, { intent: "remember", instruction: input.message });
+        const { memories } = await extractMemories(deps.provider, systemPrompt(ctx, TASKS.memory), input.message);
+        for (const m of memories) {
+          await addMemory(db, creatorId, { category: m.category, statement: m.statement, sourceKind: "conversation", sourceId: conversation.id, sourceLabel: conversation.title, confidence: m.confidence });
+        }
       }
     } catch (e) {
       log("warn", "talk.memory_extract_failed", { error: isDomainError(e) ? e.code : "internal" });
@@ -309,7 +313,7 @@ async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m
       role: "brain",
       kind: "proposal",
       content: "Before I create this, please confirm.",
-      payload: { proposalId: res.proposal.id, understood: res.proposal.understood, plan: res.proposal.plan, impact: res.proposal.impact },
+      payload: { proposalId: res.proposal.id, domain: res.proposal.domain, understood: res.proposal.understood, plan: res.proposal.plan, impact: res.proposal.impact },
       aiRunId: res.runId,
     });
     return;

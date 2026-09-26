@@ -135,6 +135,8 @@ export async function discover(deps: BrainDeps, input: { materialIds: string[]; 
   }
   const run = await startRun(deps, "discover", { conversationId: input.conversationId, inputCategory: "materials" });
   return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "suggest_directions", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
     const understanding = await understand(deps, ctx, run);
     progress(deps, "plan");
     const out = await run.step("plan", async () => {

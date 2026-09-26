@@ -3,6 +3,7 @@ import { RelativeTime } from "@/components/client-time";
 import { artifactType } from "@wonder/creator-studio/types";
 import { Badge, Button, ErrorState, buttonClasses, cn } from "@wonder/ui";
 import { ArrowUpRight, Check, CircleAlert, Lightbulb, MessageSquarePlus, Sparkles, X } from "lucide-react";
+import { AUTONOMY_DOMAINS } from "@wonder/creator-identity/autonomy";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -547,6 +548,8 @@ function MessageView({
   );
 }
 
+const DOMAIN_TEXT: Record<string, string> = Object.fromEntries(AUTONOMY_DOMAINS.map((d) => [d.domain, d.label.toLowerCase()]));
+
 function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (id: string, d: "approve" | "reject") => Promise<void> }) {
   const [pending, setPending] = useState<"approve" | "reject" | null>(null);
   const resolved = p.resolved as string | undefined;
@@ -572,6 +575,14 @@ function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (
           <summary className="cursor-pointer text-sm font-medium text-ink">Preview the revision</summary>
           <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink-muted">{p.preview}</pre>
         </details>
+      ) : null}
+      {!resolved && typeof p.domain === "string" ? (
+        <p className="mt-3 text-sm text-ink-muted">
+          I&apos;m asking because {DOMAIN_TEXT[p.domain] ?? "this area"} is set to ask first. Approving covers only this.{" "}
+          <Link href="/settings?section=autonomy" className="font-medium text-accent-ink hover:underline">
+            Autonomy settings
+          </Link>
+        </p>
       ) : null}
       {resolved ? (
         <p className="mt-3 text-sm text-ink-muted" role="status">
@@ -600,7 +611,7 @@ function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (
               setPending(null);
             }}
           >
-            Confirm
+            Approve once
           </Button>
           {typeof p.artifactId === "string" ? (
             <Link href={`/artifacts/${p.artifactId}/studio`} className={buttonClasses({ size: "sm", variant: "secondary" })}>

@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { approveProposal, create, editProposal, getApproval, listApprovals, rejectProposal, resolveProposal, selectProvider } from "@wonder/creator-brain";
+import { approveProposal, create, discover, editProposal, getApproval, listApprovals, rejectProposal, resolveProposal, selectProvider } from "@wonder/creator-brain";
 import { setAutonomy } from "@wonder/creator-identity";
 import type { Db as AppDb } from "@wonder/db";
-import { cleanupTestCreators, createTestCreator, expectDenied, expectOk, loose, type TestCreator } from "./helpers";
+import { cleanupTestCreators, createMaterial, createTestCreator, expectDenied, expectOk, loose, type TestCreator } from "./helpers";
 
 const provider = selectProvider({ WONDERCREATOR_AI_PROVIDER: "offline" });
 let a: TestCreator;
@@ -81,8 +81,26 @@ describe("Approval Center", () => {
     expect((await getApproval(db(a), row.id)).state).toBe("expired");
   });
 
+  it("changing autonomy affects what comes next, never what was already decided", async () => {
+    const done = await propose("A poem about ferries");
+    await approveProposal(deps(a), done.id);
+    const waiting = await propose("A poem about gulls");
+    // Turning creation up to auto doesn't approve what's waiting…
+    await setAutonomy(db(a), a.creatorId, "creative_generation", "auto_execute");
+    expect((await getApproval(db(a), waiting.id)).state).toBe("pending");
+    // …and turning it off stops a waiting approval from running, without touching what already ran.
+    await setAutonomy(db(a), a.creatorId, "creative_generation", "never");
+    await expect(approveProposal(deps(a), waiting.id)).rejects.toThrow(/Never/);
+    expect((await getApproval(db(a), waiting.id)).state).toBe("failed");
+    expect((await getApproval(db(a), done.id)).state).toBe("executed");
+    // Suggestions follow the same setting.
+    const note = await createMaterial(a, "Gulls over the pier");
+    await expect(discover(deps(a), { materialIds: [note], instruction: "What could this become?" })).rejects.toThrow(/Never/);
+    await setAutonomy(db(a), a.creatorId, "creative_generation", "execute_with_approval");
+  });
+
   it("every decision is in the creator's audit log", async () => {
     const actions = expectOk(await a.client.from("audit_logs").select("action").eq("object_type", "ai_proposal")).map((r) => r.action);
-    expect(actions).toEqual(expect.arrayContaining(["approval.approved", "approval.executed", "approval.rejected", "approval.cancelled", "approval.expired"]));
+    expect(actions).toEqual(expect.arrayContaining(["approval.approved", "approval.executed", "approval.rejected", "approval.cancelled", "approval.expired", "approval.failed"]));
   });
 });

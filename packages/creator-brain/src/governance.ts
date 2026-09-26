@@ -9,6 +9,7 @@ import { artifactType, isKnownArtifactType } from "@wonder/creator-studio/types"
  */
 export const TOOLS = {
   create_artifact: { domain: "creative_generation", action: "execute", label: "Create a new piece" },
+  suggest_directions: { domain: "creative_generation", action: "suggest", label: "Suggest creative directions" },
   derive_artifact: { domain: "transformation", action: "draft", label: "Create a derivative piece" },
   apply_revision: { domain: "transformation", action: "execute", label: "Apply a revision as the current version" },
   save_memory: { domain: "organization", action: "draft", label: "Remember something about your practice" },
@@ -147,6 +148,8 @@ export interface ApprovalView {
   plan: string;
   impact: string;
   target: { kind: "artifact" | "conversation" | "none"; id: string | null; title: string | null };
+  /** Where it was asked for, to return there after deciding. */
+  conversationId: string | null;
   parameters: Array<{ label: string; value: string }>;
   rightsImplications: boolean;
   cost: string;
@@ -219,6 +222,7 @@ async function approvalViews(db: Db, rows: Proposal[]): Promise<ApprovalView[]> 
       plan: p.plan,
       impact: p.impact,
       target,
+      conversationId: p.conversation_id,
       parameters: parametersOf(p),
       rightsImplications: RIGHTS_DOMAINS.has(p.domain),
       cost: "No cost",
