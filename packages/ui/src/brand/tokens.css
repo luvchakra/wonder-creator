@@ -1,0 +1,67 @@
+/*
+ * Wonder Creator design tokens — the single controlled source of brand values in code.
+ * Palette mirrors the supplied brand board 1:1. "Ink" tones are darker tones of the same
+ * brand hues, used only where small text needs WCAG AA contrast (documented in ASSETS.md).
+ */
+@theme {
+  /* Brand palette (brand board §7) */
+  --color-indigo: #5b5cff;
+  --color-purple: #8b5cf6;
+  --color-pink: #f472b6;
+  --color-orange: #f59e0b;
+  --color-blue: #3b82f6;
+  --color-teal: #14b8a6;
+  --color-mint: #10b881;
+  --color-peach: #fb923c;
+  --color-lavender: #a78bfa;
+  --color-navy: #0f172a;
+  --color-slate: #334155;
+  --color-gray: #64748b;
+  --color-light-gray: #e2e8f0;
+  --color-cream: #fef7f0;
+  --color-white: #fefeff;
+
+  /* Semantic tokens */
+  --color-background: #fef7f0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fdfaf6;
+  --color-ink: #0f172a;
+  --color-ink-muted: #334155;
+  --color-ink-subtle: #475569;
+  --color-border: #e2e8f0;
+  --color-border-soft: #efe7de;
+  --color-accent: #5b5cff;
+  --color-accent-ink: #4b4ce6;
+  --color-accent-soft: #eeeeff;
+  --color-accent-softer: #f5f5ff;
+  --color-success: #10b881;
+  --color-success-ink: #047857;
+  --color-success-soft: #e7f8f1;
+  --color-warning: #f59e0b;
+  --color-warning-ink: #b45309;
+  --color-warning-soft: #fef3e2;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fdecec;
+  --color-live: #e11d48;
+  --color-stage: #0f172a;
+
+  /* Typography (brand board §8) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-playfair), ui-serif, Georgia, serif;
+
+  /* Shape & depth */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 40px -16px rgb(91 92 255 / 0.25);
+}
+
+:root {
+  --brand-gradient: linear-gradient(100deg, #5b5cff 0%, #8b5cf6 45%, #f472b6 75%, #f59e0b 100%);
+  --nav-height: 4.5rem;
+  --bottom-nav-height: 4.25rem;
+  color-scheme: light;
+}

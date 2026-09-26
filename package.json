@@ -1,0 +1,38 @@
+{
+  "name": "wonder-creator",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @wonder/web",
+    "build": "npm run build -w @wonder/web",
+    "start": "npm run start -w @wonder/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typegen -w @wonder/web && tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/web",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "test:e2e": "playwright test",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/db/src/database.types.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@vitest/coverage-v8": "^5.0.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "jsdom": "^30.1.1",
+    "supabase": "^2.118.0",
+    "vitest": "^5.0.2",
+    "wait-on": "^9.1.0"
+  },
+  "type": "module"
+}

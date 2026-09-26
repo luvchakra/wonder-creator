@@ -1,0 +1,11 @@
+{
+  "name": "@wonder/creator-identity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vocabulary": "./src/vocabulary.ts",
+    "./autonomy": "./src/autonomy.ts"
+  }
+}
