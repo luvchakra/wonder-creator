@@ -1,4 +1,5 @@
 import { providerReadiness, selectProvider } from "@wonder/creator-brain";
+import { selectMalwareScanner } from "@wonder/core/server";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { withApi } from "@/lib/api";
 import { serviceConfigured } from "@/lib/supabase/service";
@@ -12,6 +13,7 @@ export const GET = withApi(async () => {
     ai: providerReadiness(),
     media: { provider: media.name, configured: media.configured },
     backgroundJobs: { configured: serviceConfigured() },
+    malwareScan: { provider: selectMalwareScanner().name, configured: selectMalwareScanner().configured },
     transcription: canTranscribe
       ? { configured: true, note: `Audio and video are transcribed by ${ai.name} after upload.` }
       : { configured: false, note: "Voice notes are stored; transcription needs an AI provider that supports audio (gemini). Live dictation uses the browser's speech recognition where available." },

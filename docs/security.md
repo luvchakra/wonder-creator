@@ -14,8 +14,11 @@
 
 ## Input handling
 - **Uploads**: content-detected MIME allow-list (extension ignored), per-kind size limits, SHA-256, filename
-  sanitisation, private bucket, opaque paths, short-lived signed URLs. *No malware scanner is configured*: files
-  passing validation are marked `clean`; integrate a scanner at `security_review` before production if required.
+  sanitisation, private bucket, opaque paths, short-lived signed URLs. At `security_review`, before anything is
+  stored, an optional `MalwareScanner` checks the file's SHA-256 reputation (VirusTotal, enabled with
+  `WONDERCREATOR_MALWARE_SCAN_PROVIDER` + `_API_KEY`); files flagged by 3+ engines are quarantined and never kept.
+  Only the hash leaves the platform (private work is never uploaded), so novel malware isn't detected; lookup
+  failures don't block uploads. Files are only ever served back to their owner via signed URLs, never executed.
 - **URLs**: `safeFetch` blocks non-http(s), credentials, non-standard ports, private/reserved/link-local/metadata
   addresses (IPv4 + IPv6, DNS-rebinding check on every redirect hop), with timeout and byte caps. Residual
   TOCTOU between DNS check and connect: deploy behind an egress proxy that blocks private ranges.
