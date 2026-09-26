@@ -43,13 +43,13 @@ the gap listed) · **Not started**.
 
 Plan: [`docs/plan-p0.1-p1.md`](plan-p0.1-p1.md) (owner-supplied; source of truth for scope and order).
 Status legend as above. Items are worked in the plan's order (§51, §52), one PR each.
-UI reference: [`docs/mockups/p0.1-screens.png`](mockups/p0.1-screens.png) (owner-supplied). Where the mockup and the plan
+UI reference: [`docs/mockups/p0.1-screens.png`](mockups/p0.1-screens.png), [`p0.1-p1-overview.png`](mockups/p0.1-p1-overview.png) and the mobile boards [`mobile-p0.1.png`](mockups/mobile-p0.1.png), [`mobile-p1.png`](mockups/mobile-p1.png), [`mobile-overview.png`](mockups/mobile-overview.png) (owner-supplied). Mobile behaviour per story: [`docs/mobile-guidelines.md`](mobile-guidelines.md). Where the mockup and the plan
 differ, the plan's product rules win: Scrapbook shows replies without like/engagement counts (plan §16), and follower
 notifications are informational only (no follower-centric mechanics).
 
 | Item | Status | Notes |
 |---|---|---|
-| P0.1-01 Creative Material Detail | Partial | Detail view, preview, provenance, understanding, tags, processing/security state, transcript, archive/delete exist. Missing: related collections/artifacts panel, download original, privacy control, "Ask CreatorBrain" |
+| P0.1-01 Creative Material Detail | Done | Preview (with a fallback for unsupported or held files), description and source & rights note, Details / Insights / Links / Usage tabs, owner and privacy shown, collections add/remove, Reference Shelf, similar material (semantic index), used-in artifacts, Use in creation, Ask CreatorBrain, download original (short-lived signed URL, clean files only), archive, delete with confirmation. Remaining: back link doesn't yet restore Library filters |
 | P0.1-02 Material Collections | Partial | Tables, RLS and API exist; no UI |
 | P0.1-03 Intent Clarification | Partial | Ambiguity question exists; no editable understood-intent step |
 | P0.1-04 Creation Run Progress | Partial | Streamed stages; runs happen in the request (no durable job, cancel or retry) |
@@ -67,4 +67,4 @@ notifications are informational only (no follower-centric mechanics).
 | P0.1-16 AI Provider & BYOK | Partial | Env-configured provider + readiness; no BYOK |
 | P0.1-17 Security & Audit Viewer | Not started | Audit log exists |
 | P0.1-18 Mobile Completion Pass | Partial | 360px layouts; no sheet-based flows yet |
-| P1 (all) | Not started | Begins after P0.1 rights, approvals, provenance and permissions are stable (plan §51) |
+| P1 (all) | Not started | Begins after P0.1 rights, approvals, provenance and permissions are stable (plan §51). UI reference: [`docs/mockups/p1-screens.png`](mockups/p1-screens.png); the plan's guardrails win where they differ (no like counts on Market listings, analytics only from platform-supplied metrics, contribution splits recorded as agreements rather than legal conclusions) |

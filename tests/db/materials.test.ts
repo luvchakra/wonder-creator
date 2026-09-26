@@ -126,3 +126,15 @@ describe("material pipeline state is server-controlled", () => {
     expect(row).toEqual({ security_status: "quarantined", processing_state: "quarantined" });
   });
 });
+
+describe("material description and source note", () => {
+  it("the owner can set them within their limits", async () => {
+    const row = await insertMaterial({ text_content: "x" });
+    const updated = expectOk(
+      await a.client.from("creative_materials").update({ description: "Kept for the colours.", source_note: "Photo by me, 2024" }).eq("id", row.id).select("description, source_note").single(),
+    );
+    expect(updated).toEqual({ description: "Kept for the colours.", source_note: "Photo by me, 2024" });
+    const tooLong = await a.client.from("creative_materials").update({ description: "x".repeat(2001) }).eq("id", row.id).select("id");
+    expect(tooLong.error?.code).toBe("23514");
+  });
+});
