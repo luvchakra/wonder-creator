@@ -10,6 +10,7 @@ import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { Composer, type ComposerPayload } from "@/components/composer";
 import { api, errorMessage } from "@/lib/client";
 import { PENDING_TURN_KEY, sendToCreator, type PendingTurn } from "@/lib/send";
+import { IntentCard, type IntentPayload } from "./intent-card";
 
 export interface TalkMessage {
   id: string;
@@ -253,6 +254,8 @@ export function Talk({
               busy={busy}
               onChooseDirection={(index) => runTurn({ direction: { messageId: m.id, index } }, { content: `Let's make: ${(m.payload.directions as Direction[])[index].title}`, materialIds: [] })}
               onAnswer={(artifactId, pendingMessage) => runTurn({ message: pendingMessage, artifactId }, { content: pendingMessage, materialIds: [] })}
+              answered={messages.some((x) => x.payload?.clarifies === m.id)}
+              onClarify={(brief, acknowledged) => runTurn({ clarified: { messageId: m.id, brief, acknowledged } }, { content: `Let's make it: ${artifactType(brief.format).label}`, materialIds: [] })}
               onProposal={async (id, decision) => {
                 try {
                   const r = await api<{ kind?: string; artifact?: { id: string }; artifactId?: string }>(`/api/v1/brain/proposals/${id}`, { method: "POST", json: { decision } });
@@ -338,12 +341,16 @@ function MessageView({
   onChooseDirection,
   onAnswer,
   onProposal,
+  answered,
+  onClarify,
 }: {
   m: TalkMessage;
   materials: Record<string, MaterialCardData>;
   busy: boolean;
   onChooseDirection: (i: number) => void;
   onAnswer: (artifactId: string, pending: string) => void;
+  answered: boolean;
+  onClarify: Parameters<typeof IntentCard>[0]["onConfirm"];
   onProposal: (id: string, d: "approve" | "reject") => Promise<void>;
 }) {
   if (m.role === "creator") {
@@ -456,6 +463,12 @@ function MessageView({
 
         {m.kind === "proposal" ? <ProposalCard p={p} onDecide={onProposal} /> : null}
 
+        {m.kind === "question" && p.intent ? (
+          <IntentCard id={m.id} intent={p.intent as IntentPayload} materialIds={(p.materialIds as string[]) ?? []} materials={materials} busy={busy} answered={answered} onConfirm={onClarify} />
+        ) : null}
+        {Array.isArray(p.assumptions) && (p.assumptions as string[]).length ? (
+          <p className="mt-2 text-xs text-ink-subtle">I assumed: {(p.assumptions as string[]).join(" ")}</p>
+        ) : null}
         {m.kind === "question" && Array.isArray(p.options) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {(p.options as Array<{ id: string; title: string; type: string }>).map((o) => (

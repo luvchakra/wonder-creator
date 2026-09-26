@@ -2,6 +2,8 @@ import {
   addMemory,
   applyCorrection,
   assembleContext,
+  assessIntent,
+  briefSchema,
   create,
   detectIntent,
   discover,
@@ -16,7 +18,7 @@ import {
   type ModelMessage,
 } from "@wonder/creator-brain";
 import { DomainError, isDomainError, log, must } from "@wonder/core";
-import { artifactType } from "@wonder/creator-studio";
+import { artifactType, inferAllArtifactTypes, isKnownArtifactType } from "@wonder/creator-studio";
 import { z } from "zod";
 import { appendMessage, startConversation, type Message } from "./conversations";
 
@@ -28,6 +30,10 @@ export const turnSchema = z.object({
   artifactId: z.string().uuid().nullable().optional(),
   /** Starting a conversation from a collection: what's made there records the collection in its lineage. */
   collectionId: z.string().uuid().nullable().optional(),
+  /** Answer an intent-clarification question: the confirmed brief, and the consequential assumptions acknowledged. */
+  clarified: z
+    .object({ messageId: z.string().uuid(), brief: briefSchema, acknowledged: z.array(z.enum(["publish", "commercial", "imitation"])).max(3).default([]) })
+    .optional(),
   /** Choose a direction previously offered in a "directions" message. */
   direction: z.object({ messageId: z.string().uuid(), index: z.number().int().min(0).max(9) }).optional(),
 });
@@ -71,7 +77,7 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
   const input = turnSchema.parse(raw);
   const { db, creatorId } = deps;
   const materialIds = await ownedMaterialIds(deps, input.materialIds);
-  if (!input.message && !materialIds.length && !input.direction) throw new DomainError("validation", "Share a thought, a file or a link to begin.");
+  if (!input.message && !materialIds.length && !input.direction && !input.clarified) throw new DomainError("validation", "Share a thought, a file or a link to begin.");
 
   // Choosing a direction: parameters come from the stored message, not from the client.
   let directionChoice: { title: string; artifactType: string; description: string; materialIds: string[] } | null = null;
@@ -83,18 +89,42 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
     input.conversationId = m.conversation_id;
   }
 
+  // Answering a clarification: the request and material come from the stored question, not from the client.
+  let clarification: { pendingMessage: string; materialIds: string[]; consequential: string[]; brief: z.infer<typeof briefSchema>; acknowledged: string[] } | null = null;
+  if (input.clarified) {
+    const q = must(await db.from("conversation_messages").select("*").eq("id", input.clarified.messageId).eq("kind", "question").maybeSingle(), "That question is no longer available.");
+    const p = q.payload as { intent?: { consequentialAssumptions: Array<{ key: string }> }; pendingMessage?: string; materialIds?: string[]; answered?: boolean };
+    if (!p.intent || !p.pendingMessage) throw new DomainError("validation", "That question is no longer available.");
+    const answered = await db.from("conversation_messages").select("id").eq("conversation_id", q.conversation_id).eq("payload->>clarifies", q.id).limit(1);
+    if (answered.data?.length) throw new DomainError("conflict", "You've already answered that — I'm working from your earlier choice.");
+    const required = p.intent.consequentialAssumptions.map((c) => c.key);
+    const missing = required.filter((k) => !input.clarified!.acknowledged.includes(k as "publish"));
+    if (missing.length) throw new DomainError("validation", "Please confirm each point before I start.");
+    if (!isKnownArtifactType(input.clarified.brief.format)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
+    const emphasis = input.clarified.brief.emphasisMaterialId;
+    if (emphasis && !(p.materialIds ?? []).includes(emphasis)) throw new DomainError("validation", "Choose one of the pieces you shared.");
+    clarification = { pendingMessage: p.pendingMessage, materialIds: p.materialIds ?? [], consequential: required, brief: input.clarified.brief, acknowledged: input.clarified.acknowledged };
+    input.conversationId = q.conversation_id;
+  }
+
   const conversation = input.conversationId
     ? must(await db.from("conversations").select("*").eq("id", input.conversationId).maybeSingle(), "We couldn't find that conversation.")
     : await startConversation(db, creatorId, input.message || directionChoice?.title || "New idea", await ownedCollectionId(deps, input.collectionId));
 
   const out: Message[] = [];
-  const creatorText = directionChoice ? `Let's make: ${directionChoice.title}` : input.message;
+  const creatorText = directionChoice
+    ? `Let's make: ${directionChoice.title}`
+    : clarification
+      ? `Let's make it: ${[artifactType(clarification.brief.format).label, clarification.brief.audience ? `for ${clarification.brief.audience}` : null, clarification.brief.length, clarification.brief.tone, clarification.brief.style === "experiment" ? "experimenting with my style" : null].filter(Boolean).join(" · ")}`
+      : input.message;
   const creatorMsg = await appendMessage(db, creatorId, conversation.id, {
     role: "creator",
     content: creatorText || (materialIds.length ? `Shared ${materialIds.length} piece${materialIds.length === 1 ? "" : "s"} of material` : ""),
     inputMode: input.inputMode,
     materialIds,
     artifactIds: input.artifactId ? [input.artifactId] : [],
+    // The corrected intent is part of the conversation's record (and of the run, below).
+    payload: clarification ? { clarifies: input.clarified!.messageId, brief: clarification.brief, acknowledged: clarification.acknowledged } : undefined,
   });
   out.push(creatorMsg);
 
@@ -108,6 +138,18 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
         materialIds: directionChoice.materialIds,
         conversationId: conversation.id,
         fromDirection: directionChoice.title,
+      });
+      await replyForCreate(res, reply);
+      return { conversationId: conversation.id, messages: out };
+    }
+
+    if (clarification) {
+      const res = await create(deps, {
+        artifactType: clarification.brief.format,
+        instruction: clarification.pendingMessage,
+        materialIds: clarification.materialIds,
+        conversationId: conversation.id,
+        brief: { values: clarification.brief, source: "confirmed", acknowledged: clarification.acknowledged },
       });
       await replyForCreate(res, reply);
       return { conversationId: conversation.id, messages: out };
@@ -144,8 +186,27 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
       }
       case "create": {
         const all = materialIds.length ? materialIds : await lastConversationMaterials(deps, conversation.id);
-        const res = await create(deps, { artifactType: intent.artifactType!, instruction: input.message, materialIds: all, conversationId: conversation.id, sourceArtifactId: input.artifactId ?? null });
-        await replyForCreate(res, reply);
+        const assessment = assessIntent(input.message, { artifactType: intent.artifactType, mentionedTypes: inferAllArtifactTypes(input.message), materialCount: all.length });
+        if (assessment.clarificationRequired && !input.artifactId) {
+          await reply({
+            role: "brain",
+            kind: "question",
+            content: assessment.consequentialAssumptions.length
+              ? "Before I start, please confirm a couple of things so nothing important is assumed."
+              : "Before I start, a quick choice or two so I don't guess wrong.",
+            payload: { intent: assessment, pendingMessage: input.message, materialIds: all },
+          });
+          break;
+        }
+        const res = await create(deps, {
+          artifactType: intent.artifactType!,
+          instruction: input.message,
+          materialIds: all,
+          conversationId: conversation.id,
+          sourceArtifactId: input.artifactId ?? null,
+          brief: { values: assessment.defaults, source: "inferred" },
+        });
+        await replyForCreate(res, reply, assessment.safeAssumptions);
         break;
       }
       case "refine":
@@ -237,7 +298,7 @@ async function lastConversationMaterials(deps: BrainDeps, conversationId: string
   return [...new Set((data ?? []).map((r) => r.material_id!).filter(Boolean))];
 }
 
-async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m: Parameters<typeof appendMessage>[3]) => Promise<Message>) {
+async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m: Parameters<typeof appendMessage>[3]) => Promise<Message>, assumptions: string[] = []) {
   if (res.kind === "proposal") {
     await reply({
       role: "brain",
@@ -262,6 +323,7 @@ async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m
       checks: res.quality.checks,
       suggestions: res.quality.suggestions,
       offline: res.offline,
+      ...(assumptions.length ? { assumptions } : {}),
     },
     aiRunId: res.runId,
     artifactIds: [res.artifact.id],
