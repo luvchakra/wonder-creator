@@ -5,6 +5,7 @@ export * from "./intent";
 export * from "./clarify";
 export * from "./governance";
 export * from "./quality";
+export * from "./quality-workflow";
 export * from "./memory";
 export * from "./runs";
 export * from "./pipeline";

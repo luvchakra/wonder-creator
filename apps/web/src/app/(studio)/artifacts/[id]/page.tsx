@@ -13,8 +13,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: data?.title ?? "Artifact" };
 }
 
-export default async function ArtifactPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const { data: artifact } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
@@ -38,6 +39,7 @@ export default async function ArtifactPage({ params }: { params: Promise<{ id: s
 
   return (
     <ArtifactView
+      initialTab={tab}
       artifact={artifact}
       typeLabel={artifactType(artifact.artifact_type).label}
       isOwner={isOwner}
