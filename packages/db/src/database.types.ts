@@ -1111,6 +1111,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"rate_limit_counters": {
+                  Row: {
+                    "count": number,"key": string,"window_start": string
+                  }
+                  Insert: {
+                    "count"?: number,"key": string,"window_start": string
+                  }
+                  Update: {
+                    "count"?: number,"key"?: string,"window_start"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"reference_items": {
                   Row: {
                     "created_at": string,"creator_id": string,"id": string,"material_id": string,"note": string | null,"shelf_id": string | null,"tags": (string)[]
@@ -1363,6 +1376,9 @@ isOneToOne: false
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
               "huddle_id": string,"participant_count": number,"participant_ids": (string)[],"participant_names": (string)[],"started_at": string,"topic": string,"viewer_state": string
             }[]
+                           },
+"rate_limit_hit":
+{ Args: { "p_key": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
                            },
 "record_audit_log":
 { Args: { "p_action": string,"p_metadata"?: Json,"p_object_id": string,"p_object_type": string,"p_request_id"?: string }; Returns: undefined

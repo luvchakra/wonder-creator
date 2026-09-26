@@ -24,8 +24,9 @@
 
 ## Platform
 - CSP, HSTS, X-Frame-Options DENY, nosniff, strict referrer, minimal permissions policy (`next.config.ts`).
-- Cross-site mutation protection (Origin check) in `withApi`; per-user rate limits (in-memory per instance —
-  swap for a shared store for multi-instance deployments).
+- Cross-site mutation protection (Origin check) in `withApi`; per-user rate limits shared across instances
+  (`rate_limit_hit` RPC over an unlogged counter table, service role only, so callers can't spend another user's
+  limit; an in-memory limiter rejects bursts first and is the fallback if the database is unreachable).
 - Step-up authentication (password re-entry) for account deletion.
 - Structured logs redact tokens, secrets, prompts and content.
 
