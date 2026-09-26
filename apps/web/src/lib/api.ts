@@ -1,11 +1,12 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { DomainError, isDomainError, log, publishEvent } from "@wonder/core";
-import { createMemoryRateLimiter } from "@wonder/core/server";
+import { createSharedRateLimiter } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { createClient } from "./supabase/server";
+import { serviceClient, serviceConfigured } from "./supabase/service";
 
 export interface ApiContext {
   db: Db;
@@ -15,7 +16,9 @@ export interface ApiContext {
   req: NextRequest;
 }
 
-const limiter = createMemoryRateLimiter();
+let rateLimitDb: Db | null | undefined;
+/** Shared across instances via Postgres when the service key is configured; per-instance otherwise. */
+const limiter = createSharedRateLimiter(() => (rateLimitDb ??= serviceConfigured() ? serviceClient() : null));
 
 export interface ApiOptions {
   /** Requests per minute per user for this route (defaults: 120 reads, 60 writes). */
@@ -59,7 +62,7 @@ export function withApi<P = Record<string, string>>(
         creatorId = data?.id ?? "";
       }
       const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
-      limiter.check(`${userId || req.headers.get("x-forwarded-for") || "anon"}:${req.nextUrl.pathname}:${req.method}`, limit, 60_000);
+      await limiter.check(`${userId || req.headers.get("x-forwarded-for") || "anon"}:${req.nextUrl.pathname}:${req.method}`, limit, 60_000);
 
       const params = (await route.params) ?? ({} as P);
       const result = await handler({ db, userId, creatorId, requestId, req }, params);

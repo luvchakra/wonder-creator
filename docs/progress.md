@@ -36,7 +36,6 @@ the gap listed) · **Not started**.
 - Full-resolution originals of the background set.
 
 ## Known follow-ups
-- Shared rate-limit store for multi-instance deployments.
 - Malware scanning integration at the `security_review` intake step.
 - Semantic (vector) search on top of the existing lexical search.
 - Notifications panel (P0 surfaces pending proposals and join requests in context instead).
