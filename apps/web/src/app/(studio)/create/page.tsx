@@ -6,7 +6,7 @@ import { Talk } from "./talk";
 
 export const metadata = { title: "Create" };
 
-export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string; collection?: string }> }) {
+export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string; materials?: string; collection?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const conversations = await listConversations(db, 40);
@@ -18,7 +18,8 @@ export default async function CreatePage({ searchParams }: { searchParams: Promi
   const collectionId = !cid && sp.collection && /^[0-9a-f-]{36}$/i.test(sp.collection) ? sp.collection : null;
   const fromCollection = collectionId ? await getCollection(db, collectionId).catch(() => null) : null;
   const collectionMaterials = (fromCollection?.items ?? []).filter((m) => m.status === "active").slice(0, 12).map((m) => m.id);
-  const preselected = [...new Set([sp.material, ...collectionMaterials].filter((x): x is string => !!x && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 12);
+  const listed = (sp.materials ?? "").split(",").slice(0, 12);
+  const preselected = [...new Set([sp.material, ...listed, ...collectionMaterials].filter((x): x is string => !!x && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 12);
   const materialIds = [...new Set([...attachments.map((a) => a.material_id).filter((x): x is string => !!x), ...preselected])];
   const { data: mats } = materialIds.length
     ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state").in("id", materialIds)

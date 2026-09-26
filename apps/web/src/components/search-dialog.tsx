@@ -1,6 +1,6 @@
 "use client";
 import { Dialog, DialogContent, Input, LiveBadge, Spinner } from "@wonder/ui";
-import { FileText, MessageCircle, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, FileText, Layers, MessageCircle, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
@@ -11,6 +11,7 @@ interface Results {
   creators: Array<{ id: string; display_name: string; handle: string }>;
   conversations: Array<{ id: string; conversationId: string; title: string; snippet: string }>;
   huddles: Array<{ huddleId: string; topic: string | null; participantNames: string[] }>;
+  collections: Array<{ id: string; name: string; description: string | null }>;
 }
 
 export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -37,7 +38,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   const close = () => onOpenChange(false);
   const shown = q.trim().length >= 2 ? res : null;
-  const empty = shown && !shown.materials.length && !shown.artifacts.length && !shown.creators.length && !shown.conversations.length && !shown.huddles.length;
+  const empty = shown && !shown.materials.length && !shown.artifacts.length && !shown.creators.length && !shown.conversations.length && !shown.huddles.length && !shown.collections.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,10 +52,16 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             <>
               <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, sub: a.related ? "Related in meaning" : undefined, icon: <Sparkles className="size-4" /> }))} onPick={close} />
               <Group title="Your material" items={shown.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", sub: m.related ? "Related in meaning" : undefined, icon: <FileText className="size-4" /> }))} onPick={close} />
+              <Group title="Collections" items={shown.collections.map((c) => ({ href: `/space/collections/${c.id}`, label: c.name, sub: c.description ?? undefined, icon: <Layers className="size-4" /> }))} onPick={close} />
               <Group title="Conversations" items={shown.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={close} />
               <Group title="Creators" items={shown.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={close} />
               <Group title="Live now" items={shown.huddles.map((h) => ({ href: `/huddles/${h.huddleId}`, label: h.topic || h.participantNames.join(" · "), icon: <LiveBadge /> }))} onPick={close} />
             </>
+          ) : null}
+          {q.trim().length >= 2 ? (
+            <Link href={`/search?q=${encodeURIComponent(q.trim())}`} onClick={close} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline">
+              See all results and filters <ArrowRight className="size-4" aria-hidden />
+            </Link>
           ) : null}
         </div>
       </DialogContent>

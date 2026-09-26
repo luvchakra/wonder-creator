@@ -63,7 +63,7 @@ notifications are informational only (no follower-centric mechanics).
 | P0.1-12 Autonomy Approval UX | Partial | Autonomy policy + proposals exist |
 | P0.1-13 Huddle Create/Invite/Post-Huddle | Partial | Start, invite from profile, preserve idea/note; media eviction on remove/leave; stale presence hidden. Missing: invite search in-room, post-Huddle summary |
 | P0.1-14 Scrapbook Detail & Replies | Not started | |
-| P0.1-15 Search & Discovery | Partial | Keyword + semantic over own work; no filters/dimensions |
+| P0.1-15 Search & Discovery | Done | `/search` with entity tabs (material, creations, collections, references, conversations, creators, live Huddles), date filter, material kind and tag filters, all in the URL so they survive navigation and reload; grouped results with entity labels, "Related in meaning" semantic matches, "Ask CreatorBrain about these" (opens CreatorTalk with the result set attached). The top-bar dialog links to it. Everything runs through the caller's RLS client; E2E checks another creator's private work never appears. Projects/Scrapbook join the index when those stories land |
 | P0.1-16 AI Provider & BYOK | Partial | Env-configured provider + readiness; no BYOK |
 | P0.1-17 Security & Audit Viewer | Not started | Audit log exists |
 | P0.1-18 Mobile Completion Pass | Partial | 360px layouts; no sheet-based flows yet |
