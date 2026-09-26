@@ -1,6 +1,7 @@
 import { DomainError, fromDbError, isDomainError, log } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { artifactType, createArtifact, createVersion, getArtifact, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
+import { renderBrief, type IntentBrief } from "./clarify";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
 import { authorizeTool, createProposal, getPendingProposal, resolveProposal, type Proposal } from "./governance";
 import { artifactBrief, renderMaterials, systemPrompt, TASKS } from "./prompts";
@@ -65,7 +66,7 @@ async function runGuarded<T>(run: RunTracker, fn: () => Promise<T>): Promise<T> 
   }
 }
 
-function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: string | null; artifactId?: string | null; inputCategory?: string }) {
+function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: string | null; artifactId?: string | null; inputCategory?: string; intentBrief?: Record<string, unknown> | null }) {
   return RunTracker.start(deps.db, deps.creatorId, {
     intent,
     provider: deps.provider.name,
@@ -74,6 +75,7 @@ function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: stri
     artifactId: opts.artifactId,
     inputCategory: opts.inputCategory,
     correlationId: deps.correlationId,
+    intentBrief: opts.intentBrief,
   });
 }
 
@@ -169,6 +171,8 @@ export interface CreateInput {
   title?: string;
   fromDirection?: string;
   sourceArtifactId?: string | null;
+  /** What the run works from: confirmed by the creator, or CreatorBrain's safe defaults (recorded on the run). */
+  brief?: { values: IntentBrief; source: "confirmed" | "inferred"; acknowledged?: string[] } | null;
 }
 
 export type CreateResult =
@@ -178,15 +182,28 @@ export type CreateResult =
 export async function create(deps: BrainDeps, input: CreateInput, opts: { approved?: boolean } = {}): Promise<CreateResult> {
   if (!isKnownArtifactType(input.artifactType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
   const def = artifactType(input.artifactType);
+  // The chosen material leads; the confirmed brief travels with the request.
+  const lead = input.brief?.values.emphasisMaterialId;
+  const materialIds = lead && input.materialIds.includes(lead) ? [lead, ...input.materialIds.filter((id) => id !== lead)] : input.materialIds;
+  let briefText = "";
+  if (input.brief?.source === "confirmed") {
+    const leadTitle = lead ? (await deps.db.from("creative_materials").select("title").eq("id", lead).maybeSingle()).data?.title : null;
+    briefText = `\n\n${renderBrief(input.brief.values, leadTitle)}`;
+  }
+  const instruction = `${input.instruction}${briefText}`;
   const ctx = await assembleContext(deps.db, deps.creatorId, {
     intent: "create",
-    instruction: input.instruction,
+    instruction,
     artifactType: def.type,
-    materialIds: input.materialIds,
+    materialIds,
     referenceMaterialIds: input.referenceMaterialIds,
     conversationId: input.conversationId,
   });
-  const run = await startRun(deps, "create", { conversationId: input.conversationId, inputCategory: ctx.selectedMaterials.length ? "materials" : "text" });
+  const run = await startRun(deps, "create", {
+    conversationId: input.conversationId,
+    inputCategory: ctx.selectedMaterials.length ? "materials" : "text",
+    intentBrief: input.brief ? { ...input.brief.values, source: input.brief.source, acknowledged: input.brief.acknowledged ?? [] } : null,
+  });
   return runGuarded(run, async () => {
     deps.onProgress?.({ step: "deciding", label: "Checking your autonomy settings" });
     const decision = await authorizeTool(deps.db, deps.creatorId, "create_artifact", run.id);
@@ -219,7 +236,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
         messages: [
           {
             role: "user",
-            content: `${renderMaterials(ctx.selectedMaterials)}${ctx.references.length ? `\n\nReferences:\n${renderMaterials(ctx.references)}` : ""}\n\n${understanding ? `Understanding: ${understanding.summary}\n` : ""}Request: "${input.instruction}"${input.fromDirection ? `\nChosen direction: ${input.fromDirection}` : ""}`,
+            content: `${renderMaterials(ctx.selectedMaterials)}${ctx.references.length ? `\n\nReferences:\n${renderMaterials(ctx.references)}` : ""}\n\n${understanding ? `Understanding: ${understanding.summary}\n` : ""}Request: "${input.instruction}"${input.fromDirection ? `\nChosen direction: ${input.fromDirection}` : ""}${briefText}`,
           },
         ],
         hints: hintsFrom(ctx, { title: input.title || understanding?.suggestedTitle || titleFromInstruction(input.instruction) || undefined }),
@@ -240,7 +257,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
             content: [
               ...(await materialParts(deps, ctx.selectedMaterials)),
               ...(ctx.references.length ? [{ type: "text" as const, text: `References:\n${renderMaterials(ctx.references)}` }] : []),
-              { type: "text", text: `Plan:\nTitle: ${plan.title}\nApproach: ${plan.approach}\nOutline:\n${plan.outline.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\nRequest: "${input.instruction}"` },
+              { type: "text", text: `Plan:\nTitle: ${plan.title}\nApproach: ${plan.approach}\nOutline:\n${plan.outline.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\nRequest: "${input.instruction}"${briefText}` },
             ],
           },
         ],

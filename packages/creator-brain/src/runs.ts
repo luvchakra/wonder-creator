@@ -36,7 +36,7 @@ export class RunTracker {
   static async start(
     db: Db,
     creatorId: string,
-    opts: { intent: string; provider: string; model: string; inputCategory?: string; conversationId?: string | null; artifactId?: string | null; correlationId?: string },
+    opts: { intent: string; provider: string; model: string; inputCategory?: string; conversationId?: string | null; artifactId?: string | null; correlationId?: string; intentBrief?: Record<string, unknown> | null },
   ): Promise<RunTracker> {
     const { data, error } = await db
       .from("ai_runs")
@@ -49,6 +49,7 @@ export class RunTracker {
         conversation_id: opts.conversationId ?? null,
         artifact_id: opts.artifactId ?? null,
         correlation_id: opts.correlationId ?? null,
+        intent_brief: (opts.intentBrief ?? null) as JsonValue,
       })
       .select("id")
       .single();
