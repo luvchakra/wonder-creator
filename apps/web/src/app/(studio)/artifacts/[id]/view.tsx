@@ -1,6 +1,7 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
 import { stepUpErrorMessage, useStepUp } from "@/components/step-up";
+import { EXPORT_FORMATS, exportFormatsFor } from "@wonder/creator-studio/exports";
 import { ARTIFACT_TYPES, actionsFor } from "@wonder/creator-studio/types";
 import {
   Avatar,
@@ -25,7 +26,7 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { ArrowDown, Check, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, RotateCcw, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, RotateCcw, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -72,6 +73,14 @@ const LICENSE_LABEL: Record<string, string> = {
   internal: "Internal Use",
   commercial: "Commercial License",
 };
+
+/** Downloads are attachments from the API, not pages: a plain link click keeps the current page. */
+function downloadFile(href: string) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = "";
+  link.click();
+}
 
 export function ArtifactView(props: {
   artifact: { id: string; title: string; description: string | null; status: string; privacy: string; artifact_type: string; current_version_id: string | null; created_at: string; updated_at: string; featured_on_profile: boolean };
@@ -154,9 +163,18 @@ export function ArtifactView(props: {
                 </Button>
               </>
             ) : null}
-            <a href={`/api/v1/artifacts/${a.id}/export?format=md`} className={buttonClasses({ variant: "secondary" })}>
-              <Download className="size-4" aria-hidden /> Download
-            </a>
+            <Menu>
+              <MenuTrigger className={buttonClasses({ variant: "secondary" })}>
+                <Download className="size-4" aria-hidden /> Download
+              </MenuTrigger>
+              <MenuContent align="start">
+                {exportFormatsFor(a.artifact_type).map((f) => (
+                  <MenuItem key={f} onSelect={() => downloadFile(`/api/v1/artifacts/${a.id}/export?format=${f}`)}>
+                    {EXPORT_FORMATS[f].label} (.{EXPORT_FORMATS[f].ext})
+                  </MenuItem>
+                ))}
+              </MenuContent>
+            </Menu>
             {isOwner ? (
               <Menu>
                 <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More actions">
@@ -576,7 +594,7 @@ function ShareDialog({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  artifact: { privacy: string; status: string; featured_on_profile: boolean };
+  artifact: { id: string; privacy: string; status: string; featured_on_profile: boolean };
   onSave: (b: Record<string, unknown>) => Promise<void>;
 }) {
   const [pub, setPub] = useState(artifact.privacy === "public");
@@ -609,6 +627,13 @@ function ShareDialog({
             <Switch checked={featured} onCheckedChange={setFeatured} label="Feature on my profile" disabled={!pub} />
           </label>
           {pub && !final ? <p className="text-sm text-warning-ink">Drafts stay private even when set to public — mark it final to share it.</p> : null}
+          <Link href={`/artifacts/${artifact.id}/share`} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-border-soft px-4 py-2 hover:bg-black/[0.02]">
+            <span>
+              <span className="block font-medium text-ink">Private links and people</span>
+              <span className="text-sm text-ink-muted">Share without publishing: a link, or named creators. Revoke any time.</span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
+          </Link>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel

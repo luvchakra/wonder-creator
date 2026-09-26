@@ -3,7 +3,7 @@ import { TOOLS } from "@wonder/creator-brain";
 import { liveCards } from "@wonder/creator-huddle";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you";
 
 export interface Notification {
   id: string;
@@ -25,7 +25,7 @@ const RUN_STALE_MS = 10 * 60 * 1000;
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers] = await Promise.all([
+  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -67,6 +67,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .gte("responded_at", since)
       .order("responded_at", { ascending: false })
       .limit(10),
+    db.rpc("shared_with_me"),
   ]);
 
   const out: Notification[] = [];
@@ -114,6 +115,10 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     const title = (r.artifacts as { title: string } | null)?.title ?? "a piece";
     const verb = r.status === "approved" ? "approved" : r.status === "declined" ? "declined" : "sent a counter-offer for";
     out.push({ id: `license-answer:${r.id}`, kind: "license_response", title: `The creator ${verb} your license request for “${title}”`, detail: null, href: `/artifacts/${r.artifact_id}`, at: r.responded_at ?? new Date().toISOString() });
+  }
+  // Direct shares from the last week (they stay under Shared with you for as long as they're live).
+  for (const r of (shared.data ?? []).filter((x) => x.shared_at >= since).slice(0, 10)) {
+    out.push({ id: `share:${r.share_id}`, kind: "shared_with_you", title: `${r.creator_name} shared “${r.title}” with you`, detail: null, href: `/shared/${r.share_id}`, at: r.shared_at });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
