@@ -20,7 +20,15 @@ export interface RealtimeMediaProvider {
   createRoom(input: { huddleId: string }): Promise<MediaRoom>;
   issueJoinToken(input: { huddleId: string; creatorId: string; displayName: string; canPublish: boolean }): Promise<JoinToken>;
   endRoom(input: { huddleId: string }): Promise<void>;
+  /** Disconnect one creator from the room now (removal or leaving); their token can't rejoin once they're not a participant. */
+  evictParticipant(input: { huddleId: string; creatorId: string }): Promise<void>;
 }
+
+/**
+ * Join tokens only need to outlive the connect handshake: LiveKit refreshes an active connection itself.
+ * Keeping them short limits what a token leaked or kept after removal could do.
+ */
+export const JOIN_TOKEN_TTL_SECONDS = 5 * 60;
 
 export const roomNameFor = (huddleId: string) => `huddle_${huddleId}`;
 
@@ -40,7 +48,7 @@ class LiveKitProvider implements RealtimeMediaProvider {
   }
 
   async issueJoinToken(input: { huddleId: string; creatorId: string; displayName: string; canPublish: boolean }) {
-    const ttl = 60 * 30;
+    const ttl = JOIN_TOKEN_TTL_SECONDS;
     const at = new AccessToken(this.apiKey, this.apiSecret, { identity: input.creatorId, name: input.displayName, ttl });
     at.addGrant({ roomJoin: true, room: roomNameFor(input.huddleId), canPublish: input.canPublish, canSubscribe: true, canPublishData: true });
     return { provider: this.name, url: this.url, token: await at.toJwt(), expiresInSeconds: ttl };
@@ -49,6 +57,12 @@ class LiveKitProvider implements RealtimeMediaProvider {
   async endRoom({ huddleId }: { huddleId: string }) {
     const svc = new RoomServiceClient(this.url.replace(/^wss?:/, "https:"), this.apiKey, this.apiSecret);
     await svc.deleteRoom(roomNameFor(huddleId)).catch(() => undefined);
+  }
+
+  async evictParticipant({ huddleId, creatorId }: { huddleId: string; creatorId: string }) {
+    const svc = new RoomServiceClient(this.url.replace(/^wss?:/, "https:"), this.apiKey, this.apiSecret);
+    // Not connected (or room already gone) is fine: there is nothing to evict.
+    await svc.removeParticipant(roomNameFor(huddleId), creatorId).catch(() => undefined);
   }
 }
 
@@ -63,6 +77,7 @@ class UnconfiguredMediaProvider implements RealtimeMediaProvider {
     throw new Error("media provider not configured");
   }
   async endRoom() {}
+  async evictParticipant() {}
 }
 
 export function selectMediaProvider(env: Record<string, string | undefined> = process.env): RealtimeMediaProvider {

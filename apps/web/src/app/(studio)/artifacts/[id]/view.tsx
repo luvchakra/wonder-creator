@@ -1,5 +1,6 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
+import { stepUpErrorMessage, useStepUp } from "@/components/step-up";
 import { ARTIFACT_TYPES, actionsFor } from "@wonder/creator-studio/types";
 import {
   Avatar,
@@ -658,6 +659,7 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
   const [edit, setEdit] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const stepUp = useStepUp();
   const [form, setForm] = useState(() => ({
     ownershipKind: rights?.ownership_kind ?? "sole",
     copyrightHolder: rights?.copyright_holder ?? "",
@@ -672,6 +674,7 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
 
   return (
     <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1.2fr_1fr]">
+      {stepUp.dialog}
       <section className="rounded-2xl border border-border-soft bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-semibold text-ink">
@@ -714,11 +717,14 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
               e.preventDefault();
               setError(null);
               try {
-                await api(`/api/v1/artifacts/${artifactId}/rights`, { method: "PUT", json: { ...form, owners: form.owners.map((o) => ({ ...o, sharePercent: Number(o.sharePercent) })) } });
+                // Transferring ownership asks for the password (step-up); other edits save directly.
+                await stepUp.run((password) =>
+                  api(`/api/v1/artifacts/${artifactId}/rights`, { method: "PUT", json: { ...form, owners: form.owners.map((o) => ({ ...o, sharePercent: Number(o.sharePercent) })), password } }).then(() => undefined),
+                );
                 setEdit(false);
                 router.refresh();
               } catch (err) {
-                setError(errorMessage(err));
+                setError(stepUpErrorMessage(err));
               }
             }}
           >
@@ -807,10 +813,11 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
                       variant="ghost"
                       onClick={async () => {
                         try {
-                          await api(`/api/v1/licenses/${l.id}`, { method: "PATCH", json: { status: l.status === "active" ? "revoked" : "active" } });
+                          // Activating a commercial license asks for the password (step-up).
+                          await stepUp.run((password) => api(`/api/v1/licenses/${l.id}`, { method: "PATCH", json: { status: l.status === "active" ? "revoked" : "active", password } }).then(() => undefined));
                           router.refresh();
                         } catch (e) {
-                          setError(errorMessage(e));
+                          setError(stepUpErrorMessage(e));
                         }
                       }}
                     >

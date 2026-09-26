@@ -33,6 +33,13 @@ async function say(page: Page, text: string) {
 }
 
 test.describe("Huddles", () => {
+  test("a media token is only issued to joined participants", async ({ page, creator }) => {
+    void creator;
+    const res = await page.request.post(`/api/v1/huddles/${"00000000-0000-4000-8000-000000000000"}/media-token`);
+    expect(res.status()).toBe(403);
+    expect((await res.json()).error.code).toBe("forbidden");
+  });
+
   test("public Huddle: request → accept → chat → preserve → leave → dissolve", async ({ page: a, creator: creatorA, openContext }) => {
     test.setTimeout(240_000);
     const { page: b } = await openContext("B");

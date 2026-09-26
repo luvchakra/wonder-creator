@@ -5,6 +5,7 @@
 export type ErrorCode =
   | "unauthenticated"
   | "forbidden"
+  | "step_up_required"
   | "not_found"
   | "validation"
   | "conflict"
@@ -19,6 +20,7 @@ export type ErrorCode =
 const STATUS: Record<ErrorCode, number> = {
   unauthenticated: 401,
   forbidden: 403,
+  step_up_required: 403,
   not_found: 404,
   validation: 422,
   conflict: 409,
