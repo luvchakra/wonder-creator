@@ -1,6 +1,6 @@
 "use client";
 import { Popover, PopoverContent, PopoverTrigger, Spinner } from "@wonder/ui";
-import { AlertCircle, Bell, Brain, Loader, UserPlus, Users } from "lucide-react";
+import { AlertCircle, Bell, Brain, Loader, Scale, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -9,14 +9,14 @@ import { RelativeTime } from "./client-time";
 
 interface Item {
   id: string;
-  kind: "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished";
+  kind: "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response";
   title: string;
   detail: string | null;
   href: string;
   at: string;
 }
 
-const ICON = { proposal: Brain, join_request: UserPlus, huddle_invite: Users, intake_failed: AlertCircle, run_active: Loader, run_unfinished: AlertCircle } as const;
+const ICON = { proposal: Brain, join_request: UserPlus, huddle_invite: Users, intake_failed: AlertCircle, run_active: Loader, run_unfinished: AlertCircle, license_request: Scale, license_response: Scale } as const;
 const POLL_MS = 60_000;
 
 /** Things waiting on the creator. Derived from live state, so items leave once they're resolved. */

@@ -1,6 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
-import type { Db } from "@wonder/db";
+import type { Db, Json, Tables } from "@wonder/db";
 import { z } from "zod";
+import { describeTerms, isConsequential, LICENSE_MODES, licenseTermsFields, licenseTermsSchema, termsFromRecord, termsToRecord, withTermsChecks, type LicenseTerms } from "./licensing";
 
 export const LICENSE_TYPES = [
   { value: "personal", label: "Personal Use", note: "For personal viewing" },
@@ -27,21 +28,14 @@ export const rightsSchema = z.object({
     .max(10),
 });
 
-export const licenseSchema = z
-  .object({
-    licenseType: z.enum(["personal", "commercial", "editorial", "promotional", "educational", "internal"]),
+/** A license the creator records directly: its terms plus who it's for and whether it's active yet. */
+export const licenseSchema = withTermsChecks(
+  licenseTermsFields.extend({
     licenseeName: z.string().trim().max(200).optional().nullable(),
-    exclusive: z.boolean().default(false),
-    territory: z.string().trim().min(1).max(120).default("Worldwide"),
-    startsOn: z.string().date().optional().nullable(),
-    endsOn: z.string().date().optional().nullable(),
-    modificationAllowed: z.boolean().default(false),
-    derivativesAllowed: z.boolean().default(false),
-    resaleAllowed: z.boolean().default(false),
-    attributionRequired: z.boolean().default(true),
+    permittedUse: z.string().trim().max(1000).optional().nullable(),
     status: z.enum(["draft", "active", "revoked"]).default("draft"),
-  })
-  .refine((l) => !l.startsOn || !l.endsOn || l.endsOn >= l.startsOn, { message: "The end date must be after the start date.", path: ["endsOn"] });
+  }),
+);
 
 /** Ownership shares must add up to exactly 100%, and joint ownership needs at least two owners. */
 export function validateOwnership(input: z.infer<typeof rightsSchema>): string | null {
@@ -95,16 +89,9 @@ export async function addLicense(db: Db, creatorId: string, artifactId: string, 
       .insert({
         rights_id: rec.id,
         creator_id: creatorId,
-        license_type: l.licenseType,
+        ...(termsToRecord(l) as { license_type: string }),
         licensee_name: l.licenseeName || null,
-        exclusive: l.exclusive,
-        territory: l.territory,
-        starts_on: l.startsOn || null,
-        ends_on: l.endsOn || null,
-        modification_allowed: l.modificationAllowed,
-        derivatives_allowed: l.derivativesAllowed,
-        resale_allowed: l.resaleAllowed,
-        attribution_required: l.attributionRequired,
+        permitted_use: l.permittedUse || null,
         status: l.status,
       })
       .select("*")
@@ -123,6 +110,12 @@ const PRIVACY_LABEL: Record<string, string> = { creator_private: "private", publ
 const licenseName = (d: Record<string, unknown>) => {
   const type = LICENSE_TYPES.find((t) => t.value === d.license_type)?.label ?? "License";
   return d.licensee ? `${type} for ${String(d.licensee)}` : type;
+};
+
+const requestLabel = (d: Record<string, unknown>) => {
+  const use = LICENSE_TYPES.find((t) => t.value === d.license_type)?.label ?? "license";
+  const mode = LICENSE_MODES.find((m) => m.value === d.mode)?.label;
+  return mode ? `${use}, ${mode.toLowerCase()}` : use;
 };
 
 /** A rights event as a plain sentence for the history feed. Unknown events stay readable. */
@@ -158,6 +151,16 @@ export function describeRightsEvent(event: string, d: Record<string, unknown>): 
       return { title: `${licenseName(d)} removed`, kind: "license" };
     case "license.updated":
       return { title: `${licenseName(d)} updated`, kind: "license" };
+    case "license.requested":
+      return { title: `${String(d.requester ?? "A creator")} requested a ${requestLabel(d)}`, kind: "license" };
+    case "license.request_approved":
+      return { title: `License request from ${String(d.requester ?? "a creator")} approved (${requestLabel(d)})`, kind: "license" };
+    case "license.request_declined":
+      return { title: `License request from ${String(d.requester ?? "a creator")} declined`, kind: "license" };
+    case "license.request_countered":
+      return { title: `Counter-offer sent to ${String(d.requester ?? "a creator")} (${requestLabel(d)})`, kind: "license" };
+    case "license.request_withdrawn":
+      return { title: `${String(d.requester ?? "A creator")} withdrew their license request`, kind: "license" };
     case "publication.changed": {
       const parts: string[] = [];
       if (d.privacy_from !== d.privacy_to) parts.push(`visibility ${PRIVACY_LABEL[String(d.privacy_from)] ?? d.privacy_from} → ${PRIVACY_LABEL[String(d.privacy_to)] ?? d.privacy_to}`);
@@ -170,4 +173,105 @@ export function describeRightsEvent(event: string, d: Record<string, unknown>): 
       // Events recorded before semantic history ("rights_records.update" etc.).
       return { title: `Rights record changed (${event.replace(/_/g, " ").replace(".", " · ")})`, kind: event.startsWith("licenses") ? "license" : "rights" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// License requests (P0.1-08)
+// ---------------------------------------------------------------------------
+export const licenseRequestSchema = z.object({ proposedUse: z.string().trim().min(1, "Say how you'd like to use it.").max(2000), terms: licenseTermsSchema });
+
+/** Ask the owner of a piece you can see for a license. RLS checks you can read it and don't own it. */
+export async function requestLicense(db: Db, creatorId: string, artifactId: string, raw: unknown) {
+  const input = licenseRequestSchema.parse(raw);
+  const art = must(await db.from("artifacts").select("id, creator_id").eq("id", artifactId).maybeSingle(), "We couldn't find that piece.");
+  if (art.creator_id === creatorId) throw new DomainError("validation", "This is your own piece — add a license from its Rights tab instead.");
+  const res = await db
+    .from("license_requests")
+    .insert({ artifact_id: artifactId, owner_creator_id: art.creator_id, requester_creator_id: creatorId, proposed_use: input.proposedUse, terms: termsToRecord(input.terms) as NonNullable<Json> })
+    .select("*")
+    .single();
+  if (res.error?.code === "23505") throw new DomainError("conflict", "You already have an open request for this piece.");
+  return must(res);
+}
+
+export interface LicenseRequestView {
+  id: string;
+  artifactId: string;
+  status: "pending" | "approved" | "declined" | "countered" | "withdrawn";
+  proposedUse: string;
+  terms: LicenseTerms;
+  counterTerms: LicenseTerms | null;
+  summary: string[];
+  counterSummary: string[] | null;
+  consequential: boolean;
+  counterConsequential: boolean;
+  responseNote: string | null;
+  licenseId: string | null;
+  requester: { id: string; name: string; handle: string | null };
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+function toView(r: Tables<"license_requests"> & { creators?: unknown }): LicenseRequestView {
+  const terms = termsFromRecord(r.terms as Record<string, unknown>);
+  const counter = r.counter_terms ? termsFromRecord(r.counter_terms as Record<string, unknown>) : null;
+  const who = (r.creators as { id: string; display_name: string; handle: string | null } | null) ?? null;
+  return {
+    id: r.id,
+    artifactId: r.artifact_id,
+    status: r.status as LicenseRequestView["status"],
+    proposedUse: r.proposed_use,
+    terms,
+    counterTerms: counter,
+    summary: describeTerms(terms),
+    counterSummary: counter ? describeTerms(counter) : null,
+    consequential: isConsequential(terms),
+    counterConsequential: counter ? isConsequential(counter) : false,
+    responseNote: r.response_note,
+    licenseId: r.license_id,
+    requester: { id: r.requester_creator_id, name: who?.display_name ?? "A creator", handle: who?.handle ?? null },
+    createdAt: r.created_at,
+    respondedAt: r.responded_at,
+  };
+}
+
+/** Requests for a piece: all of them for its owner, only your own for anyone else (RLS). */
+export async function listLicenseRequests(db: Db, artifactId: string): Promise<LicenseRequestView[]> {
+  const { data, error } = await db
+    .from("license_requests")
+    .select("*, creators!license_requests_requester_creator_id_fkey(id, display_name, handle)")
+    .eq("artifact_id", artifactId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw fromDbError(error);
+  return (data ?? []).map(toView);
+}
+
+export async function getLicenseRequest(db: Db, id: string): Promise<LicenseRequestView> {
+  return toView(must(await db.from("license_requests").select("*, creators!license_requests_requester_creator_id_fkey(id, display_name, handle)").eq("id", id).maybeSingle(), "We couldn't find that request."));
+}
+
+function requestError(e: { code?: string; message?: string }): DomainError {
+  if (e.code === "P0002") return new DomainError("not_found", "We couldn't find that request.");
+  if (e.code === "55000") return new DomainError("conflict", e.message ?? "This request has already been answered.");
+  return fromDbError(e);
+}
+
+/** Owner: approve (creates an active license), decline, or counter with different terms. */
+export async function respondToLicenseRequest(db: Db, id: string, input: { decision: "approve" | "decline" | "counter"; note?: string | null; counter?: LicenseTerms | null }) {
+  const { data, error } = await db.rpc("respond_license_request", {
+    p_request: id,
+    p_decision: input.decision,
+    p_note: input.note || undefined,
+    p_counter: input.decision === "counter" && input.counter ? (termsToRecord(input.counter) as Json) : undefined,
+  });
+  if (error) throw requestError(error);
+  return data;
+}
+
+/** Requester: accept a counter-offer (creates an active license) or withdraw. */
+export async function actOnLicenseRequest(db: Db, id: string, action: "accept_counter" | "withdraw") {
+  const { data, error } = await db.rpc("act_on_license_request", { p_request: id, p_action: action });
+  if (error) throw requestError(error);
+  return data;
 }
