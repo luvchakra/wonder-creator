@@ -1,6 +1,6 @@
 "use client";
 import { X } from "lucide-react";
-import { Dialog as D, DropdownMenu as M, Switch as S, Tabs as T } from "radix-ui";
+import { Dialog as D, DropdownMenu as M, Popover as P, Switch as S, Tabs as T } from "radix-ui";
 import * as React from "react";
 import { cn } from "../cn";
 import { Button } from "./button";
@@ -145,5 +145,25 @@ export function MenuItem({ children, onSelect, destructive }: { children: React.
     >
       {children}
     </M.Item>
+  );
+}
+
+export const Popover = P.Root;
+export const PopoverTrigger = P.Trigger;
+export const PopoverClose = P.Close;
+/** Anchored panel for small, non-modal surfaces (e.g. notifications). Fits a 360px viewport. */
+export function PopoverContent({ children, label, align = "end", className }: { children: React.ReactNode; label: string; align?: "start" | "end"; className?: string }) {
+  return (
+    <P.Portal>
+      <P.Content
+        align={align}
+        sideOffset={6}
+        collisionPadding={12}
+        aria-label={label}
+        className={cn("z-50 w-[min(24rem,calc(100vw-24px))] rounded-2xl border border-border-soft bg-surface p-2 shadow-xl outline-none", className)}
+      >
+        {children}
+      </P.Content>
+    </P.Portal>
   );
 }

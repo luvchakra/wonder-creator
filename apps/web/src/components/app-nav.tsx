@@ -4,6 +4,7 @@ import { Brain, Home, LogOut, PenLine, Search, Settings, Sparkles, UserRound, Us
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { NotificationsButton } from "./notifications";
 import { SearchDialog } from "./search-dialog";
 
 const NAV = [
@@ -59,6 +60,7 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
               <Search className="size-4" aria-hidden />
               <span className="hidden sm:inline">Search your creativity…</span>
             </button>
+            <NotificationsButton />
             <Menu>
               <MenuTrigger className="rounded-full focus-visible:outline-2" aria-label="Your account">
                 <Avatar name={me.name} src={me.avatarUrl} size={40} />
