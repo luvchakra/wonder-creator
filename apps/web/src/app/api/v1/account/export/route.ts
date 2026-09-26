@@ -1,3 +1,4 @@
+import { audit } from "@wonder/core";
 import { withApi } from "@/lib/api";
 
 /** Data export: everything the creator owns, as JSON (RLS guarantees only their own rows). */
@@ -14,6 +15,7 @@ export const GET = withApi(async ({ db, creatorId }) => {
     const { data } = await (db as unknown as import("@supabase/supabase-js").SupabaseClient).from(t).select("*").eq(col, creatorId).limit(10000);
     out[t] = data ?? [];
   }
+  await audit(db, { action: "account.exported", objectType: "creator", objectId: creatorId });
   return new Response(JSON.stringify(out, null, 2), {
     headers: { "content-type": "application/json", "content-disposition": `attachment; filename="wonder-creator-export.json"`, "cache-control": "no-store" },
   });

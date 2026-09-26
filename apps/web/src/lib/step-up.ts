@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { DomainError } from "@wonder/core";
+import { audit, DomainError } from "@wonder/core";
 import type { Db } from "@wonder/db";
 
 /**
@@ -17,6 +17,8 @@ export async function requirePassword(db: Db, userId: string, password: string |
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   const check = await verifier.auth.signInWithPassword({ email, password });
+  // Password confirmations, right or wrong, are part of the creator's security history.
+  await audit(db, { action: check.error ? "auth.step_up_failed" : "auth.step_up", objectType: "creator", objectId: null, metadata: { for: action } }).catch(() => undefined);
   if (check.error) throw new DomainError("step_up_required", "That password isn't right.");
   // End the verification session right away; it was only a proof of the password.
   await verifier.auth.signOut({ scope: "local" }).catch(() => undefined);

@@ -34,6 +34,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       if (error) setError(error.message);
       else if (!data.session) setNotice("Check your email to confirm your account, then come back to sign in.");
       else {
+        await recordSecurityEvent("signed_up");
         router.replace("/onboarding");
         router.refresh();
       }
@@ -41,6 +42,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError("That email and password don't match. Try again.");
       else {
+        await recordSecurityEvent("signed_in");
         const next = params.get("next");
         router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
         router.refresh();
@@ -98,4 +100,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       </p>
     </form>
   );
+}
+
+/** Adds the sign-in to the creator's security history; never blocks signing in. */
+async function recordSecurityEvent(event: "signed_in" | "signed_up") {
+  await fetch("/api/v1/account/security-events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event }) }).catch(() => undefined);
 }

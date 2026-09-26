@@ -1,4 +1,4 @@
-import { DomainError, publishEvent } from "@wonder/core";
+import { audit, DomainError, publishEvent } from "@wonder/core";
 import { downloadUrlFor, getMaterial } from "@wonder/creator-library";
 import { NextResponse } from "next/server";
 import { requireUuid, withApi } from "@/lib/api";
@@ -22,6 +22,7 @@ export const GET = withApi<{ id: string }>(
       aggregateId: materialId,
       payload: { kind: "original" },
     }).catch(() => undefined);
+    await audit(db, { action: "material.downloaded", objectType: "material", objectId: materialId });
     return NextResponse.redirect(url, {
       status: 302,
       headers: { "cache-control": "no-store" },
