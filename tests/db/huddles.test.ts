@@ -530,3 +530,23 @@ describe("one live huddle at a time", () => {
     expectOk(await y.client.rpc("huddle_end", { p_huddle: hy }));
   });
 });
+
+describe("live cards count only recently-seen participants", () => {
+  it("drops a participant whose heartbeat went stale, and hides a Huddle with nobody fresh", async () => {
+    const [host, guest, viewer] = await Promise.all([createTestCreator("freshHost"), createTestCreator("freshGuest"), createTestCreator("freshViewer")]);
+    const huddleId = await start(host, "Night walk");
+    await admit(host, guest, huddleId);
+    expect((await card(viewer.client, huddleId))?.participant_count).toBe(2);
+
+    // Guest's client crashed two minutes ago (no heartbeat since).
+    expectOk(await admin.from("huddle_participants").update({ last_seen_at: new Date(Date.now() - 120_000).toISOString() }).eq("huddle_id", huddleId).eq("creator_id", guest.creatorId).select("creator_id"));
+    const c = await card(viewer.client, huddleId);
+    expect(c?.participant_count).toBe(1);
+    expect(c?.participant_ids).toEqual([host.creatorId]);
+
+    // Host went stale too: the Huddle no longer shows as live, before any cleanup sweep runs.
+    expectOk(await admin.from("huddle_participants").update({ last_seen_at: new Date(Date.now() - 120_000).toISOString() }).eq("huddle_id", huddleId).select("creator_id"));
+    expect(await card(viewer.client, huddleId)).toBeUndefined();
+    expect((await huddleStatus(huddleId)).status).toBe("live");
+  });
+});

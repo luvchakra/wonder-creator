@@ -38,3 +38,30 @@ the gap listed) · **Not started**.
 ## Known follow-ups
 - None open from P0. Optional providers stay off until configured: LiveKit (Huddle voice/video) and the malware
   hash-reputation check.
+
+# P0.1 / P1 progress
+
+Plan: [`docs/plan-p0.1-p1.md`](plan-p0.1-p1.md) (owner-supplied; source of truth for scope and order).
+Status legend as above. Items are worked in the plan's order (§51, §52), one PR each.
+
+| Item | Status | Notes |
+|---|---|---|
+| P0.1-01 Creative Material Detail | Partial | Detail view, preview, provenance, understanding, tags, processing/security state, transcript, archive/delete exist. Missing: related collections/artifacts panel, download original, privacy control, "Ask CreatorBrain" |
+| P0.1-02 Material Collections | Partial | Tables, RLS and API exist; no UI |
+| P0.1-03 Intent Clarification | Partial | Ambiguity question exists; no editable understood-intent step |
+| P0.1-04 Creation Run Progress | Partial | Streamed stages; runs happen in the request (no durable job, cancel or retry) |
+| P0.1-05 Quality Review & Selective Refinement | Partial | Findings + suggestions; no select-and-apply |
+| P0.1-06 Transformation Workflow | Partial | Transform with lineage; no source-version picker or inherited-context view |
+| P0.1-07 Rights Detail & History | Partial | Ownership, copyright, licenses, audited history, disclaimer; step-up for transfer. Missing: contributors, usage rights, publication history sections |
+| P0.1-08 License Creation & Request | Partial | Creator-side licenses with step-up for commercial activation; no requester flow or license modes |
+| P0.1-09 Share / Download / Export | Partial | Visibility + .md/.txt export; no private share links, revocation or expiry |
+| P0.1-10 Publishing Setup | Not started | |
+| P0.1-11 Approval Center | Partial | Proposals + notifications; no unified center |
+| P0.1-12 Autonomy Approval UX | Partial | Autonomy policy + proposals exist |
+| P0.1-13 Huddle Create/Invite/Post-Huddle | Partial | Start, invite from profile, preserve idea/note; media eviction on remove/leave; stale presence hidden. Missing: invite search in-room, post-Huddle summary |
+| P0.1-14 Scrapbook Detail & Replies | Not started | |
+| P0.1-15 Search & Discovery | Partial | Keyword + semantic over own work; no filters/dimensions |
+| P0.1-16 AI Provider & BYOK | Partial | Env-configured provider + readiness; no BYOK |
+| P0.1-17 Security & Audit Viewer | Not started | Audit log exists |
+| P0.1-18 Mobile Completion Pass | Partial | 360px layouts; no sheet-based flows yet |
+| P1 (all) | Not started | Begins after P0.1 rights, approvals, provenance and permissions are stable (plan §51) |

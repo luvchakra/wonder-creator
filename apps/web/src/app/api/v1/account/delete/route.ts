@@ -1,6 +1,7 @@
 import { DomainError } from "@wonder/core";
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
+import { requirePassword } from "@/lib/step-up";
 import { serviceClient } from "@/lib/supabase/service";
 
 /**
@@ -9,10 +10,7 @@ import { serviceClient } from "@/lib/supabase/service";
  */
 export const POST = withApi(async ({ db, userId, req }) => {
   const { password } = z.object({ password: z.string().min(1), confirm: z.literal("DELETE") }).parse(await readJson(req));
-  const { data: user } = await db.auth.getUser();
-  if (!user.user?.email || user.user.id !== userId) throw new DomainError("unauthenticated", "Please sign in again.");
-  const check = await db.auth.signInWithPassword({ email: user.user.email, password });
-  if (check.error) throw new DomainError("forbidden", "That password isn't right.");
+  await requirePassword(db, userId, password, "delete your account");
   const service = serviceClient();
   const { data: files } = await service.from("storage_objects").select("bucket, path").eq("creator_id", (await db.from("creators").select("id").eq("user_id", userId).single()).data!.id);
   if (files?.length) await service.storage.from("creator-media").remove(files.map((f) => f.path));

@@ -13,7 +13,7 @@ the logo or brand artwork.** Missing assets are documented, not invented.
 - Continue with the remaining items without stopping; don't ask unless it's important (a decision only the owner
   can make, credentials, or something destructive or irreversible).
 - Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
-- Backlog and status live in `docs/progress.md`; keep it current.
+- Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 
 ## Commands
 
