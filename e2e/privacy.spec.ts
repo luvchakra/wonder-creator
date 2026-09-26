@@ -38,6 +38,12 @@ test.describe("privacy boundary", () => {
     expect((await b.request.get(`/api/v1/artifacts/${artifactId}`)).status()).toBe(404);
     expect((await b.request.get(`/api/v1/materials/${materialId}`)).status()).toBe(404);
 
+    // Search never surfaces A's private work to B, not even as a count or a snippet.
+    const probe = await (await b.request.get(`/api/v1/search?q=${encodeURIComponent(title)}`)).json();
+    expect(JSON.stringify(probe)).not.toContain(artifactId);
+    await b.goto(`/search?q=${encodeURIComponent(title)}`);
+    await expect(b.getByRole("heading", { name: /Nothing found for/ })).toBeVisible();
+
     // A's profile shows no public work to B.
     await b.goto(`/creators/${creatorA.handle}`);
     await expect(b.getByRole("heading", { name: "No public work yet" })).toBeVisible();
@@ -72,6 +78,9 @@ test.describe("privacy boundary", () => {
     // The studio is owner-only: B is sent back to the read-only view.
     await b.goto(`/artifacts/${artifactId}/studio`);
     await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
+    // Once public and final, search finds it for B too.
+    await b.goto(`/search?q=${encodeURIComponent(title)}&type=creations`);
+    await expect(b.getByRole("region", { name: "Creations" }).getByRole("link", { name: new RegExp(title) })).toContainText("By another creator");
     // The source material stays private.
     await expectNotFound(b, `/space/materials/${materialId}`);
   });
