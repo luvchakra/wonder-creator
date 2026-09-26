@@ -6,6 +6,15 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 Brand authority: `packages/ui/src/brand/ASSETS.md` + the supplied brand board. **Never create, redraw or regenerate
 the logo or brand artwork.** Missing assets are documented, not invented.
 
+## How to work (owner's standing instruction)
+
+> "continue with remaining items, don't stop, don't ask unless important"
+
+- Continue with the remaining items without stopping; don't ask unless it's important (a decision only the owner
+  can make, credentials, or something destructive or irreversible).
+- Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
+- Backlog and status live in `docs/progress.md`; keep it current.
+
 ## Commands
 
 - `npm run dev` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run build`
