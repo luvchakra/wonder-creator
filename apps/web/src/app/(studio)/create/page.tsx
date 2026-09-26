@@ -1,12 +1,12 @@
 import { providerReadiness } from "@wonder/creator-brain";
-import { signedUrlsFor } from "@wonder/creator-library";
+import { getCollection, signedUrlsFor } from "@wonder/creator-library";
 import { getConversation, listConversations } from "@wonder/creator-talk";
 import { requireSession } from "@/lib/session";
 import { Talk } from "./talk";
 
 export const metadata = { title: "Create" };
 
-export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string }> }) {
+export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string; collection?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const conversations = await listConversations(db, 40);
@@ -14,7 +14,11 @@ export default async function CreatePage({ searchParams }: { searchParams: Promi
   const convo = cid ? await getConversation(db, cid).catch(() => null) : null;
 
   const attachments = (convo?.messages ?? []).flatMap((m) => (m.conversation_attachments as Array<{ material_id: string | null; artifact_id: string | null }>) ?? []);
-  const preselected = [sp.material].filter((x): x is string => !!x && /^[0-9a-f-]{36}$/i.test(x));
+  // Starting from a collection (only for a new conversation): its active materials, in the collection's order.
+  const collectionId = !cid && sp.collection && /^[0-9a-f-]{36}$/i.test(sp.collection) ? sp.collection : null;
+  const fromCollection = collectionId ? await getCollection(db, collectionId).catch(() => null) : null;
+  const collectionMaterials = (fromCollection?.items ?? []).filter((m) => m.status === "active").slice(0, 12).map((m) => m.id);
+  const preselected = [...new Set([sp.material, ...collectionMaterials].filter((x): x is string => !!x && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 12);
   const materialIds = [...new Set([...attachments.map((a) => a.material_id).filter((x): x is string => !!x), ...preselected])];
   const { data: mats } = materialIds.length
     ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state").in("id", materialIds)
@@ -40,6 +44,7 @@ export default async function CreatePage({ searchParams }: { searchParams: Promi
       materials={Object.fromEntries((mats ?? []).map((m) => [m.id, { ...m, previewUrl: m.storage_object_id ? urls[m.storage_object_id] ?? null : null }]))}
       preselectedMaterialIds={preselected}
       focusArtifact={focusArtifact}
+      focusCollection={fromCollection ? { id: fromCollection.collection.id, name: fromCollection.collection.name } : null}
       prompt={sp.prompt?.slice(0, 500)}
       creatorName={creator.display_name}
       offline={!providerReadiness().live}
