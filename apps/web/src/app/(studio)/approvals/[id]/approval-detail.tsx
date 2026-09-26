@@ -12,7 +12,7 @@ import { StateBadge } from "../shared";
 
 type ApproveResult = { kind: "version"; artifactId: string } | { kind: "artifact"; artifact: { id: string } };
 
-export function ApprovalDetail({ approval: a }: { approval: ApprovalView }) {
+export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalView; setting: string | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"approve" | "decline" | "edit" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,14 +48,27 @@ export function ApprovalDetail({ approval: a }: { approval: ApprovalView }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/approvals" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← All approvals
-      </Link>
+      <nav aria-label="Back" className="flex flex-wrap gap-x-5">
+        {a.conversationId ? (
+          <Link href={`/create?c=${a.conversationId}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+            ← Back to the conversation
+          </Link>
+        ) : null}
+        <Link href="/approvals" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+          All approvals
+        </Link>
+      </nav>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <h1 className="font-display text-[28px] leading-tight text-ink">{a.actionLabel}</h1>
         <StateBadge state={a.state} />
       </div>
-      <p className="mt-1 text-[15px] text-ink-muted">{a.domainLabel}</p>
+      <p className="mt-1 text-[15px] text-ink-muted">
+        {a.domainLabel}
+        {setting ? ` · your setting: ${setting}` : ""} ·{" "}
+        <Link href="/settings?section=autonomy" className="text-accent-ink hover:underline">
+          Change
+        </Link>
+      </p>
 
       <dl className="mt-6 space-y-5 rounded-2xl border border-border-soft bg-surface p-5">
         <Row term="What you asked">{a.understood}</Row>
@@ -127,7 +140,7 @@ export function ApprovalDetail({ approval: a }: { approval: ApprovalView }) {
         <>
           <p className="mt-6 flex items-start gap-2 text-sm text-ink-muted">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-            Approving runs exactly what&apos;s shown, once. To change anything, edit it: that makes a new request.
+            Approving runs exactly what&apos;s shown, once. It doesn&apos;t change your autonomy settings. To change anything, edit it: that makes a new request.
           </p>
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={() => setDeclineOpen(true)} disabled={!!busy}>
@@ -139,7 +152,7 @@ export function ApprovalDetail({ approval: a }: { approval: ApprovalView }) {
               </Button>
             ) : null}
             <Button onClick={() => decide("approve")} loading={busy === "approve"} disabled={!!busy}>
-              Approve
+              Approve once
             </Button>
           </div>
         </>

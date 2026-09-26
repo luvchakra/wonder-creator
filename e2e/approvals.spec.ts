@@ -44,7 +44,7 @@ test.describe("Approval Center", () => {
     await expect(page.getByText("This replaces an earlier request.")).toBeVisible();
 
     // Approving runs it once and opens the new piece.
-    await page.getByRole("button", { name: "Approve" }).click();
+    await page.getByRole("button", { name: "Approve once" }).click();
     await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}$/, { timeout: 45_000 });
 
     // The other one is declined with a note.
@@ -55,7 +55,7 @@ test.describe("Approval Center", () => {
     await decline.getByLabel("Note (optional)").fill("Not this week");
     await decline.getByRole("button", { name: "Decline" }).click();
     await expect(page.getByText("Note: Not this week")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Approve once" })).toHaveCount(0);
 
     // History shows every decision.
     await page.goto("/approvals");
@@ -63,5 +63,30 @@ test.describe("Approval Center", () => {
     const history = page.getByRole("list").filter({ hasText: "Approved and done" });
     await expect(history).toContainText("Declined");
     await expect(history).toContainText("Cancelled");
+  });
+});
+
+test.describe("Autonomy approval in CreatorTalk", () => {
+  test.beforeEach(({ creator }) => void creator);
+
+  test("a blocked action asks narrowly, links its detail, and returns to the conversation", async ({ page }) => {
+    expect((await page.request.patch("/api/v1/creators/autonomy", { data: { domain: "creative_generation", level: "execute_with_approval" } })).ok()).toBe(true);
+    const subject = `the harbour ${uid()}`;
+    const res = await page.request.post("/api/v1/conversations/turn", { data: { message: `Write a poem about ${subject}.` } });
+    const conversationId = /"conversationId":"([0-9a-f-]{36})"/.exec(await res.text())?.[1];
+    expect(conversationId).toBeTruthy();
+
+    await page.goto(`/create?c=${conversationId}`);
+    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    await expect(talk.getByText("I'm asking because creative generation is set to ask first. Approving covers only this.")).toBeVisible();
+    await expect(talk.getByRole("link", { name: "Autonomy settings" })).toHaveAttribute("href", "/settings?section=autonomy");
+    await talk.getByRole("link", { name: "Details" }).click();
+    await expect(page).toHaveURL(/\/approvals\/[0-9a-f-]{36}$/);
+    await expect(page.getByText("your setting: Ask for approval")).toBeVisible();
+    await page.getByRole("link", { name: "← Back to the conversation" }).click();
+    await expect(page).toHaveURL(new RegExp(`/create\\?c=${conversationId}$`));
+
+    await talk.getByRole("button", { name: "Approve once" }).click();
+    await expect(talk.getByRole("link", { name: "Open it" })).toBeVisible({ timeout: 45_000 });
   });
 });
