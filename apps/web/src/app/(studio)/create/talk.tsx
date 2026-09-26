@@ -606,7 +606,11 @@ function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (
             <Link href={`/artifacts/${p.artifactId}/studio`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
               Change
             </Link>
-          ) : null}
+          ) : (
+            <Link href={`/approvals/${p.proposalId}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
+              Details
+            </Link>
+          )}
           <Button
             size="sm"
             variant="ghost"

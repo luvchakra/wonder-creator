@@ -25,13 +25,13 @@ export type Database = {
           Tables: {
             "ai_proposals": {
                   Row: {
-                    "action": string,"conversation_id": string | null,"created_at": string,"creator_id": string,"domain": Database["public"]['Enums']["autonomy_domain"],"id": string,"impact": string,"payload": NonNullable<Json>,"plan": string,"resolved_at": string | null,"run_id": string | null,"status": string,"understood": string
+                    "action": string,"conversation_id": string | null,"created_at": string,"creator_id": string,"decision_note": string | null,"domain": Database["public"]['Enums']["autonomy_domain"],"expires_at": string,"id": string,"impact": string,"payload": NonNullable<Json>,"plan": string,"resolved_at": string | null,"run_id": string | null,"status": string,"supersedes": string | null,"understood": string
                   }
                   Insert: {
-                    "action": string,"conversation_id"?: string | null,"created_at"?: string,"creator_id": string,"domain": Database["public"]['Enums']["autonomy_domain"],"id"?: string,"impact": string,"payload"?: NonNullable<Json>,"plan": string,"resolved_at"?: string | null,"run_id"?: string | null,"status"?: string,"understood": string
+                    "action": string,"conversation_id"?: string | null,"created_at"?: string,"creator_id": string,"decision_note"?: string | null,"domain": Database["public"]['Enums']["autonomy_domain"],"expires_at"?: string,"id"?: string,"impact": string,"payload"?: NonNullable<Json>,"plan": string,"resolved_at"?: string | null,"run_id"?: string | null,"status"?: string,"supersedes"?: string | null,"understood": string
                   }
                   Update: {
-                    "action"?: string,"conversation_id"?: string | null,"created_at"?: string,"creator_id"?: string,"domain"?: Database["public"]['Enums']["autonomy_domain"],"id"?: string,"impact"?: string,"payload"?: NonNullable<Json>,"plan"?: string,"resolved_at"?: string | null,"run_id"?: string | null,"status"?: string,"understood"?: string
+                    "action"?: string,"conversation_id"?: string | null,"created_at"?: string,"creator_id"?: string,"decision_note"?: string | null,"domain"?: Database["public"]['Enums']["autonomy_domain"],"expires_at"?: string,"id"?: string,"impact"?: string,"payload"?: NonNullable<Json>,"plan"?: string,"resolved_at"?: string | null,"run_id"?: string | null,"status"?: string,"supersedes"?: string | null,"understood"?: string
                   }
                   Relationships: [
                     {
@@ -51,6 +51,12 @@ isOneToOne: false
       columns: ["run_id"]
 isOneToOne: false
       referencedRelation: "ai_runs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ai_proposals_supersedes_fkey"
+      columns: ["supersedes"]
+isOneToOne: false
+      referencedRelation: "ai_proposals"
       referencedColumns: ["id"]
     }
                   ]

@@ -320,6 +320,9 @@ function AutonomySection({ autonomy }: Props) {
         <div>
           <h2 className="text-xl font-semibold text-ink">Creator Autonomy</h2>
           <p className="mt-1 text-[15px] text-ink-muted">Choose how CreatorBrain can work with you. Be bold with creativity; be conservative with consequences.</p>
+          <Link href="/approvals" className="mt-1 inline-flex min-h-11 items-center text-[15px] font-medium text-accent-ink hover:underline">
+            Review approvals
+          </Link>
         </div>
         <Button
           variant="secondary"
