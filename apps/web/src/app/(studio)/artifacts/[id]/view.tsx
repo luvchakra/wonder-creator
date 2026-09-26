@@ -60,7 +60,7 @@ interface Rights {
   notes: string | null;
   rights_owners: Array<{ id: string; owner_name: string; share_percent: number; owner_creator_id: string | null }>;
   licenses: Array<{ id: string; license_type: string; licensee_name: string | null; status: string; territory: string; exclusive: boolean; starts_on: string | null; ends_on: string | null }>;
-  events: Array<{ id: string; event: string; created_at: string }>;
+  events: Array<{ id: string; event: string; created_at: string; title: string; kind: "rights" | "license" | "publication" | "derivative"; derivativeId?: string }>;
 }
 
 const LICENSE_LABEL: Record<string, string> = {
@@ -330,7 +330,14 @@ export function ArtifactView(props: {
         </TabPanel>
 
         <TabPanel value="rights">
-          <RightsPanel artifactId={a.id} rights={props.rights} disclaimer={props.rightsDisclaimer} isOwner={isOwner} />
+          <RightsPanel
+            artifactId={a.id}
+            rights={props.rights}
+            disclaimer={props.rightsDisclaimer}
+            isOwner={isOwner}
+            contributors={props.contributors}
+            provenance={{ derivedFrom: derivedFrom[0] ? { id: derivedFrom[0].id, title: derivedFrom[0].title } : null, materials: createdFrom.length, references: references.length }}
+          />
         </TabPanel>
       </Tabs>
 
@@ -765,10 +772,25 @@ function artifactTypeLabel(type: string): string {
   return ARTIFACT_TYPES.find((t) => t.type === type)?.description ?? "";
 }
 
-function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: string; rights: Rights | null; disclaimer: string; isOwner: boolean }) {
+function RightsPanel({
+  artifactId,
+  rights,
+  disclaimer,
+  isOwner,
+  contributors,
+  provenance,
+}: {
+  artifactId: string;
+  rights: Rights | null;
+  disclaimer: string;
+  isOwner: boolean;
+  contributors: Array<{ role: string; name: string; handle: string | null }>;
+  provenance: { derivedFrom: { id: string; title: string } | null; materials: number; references: number };
+}) {
   const router = useRouter();
   const [edit, setEdit] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<"all" | "rights" | "license" | "publication" | "derivative">("all");
   const [error, setError] = useState<string | null>(null);
   const stepUp = useStepUp();
   const [form, setForm] = useState(() => ({
@@ -781,11 +803,15 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
     owners: (rights?.rights_owners ?? []).map((o) => ({ name: o.owner_name, sharePercent: Number(o.share_percent), creatorId: o.owner_creator_id })),
   }));
   if (!rights) return <p className="text-ink-muted">Rights details are only visible to the creator.</p>;
+  const history = historyFilter === "all" ? rights.events : rights.events.filter((e) => e.kind === historyFilter);
   const total = form.owners.reduce((s, o) => s + (Number(o.sharePercent) || 0), 0);
 
   return (
     <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1.2fr_1fr]">
       {stepUp.dialog}
+      <p role="note" className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-3 text-sm text-warning-ink lg:col-span-full">
+        {disclaimer}
+      </p>
       <section className="rounded-2xl border border-border-soft bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-semibold text-ink">
@@ -898,7 +924,32 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
             </div>
           </form>
         )}
-        <p className="mt-4 text-xs text-ink-subtle">{disclaimer}</p>
+        {!edit ? (
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-surface-muted p-3">
+              <dt className="text-xs text-ink-subtle">Contributors</dt>
+              <dd className="mt-1 text-sm text-ink">{contributors.length ? contributors.map((c) => `${c.name} (${c.role})`).join(", ") : "Only you"}</dd>
+            </div>
+            <div className="rounded-xl bg-surface-muted p-3">
+              <dt className="text-xs text-ink-subtle">Provenance</dt>
+              <dd className="mt-1 text-sm text-ink">
+                {provenance.derivedFrom ? (
+                  <>
+                    Derived from{" "}
+                    <Link href={`/artifacts/${provenance.derivedFrom.id}`} className="text-accent-ink hover:underline">
+                      “{provenance.derivedFrom.title}”
+                    </Link>
+                  </>
+                ) : provenance.materials ? (
+                  `Made from ${provenance.materials} piece${provenance.materials === 1 ? "" : "s"} of your material`
+                ) : (
+                  "Made from scratch"
+                )}
+                {provenance.references ? <span className="block text-xs text-ink-subtle">{provenance.references} reference{provenance.references === 1 ? "" : "s"}</span> : null}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-border-soft bg-surface p-5">
@@ -948,14 +999,60 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
         ) : (
           <p className="mt-2 text-sm text-ink-muted">No licenses. Personal viewing only.</p>
         )}
-        <h3 className="mt-5 text-sm font-medium text-ink">History</h3>
-        <ul className="mt-1 space-y-1 text-xs text-ink-subtle">
-          {rights.events.slice(0, 6).map((e) => (
-            <li key={e.id}>
-              {e.event.replace(/_/g, " ").replace(".", " · ")} — <RelativeTime iso={e.created_at} />
-            </li>
-          ))}
-        </ul>
+      </section>
+      <section className="rounded-2xl border border-border-soft bg-surface p-5 lg:col-span-full" aria-labelledby="rights-history">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="rights-history" className="font-semibold text-ink">
+            Rights history
+          </h2>
+          <nav aria-label="Filter history" className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
+            {(
+              [
+                ["all", "All"],
+                ["rights", "Ownership"],
+                ["license", "Licenses"],
+                ["publication", "Publication"],
+                ["derivative", "Derivatives"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={historyFilter === k}
+                onClick={() => setHistoryFilter(k)}
+                className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm", historyFilter === k ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <p className="mt-1 text-xs text-ink-subtle">Every change is recorded here and can&apos;t be edited or removed.</p>
+        {history.length ? (
+          <ol className="mt-3 space-y-2 border-l border-border-soft pl-4" aria-label="Rights events, newest first">
+            {history.map((e) => (
+              <li key={e.id} className="relative text-sm">
+                <span className="absolute -left-[21px] top-1.5 size-2.5 rounded-full bg-accent" aria-hidden />
+                <p className="text-ink">
+                  {e.title}
+                  {e.derivativeId ? (
+                    <>
+                      {" "}
+                      <Link href={`/artifacts/${e.derivativeId}`} className="text-accent-ink hover:underline">
+                        Open it
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
+                <p className="text-xs text-ink-subtle">
+                  <RelativeTime iso={e.created_at} />
+                </p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-3 text-sm text-ink-muted">Nothing recorded here yet.</p>
+        )}
       </section>
       {isOwner ? <LicenseDialog open={licenseOpen} onOpenChange={setLicenseOpen} artifactId={artifactId} /> : null}
     </div>

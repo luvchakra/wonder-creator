@@ -50,3 +50,29 @@ test.describe("rights step-up", () => {
     expect((await page.request.get(`/api/v1/artifacts/${artifactId}`)).status()).toBe(200);
   });
 });
+
+test.describe("rights detail & history", () => {
+  test("the Rights tab leads with the legal note and keeps a readable, filterable history", async ({ page, creator }) => {
+    void creator;
+    const id = await newPiece(page, `Tide chart ${uid()}`);
+    // A license, then make it final and public: both land in the history.
+    expect((await page.request.post(`/api/v1/artifacts/${id}/licenses`, { data: { licenseType: "editorial", licenseeName: "Harbour Times" } })).ok()).toBe(true);
+    expect((await page.request.patch(`/api/v1/artifacts/${id}`, { data: { status: "final", privacy: "public" } })).ok()).toBe(true);
+
+    await page.goto(`/artifacts/${id}?tab=rights`);
+    await expect(page.getByRole("note").filter({ hasText: "don't by themselves establish legal ownership" })).toBeVisible();
+    await expect(page.getByText("Contributors", { exact: true })).toBeVisible();
+    await expect(page.getByText("Provenance", { exact: true })).toBeVisible();
+
+    const history = page.getByRole("list", { name: "Rights events, newest first" });
+    await expect(history.getByRole("listitem").first()).toContainText("Sharing changed: visibility private → public, status draft → final");
+    await expect(history).toContainText("Editorial Use for Harbour Times recorded (draft)");
+    await expect(history).toContainText(/Rights record created — .*, sole ownership/);
+
+    await page.getByRole("navigation", { name: "Filter history" }).getByRole("button", { name: "Licenses" }).click();
+    await expect(history.getByRole("listitem")).toHaveCount(1);
+    await page.getByRole("navigation", { name: "Filter history" }).getByRole("button", { name: "Publication" }).click();
+    await expect(history.getByRole("listitem")).toHaveCount(1);
+    await expect(history).toContainText("Sharing changed");
+  });
+});

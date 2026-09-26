@@ -40,12 +40,12 @@ describe("rights history", () => {
         .select("id")
         .single(),
     ).id;
-    expect(await eventsFor(rightsId)).toEqual(["rights_records.insert"]);
+    expect(await eventsFor(rightsId)).toEqual(["rights.created"]);
   });
 
   it("updating the rights record writes a rights event", async () => {
     expectOk(await a.client.from("rights_records").update({ derivatives_allowed: true }).eq("id", rightsId));
-    expect(await eventsFor(rightsId)).toEqual(["rights_records.insert", "rights_records.update"]);
+    expect(await eventsFor(rightsId)).toEqual(["rights.created", "derivatives.changed"]);
   });
 
   it("license and owner writes write rights events", async () => {
@@ -64,7 +64,7 @@ describe("rights history", () => {
     );
     const events = await eventsFor(rightsId);
     expect(events).toEqual(
-      expect.arrayContaining(["licenses.insert", "licenses.update", "rights_owners.insert"]),
+      expect.arrayContaining(["license.created", "license.activated", "owner.added"]),
     );
     expect(events).toHaveLength(5);
   });
@@ -160,7 +160,7 @@ describe("rights lifecycle", () => {
       await a.client.from("licenses").insert({ rights_id: rid, creator_id: a.creatorId, license_type: "personal" }).select("id").single(),
     ).id;
     expect(expectOk(await a.client.from("licenses").delete().eq("id", lid).select("id"))).toHaveLength(1);
-    expect(await eventsFor(rid)).toContain("licenses.delete");
+    expect(await eventsFor(rid)).toContain("license.deleted");
   });
 
   it("the owner can delete an artifact that has rights, licenses and owners", async () => {

@@ -12,7 +12,7 @@ export const LICENSE_TYPES = [
 ] as const;
 
 export const RIGHTS_DISCLAIMER =
-  "Wonder Creator keeps a record of ownership, licenses and changes as evidence. A record here is not, on its own, legal proof of ownership in every jurisdiction.";
+  "Wonder Creator keeps a record of ownership, licenses and changes as evidence. These records don't by themselves establish legal ownership; legal effect depends on your agreements and the law where you are.";
 
 export const rightsSchema = z.object({
   ownershipKind: z.enum(["sole", "joint", "transferred"]),
@@ -56,8 +56,9 @@ export async function getRights(db: Db, artifactId: string) {
   const rights = await db.from("rights_records").select("*, rights_owners(*), licenses(*)").eq("artifact_id", artifactId).maybeSingle();
   if (rights.error) throw fromDbError(rights.error);
   if (!rights.data) return null;
-  const events = await db.from("rights_events").select("id, event, created_at").eq("rights_id", rights.data.id).order("created_at", { ascending: false }).limit(30);
-  return { ...rights.data, events: events.data ?? [] };
+  // Owners only (RLS); others see the current record, not its history.
+  const events = await db.from("rights_events").select("id, event, details, created_at").eq("rights_id", rights.data.id).order("created_at", { ascending: false }).limit(200);
+  return { ...rights.data, events: (events.data ?? []).map((e) => ({ id: e.id, event: e.event, created_at: e.created_at, ...describeRightsEvent(e.event, (e.details ?? {}) as Record<string, unknown>) })) };
 }
 
 export async function saveRights(db: Db, creatorId: string, artifactId: string, raw: unknown) {
@@ -115,4 +116,58 @@ export async function setLicenseStatus(db: Db, licenseId: string, status: "activ
   const res = await db.from("licenses").update({ status }).eq("id", licenseId).select("id");
   if (res.error) throw fromDbError(res.error);
   if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that license.");
+}
+
+const OWNERSHIP_LABEL: Record<string, string> = { sole: "sole ownership", joint: "joint ownership", transferred: "transferred ownership" };
+const PRIVACY_LABEL: Record<string, string> = { creator_private: "private", public: "public", followers: "followers", unlisted: "unlisted", collaborators: "collaborators", huddle: "Huddle" };
+const licenseName = (d: Record<string, unknown>) => {
+  const type = LICENSE_TYPES.find((t) => t.value === d.license_type)?.label ?? "License";
+  return d.licensee ? `${type} for ${String(d.licensee)}` : type;
+};
+
+/** A rights event as a plain sentence for the history feed. Unknown events stay readable. */
+export function describeRightsEvent(event: string, d: Record<string, unknown>): { title: string; kind: "rights" | "license" | "publication" | "derivative"; derivativeId?: string } {
+  switch (event) {
+    case "rights.created":
+      return { title: `Rights record created — ${String(d.copyright_holder ?? "you")}, ${OWNERSHIP_LABEL[String(d.ownership_kind)] ?? "sole ownership"}`, kind: "rights" };
+    case "ownership.updated":
+      return { title: `Ownership changed from ${OWNERSHIP_LABEL[String(d.from)] ?? d.from} to ${OWNERSHIP_LABEL[String(d.to)] ?? d.to}`, kind: "rights" };
+    case "copyright.updated":
+      return { title: `Copyright holder set to ${String(d.holder)}${d.registration ? ` (registration ${String(d.registration)})` : ""}`, kind: "rights" };
+    case "attribution.changed":
+      return { title: d.required ? "Attribution is now required" : "Attribution is no longer required", kind: "rights" };
+    case "derivatives.changed":
+      return { title: d.allowed ? "Others may now make derivatives" : "Others may no longer make derivatives", kind: "rights" };
+    case "notes.updated":
+      return { title: "Rights notes updated", kind: "rights" };
+    case "owner.added":
+      return { title: `Owner added: ${String(d.name)} (${Number(d.share_percent)}%)`, kind: "rights" };
+    case "owner.removed":
+      return { title: `Owner removed: ${String(d.name)} (${Number(d.share_percent)}%)`, kind: "rights" };
+    case "owner.updated":
+      return { title: `Owner updated: ${String(d.name)} (${Number(d.share_percent)}%)`, kind: "rights" };
+    case "license.created":
+      return { title: `${licenseName(d)} recorded (${String(d.status ?? "draft")})`, kind: "license" };
+    case "license.activated":
+      return { title: `${licenseName(d)} activated`, kind: "license" };
+    case "license.revoked":
+      return { title: `${licenseName(d)} revoked`, kind: "license" };
+    case "license.expired":
+      return { title: `${licenseName(d)} expired`, kind: "license" };
+    case "license.deleted":
+      return { title: `${licenseName(d)} removed`, kind: "license" };
+    case "license.updated":
+      return { title: `${licenseName(d)} updated`, kind: "license" };
+    case "publication.changed": {
+      const parts: string[] = [];
+      if (d.privacy_from !== d.privacy_to) parts.push(`visibility ${PRIVACY_LABEL[String(d.privacy_from)] ?? d.privacy_from} → ${PRIVACY_LABEL[String(d.privacy_to)] ?? d.privacy_to}`);
+      if (d.status_from !== d.status_to) parts.push(d.status_to === "published" ? "published" : `status ${String(d.status_from).replace("_", " ")} → ${String(d.status_to).replace("_", " ")}`);
+      return { title: `Sharing changed: ${parts.join(", ") || "updated"}`, kind: "publication" };
+    }
+    case "derivative.created":
+      return { title: d.by_self ? "You made a derivative of this piece" : "Another creator made a derivative of this piece (with your permission)", kind: "derivative", derivativeId: d.by_self ? String(d.derivative_id) : undefined };
+    default:
+      // Events recorded before semantic history ("rights_records.update" etc.).
+      return { title: `Rights record changed (${event.replace(/_/g, " ").replace(".", " · ")})`, kind: event.startsWith("licenses") ? "license" : "rights" };
+  }
 }
