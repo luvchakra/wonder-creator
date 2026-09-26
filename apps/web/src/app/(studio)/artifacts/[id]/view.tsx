@@ -26,7 +26,7 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, RotateCcw, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -161,6 +161,9 @@ export function ArtifactView(props: {
                 <Button variant="secondary" onClick={() => setShareOpen(true)}>
                   <Share2 className="size-4" aria-hidden /> Share
                 </Button>
+                <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary" })}>
+                  <Send className="size-4" aria-hidden /> Publish
+                </Link>
               </>
             ) : null}
             <Menu>

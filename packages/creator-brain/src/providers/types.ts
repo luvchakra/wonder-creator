@@ -10,6 +10,7 @@ export type TaskKind =
   | "refine"
   | "transform"
   | "memory" // extract durable creative memories
+  | "publish_copy" // draft titles and captions for publishing
   | "describe_image";
 
 export type ContentPart =

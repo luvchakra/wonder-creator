@@ -44,7 +44,9 @@ export function identityBlock(ctx: CreativeContext): string {
 }
 
 export function systemPrompt(ctx: CreativeContext, task: string): string {
-  return `${PREAMBLE}\n\n## The creator\n${identityBlock(ctx)}\n\n## Your task\n${task}`;
+  const published = ctx.selectedArtifacts.filter((a) => a.publications.length).map((a) => `- [${a.ref}] “${a.title}”: published to ${a.publications.join("; ")}`);
+  const outcomes = published.length ? `\n\n## Where this work has been published\n${published.join("\n")}` : "";
+  return `${PREAMBLE}\n\n## The creator\n${identityBlock(ctx)}${outcomes}\n\n## Your task\n${task}`;
 }
 
 export function renderMaterial(m: MaterialContext): string {
@@ -83,6 +85,8 @@ export const TASKS = {
     "Revise the current draft according to the creator's request. Keep everything they didn't ask to change. Output only the full revised piece.",
   transform:
     "Adapt the source piece into a new artifact type. Keep its heart, voice and key images; the result is a derivative of the source. Output only the new piece.",
+  publish_copy:
+    "Draft publishing copy for this piece: a title, a short caption (at most 2 sentences, no hashtag walls, no engagement bait) and a one-paragraph description, in the creator's voice. Describe only the piece; never mention private source material.",
   memory:
     "From the creator's own words, extract at most three durable facts about their creative practice worth remembering (preferences, voice, recurring themes). Only include what they clearly expressed. Return an empty list if nothing is durable.",
 } as const;
