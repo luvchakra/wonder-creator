@@ -113,3 +113,53 @@ describe("GeminiProvider contract", () => {
     await expect(new GeminiProvider({ apiKey: "k", fetch: f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_failed" });
   });
 });
+
+describe("GeminiProvider transcription", () => {
+  const ok = (text: string) => reply(text);
+
+  it("sends small media inline with a transcription prompt and maps browser webm voice notes", async () => {
+    const { calls, f } = recorder(() => ok("Speaker 1: hello"));
+    const out = await new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "audio", mimeType: "audio/webm", bytes: new Uint8Array([1, 2, 3]) });
+    expect(out.text).toBe("Speaker 1: hello");
+    expect(calls).toHaveLength(1);
+    const parts = (calls[0].body.contents as Array<{ parts: Array<Record<string, unknown>> }>)[0].parts;
+    expect(parts[0]).toEqual({ inlineData: { mimeType: "video/webm", data: "AQID" } });
+    expect(String(parts[1].text)).toContain("Transcribe this recording verbatim");
+  });
+
+  it("uploads large media through the File API, waits for processing, and deletes it afterwards", async () => {
+    const seen: Array<{ url: string; method: string; headers: Headers }> = [];
+    let polls = 0;
+    const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      seen.push({ url, method, headers: new Headers(init?.headers) });
+      if (url.endsWith("/upload/v1beta/files")) {
+        return new Response("{}", { status: 200, headers: { "x-goog-upload-url": "https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=abc" } });
+      }
+      if (url.includes("upload_id=abc")) return json({ file: { name: "files/f1", uri: "https://generativelanguage.googleapis.com/v1beta/files/f1", state: "PROCESSING" } });
+      if (method === "GET" && url.endsWith("/v1beta/files/f1")) {
+        polls++;
+        return json({ name: "files/f1", uri: "https://generativelanguage.googleapis.com/v1beta/files/f1", state: "ACTIVE" });
+      }
+      if (method === "DELETE") return json({});
+      return ok("Speaker 1: long take");
+    }) as typeof fetch;
+    const out = await new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "video", mimeType: "video/mp4", bytes: new Uint8Array(15 * 1024 * 1024) });
+    expect(out.text).toBe("Speaker 1: long take");
+    expect(polls).toBe(1);
+    const start = seen[0];
+    expect(start.headers.get("x-goog-upload-protocol")).toBe("resumable");
+    expect(start.headers.get("x-goog-upload-header-content-type")).toBe("video/mp4");
+    expect(start.headers.get("x-goog-api-key")).toBe("k");
+    expect(seen[1].headers.get("x-goog-upload-command")).toBe("upload, finalize");
+    const gen = seen.find((c) => c.url.includes(":generateContent"));
+    expect(gen).toBeDefined();
+    expect(seen.at(-1)).toMatchObject({ method: "DELETE", url: "https://generativelanguage.googleapis.com/v1beta/files/f1" });
+  });
+
+  it("rejects an upload URL on a foreign host", async () => {
+    const f = (async () => new Response("{}", { status: 200, headers: { "x-goog-upload-url": "https://evil.example/upload" } })) as typeof fetch;
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "video", mimeType: "video/mp4", bytes: new Uint8Array(15 * 1024 * 1024) })).rejects.toMatchObject({ code: "provider_failed" });
+  });
+});

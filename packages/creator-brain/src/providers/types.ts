@@ -53,6 +53,13 @@ export interface StructuredOutput<T> extends Omit<GenerateOutput, "text"> {
 
 export type GenerateChunk = { type: "text"; text: string } | { type: "done"; output: GenerateOutput };
 
+export interface TranscribeInput {
+  kind: "audio" | "video";
+  /** Detected (not declared) MIME type of the stored original. */
+  mimeType: string;
+  bytes: Uint8Array;
+}
+
 /** Provider-neutral creative model interface. Provider configuration is server-side only. */
 export interface CreativeModelProvider {
   readonly name: string;
@@ -61,6 +68,8 @@ export interface CreativeModelProvider {
   generate(input: GenerateInput): Promise<GenerateOutput>;
   stream(input: GenerateInput): AsyncIterable<GenerateChunk>;
   structured<T>(input: StructuredInput<T>): Promise<StructuredOutput<T>>;
+  /** Speech-to-text for audio/video. Absent when the provider can't transcribe (never faked). */
+  transcribe?(input: TranscribeInput): Promise<GenerateOutput>;
 }
 
 export interface ProviderReadiness {

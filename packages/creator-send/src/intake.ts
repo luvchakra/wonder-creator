@@ -4,6 +4,7 @@ import { inspectUpload, parseExternalUrl, safeFetch, safeFilename, type MediaKin
 import { understandMaterial, type CreativeModelProvider } from "@wonder/creator-brain";
 import { createMaterial, MATERIAL_BUCKET, type MaterialType } from "@wonder/creator-library";
 import type { Db, JsonValue, Tables } from "@wonder/db";
+import { extractDocxText } from "./docx";
 import { extractPage, parseYouTubeId, splitLinks } from "./links";
 import { canTransition, type IntakeState } from "./states";
 
@@ -224,7 +225,9 @@ async function loadBytes(service: Db, storageObjectId: string): Promise<{ bytes:
   return { bytes: new Uint8Array(await dl.data.arrayBuffer()), mime: obj.data.mime_type };
 }
 
-async function extractText(bytes: Uint8Array, mime: string): Promise<{ text: string | null; note?: string; pages?: number }> {
+type Extracted = { text: string | null; note?: string; pages?: number; transcription?: { provider: string; model: string } };
+
+async function extractText(bytes: Uint8Array, mime: string, provider?: CreativeModelProvider): Promise<Extracted> {
   if (mime.startsWith("text/")) return { text: new TextDecoder().decode(bytes).slice(0, 200000) };
   if (mime === "application/pdf") {
     const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
@@ -232,11 +235,30 @@ async function extractText(bytes: Uint8Array, mime: string): Promise<{ text: str
     const { text, totalPages } = await pdfText(pdf, { mergePages: true });
     return { text: (text as string).slice(0, 200000), pages: totalPages };
   }
-  if (mime.startsWith("audio/") || mime.startsWith("video/")) {
-    return { text: null, note: "Transcription isn't connected yet — the original is saved and playable." };
+  if (mime.startsWith("audio/") || mime.startsWith("video/")) return transcribe(bytes, mime, provider);
+  if (mime.includes("wordprocessingml")) {
+    const text = extractDocxText(bytes);
+    if (text === null) return { text: null, note: "We couldn't read the text in this Word document. The original is saved." };
+    return text ? { text } : { text: null, note: "This Word document has no text to read. The original is saved." };
   }
-  if (mime.includes("wordprocessingml")) return { text: null, note: "Word documents are stored; text extraction for them is coming soon." };
   return { text: null };
+}
+
+/** Transcription is best-effort: a failure leaves the original saved and playable, never a failed intake. */
+async function transcribe(bytes: Uint8Array, mime: string, provider?: CreativeModelProvider): Promise<Extracted> {
+  const kind = mime.startsWith("video/") ? "video" : "audio";
+  if (!provider?.transcribe) {
+    return { text: null, note: "Transcription isn't available with the current AI setup. The original is saved and playable." };
+  }
+  try {
+    const out = await provider.transcribe({ kind, mimeType: mime, bytes });
+    const text = out.text.trim();
+    if (!text || /^\[no speech\]$/i.test(text)) return { text: null, note: `No speech was found in this ${kind}. The original is saved and playable.` };
+    return { text: text.slice(0, 200000), transcription: { provider: out.provider, model: out.model } };
+  } catch (e) {
+    log("warn", "intake.transcribe_failed", { code: isDomainError(e) ? e.code : "internal" });
+    return { text: null, note: `We couldn't transcribe this ${kind} right now. The original is saved and playable.` };
+  }
 }
 
 export async function processIntake(deps: IntakeDeps, intakeId: string): Promise<IntakeItem> {
@@ -259,10 +281,12 @@ export async function processIntake(deps: IntakeDeps, intakeId: string): Promise
       if (material.storage_object_id) {
         const file = await loadBytes(deps.service, material.storage_object_id);
         if (!file) throw new DomainError("provider_failed", "We couldn't read the stored file.");
-        const ex = await extractText(file.bytes, file.mime);
+        const ex = await extractText(file.bytes, file.mime, deps.provider);
         extracted = ex.text;
         if (ex.pages) meta.pages = ex.pages;
+        if (ex.transcription) meta.transcription = ex.transcription;
         if (ex.note) meta.processingNote = ex.note;
+        else delete meta.processingNote;
         if (["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.mime) && file.bytes.byteLength <= 5 * 1024 * 1024) {
           image = { mediaType: file.mime as "image/png", dataBase64: Buffer.from(file.bytes).toString("base64") };
         }
