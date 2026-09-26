@@ -45,7 +45,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-10">
       <BrandBackground src={BACKGROUNDS.botanicalLeaves} overlay="cream" position="right center" className="-mx-4 rounded-none px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-3xl lg:px-10">
-        <section className="grid gap-8 py-8 lg:grid-cols-[1fr_1.35fr] lg:items-center lg:py-12" aria-labelledby="greeting">
+        <section className="grid gap-8 py-8 [&>*]:min-w-0 lg:grid-cols-[1fr_1.35fr] lg:items-center lg:py-12" aria-labelledby="greeting">
           <div>
             <h1 id="greeting" className="text-ink">
               <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>

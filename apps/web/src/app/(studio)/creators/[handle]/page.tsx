@@ -44,7 +44,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
       <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="soft" className="-mx-4 h-40 sm:-mx-6 sm:h-48 lg:mx-0 lg:rounded-3xl" />
       <section className="-mt-24 grid gap-6 px-1 lg:grid-cols-[1fr_320px]">
         <div>
-          <Avatar name={c.display_name || c.handle || "Creator"} src={avatars[c.id]} size={112} className="border-4 border-cream" />
+          <Avatar name={c.display_name || c.handle || "Creator"} src={avatars[c.id]} size={112} className="relative z-10 border-4 border-cream" />
           <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="break-words font-display text-3xl text-ink sm:text-4xl">{c.display_name || "Creator"}</h1>
