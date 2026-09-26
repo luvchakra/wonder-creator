@@ -1,4 +1,4 @@
-import { DomainError, fromDbError, must, publishEvent } from "@wonder/core";
+import { DomainError, fromDbError, publishEvent } from "@wonder/core";
 import { createMaterial } from "@wonder/creator-library";
 import type { Db, Tables } from "@wonder/db";
 import { z } from "zod";
@@ -8,6 +8,20 @@ export type Huddle = Tables<"huddles">;
 export const startSchema = z.object({
   topic: z.string().trim().max(140).optional().default(""),
   discoverability: z.enum(["public", "invite_only"]).default("public"),
+  description: z.string().trim().max(500).optional().default(""),
+  /** Whether participants may save each other's chat messages (from the start). Off unless the host says so. */
+  allowSavingChat: z.boolean().default(false),
+  relatedArtifactId: z.string().uuid().nullish(),
+  relatedMaterialId: z.string().uuid().nullish(),
+  invite: z.array(z.string().uuid()).max(20).default([]),
+});
+
+export const configureSchema = z.object({
+  description: z.string().trim().max(500).optional(),
+  allowSavingChat: z.boolean().optional(),
+  relatedArtifactId: z.string().uuid().nullish(),
+  relatedMaterialId: z.string().uuid().nullish(),
+  clearRelated: z.boolean().optional(),
 });
 
 const rpcError = (e: { code?: string; message?: string }) => {
@@ -20,6 +34,11 @@ const rpcError = (e: { code?: string; message?: string }) => {
   if (msg.includes("only the host")) return new DomainError("forbidden", "Only the host can do that.");
   if (msg.includes("not admitted")) return new DomainError("forbidden", "Your request needs to be approved first.");
   if (msg.includes("not a participant")) return new DomainError("forbidden", "You're not in this Huddle.");
+  if (msg.includes("saving not allowed")) return new DomainError("forbidden", "Only your own messages can be saved, unless the host allowed saving chat when it was sent.");
+  if (msg.includes("invalid related item")) return new DomainError("validation", "You can only link your own material, or a piece you can open.");
+  if (msg.includes("invalid invitee")) return new DomainError("validation", "You can't invite that creator.");
+  if (msg.includes("invitation not found")) return new DomainError("not_found", "That invitation isn't open anymore.");
+  if (msg.includes("message not found")) return new DomainError("not_found", "That message is gone.");
   return fromDbError(e);
 };
 
@@ -27,7 +46,38 @@ export async function startHuddle(db: Db, raw: unknown): Promise<string> {
   const s = startSchema.parse(raw);
   const { data, error } = await db.rpc("huddle_start", { p_topic: s.topic, p_discoverability: s.discoverability });
   if (error) throw rpcError(error);
-  return data as string;
+  const id = data as string;
+  if (s.description || s.allowSavingChat || s.relatedArtifactId || s.relatedMaterialId) {
+    await configureHuddle(db, id, { description: s.description, allowSavingChat: s.allowSavingChat, relatedArtifactId: s.relatedArtifactId, relatedMaterialId: s.relatedMaterialId });
+  }
+  for (const invitee of s.invite) await inviteCreator(db, id, invitee);
+  return id;
+}
+
+/** Host-only settings while live. Allowing chat saving applies to messages sent from now on. */
+export async function configureHuddle(db: Db, huddleId: string, raw: unknown) {
+  const c = configureSchema.parse(raw);
+  const { data, error } = await db.rpc("huddle_configure", {
+    p_huddle: huddleId,
+    p_description: c.description,
+    p_allow_saving_chat: c.allowSavingChat,
+    p_related_artifact: c.relatedArtifactId ?? undefined,
+    p_related_material: c.relatedMaterialId ?? undefined,
+    p_clear_related: c.clearRelated ?? false,
+  });
+  if (error) throw rpcError(error);
+  return data as Huddle;
+}
+
+export async function relatedItem(db: Db, huddleId: string): Promise<{ kind: "artifact" | "material"; id: string | null; title: string; canOpen: boolean } | null> {
+  const { data, error } = await db.rpc("huddle_related", { p_huddle: huddleId });
+  if (error) throw rpcError(error);
+  return (data as never) ?? null;
+}
+
+export async function declineInvite(db: Db, huddleId: string) {
+  const { error } = await db.rpc("huddle_decline_invite", { p_huddle: huddleId });
+  if (error) throw rpcError(error);
 }
 
 export async function inviteCreator(db: Db, huddleId: string, inviteeId: string) {
@@ -122,6 +172,11 @@ export async function roomState(db: Db, huddleId: string, myCreatorId: string) {
       .order("created_at"),
     db.from("huddle_messages").select("id, creator_id, body, created_at").eq("huddle_id", huddleId).order("created_at").limit(200),
   ]);
+  const invitations = await db
+    .from("huddle_invitations")
+    .select("invitee_creator_id, status, created_at, creators!huddle_invitations_invitee_creator_id_fkey(display_name, handle)")
+    .eq("huddle_id", huddleId)
+    .order("created_at");
   const disciplines = await db
     .from("creator_disciplines")
     .select("creator_id, value")
@@ -137,6 +192,8 @@ export async function roomState(db: Db, huddleId: string, myCreatorId: string) {
     participants: (participants.data ?? []).map((p) => ({ ...p, discipline: firstDiscipline.get(p.creator_id) ?? null })),
     requests: (requests.data ?? []).map((r) => ({ ...r, discipline: firstDiscipline.get(r.requester_creator_id) ?? null })),
     messages: messages.data ?? [],
+    // Invitations are visible to participants (and to each invitee, their own).
+    invitations: (invitations.data ?? []).map((i) => ({ creatorId: i.invitee_creator_id, status: i.status, name: (i.creators as { display_name: string } | null)?.display_name ?? "Creator" })),
   };
 }
 
@@ -158,8 +215,11 @@ export const preserveSchema = z.object({
 /** Explicitly preserve something from a live Huddle as durable Creative Material. The Huddle stays ephemeral. */
 export async function preserve(db: Db, creatorId: string, huddleId: string, raw: unknown) {
   const p = preserveSchema.parse(raw);
-  const h = must(await db.from("huddles").select("id, topic, status").eq("id", huddleId).maybeSingle(), "This Huddle has ended.");
-  if (h.status !== "live") throw new DomainError("not_found", "This Huddle has ended.");
+  // Live participants, or past participants adding their own notes afterwards (their history row proves it).
+  const live = (await db.from("huddles").select("id, topic, status").eq("id", huddleId).maybeSingle()).data;
+  const past = live?.status === "live" ? null : (await db.from("huddle_history").select("topic").eq("huddle_id", huddleId).maybeSingle()).data;
+  if (live?.status !== "live" && !past) throw new DomainError("not_found", "This Huddle has ended.");
+  const h = { topic: live?.status === "live" ? live.topic : (past?.topic ?? null) };
   const material = await createMaterial(db, creatorId, {
     type: p.kind === "idea" ? "idea" : "note",
     title: p.title || (h.topic ? `From the Huddle: ${h.topic}` : "From a Huddle"),
@@ -171,6 +231,59 @@ export async function preserve(db: Db, creatorId: string, huddleId: string, raw:
   if (item.error) throw fromDbError(item.error);
   await publishEvent(db, { type: "HuddleContentPreserved", aggregate: "huddle", aggregateId: huddleId, payload: { materialId: material.id, kind: p.kind } });
   return material;
+}
+
+/**
+ * Save a chat message as Creative Material: your own, or someone else's if it was sent while the host allowed
+ * saving (checked by the database). Other people's words keep their attribution.
+ */
+export async function saveMoment(db: Db, creatorId: string, huddleId: string, messageId: string) {
+  const { data, error } = await db.rpc("huddle_moment", { p_huddle: huddleId, p_message: messageId });
+  if (error) throw rpcError(error);
+  const m = data as { body: string; author: string; own: boolean };
+  return preserve(db, creatorId, huddleId, { kind: "material", text: m.own ? m.body : `“${m.body}”\n— ${m.author}`, title: undefined });
+}
+
+export interface HuddleSummary {
+  huddleId: string;
+  topic: string | null;
+  role: "host" | "member";
+  startedAt: string;
+  joinedAt: string;
+  leftAt: string | null;
+  endedAt: string | null;
+  met: Array<{ id: string; name: string; handle: string | null }>;
+  saved: Array<{ id: string; kind: string; materialId: string | null; title: string | null; createdAt: string }>;
+}
+
+/** Your own record of a Huddle you were in: when, who you met, what you saved. Never its chat. */
+export async function huddleSummary(db: Db, huddleId: string): Promise<HuddleSummary | null> {
+  const h = await db.from("huddle_history").select("*").eq("huddle_id", huddleId).maybeSingle();
+  if (h.error) throw fromDbError(h.error);
+  if (!h.data) return null;
+  const saved = await db
+    .from("huddle_preserved_items")
+    .select("id, kind, material_id, created_at, creative_materials(title)")
+    .eq("huddle_id", huddleId)
+    .order("created_at");
+  if (saved.error) throw fromDbError(saved.error);
+  return {
+    huddleId,
+    topic: h.data.topic,
+    role: h.data.role as "host" | "member",
+    startedAt: h.data.started_at,
+    joinedAt: h.data.joined_at,
+    leftAt: h.data.left_at,
+    endedAt: h.data.ended_at,
+    met: (h.data.met as HuddleSummary["met"]) ?? [],
+    saved: (saved.data ?? []).map((x) => ({ id: x.id, kind: x.kind, materialId: x.material_id, title: (x.creative_materials as { title: string | null } | null)?.title ?? null, createdAt: x.created_at })),
+  };
+}
+
+export async function recentHuddles(db: Db, limit = 10) {
+  const { data, error } = await db.from("huddle_history").select("huddle_id, topic, joined_at, ended_at, met").not("ended_at", "is", null).order("joined_at", { ascending: false }).limit(limit);
+  if (error) throw fromDbError(error);
+  return (data ?? []).map((h) => ({ huddleId: h.huddle_id, topic: h.topic, joinedAt: h.joined_at, endedAt: h.ended_at, metCount: Array.isArray(h.met) ? h.met.length : 0 }));
 }
 
 export const reportSchema = z.object({

@@ -19,11 +19,12 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { Bookmark, Flag, MessageCircle, Mic, MicOff, MoreHorizontal, PhoneOff, Send, Users, Video, VideoOff, X } from "lucide-react";
+import { Bookmark, Flag, MessageCircle, UserPlus, Mic, MicOff, MoreHorizontal, PhoneOff, Send, Users, Video, VideoOff, X } from "lucide-react";
 import type { Room as LkRoom, Track } from "livekit-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useNow } from "@/components/client-time";
+import { LocalTime, useNow } from "@/components/client-time";
+import { CreatorPicker } from "@/components/creator-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { createClient } from "@/lib/supabase/client";
@@ -34,12 +35,14 @@ interface CreatorLite {
   handle: string | null;
 }
 interface RoomState {
-  huddle: { id: string; status: string; topic: string | null; started_at: string } | null;
+  huddle: { id: string; status: string; topic: string | null; started_at: string; description: string | null; chat_saving_since: string | null } | null;
   me: { role: string; status: string } | null;
   myPendingRequestId: string | null;
   participants: Array<{ creator_id: string; role: string; status: string; audio_on: boolean; video_on: boolean; discipline: string | null; creators: CreatorLite | null }>;
   requests: Array<{ id: string; requester_creator_id: string; message: string | null; created_at: string; discipline: string | null; creators: CreatorLite | null }>;
   messages: Array<{ id: string; creator_id: string; body: string; created_at: string }>;
+  invitations: Array<{ creatorId: string; status: string; name: string }>;
+  related: { kind: "artifact" | "material"; id: string | null; title: string; canOpen: boolean } | null;
   media: { configured: boolean };
 }
 
@@ -49,12 +52,14 @@ export function HuddleRoom({
   initial,
   card,
   avatars,
+  wasInIt,
 }: {
   huddleId: string;
   me: { id: string; name: string };
   initial: RoomState;
   card: { topic: string | null; participantCount: number; participantNames: string[]; startedAt: string; viewerState: string } | null;
   avatars: Record<string, string>;
+  wasInIt: boolean;
 }) {
   const router = useRouter();
   const [state, setState] = useState(initial);
@@ -71,6 +76,8 @@ export function HuddleRoom({
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [mediaNote, setMediaNote] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [savedMoment, setSavedMoment] = useState<string | null>(null);
   const [remoteTracks, setRemoteTracks] = useState<Record<string, Track>>({});
   const roomRef = useRef<LkRoom | null>(null);
 
@@ -220,7 +227,7 @@ export function HuddleRoom({
     try {
       await roomRef.current?.disconnect();
       await api(`/api/v1/huddles/${huddleId}/leave`, { method: "POST" });
-      router.push("/huddles");
+      router.push(`/huddles/${huddleId}/summary`);
       router.refresh();
     } catch (e) {
       setLeaving(false);
@@ -236,9 +243,16 @@ export function HuddleRoom({
       <div className="mx-auto max-w-lg rounded-3xl border border-border-soft bg-surface p-8 text-center">
         <h1 className="font-display text-3xl text-ink">{state.huddle ? "This Huddle has ended" : "This Huddle has ended or isn't available to you"}</h1>
         <p className="mt-2 text-ink-muted">Huddles are temporary. When everyone leaves, the conversation dissolves — anything someone saved lives on as their material.</p>
-        <Link href="/huddles" className={buttonClasses({ className: "mt-6" })}>
-          See who&apos;s live
-        </Link>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {wasInIt ? (
+            <Link href={`/huddles/${huddleId}/summary`} className={buttonClasses({})}>
+              Your Huddle summary
+            </Link>
+          ) : null}
+          <Link href="/huddles" className={buttonClasses({ variant: wasInIt ? "secondary" : "primary" })}>
+            See who&apos;s live
+          </Link>
+        </div>
       </div>
     );
   }
@@ -273,6 +287,18 @@ export function HuddleRoom({
             <Button variant="ghost" size="sm" className="mt-2" loading={busy === "cancel"} onClick={() => act("cancel", () => api(`/api/v1/huddles/${huddleId}/join`, { method: "DELETE", json: { requestId: state.myPendingRequestId } }))}>
               Cancel request
             </Button>
+          </div>
+        ) : publicCard && state.invitations.some((i) => i.creatorId === me.id && i.status === "pending") ? (
+          <div className="mt-6 rounded-2xl bg-accent-softer p-4">
+            <p className="font-medium text-ink">You&apos;re invited.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button loading={busy === "request"} onClick={() => act("request", () => api(`/api/v1/huddles/${huddleId}/join`, { method: "POST", json: {} }))}>
+                Ask to join
+              </Button>
+              <Button variant="ghost" loading={busy === "decline"} onClick={() => act("decline", () => api(`/api/v1/huddles/${huddleId}/decline`, { method: "POST" }))}>
+                Decline
+              </Button>
+            </div>
           </div>
         ) : publicCard ? (
           <form
@@ -318,6 +344,27 @@ export function HuddleRoom({
             <Users className="size-4" aria-hidden /> {joined.length}
           </span>
         </header>
+        <div className="space-y-1 border-b border-white/10 px-4 py-2 text-sm text-white/85">
+          {state.huddle?.description ? <p>{state.huddle.description}</p> : null}
+          {state.related ? (
+            <p>
+              About:{" "}
+              {state.related.canOpen && state.related.id ? (
+                <Link href={state.related.kind === "artifact" ? `/artifacts/${state.related.id}` : `/space/materials/${state.related.id}`} className="font-medium text-white underline underline-offset-2">
+                  {state.related.title}
+                </Link>
+              ) : (
+                <span className="font-medium text-white">{state.related.title}</span>
+              )}
+            </p>
+          ) : null}
+          <p>
+            Nothing is recorded or transcribed.{" "}
+            {state.huddle?.chat_saving_since
+              ? <>Anyone can save chat messages sent since <LocalTime iso={state.huddle.chat_saving_since} options={{ hour: "numeric", minute: "2-digit" }} />, credited to who wrote them.</>
+              : "You can save only your own messages."}
+          </p>
+        </div>
         <div className={cn("grid gap-0 lg:grid-cols-[1fr_320px]", !chatOpen && "lg:grid-cols-1")}>
           <section aria-label="Participants" className="p-3 sm:p-4">
             {!state.media.configured ? (
@@ -373,6 +420,18 @@ export function HuddleRoom({
                 </ul>
               </section>
             ) : null}
+            {state.invitations.length ? (
+              <section aria-label="Invitations" className="mt-4 rounded-2xl bg-white/10 p-3">
+                <h2 className="mb-2 text-sm font-semibold">Invited</h2>
+                <ul className="flex flex-wrap gap-2 text-sm">
+                  {state.invitations.map((i) => (
+                    <li key={i.creatorId} className="rounded-full bg-white/10 px-3 py-1">
+                      {i.name} · {i.status === "accepted" ? "joined" : i.status === "declined" ? "declined" : "invited"}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </section>
 
           {chatOpen ? (
@@ -382,7 +441,14 @@ export function HuddleRoom({
               messages={state.messages}
               nameOf={nameOf}
               onSent={refresh}
-              onPreserve={(text) => setPreserveText(text)}
+              canSave={(m) => m.creator_id === me.id || (!!state.huddle?.chat_saving_since && m.created_at >= state.huddle.chat_saving_since)}
+              onSave={(m) =>
+                act(`save${m.id}`, async () => {
+                  const r = await api<{ material: { id: string } }>(`/api/v1/huddles/${huddleId}/moments`, { method: "POST", json: { messageId: m.id } });
+                  setSavedMoment(r.material.id);
+                })
+              }
+              savingId={busy?.startsWith("save") ? busy.slice(4) : null}
               onClose={() => setChatOpen(false)}
             />
           ) : null}
@@ -407,6 +473,14 @@ export function HuddleRoom({
               <span className="hidden sm:block">More</span>
             </MenuTrigger>
             <MenuContent>
+              <MenuItem onSelect={() => setInviteOpen(true)}>
+                <UserPlus className="size-4" aria-hidden /> Invite creators
+              </MenuItem>
+              {isHost ? (
+                <MenuItem onSelect={() => act("saving", () => api(`/api/v1/huddles/${huddleId}`, { method: "PATCH", json: { allowSavingChat: !state.huddle?.chat_saving_since } }))}>
+                  <Bookmark className="size-4" aria-hidden /> {state.huddle?.chat_saving_since ? "Stop letting people save chat" : "Let people save chat from now on"}
+                </MenuItem>
+              ) : null}
               <MenuItem onSelect={() => setReportOpen(true)}>
                 <Flag className="size-4" aria-hidden /> Report a problem
               </MenuItem>
@@ -431,6 +505,23 @@ export function HuddleRoom({
         This Huddle is temporary. When the last person leaves, the chat disappears. Save anything worth keeping — it becomes your Creative Material.
       </p>
 
+      {savedMoment ? (
+        <p role="status" className="mt-2 px-4 text-sm text-ink sm:px-0">
+          Saved to your Creative Space.{" "}
+          <Link href={`/space/materials/${savedMoment}`} className="font-medium text-accent-ink hover:underline">
+            View it
+          </Link>
+        </p>
+      ) : null}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent title="Invite creators" description="They'll see an invitation and can ask to join or decline.">
+          <CreatorPicker
+            id="room-invite"
+            exclude={[...joined.map((p) => p.creator_id), ...state.invitations.map((i) => i.creatorId)]}
+            onPick={(c) => act(`inv${c.id}`, () => api(`/api/v1/huddles/${huddleId}/invite`, { method: "POST", json: { creatorId: c.id } }))}
+          />
+        </DialogContent>
+      </Dialog>
       <PreserveDialog key={preserveText === null ? "closed" : `open:${preserveText}`} huddleId={huddleId} text={preserveText} onClose={() => setPreserveText(null)} />
       <ReportDialog huddleId={huddleId} open={reportOpen} onOpenChange={setReportOpen} participants={joined.filter((p) => p.creator_id !== me.id).map((p) => ({ id: p.creator_id, name: p.creators?.display_name ?? "Creator" }))} />
       <ConfirmDialog
@@ -443,7 +534,7 @@ export function HuddleRoom({
         onConfirm={() =>
           act("end", async () => {
             await api(`/api/v1/huddles/${huddleId}/end`, { method: "POST" });
-            router.push("/huddles");
+            router.push(`/huddles/${huddleId}/summary`);
           })
         }
       />
@@ -486,7 +577,9 @@ function Chat({
   messages,
   nameOf,
   onSent,
-  onPreserve,
+  canSave,
+  onSave,
+  savingId,
   onClose,
 }: {
   huddleId: string;
@@ -494,7 +587,9 @@ function Chat({
   messages: RoomState["messages"];
   nameOf: (id: string) => string;
   onSent: () => Promise<void>;
-  onPreserve: (t: string) => void;
+  canSave: (m: RoomState["messages"][number]) => boolean;
+  onSave: (m: RoomState["messages"][number]) => void;
+  savingId: string | null;
   onClose: () => void;
 }) {
   const [body, setBody] = useState("");
@@ -519,9 +614,11 @@ function Chat({
             <li key={m.id} className="group text-sm">
               <span className="font-medium text-white">{m.creator_id === me ? "You" : nameOf(m.creator_id)}</span>{" "}
               <span className="whitespace-pre-wrap break-words text-white/85">{m.body}</span>
-              <button type="button" onClick={() => onPreserve(m.body)} className="ml-1 text-xs text-lavender underline-offset-2 hover:underline">
-                Save as idea
-              </button>
+              {canSave(m) ? (
+                <button type="button" onClick={() => onSave(m)} disabled={savingId === m.id} className="ml-1 text-xs text-lavender underline-offset-2 hover:underline" aria-label={`Save “${m.body.slice(0, 40)}”`}>
+                  {savingId === m.id ? "Saving…" : "Save"}
+                </button>
+              ) : null}
             </li>
           ))
         ) : (

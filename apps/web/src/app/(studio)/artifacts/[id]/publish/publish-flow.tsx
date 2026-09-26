@@ -4,7 +4,7 @@ import { ArrowUpRight, Check, CircleAlert, Globe, Loader, Sparkles, Webhook } fr
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { RelativeTime } from "@/components/client-time";
+import { LocalTime, RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
 
 type Destination = { id: string; name: string; url: string; secret: string };
@@ -388,7 +388,7 @@ function ResultRow({ p, busy, history, onRetry, onApprove, onCancel }: { p: Publ
       </div>
       {p.status === "scheduled" && p.scheduled_for ? (
         <p className="mt-2 text-sm text-ink-muted">
-          Goes out after <time dateTime={p.scheduled_for}>{new Date(p.scheduled_for).toLocaleString()}</time>.
+          Goes out after <LocalTime iso={p.scheduled_for} />.
         </p>
       ) : null}
       {p.status === "failed" && p.failure_reason ? <p className="mt-2 text-sm text-danger">{p.failure_reason}</p> : null}

@@ -67,7 +67,8 @@ export async function unifiedSearch(db: Db, creatorId: string, s: SearchInput): 
   const since = days ? new Date(Date.now() - days * 86_400_000).toISOString() : null;
   const hasQ = s.q.length >= 2;
   const ts = hasQ ? toTsQuery(s.q) : "";
-  const like = `%${s.q.replace(/[%_\\,()]/g, "")}%`;
+  // LIKE wildcards are escaped (handles contain "_"); characters that are syntax in PostgREST's or() are dropped.
+  const like = `%${s.q.replace(/[,()]/g, "").replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
   // Tags and material kinds describe material only; other entities drop out when they're set.
   const materialOnly = !!s.tag || !!s.kind;
 

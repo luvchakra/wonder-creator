@@ -26,7 +26,7 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -189,6 +189,9 @@ export function ArtifactView(props: {
                   </MenuItem>
                   <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
                     <Sparkles className="size-4" aria-hidden /> Talk about this piece
+                  </MenuItem>
+                  <MenuItem onSelect={() => router.push(`/huddles?artifact=${a.id}`)}>
+                    <Radio className="size-4" aria-hidden /> Start a Huddle about this
                   </MenuItem>
                   {a.status !== "archived" ? (
                     <MenuItem onSelect={() => patch({ status: "archived" })}>
