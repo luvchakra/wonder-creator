@@ -7,7 +7,7 @@ the gap listed) · **Not started**.
 | # | Capability | Status | Notes |
 |---|---|---|---|
 | 1 | Creator Identity | Done | Onboarding (6 steps, progressive, skippable), profile, disciplines/skills/languages, voice, boundaries, visibility |
-| 2 | Creative Material | Done | Create/import, view, search (FTS), filter, tags, provenance, security status, archive/delete (confirmed), reuse |
+| 2 | Creative Material | Done | Create/import, view, search (FTS + semantic via Gemini embeddings/pgvector), filter, tags, provenance, security status, archive/delete (confirmed), reuse |
 | 3 | CreatorSend | Done / Partial | Text, files, camera, voice notes, PDFs, Word (.docx) text, URLs (SSRF-guarded), multiple URLs, YouTube (oEmbed), explicit states, failure preservation, retry. Audio/video transcription via the AI provider (Gemini; inline ≤14 MB, File API above, deleted after use). **Gap:** no malware scanner (see security.md) |
 | 4 | CreatorTalk | Done | Text + browser dictation, attachments, persistence, grounding (server-resolved IDs), ambiguity question, streamed progress |
 | 5 | CreatorBrain | Done (provider-gated) | Context minimisation, intent, discovery, generation pipeline, quality, governance, run tracking. Live with `WONDERCREATOR_AI_PROVIDER` (gemini/anthropic) + `WONDERCREATOR_AI_API_KEY`; offline deterministic model in dev/CI |
@@ -37,5 +37,4 @@ the gap listed) · **Not started**.
 
 ## Known follow-ups
 - Malware scanning integration at the `security_review` intake step.
-- Semantic (vector) search on top of the existing lexical search.
 - Notifications panel (P0 surfaces pending proposals and join requests in context instead).

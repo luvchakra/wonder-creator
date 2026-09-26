@@ -14,4 +14,4 @@ export const POST = withApi<{ id: string }>(async ({ db, creatorId, req, request
     return { ok: true };
   }
   return approveProposal(deps, requireUuid(id, "proposal"));
-}, { rateLimit: 20 });
+}, { rateLimit: 20, reindex: true });

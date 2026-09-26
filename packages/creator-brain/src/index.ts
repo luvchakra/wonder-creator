@@ -9,3 +9,4 @@ export * from "./runs";
 export * from "./pipeline";
 export { artifactBrief, systemPrompt, TASKS } from "./prompts";
 export * from "./material-understanding";
+export * from "./semantic";

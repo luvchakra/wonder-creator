@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { DomainError, isDomainError, log, publishEvent } from "@wonder/core";
 import { createSharedRateLimiter } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
-import { NextResponse, type NextRequest } from "next/server";
+import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { createClient } from "./supabase/server";
 import { serviceClient, serviceConfigured } from "./supabase/service";
@@ -25,6 +26,8 @@ export interface ApiOptions {
   rateLimit?: number;
   /** Allow signed-out callers (ctx.creatorId will be ""). */
   public?: boolean;
+  /** After a successful response, refresh semantic-search embeddings for the caller's changed content. */
+  reindex?: boolean;
 }
 
 function problem(status: number, code: string, message: string, requestId: string, details?: unknown) {
@@ -67,6 +70,13 @@ export function withApi<P = Record<string, string>>(
       const params = (await route.params) ?? ({} as P);
       const result = await handler({ db, userId, creatorId, requestId, req }, params);
       log("info", "api.ok", { requestId, route: req.nextUrl.pathname, method: req.method, ms: Date.now() - started });
+      if (opts.reindex && creatorId && serviceConfigured()) {
+        after(() =>
+          indexStaleSubjects(serviceClient(), selectProvider(), { creatorId, limit: 10 }).catch((e) =>
+            log("warn", "semantic.reindex_failed", { requestId, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }),
+          ),
+        );
+      }
       if (result instanceof Response) {
         result.headers.set("x-request-id", requestId);
         return result;

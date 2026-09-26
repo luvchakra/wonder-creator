@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { isDomainError, log } from "@wonder/core";
-import { selectProvider } from "@wonder/creator-brain";
+import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
 import { processIntake } from "@wonder/creator-send";
 import { NextResponse, type NextRequest } from "next/server";
 import { serviceClient } from "@/lib/supabase/service";
@@ -15,8 +15,8 @@ function authorized(req: NextRequest): boolean {
 }
 
 /**
- * Durable background worker (Vercel Cron): retries pending intake jobs and cleans up stale Huddle
- * presence (dissolving empty Huddles). Protected by CRON_SECRET.
+ * Durable background worker (Vercel Cron): retries pending intake jobs, cleans up stale Huddle
+ * presence (dissolving empty Huddles) and backfills search embeddings. Protected by CRON_SECRET.
  */
 async function run(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
@@ -53,7 +53,12 @@ async function run(req: NextRequest) {
       results.push({ id: job.id, ok: false });
     }
   }
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results });
+  // Backfill semantic-search embeddings (missing or stale after edits) across creators.
+  const indexed = await indexStaleSubjects(service, selectProvider(), { limit: 100 }).catch((e) => {
+    log("warn", "jobs.index_failed", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" });
+    return 0;
+  });
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed });
 }
 
 export const GET = run;

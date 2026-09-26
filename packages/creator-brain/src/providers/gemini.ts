@@ -11,9 +11,17 @@ import type {
   StructuredOutput,
   TaskKind,
   TranscribeInput,
+  EmbedInput,
+  EmbedOutput,
 } from "./types";
+import { EMBEDDING_DIMENSIONS } from "./types";
 
 const DEFAULT_MODEL = "gemini-3.8-flash";
+/** Fixed (not configurable): stored vectors are only comparable within one embedding model. */
+export const GEMINI_EMBEDDING_MODEL = "gemini-embedding-2";
+const EMBED_BATCH = 100;
+/** ~8k-token input limit; keep well under it. */
+const EMBED_MAX_CHARS = 20_000;
 const API_ORIGIN = "https://generativelanguage.googleapis.com";
 const API_BASE = `${API_ORIGIN}/v1beta`;
 
@@ -157,12 +165,16 @@ export class GeminiProvider implements CreativeModelProvider {
     };
   }
 
-  private async post(method: "generateContent" | "streamGenerateContent", body: unknown): Promise<Response> {
+  private post(method: "generateContent" | "streamGenerateContent", body: unknown): Promise<Response> {
     const query = method === "streamGenerateContent" ? "?alt=sse" : "";
+    return this.postTo(`models/${encodeURIComponent(this.model)}:${method}${query}`, body);
+  }
+
+  private async postTo(path: string, body: unknown): Promise<Response> {
     let res: Response;
     try {
       // Key in a header, not the URL, so it never lands in request logs.
-      res = await this.fetch(`${API_BASE}/models/${encodeURIComponent(this.model)}:${method}${query}`, {
+      res = await this.fetch(`${API_BASE}/${path}`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
         body: JSON.stringify(body),
@@ -349,5 +361,36 @@ export class GeminiProvider implements CreativeModelProvider {
     } catch {
       /* expiry covers it */
     }
+  }
+
+  /** Retrieval embeddings (gemini-embedding-2 uses prompt prefixes instead of task types). */
+  async embed(input: EmbedInput): Promise<EmbedOutput> {
+    const texts = input.items.map((it) => {
+      const text = it.text.replace(/\s+/g, " ").trim().slice(0, EMBED_MAX_CHARS);
+      return input.purpose === "query" ? `task: search result | query: ${text}` : `title: ${it.title?.trim() || "none"} | text: ${text}`;
+    });
+    const vectors: number[][] = [];
+    for (let i = 0; i < texts.length; i += EMBED_BATCH) {
+      const batch = texts.slice(i, i + EMBED_BATCH);
+      const res = await this.postTo(`models/${GEMINI_EMBEDDING_MODEL}:batchEmbedContents`, {
+        requests: batch.map((text) => ({
+          model: `models/${GEMINI_EMBEDDING_MODEL}`,
+          content: { parts: [{ text }] },
+          output_dimensionality: EMBEDDING_DIMENSIONS,
+        })),
+      });
+      let body: { embeddings?: Array<{ values?: number[] }> };
+      try {
+        body = (await res.json()) as typeof body;
+      } catch (e) {
+        throw unexpected(e);
+      }
+      const got = body.embeddings ?? [];
+      if (got.length !== batch.length || got.some((e) => e.values?.length !== EMBEDDING_DIMENSIONS)) {
+        throw unexpected(new Error("embedding count or width mismatch"));
+      }
+      for (const e of got) vectors.push(e.values!);
+    }
+    return { vectors, model: GEMINI_EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS };
   }
 }

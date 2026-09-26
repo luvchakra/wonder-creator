@@ -22,4 +22,4 @@ export const POST = withApi(async ({ db, creatorId, req }) => {
     provenance: { origin: "typed" },
   });
   return { artifact };
-});
+}, { reindex: true });

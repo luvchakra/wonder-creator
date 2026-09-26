@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
 interface Results {
-  materials: Array<{ id: string; title: string | null; type: string }>;
-  artifacts: Array<{ id: string; title: string; artifact_type: string }>;
+  materials: Array<{ id: string; title: string | null; type: string; related?: boolean }>;
+  artifacts: Array<{ id: string; title: string; artifact_type: string; related?: boolean }>;
   creators: Array<{ id: string; display_name: string; handle: string }>;
   conversations: Array<{ id: string; conversationId: string; title: string; snippet: string }>;
   huddles: Array<{ huddleId: string; topic: string | null; participantNames: string[] }>;
@@ -49,8 +49,8 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           {empty ? <p className="text-sm text-ink-muted">Nothing found for “{q}”. Try another word.</p> : null}
           {shown ? (
             <>
-              <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, icon: <Sparkles className="size-4" /> }))} onPick={close} />
-              <Group title="Your material" items={shown.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", icon: <FileText className="size-4" /> }))} onPick={close} />
+              <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, sub: a.related ? "Related in meaning" : undefined, icon: <Sparkles className="size-4" /> }))} onPick={close} />
+              <Group title="Your material" items={shown.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", sub: m.related ? "Related in meaning" : undefined, icon: <FileText className="size-4" /> }))} onPick={close} />
               <Group title="Conversations" items={shown.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={close} />
               <Group title="Creators" items={shown.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={close} />
               <Group title="Live now" items={shown.huddles.map((h) => ({ href: `/huddles/${h.huddleId}`, label: h.topic || h.participantNames.join(" · "), icon: <LiveBadge /> }))} onPick={close} />
