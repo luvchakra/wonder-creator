@@ -9,7 +9,7 @@ of those two supplied images — no recolouring, no effects.
 |---|---|---|---|
 | `logo-primary.png` | brand board, panel 1 "Primary Logo" | 30,60,425,235 | Header / sign-in wordmark on white/ivory surfaces |
 | `logo-mark.png` | brand board, panel 4 "Favicon / Monogram" | 1185,60,1330,180 | Compact mark (mobile header, small spaces) |
-| `app-icon.png` + `src/app/favicon.ico` | brand board, panel 3 "App Icon" (gradient variant) | 935,58,1035,158 | Favicon, PWA icon |
+| `app-icon.png` | brand board, panel 3 "App Icon" (gradient variant) | 935,58,1035,158 | Favicon, PWA icon |
 | `brand-elements.png` | brand board, panel 9 "Brand Elements" | 1262,352,1528,668 | Faint decorative framing (`BrandDecor`) |
 | `backgrounds/*.webp` (11 files) | supplied background set, one tile each | see `scripts/extract-brand-assets.py` | Atmospheric hero/empty-state/onboarding backgrounds |
 

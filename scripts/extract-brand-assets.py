@@ -35,3 +35,4 @@ tiles = {
 for name, (x0, y0, x1, y1) in tiles.items():
     sheet.crop((x0 + i, y0 + i, x1 - i, y1 - i)).save(OUT / "backgrounds" / f"{name}.webp", quality=90)
 print("done")
+

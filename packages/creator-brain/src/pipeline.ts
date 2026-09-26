@@ -77,6 +77,14 @@ function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: stri
   });
 }
 
+/** A working title from the creator's words ("a short film about my father's life" → "My Father's Life"). */
+export function titleFromInstruction(instruction: string): string | null {
+  const m = instruction.match(/\babout\s+(.{3,60}?)(?:[.,;:!?]|\s+(?:and|with|using|from)\s|$)/i);
+  if (!m) return null;
+  const t = m[1].trim().replace(/^(the|a|an)\s+/i, "");
+  return t.replace(/(^|\s)(\p{Ll})/gu, (_, sp, c) => sp + c.toUpperCase()).slice(0, 80) || null;
+}
+
 // ---------------------------------------------------------------------------
 // Understand + Discover
 // ---------------------------------------------------------------------------
@@ -214,11 +222,12 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
             content: `${renderMaterials(ctx.selectedMaterials)}${ctx.references.length ? `\n\nReferences:\n${renderMaterials(ctx.references)}` : ""}\n\n${understanding ? `Understanding: ${understanding.summary}\n` : ""}Request: "${input.instruction}"${input.fromDirection ? `\nChosen direction: ${input.fromDirection}` : ""}`,
           },
         ],
-        hints: hintsFrom(ctx, { title: input.title || understanding?.suggestedTitle }),
+        hints: hintsFrom(ctx, { title: input.title || understanding?.suggestedTitle || titleFromInstruction(input.instruction) || undefined }),
       });
       run.addUsage(r.usage, r.model);
       return r.value;
     });
+    const workingTitle = input.title || (plan.title && plan.title !== "Untitled" ? plan.title : null) || understanding?.suggestedTitle || titleFromInstruction(input.instruction) || `Untitled ${def.label}`;
 
     progress(deps, "generate");
     const draft = await run.step("generate", async () => {
@@ -235,7 +244,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
             ],
           },
         ],
-        hints: hintsFrom(ctx, { title: input.title || plan.title, format: def.format }),
+        hints: hintsFrom(ctx, { title: workingTitle, format: def.format }),
       });
       run.addUsage(r.usage, r.model);
       return r.text.trim();
@@ -259,7 +268,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     const artifact = await run.step("render", () =>
       createArtifact(deps.db, deps.creatorId, {
         artifactType: def.type,
-        title: input.title || plan.title || understanding?.suggestedTitle || "Untitled",
+        title: workingTitle,
         description: understanding?.summary ?? null,
         content: draft,
         authorKind: "ai",
