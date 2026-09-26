@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  * End-to-end suite for Wonder Creator.
  *
  * The app server is NOT started here (no `webServer`): run it yourself against the local
- * Supabase stack with WONDER_AI_PROVIDER=offline, e.g.
+ * Supabase stack with WONDERCREATOR_AI_PROVIDER=offline, e.g.
  *   (cd apps/web && npx next dev -p 3000)
  * CI builds the app and starts it with `next start` before `npm run test:e2e`
  * (see .github/workflows/ci.yml).

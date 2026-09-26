@@ -33,7 +33,9 @@ the logo or brand artwork.** Missing assets are documented, not invented.
 5. Versions are immutable; restore creates a new version. Derivatives record lineage.
 6. Huddles are ephemeral: dissolve at zero participants; only explicitly preserved outcomes persist.
 7. No fake providers: unconfigured AI/media/transcription show honest "not connected" states.
-8. Model: Anthropic Claude via `@anthropic-ai/sdk` (`claude-opus-5` default, override with `WONDER_AI_MODEL`).
+8. Models: provider-neutral (`packages/creator-brain/src/providers`). `WONDERCREATOR_AI_PROVIDER` = `gemini` (REST,
+   `gemini-3.8-flash` default) | `anthropic` (`@anthropic-ai/sdk`, `claude-opus-5` default) | `offline`; key in
+   `WONDERCREATOR_AI_API_KEY`; optional `WONDERCREATOR_AI_MODEL`.
 
 ## Conventions
 
