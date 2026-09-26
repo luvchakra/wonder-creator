@@ -2,28 +2,42 @@
   "name": "wonder-creator",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit"
+    "dev": "npm run dev -w @wonder/web",
+    "build": "npm run build -w @wonder/web",
+    "start": "npm run start -w @wonder/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typegen -w @wonder/web && tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/web",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "test:e2e": "playwright test",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/db/src/database.types.ts"
   },
-  "dependencies": {
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.2",
-    "next": "16.3.6",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.20.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^5.0.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "jsdom": "^30.1.1",
+    "supabase": "^2.118.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
+  },
+  "type": "module"
 }
