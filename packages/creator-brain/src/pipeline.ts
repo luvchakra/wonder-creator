@@ -1,5 +1,6 @@
 import { DomainError, fromDbError, isDomainError, log, must } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
+import { z } from "zod";
 import { artifactType, createArtifact, createVersion, getArtifact, inheritFromSource, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
@@ -566,4 +567,39 @@ export async function applyQualityFindings(deps: BrainDeps, artifactId: string, 
   if (chosen.some((f) => f.state !== "open")) throw new DomainError("conflict", "Some of those suggestions were already applied or set aside.");
   const { instruction, summary } = selectiveInstruction(chosen);
   return refine(deps, { artifactId, instruction, action: "quality" }, { previewOnly: true, changeSummary: summary, quality: { reportId: report.id, keys: chosen.map((f) => f.key), titles: chosen.map((f) => f.title) } });
+}
+
+// ---------------------------------------------------------------------------
+// Publishing copy (P0.1-10): a draft for the creator to edit; CreatorBrain never publishes by itself.
+// ---------------------------------------------------------------------------
+export const publicationCopySchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  caption: z.string().trim().max(2200),
+  description: z.string().trim().max(5000),
+});
+export type PublicationCopy = z.infer<typeof publicationCopySchema>;
+
+export async function draftPublicationCopy(deps: BrainDeps, artifactId: string): Promise<PublicationCopy & { offline: boolean }> {
+  const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Draft publishing copy for this piece.", artifactIds: [artifactId] });
+  const art = ctx.selectedArtifacts[0];
+  if (!art || !art.content.trim()) throw new DomainError("validation", "Write something first — there's nothing to describe yet.");
+  const run = await startRun(deps, "publish_copy", { artifactId, inputCategory: "artifact" });
+  return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "draft_publication", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
+    const copy = await run.step("plan", async () => {
+      const r = await deps.provider.structured({
+        task: "publish_copy",
+        system: systemPrompt(ctx, TASKS.publish_copy),
+        schema: publicationCopySchema,
+        schemaName: "publication_copy",
+        messages: [{ role: "user", content: `${artifactType(art.type).label}: “${art.title}”\n<piece>\n${art.content.slice(0, 20000)}\n</piece>` }],
+        hints: { title: art.title, keywords: extractKeywords(art.content).slice(0, 5) },
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value;
+    });
+    await run.finish({ outputCategory: "publication_copy", artifactId });
+    return { ...copy, offline: !deps.provider.live };
+  });
 }

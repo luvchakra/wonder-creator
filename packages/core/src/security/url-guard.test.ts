@@ -67,4 +67,14 @@ describe("safeFetch", () => {
     const fetchImpl = (async () => new Response(null, { status: 301, headers: { location: "https://example.com/again" } })) as unknown as typeof fetch;
     await expect(safeFetch("https://example.com", { resolve: publicResolver, fetchImpl, maxRedirects: 2 })).rejects.toThrow(/too many/);
   });
+  it("POSTs a body with headers and never follows a redirect", async () => {
+    const seen: RequestInit[] = [];
+    const ok = (async (_u: URL, init: RequestInit) => (seen.push(init), new Response("{}", { status: 200 }))) as unknown as typeof fetch;
+    await safeFetch("https://example.com/hook", { resolve: publicResolver, fetchImpl: ok, method: "POST", body: '{"a":1}', headers: { "x-test": "1" } });
+    expect(seen[0]).toMatchObject({ method: "POST", body: '{"a":1}', redirect: "manual" });
+    expect((seen[0].headers as Record<string, string>)["x-test"]).toBe("1");
+    const moved = (async () => new Response(null, { status: 307, headers: { location: "https://example.com/elsewhere" } })) as unknown as typeof fetch;
+    await expect(safeFetch("https://example.com/hook", { resolve: publicResolver, fetchImpl: moved, method: "POST", body: "{}" })).rejects.toThrow(/redirected/);
+    await expect(safeFetch("https://10.0.0.1/hook", { resolve: publicResolver, fetchImpl: ok, method: "POST", body: "{}" })).rejects.toThrow();
+  });
 });

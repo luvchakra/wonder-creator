@@ -1178,6 +1178,87 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"publication_attempts": {
+                  Row: {
+                    "attempt_no": number,"creator_id": string,"error": string | null,"external_id": string | null,"external_url": string | null,"finished_at": string | null,"http_status": number | null,"id": string,"outcome": string | null,"publication_id": string,"started_at": string
+                  }
+                  Insert: {
+                    "attempt_no": number,"creator_id": string,"error"?: string | null,"external_id"?: string | null,"external_url"?: string | null,"finished_at"?: string | null,"http_status"?: number | null,"id"?: string,"outcome"?: string | null,"publication_id": string,"started_at"?: string
+                  }
+                  Update: {
+                    "attempt_no"?: number,"creator_id"?: string,"error"?: string | null,"external_id"?: string | null,"external_url"?: string | null,"finished_at"?: string | null,"http_status"?: number | null,"id"?: string,"outcome"?: string | null,"publication_id"?: string,"started_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "publication_attempts_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_attempts_publication_id_fkey"
+      columns: ["publication_id"]
+isOneToOne: false
+      referencedRelation: "publications"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"publications": {
+                  Row: {
+                    "approved_at": string | null,"artifact_id": string,"attempts": number,"caption": string | null,"created_at": string,"creator_id": string,"description": string | null,"destination_id": string | null,"destination_kind": string,"destination_name": string,"external_id": string | null,"external_url": string | null,"failure_reason": string | null,"id": string,"idempotency_key": string,"prepared_by": string,"published_at": string | null,"scheduled_for": string | null,"status": string,"title": string,"updated_at": string,"version_id": string | null
+                  }
+                  Insert: {
+                    "approved_at"?: string | null,"artifact_id": string,"attempts"?: number,"caption"?: string | null,"created_at"?: string,"creator_id": string,"description"?: string | null,"destination_id"?: string | null,"destination_kind": string,"destination_name": string,"external_id"?: string | null,"external_url"?: string | null,"failure_reason"?: string | null,"id"?: string,"idempotency_key"?: string,"prepared_by"?: string,"published_at"?: string | null,"scheduled_for"?: string | null,"status"?: string,"title": string,"updated_at"?: string,"version_id"?: string | null
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"artifact_id"?: string,"attempts"?: number,"caption"?: string | null,"created_at"?: string,"creator_id"?: string,"description"?: string | null,"destination_id"?: string | null,"destination_kind"?: string,"destination_name"?: string,"external_id"?: string | null,"external_url"?: string | null,"failure_reason"?: string | null,"id"?: string,"idempotency_key"?: string,"prepared_by"?: string,"published_at"?: string | null,"scheduled_for"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string,"version_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "publications_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publications_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publications_destination_id_fkey"
+      columns: ["destination_id"]
+isOneToOne: false
+      referencedRelation: "publishing_destinations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publications_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"publishing_destinations": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"id": string,"kind": string,"last_used_at": string | null,"name": string,"signing_secret": string,"status": string,"url": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"id"?: string,"kind": string,"last_used_at"?: string | null,"name": string,"signing_secret": string,"status"?: string,"url": string
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"id"?: string,"kind"?: string,"last_used_at"?: string | null,"name"?: string,"signing_secret"?: string,"status"?: string,"url"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "publishing_destinations_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"quality_reports": {
                   Row: {
                     "ai_run_id": string | null,"applied": NonNullable<Json>,"artifact_id": string,"checks": NonNullable<Json>,"created_at": string,"creator_id": string,"dismissed": NonNullable<Json>,"id": string,"suggestions": NonNullable<Json>,"version_id": string
@@ -1454,6 +1535,68 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "license_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"approve_publication":
+{ Args: { "p_publication": string }; Returns: {
+              "approved_at": string | null,
+"artifact_id": string,
+"attempts": number,
+"caption": string | null,
+"created_at": string,
+"creator_id": string,
+"description": string | null,
+"destination_id": string | null,
+"destination_kind": string,
+"destination_name": string,
+"external_id": string | null,
+"external_url": string | null,
+"failure_reason": string | null,
+"id": string,
+"idempotency_key": string,
+"prepared_by": string,
+"published_at": string | null,
+"scheduled_for": string | null,
+"status": string,
+"title": string,
+"updated_at": string,
+"version_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "publications"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"cancel_publication":
+{ Args: { "p_publication": string }; Returns: {
+              "approved_at": string | null,
+"artifact_id": string,
+"attempts": number,
+"caption": string | null,
+"created_at": string,
+"creator_id": string,
+"description": string | null,
+"destination_id": string | null,
+"destination_kind": string,
+"destination_name": string,
+"external_id": string | null,
+"external_url": string | null,
+"failure_reason": string | null,
+"id": string,
+"idempotency_key": string,
+"prepared_by": string,
+"published_at": string | null,
+"scheduled_for": string | null,
+"status": string,
+"title": string,
+"updated_at": string,
+"version_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "publications"
         isOneToOne: true
         isSetofReturn: false
       } },

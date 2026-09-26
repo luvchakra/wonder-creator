@@ -137,6 +137,13 @@ export class OfflineProvider implements CreativeModelProvider {
           ],
         };
         break;
+      case "publication_copy":
+        value = {
+          title: h.title || "Untitled",
+          caption: `${h.title || "A new piece"}${kw.length ? ` — ${kw.slice(0, 3).join(", ").toLowerCase()}` : ""}. Made in my own voice.`,
+          description: `A new piece${kw.length ? ` about ${kw.slice(0, 2).join(" and ").toLowerCase()}` : ""}. (Drafted offline.)`,
+        };
+        break;
       case "plan":
         value = { title: h.title || "Untitled", approach: "Open on a concrete image, turn on a memory, close by returning changed.", outline: ["Opening image", "The turn", "Return"] };
         break;

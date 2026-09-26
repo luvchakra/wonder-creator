@@ -114,6 +114,11 @@ export interface SafeFetchOptions {
   accept?: string;
   resolve?: Resolver;
   fetchImpl?: typeof fetch;
+  /** POST a body (e.g. a signed webhook). Redirects are never followed for POSTs. */
+  method?: "GET" | "POST";
+  body?: string;
+  headers?: Record<string, string>;
+  userAgent?: string;
 }
 
 export interface SafeFetchResult {
@@ -131,7 +136,8 @@ export interface SafeFetchResult {
  */
 export async function safeFetch(raw: string, opts: SafeFetchOptions = {}): Promise<SafeFetchResult> {
   const maxBytes = opts.maxBytes ?? 2_000_000;
-  const maxRedirects = opts.maxRedirects ?? 4;
+  const post = opts.method === "POST";
+  const maxRedirects = post ? 0 : (opts.maxRedirects ?? 4);
   const doFetch = opts.fetchImpl ?? fetch;
   let url = parseExternalUrl(raw);
 
@@ -142,9 +148,15 @@ export async function safeFetch(raw: string, opts: SafeFetchOptions = {}): Promi
     let res: Response;
     try {
       res = await doFetch(url, {
+        method: post ? "POST" : "GET",
+        body: post ? opts.body : undefined,
         redirect: "manual",
         signal: controller.signal,
-        headers: { accept: opts.accept ?? "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5", "user-agent": "WonderCreatorBot/1.0 (+link preview)" },
+        headers: {
+          ...opts.headers,
+          accept: opts.accept ?? "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
+          "user-agent": opts.userAgent ?? "WonderCreatorBot/1.0 (+link preview)",
+        },
       });
     } catch (e) {
       clearTimeout(timer);
@@ -152,6 +164,7 @@ export async function safeFetch(raw: string, opts: SafeFetchOptions = {}): Promi
     }
     if (res.status >= 300 && res.status < 400) {
       clearTimeout(timer);
+      if (post) throw new DomainError("provider_failed", "The destination redirected instead of answering.");
       const location = res.headers.get("location");
       if (!location) throw new DomainError("provider_failed", "That link redirected somewhere we couldn't follow.");
       url = parseExternalUrl(new URL(location, url).toString());

@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { isDomainError, log } from "@wonder/core";
 import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
 import { processIntake } from "@wonder/creator-send";
+import { attemptPublication, duePublications } from "@wonder/creator-studio";
 import { NextResponse, type NextRequest } from "next/server";
 import { serviceClient } from "@/lib/supabase/service";
 
@@ -16,7 +17,8 @@ function authorized(req: NextRequest): boolean {
 
 /**
  * Durable background worker (Vercel Cron): retries pending intake jobs, cleans up stale Huddle
- * presence (dissolving empty Huddles) and backfills search embeddings. Protected by CRON_SECRET.
+ * presence (dissolving empty Huddles), backfills search embeddings and sends scheduled publications
+ * that are due. Protected by CRON_SECRET.
  */
 async function run(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
@@ -58,7 +60,17 @@ async function run(req: NextRequest) {
     log("warn", "jobs.index_failed", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" });
     return 0;
   });
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed });
+  // Scheduled publications whose time has come (each already approved by its creator).
+  const published: Array<{ id: string; status: string }> = [];
+  for (const due of await duePublications(service).catch(() => [])) {
+    try {
+      const p = await attemptPublication({ service, creatorId: due.creator_id, appOrigin: req.nextUrl.origin }, due.id);
+      published.push({ id: p.id, status: p.status });
+    } catch (e) {
+      log("warn", "jobs.publication_failed", { publicationId: due.id, error: isDomainError(e) ? e.code : "internal" });
+    }
+  }
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published });
 }
 
 export const GET = run;

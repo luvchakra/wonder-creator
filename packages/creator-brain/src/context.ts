@@ -22,6 +22,8 @@ export interface ArtifactContext {
   versionId: string | null;
   versionNumber: number | null;
   content: string;
+  /** Where it has been published (outcomes only: destination and date). */
+  publications: string[];
 }
 
 export interface MemoryContext {
@@ -109,9 +111,12 @@ async function loadArtifacts(db: Db, ids: string[]): Promise<ArtifactContext[]> 
     .select("id, artifact_type, title, current_version_id, artifact_versions!artifacts_current_version_fk(id, version_number, content)")
     .in("id", ids.slice(0, 4));
   if (error) throw fromDbError(error);
+  // Publication outcomes are part of a piece's context (never pending drafts or copy).
+  const { data: pubs } = await db.from("publications").select("artifact_id, destination_name, published_at").in("artifact_id", (data ?? []).map((a) => a.id)).eq("status", "published").order("published_at", { ascending: false }).limit(20);
   return (data ?? []).map((a, i) => {
     const v = a.artifact_versions as unknown as { id: string; version_number: number; content: string } | null;
-    return { ref: `a${i + 1}`, id: a.id, type: a.artifact_type, title: a.title, versionId: v?.id ?? null, versionNumber: v?.version_number ?? null, content: (v?.content ?? "").slice(0, 60000) };
+    const publications = (pubs ?? []).filter((p) => p.artifact_id === a.id).map((p) => `${p.destination_name}, ${p.published_at?.slice(0, 10) ?? ""}`);
+    return { ref: `a${i + 1}`, id: a.id, type: a.artifact_type, title: a.title, versionId: v?.id ?? null, versionNumber: v?.version_number ?? null, content: (v?.content ?? "").slice(0, 60000), publications };
   });
 }
 

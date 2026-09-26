@@ -19,6 +19,7 @@ const DEFAULT_MODEL = "claude-opus-5";
 const EFFORT: Record<TaskKind, "low" | "medium" | "high"> = {
   intent: "low",
   memory: "low",
+  publish_copy: "low",
   describe_image: "low",
   understand: "medium",
   discover: "medium",
@@ -32,6 +33,7 @@ const EFFORT: Record<TaskKind, "low" | "medium" | "high"> = {
 const MAX_TOKENS: Record<TaskKind, number> = {
   intent: 2000,
   memory: 4000,
+  publish_copy: 4000,
   describe_image: 4000,
   understand: 8000,
   discover: 12000,

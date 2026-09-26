@@ -16,6 +16,7 @@ export const TOOLS = {
   organize_material: { domain: "organization", action: "execute", label: "Organize your material" },
   research: { domain: "research", action: "execute", label: "Research references" },
   invite_creator: { domain: "collaboration", action: "execute", label: "Invite a creator" },
+  draft_publication: { domain: "publishing", action: "draft", label: "Draft publishing copy" },
   publish: { domain: "publishing", action: "execute", label: "Publish" },
   change_rights: { domain: "rights", action: "execute", label: "Change rights or licenses" },
   commerce: { domain: "commerce", action: "execute", label: "Sell or license commercially" },

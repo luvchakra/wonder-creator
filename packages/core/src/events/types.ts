@@ -34,6 +34,11 @@ export const DOMAIN_EVENTS = [
   "HuddleDissolved",
   "HuddleContentPreserved",
   "RightsUpdated",
+  "PublicationPrepared",
+  "PublicationApprovalRequested",
+  "PublicationApproved",
+  "PublicationAttempted",
+  "PublicationFailed",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENTS)[number];
@@ -47,4 +52,5 @@ export type AggregateType =
   | "artifact"
   | "memory"
   | "huddle"
-  | "rights";
+  | "rights"
+  | "publication";
