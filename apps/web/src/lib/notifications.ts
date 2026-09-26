@@ -3,7 +3,7 @@ import { TOOLS } from "@wonder/creator-brain";
 import { liveCards } from "@wonder/creator-huddle";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished";
 
 export interface Notification {
   id: string;
@@ -15,6 +15,8 @@ export interface Notification {
 }
 
 const FAILED_INTAKE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const RUN_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RUN_STALE_MS = 10 * 60 * 1000;
 
 /**
  * Things waiting on the creator, derived from live state (nothing to mark read: an item disappears
@@ -22,7 +24,8 @@ const FAILED_INTAKE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed] = await Promise.all([
+  const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
+  const [proposals, requests, invites, cards, failed, runs] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -39,6 +42,15 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .limit(10),
     liveCards(db, { limit: 100 }).catch(() => []),
     db.from("intake_items").select("id, input_kind, error_message, updated_at").eq("state", "failed").gte("updated_at", since).order("updated_at", { ascending: false }).limit(5),
+    // Creation runs still going, or ones that didn't finish and haven't been retried.
+    db
+      .from("ai_runs")
+      .select("id, status, started_at, completed_at, artifact_id, retries:ai_runs!ai_runs_retry_of_fkey(id)")
+      .eq("intent", "create")
+      .in("status", ["running", "failed", "cancelled"])
+      .gte("started_at", runSince)
+      .order("started_at", { ascending: false })
+      .limit(5),
   ]);
 
   const out: Notification[] = [];
@@ -67,6 +79,15 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const f of failed.data ?? []) {
     out.push({ id: `intake:${f.id}`, kind: "intake_failed", title: `Something you sent (${f.input_kind}) couldn't be processed`, detail: f.error_message, href: "/send", at: f.updated_at });
+  }
+  for (const r of runs.data ?? []) {
+    if (r.artifact_id || ((r.retries as unknown as Array<{ id: string }>) ?? []).length) continue;
+    const stale = r.status === "running" && Date.now() - new Date(r.started_at).getTime() > RUN_STALE_MS;
+    if (r.status === "running" && !stale) {
+      out.push({ id: `run:${r.id}`, kind: "run_active", title: "CreatorBrain is working on a draft", detail: "See its progress", href: `/create/runs/${r.id}`, at: r.started_at });
+    } else if (r.status !== "cancelled") {
+      out.push({ id: `run:${r.id}`, kind: "run_unfinished", title: "A draft didn't finish", detail: "You can try again — nothing was lost.", href: `/create/runs/${r.id}`, at: r.completed_at ?? r.started_at });
+    }
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }

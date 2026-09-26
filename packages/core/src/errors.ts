@@ -15,6 +15,7 @@ export type ErrorCode =
   | "security_rejected"
   | "provider_unavailable"
   | "provider_failed"
+  | "cancelled"
   | "internal";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -30,6 +31,7 @@ const STATUS: Record<ErrorCode, number> = {
   security_rejected: 422,
   provider_unavailable: 503,
   provider_failed: 502,
+  cancelled: 409,
   internal: 500,
 };
 

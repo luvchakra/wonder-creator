@@ -60,6 +60,10 @@ export function Talk({
   const [materials, setMaterials] = useState(initialMaterials);
   const [conversationId, setConversationId] = useState(conversation?.id ?? null);
   const [progress, setProgress] = useState<string[]>([]);
+  // The run behind the current turn: its progress page survives navigation, and it can be stopped.
+  const [activeRun, setActiveRun] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const [retried, setRetried] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<string[]>([]);
@@ -75,15 +79,17 @@ export function Talk({
   }, [messages.length, progress.length]);
 
   const runTurn = useCallback(
-    async (body: Record<string, unknown>, optimistic?: { content: string; materialIds: string[] }) => {
+    async (body: Record<string, unknown>, optimistic?: { content: string; materialIds: string[] }, endpoint = "/api/v1/conversations/turn") => {
       setBusy(true);
       setError(null);
       setProgress([]);
+      setActiveRun(null);
+      setStopping(false);
       if (optimistic) {
         setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "creator", kind: "text", content: optimistic.content, payload: {}, createdAt: new Date().toISOString(), materialIds: optimistic.materialIds }]);
       }
       try {
-        const res = await fetch("/api/v1/conversations/turn", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId, ...body }) });
+        const res = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId, ...body }) });
         if (!res.ok || !res.body) {
           const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
           throw new Error(j?.error?.message ?? "CreatorBrain didn't respond. Please try again.");
@@ -99,9 +105,11 @@ export function Talk({
           buf = lines.pop() ?? "";
           for (const line of lines) {
             if (!line.trim()) continue;
-            const ev = JSON.parse(line) as { type: string; label?: string; message?: string; conversationId?: string; messages?: Array<{ id: string; role: "creator" | "brain"; kind: string; content: string; payload: Record<string, unknown>; created_at: string }> };
+            const ev = JSON.parse(line) as { type: string; label?: string; message?: string; runId?: string; conversationId?: string; messages?: Array<{ id: string; role: "creator" | "brain"; kind: string; content: string; payload: Record<string, unknown>; created_at: string }> };
             if (ev.type === "progress" && ev.label) setProgress((p) => (p.at(-1) === ev.label ? p : [...p, ev.label!]));
+            if (ev.type === "run" && ev.runId) setActiveRun(ev.runId);
             if (ev.type === "error") throw new Error(ev.message);
+            if (ev.type === "done" && !ev.conversationId && ev.messages?.length === 0) router.refresh();
             if (ev.type === "done" && ev.conversationId) {
               setConversationId(ev.conversationId);
               setMessages((m) => [
@@ -118,6 +126,7 @@ export function Talk({
       } finally {
         setBusy(false);
         setProgress([]);
+        setActiveRun(null);
       }
     },
     [conversationId, params, router],
@@ -254,6 +263,11 @@ export function Talk({
               busy={busy}
               onChooseDirection={(index) => runTurn({ direction: { messageId: m.id, index } }, { content: `Let's make: ${(m.payload.directions as Direction[])[index].title}`, materialIds: [] })}
               onAnswer={(artifactId, pendingMessage) => runTurn({ message: pendingMessage, artifactId }, { content: pendingMessage, materialIds: [] })}
+              canRetry={typeof m.payload?.runId === "string" && !retried.includes(m.payload.runId as string) && m.payload.code !== "validation" && m.payload.code !== "forbidden"}
+              onRetry={(runId) => {
+                setRetried((r) => [...r, runId]);
+                void runTurn({}, undefined, `/api/v1/brain/runs/${runId}/retry`);
+              }}
               answered={messages.some((x) => x.payload?.clarifies === m.id)}
               onClarify={(brief, acknowledged) => runTurn({ clarified: { messageId: m.id, brief, acknowledged } }, { content: `Let's make it: ${artifactType(brief.format).label}`, materialIds: [] })}
               onProposal={async (id, decision) => {
@@ -279,6 +293,30 @@ export function Talk({
                     </li>
                   ))}
                 </ul>
+                {activeRun ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <Link href={`/create/runs/${activeRun}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                      Progress details
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={stopping}
+                      className="inline-flex min-h-11 items-center text-sm text-ink-muted hover:text-ink disabled:opacity-60"
+                      onClick={async () => {
+                        setStopping(true);
+                        try {
+                          await api(`/api/v1/brain/runs/${activeRun}/cancel`, { method: "POST" });
+                        } catch (e) {
+                          setStopping(false);
+                          setError(errorMessage(e));
+                        }
+                      }}
+                    >
+                      {stopping ? "Stopping after this step…" : "Stop"}
+                    </button>
+                    <span className="text-xs text-ink-subtle">You can leave this page — it keeps going.</span>
+                  </div>
+                ) : null}
               </div>
             </li>
           ) : null}
@@ -343,6 +381,8 @@ function MessageView({
   onProposal,
   answered,
   onClarify,
+  canRetry,
+  onRetry,
 }: {
   m: TalkMessage;
   materials: Record<string, MaterialCardData>;
@@ -350,6 +390,8 @@ function MessageView({
   onChooseDirection: (i: number) => void;
   onAnswer: (artifactId: string, pending: string) => void;
   answered: boolean;
+  canRetry: boolean;
+  onRetry: (runId: string) => void;
   onClarify: Parameters<typeof IntentCard>[0]["onConfirm"];
   onProposal: (id: string, d: "approve" | "reject") => Promise<void>;
 }) {
@@ -458,11 +500,28 @@ function MessageView({
               </ul>
             ) : null}
             {p.offline ? <p className="mt-3 text-xs text-warning-ink">Drafted by the offline development model (placeholder).</p> : null}
+            {typeof p.runId === "string" ? (
+              <Link href={`/create/runs/${p.runId}`} className="mt-2 inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+                How it was made
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
         {m.kind === "proposal" ? <ProposalCard p={p} onDecide={onProposal} /> : null}
 
+        {m.kind === "error" && typeof p.runId === "string" ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canRetry ? (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => onRetry(p.runId as string)}>
+                Try again
+              </Button>
+            ) : null}
+            <Link href={`/create/runs/${p.runId}`} className={buttonClasses({ size: "sm", variant: "ghost" })}>
+              What happened
+            </Link>
+          </div>
+        ) : null}
         {m.kind === "question" && p.intent ? (
           <IntentCard id={m.id} intent={p.intent as IntentPayload} materialIds={(p.materialIds as string[]) ?? []} materials={materials} busy={busy} answered={answered} onConfirm={onClarify} />
         ) : null}

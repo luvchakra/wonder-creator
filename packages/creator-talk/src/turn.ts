@@ -15,6 +15,7 @@ import {
   transform,
   type BrainDeps,
   type Candidate,
+  type CreateInput,
   type ModelMessage,
 } from "@wonder/creator-brain";
 import { DomainError, isDomainError, log, must } from "@wonder/core";
@@ -42,6 +43,7 @@ export type TurnInput = z.infer<typeof turnSchema>;
 export interface TurnResult {
   conversationId: string;
   messages: Message[];
+  runId?: string | null;
 }
 
 async function recentArtifacts(deps: BrainDeps): Promise<Candidate[]> {
@@ -73,8 +75,11 @@ async function ownedCollectionId(deps: BrainDeps, id: string | null | undefined)
  * One CreatorTalk turn. Text and voice share this engine:
  * grounding → intent → CreatorBrain → proposal / artifact / question.
  */
-export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnResult> {
+export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnResult> {
   const input = turnSchema.parse(raw);
+  // Remember the run this turn started, so a failure can offer Retry and a link to its progress.
+  let runId: string | null = null;
+  const deps: BrainDeps = { ...outer, onRunStarted: (id, intent) => ((runId = id), outer.onRunStarted?.(id, intent)) };
   const { db, creatorId } = deps;
   const materialIds = await ownedMaterialIds(deps, input.materialIds);
   if (!input.message && !materialIds.length && !input.direction && !input.clarified) throw new DomainError("validation", "Share a thought, a file or a link to begin.");
@@ -270,7 +275,7 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
       ? e.message
       : "Something went wrong on my side. Nothing you shared was lost — please try again.";
     if (!isDomainError(e)) log("error", "talk.turn_failed", { error: String(e) });
-    await reply({ role: "brain", kind: "error", content: message, payload: { code: isDomainError(e) ? e.code : "internal" } });
+    await reply({ role: "brain", kind: "error", content: message, payload: { code: isDomainError(e) ? e.code : "internal", ...(runId ? { runId } : {}) } });
   }
 
   // Learn only from the creator's own words, in the background of this turn.
@@ -323,6 +328,7 @@ async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m
       checks: res.quality.checks,
       suggestions: res.quality.suggestions,
       offline: res.offline,
+      runId: res.runId,
       ...(assumptions.length ? { assumptions } : {}),
     },
     aiRunId: res.runId,
@@ -341,4 +347,45 @@ export function chatHistory(history: Array<{ role: "creator" | "brain"; content:
     else msgs.push({ role, content: m.content });
   }
   return msgs;
+}
+
+/** How long a run may stay "running" without finishing before it counts as interrupted (e.g. the server stopped). */
+export const RUN_STALE_MS = 10 * 60 * 1000;
+
+/**
+ * Retry a failed, cancelled or interrupted creation run with exactly what it was asked (its stored request).
+ * Duplicate-safe: a run that produced a piece can't be retried, and `retry_of` is unique, so two clicks
+ * start one run. The outcome is posted to the run's conversation like any other turn.
+ */
+export async function retryRun(outer: BrainDeps, id: string): Promise<TurnResult> {
+  const { db, creatorId } = outer;
+  const run = must(await db.from("ai_runs").select("*").eq("id", id).maybeSingle(), "We couldn't find that run.");
+  const stale = run.status === "running" && Date.now() - new Date(run.started_at).getTime() > RUN_STALE_MS;
+  if (run.artifact_id || run.status === "succeeded") throw new DomainError("conflict", "That run already finished — its piece is saved.");
+  if (run.status === "running" && !stale) throw new DomainError("conflict", "That run is still going.");
+  if (run.intent !== "create" || !run.request) throw new DomainError("validation", "This run can't be retried. Ask CreatorBrain again instead.");
+  if (stale) await db.from("ai_runs").update({ status: "failed", failure_code: "interrupted", completed_at: new Date().toISOString() }).eq("id", run.id);
+  const request = run.request as unknown as CreateInput;
+
+  let runId: string | null = null;
+  const deps: BrainDeps = { ...outer, onRunStarted: (rid, intent) => ((runId = rid), outer.onRunStarted?.(rid, intent)) };
+  const out: Message[] = [];
+  const conversationId = run.conversation_id;
+  const reply = async (m: Parameters<typeof appendMessage>[3]) => {
+    if (!conversationId) return null as unknown as Message;
+    const msg = await appendMessage(db, creatorId, conversationId, m);
+    out.push(msg);
+    return msg;
+  };
+  try {
+    const res = await create(deps, request, { retryOf: run.id });
+    await replyForCreate(res, reply);
+  } catch (e) {
+    // A refused retry (already retried) is the caller's error, not a new failure to post.
+    if (isDomainError(e) && e.code === "conflict" && !runId) throw e;
+    const message = isDomainError(e) ? e.message : "Something went wrong on my side. Nothing you shared was lost — please try again.";
+    if (!isDomainError(e)) log("error", "talk.retry_failed", { error: String(e) });
+    await reply({ role: "brain", kind: "error", content: message, payload: { code: isDomainError(e) ? e.code : "internal", ...(runId ? { runId } : {}) } });
+  }
+  return { conversationId: conversationId ?? "", messages: out, runId };
 }
