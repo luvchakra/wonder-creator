@@ -1,5 +1,5 @@
 import { signedUrlsFor } from "@wonder/creator-library";
-import { artifactType, getRights, lineageGraph, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
+import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -49,6 +49,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
       graph={graph}
       materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? matUrls[m.storage_object_id] ?? null : null, isReference: referenceIds.has(m.id) }))}
       rights={rights}
+      licenseRequests={await listLicenseRequests(db, id).catch(() => [])}
       rightsDisclaimer={RIGHTS_DISCLAIMER}
       contributors={(contributors.data ?? []).map((c) => ({ role: c.role, name: (c.creators as { display_name: string } | null)?.display_name ?? "Creator", handle: (c.creators as { handle: string | null } | null)?.handle ?? null }))}
       quality={quality.data ? { checks: quality.data.checks as never, suggestions: quality.data.suggestions as never, createdAt: quality.data.created_at } : null}

@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./types": "./src/artifact-types.ts"
+    "./types": "./src/artifact-types.ts",
+    "./licensing": "./src/licensing.ts"
   }
 }

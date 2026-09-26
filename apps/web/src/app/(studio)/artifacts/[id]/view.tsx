@@ -32,6 +32,7 @@ import { useMemo, useState } from "react";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
+import { CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
 
 interface Version {
   id: string;
@@ -86,6 +87,7 @@ export function ArtifactView(props: {
   contributors: Array<{ role: string; name: string; handle: string | null }>;
   quality: { checks: Array<{ key: string; label: string; status: string; note: string }>; suggestions: Array<{ title: string; detail: string }>; createdAt: string } | null;
   initialTab?: string;
+  licenseRequests: LicenseRequestView[];
 }) {
   const { artifact: a, isOwner } = props;
   const router = useRouter();
@@ -337,6 +339,8 @@ export function ArtifactView(props: {
             isOwner={isOwner}
             contributors={props.contributors}
             provenance={{ derivedFrom: derivedFrom[0] ? { id: derivedFrom[0].id, title: derivedFrom[0].title } : null, materials: createdFrom.length, references: references.length }}
+            licenseRequests={props.licenseRequests}
+            title={a.privacy === "public" && (a.status === "final" || a.status === "published") ? a.title : null}
           />
         </TabPanel>
       </Tabs>
@@ -779,8 +783,12 @@ function RightsPanel({
   isOwner,
   contributors,
   provenance,
+  licenseRequests,
+  title,
 }: {
   artifactId: string;
+  licenseRequests: LicenseRequestView[];
+  title: string | null;
   rights: Rights | null;
   disclaimer: string;
   isOwner: boolean;
@@ -1000,7 +1008,7 @@ function RightsPanel({
           <p className="mt-2 text-sm text-ink-muted">No licenses. Personal viewing only.</p>
         )}
       </section>
-      <section className="rounded-2xl border border-border-soft bg-surface p-5 lg:col-span-full" aria-labelledby="rights-history">
+      <section className={cn("rounded-2xl border border-border-soft bg-surface p-5 lg:col-span-full", !isOwner && "hidden")} aria-labelledby="rights-history">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="rights-history" className="font-semibold text-ink">
             Rights history
@@ -1054,88 +1062,9 @@ function RightsPanel({
           <p className="mt-3 text-sm text-ink-muted">Nothing recorded here yet.</p>
         )}
       </section>
-      {isOwner ? <LicenseDialog open={licenseOpen} onOpenChange={setLicenseOpen} artifactId={artifactId} /> : null}
+      {isOwner ? <OwnerLicenseRequests requests={licenseRequests} /> : title ? <RequesterLicensing artifactId={artifactId} title={title} requests={licenseRequests} /> : null}
+      {isOwner && licenseOpen ? <CreateLicenseDialog open onOpenChange={setLicenseOpen} artifactId={artifactId} /> : null}
     </div>
   );
 }
 
-function LicenseDialog({ open, onOpenChange, artifactId }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string }) {
-  const router = useRouter();
-  const [f, setF] = useState({ licenseType: "editorial", licenseeName: "", territory: "Worldwide", exclusive: false, startsOn: "", endsOn: "", modificationAllowed: false, derivativesAllowed: false, resaleAllowed: false, attributionRequired: true });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Add a license" description="Record the terms you're granting. Commercial licenses are recorded as drafts until you activate them.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Type" htmlFor="lt">
-            <Select id="lt" value={f.licenseType} onChange={(e) => setF({ ...f, licenseType: e.target.value })}>
-              {Object.entries(LICENSE_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Licensee (optional)" htmlFor="ln">
-            <Input id="ln" value={f.licenseeName} onChange={(e) => setF({ ...f, licenseeName: e.target.value })} />
-          </Field>
-          <Field label="Territory" htmlFor="terr">
-            <Input id="terr" value={f.territory} onChange={(e) => setF({ ...f, territory: e.target.value })} />
-          </Field>
-          <div />
-          <Field label="Starts" htmlFor="s">
-            <Input id="s" type="date" value={f.startsOn} onChange={(e) => setF({ ...f, startsOn: e.target.value })} />
-          </Field>
-          <Field label="Ends" htmlFor="e">
-            <Input id="e" type="date" value={f.endsOn} onChange={(e) => setF({ ...f, endsOn: e.target.value })} />
-          </Field>
-        </div>
-        <div className="mt-4 space-y-3">
-          {(
-            [
-              ["exclusive", "Exclusive"],
-              ["modificationAllowed", "Modification allowed"],
-              ["derivativesAllowed", "Derivative works allowed"],
-              ["resaleAllowed", "Resale allowed"],
-              ["attributionRequired", "Attribution required"],
-            ] as const
-          ).map(([k, label]) => (
-            <label key={k} className="flex items-center justify-between gap-3 text-sm text-ink">
-              {label}
-              <Switch checked={f[k]} onCheckedChange={(v) => setF({ ...f, [k]: v })} label={label} />
-            </label>
-          ))}
-        </div>
-        {error ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                await api(`/api/v1/artifacts/${artifactId}/licenses`, { method: "POST", json: { ...f, startsOn: f.startsOn || null, endsOn: f.endsOn || null, status: "draft" } });
-                onOpenChange(false);
-                router.refresh();
-              } catch (e) {
-                setError(errorMessage(e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Save as draft
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}

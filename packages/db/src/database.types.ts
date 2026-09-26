@@ -948,20 +948,63 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"licenses": {
+                },"license_requests": {
                   Row: {
-                    "attribution_required": boolean,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"ends_on": string | null,"exclusive": boolean,"id": string,"license_type": string,"licensee_name": string | null,"modification_allowed": boolean,"resale_allowed": boolean,"rights_id": string,"starts_on": string | null,"status": string,"territory": string
+                    "artifact_id": string,"counter_terms": Json | null,"created_at": string,"id": string,"license_id": string | null,"owner_creator_id": string,"proposed_use": string,"requester_creator_id": string,"responded_at": string | null,"response_note": string | null,"status": string,"terms": NonNullable<Json>,"updated_at": string
                   }
                   Insert: {
-                    "attribution_required"?: boolean,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"ends_on"?: string | null,"exclusive"?: boolean,"id"?: string,"license_type": string,"licensee_name"?: string | null,"modification_allowed"?: boolean,"resale_allowed"?: boolean,"rights_id": string,"starts_on"?: string | null,"status"?: string,"territory"?: string
+                    "artifact_id": string,"counter_terms"?: Json | null,"created_at"?: string,"id"?: string,"license_id"?: string | null,"owner_creator_id": string,"proposed_use": string,"requester_creator_id": string,"responded_at"?: string | null,"response_note"?: string | null,"status"?: string,"terms": NonNullable<Json>,"updated_at"?: string
                   }
                   Update: {
-                    "attribution_required"?: boolean,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"ends_on"?: string | null,"exclusive"?: boolean,"id"?: string,"license_type"?: string,"licensee_name"?: string | null,"modification_allowed"?: boolean,"resale_allowed"?: boolean,"rights_id"?: string,"starts_on"?: string | null,"status"?: string,"territory"?: string
+                    "artifact_id"?: string,"counter_terms"?: Json | null,"created_at"?: string,"id"?: string,"license_id"?: string | null,"owner_creator_id"?: string,"proposed_use"?: string,"requester_creator_id"?: string,"responded_at"?: string | null,"response_note"?: string | null,"status"?: string,"terms"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "license_requests_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "license_requests_license_id_fkey"
+      columns: ["license_id"]
+isOneToOne: false
+      referencedRelation: "licenses"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "license_requests_owner_creator_id_fkey"
+      columns: ["owner_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "license_requests_requester_creator_id_fkey"
+      columns: ["requester_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"licenses": {
+                  Row: {
+                    "attribution_required": boolean,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"edition_size": number | null,"ends_on": string | null,"exclusive": boolean,"fee_amount": number | null,"fee_currency": string | null,"id": string,"license_type": string,"licensee_creator_id": string | null,"licensee_name": string | null,"mode": string,"modification_allowed": boolean,"permitted_use": string | null,"resale_allowed": boolean,"rights_id": string,"starts_on": string | null,"status": string,"territory": string
+                  }
+                  Insert: {
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type": string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id": string,"starts_on"?: string | null,"status"?: string,"territory"?: string
+                  }
+                  Update: {
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type"?: string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id"?: string,"starts_on"?: string | null,"status"?: string,"territory"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "licenses_creator_id_fkey"
       columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "licenses_licensee_creator_id_fkey"
+      columns: ["licensee_creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]
@@ -1349,7 +1392,29 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_artifact_version":
+            "act_on_license_request":
+{ Args: { "p_action": string,"p_request": string }; Returns: {
+              "artifact_id": string,
+"counter_terms": Json | null,
+"created_at": string,
+"id": string,
+"license_id": string | null,
+"owner_creator_id": string,
+"proposed_use": string,
+"requester_creator_id": string,
+"responded_at": string | null,
+"response_note": string | null,
+"status": string,
+"terms": NonNullable<Json>,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "license_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"create_artifact_version":
 { Args: { "p_ai_run_id"?: string,"p_artifact_id": string,"p_author_kind": string,"p_change_summary"?: string,"p_content": string,"p_generation_metadata"?: Json,"p_label": string,"p_restored_from"?: string,"p_structured_content"?: Json }; Returns: {
               "artifact_id": string,
 "author_kind": string,
@@ -1423,6 +1488,28 @@ isOneToOne: false
 "record_domain_event":
 { Args: { "p_aggregate_id": string,"p_aggregate_type": string,"p_correlation_id"?: string,"p_event_type": string,"p_payload"?: Json }; Returns: string
                            },
+"respond_license_request":
+{ Args: { "p_counter"?: Json,"p_decision": string,"p_note"?: string,"p_request": string }; Returns: {
+              "artifact_id": string,
+"counter_terms": Json | null,
+"created_at": string,
+"id": string,
+"license_id": string | null,
+"owner_creator_id": string,
+"proposed_use": string,
+"requester_creator_id": string,
+"responded_at": string | null,
+"response_note": string | null,
+"status": string,
+"terms": NonNullable<Json>,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "license_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "semantic_search":
 { Args: { "p_limit"?: number,"p_min_similarity"?: number,"p_query": string }; Returns: {
               "similarity": number,"subject_id": string,"subject_type": string

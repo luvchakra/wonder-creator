@@ -3,7 +3,7 @@ import { TOOLS } from "@wonder/creator-brain";
 import { liveCards } from "@wonder/creator-huddle";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response";
 
 export interface Notification {
   id: string;
@@ -25,7 +25,7 @@ const RUN_STALE_MS = 10 * 60 * 1000;
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed, runs] = await Promise.all([
+  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -51,6 +51,22 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .gte("started_at", runSince)
       .order("started_at", { ascending: false })
       .limit(5),
+    // License requests waiting on me, and answers to mine from the last week.
+    db
+      .from("license_requests")
+      .select("id, artifact_id, created_at, artifacts(title), creators!license_requests_requester_creator_id_fkey(display_name)")
+      .eq("owner_creator_id", creatorId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    db
+      .from("license_requests")
+      .select("id, artifact_id, status, responded_at, artifacts(title)")
+      .eq("requester_creator_id", creatorId)
+      .in("status", ["approved", "declined", "countered"])
+      .gte("responded_at", since)
+      .order("responded_at", { ascending: false })
+      .limit(10),
   ]);
 
   const out: Notification[] = [];
@@ -88,6 +104,16 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     } else if (r.status !== "cancelled") {
       out.push({ id: `run:${r.id}`, kind: "run_unfinished", title: "A draft didn't finish", detail: "You can try again — nothing was lost.", href: `/create/runs/${r.id}`, at: r.completed_at ?? r.started_at });
     }
+  }
+  for (const r of licenseAsks.data ?? []) {
+    const who = (r.creators as { display_name: string } | null)?.display_name || "A creator";
+    const title = (r.artifacts as { title: string } | null)?.title ?? "your piece";
+    out.push({ id: `license-ask:${r.id}`, kind: "license_request", title: `${who} asked to license “${title}”`, detail: "Review the proposed use and terms", href: `/artifacts/${r.artifact_id}?tab=rights`, at: r.created_at });
+  }
+  for (const r of licenseAnswers.data ?? []) {
+    const title = (r.artifacts as { title: string } | null)?.title ?? "a piece";
+    const verb = r.status === "approved" ? "approved" : r.status === "declined" ? "declined" : "sent a counter-offer for";
+    out.push({ id: `license-answer:${r.id}`, kind: "license_response", title: `The creator ${verb} your license request for “${title}”`, detail: null, href: `/artifacts/${r.artifact_id}`, at: r.responded_at ?? new Date().toISOString() });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
