@@ -250,7 +250,7 @@ export function MaterialDetail({
               <Link href={`/create?material=${m.id}`} className={buttonClasses({ variant: "soft" })}>
                 <Sparkles className="size-4" aria-hidden /> Use in creation
               </Link>
-              <Link href={`/create?material=${m.id}&prompt=${encodeURIComponent(askPrompt)}`} className={buttonClasses({ variant: "secondary" })}>
+              <Link href={`/create?material=${m.id}&prompt=${encodeURIComponent(askPrompt)}`} prefetch={false} className={buttonClasses({ variant: "secondary" })}>
                 <MessageCircle className="size-4" aria-hidden /> Ask CreatorBrain
               </Link>
               {downloadable ? (
