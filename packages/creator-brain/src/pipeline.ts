@@ -23,6 +23,8 @@ export interface BrainDeps {
   /** Loads an image the creator owns, for vision. Returns null if unavailable. */
   loadImage?: (storageObjectId: string) => Promise<{ mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; dataBase64: string } | null>;
   onProgress?: (e: ProgressEvent) => void;
+  /** Called once a run is recorded, so the caller can link to its progress (the run page survives navigation). */
+  onRunStarted?: (runId: string, intent: string) => void;
   correlationId?: string;
 }
 
@@ -66,8 +68,12 @@ async function runGuarded<T>(run: RunTracker, fn: () => Promise<T>): Promise<T> 
   }
 }
 
-function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: string | null; artifactId?: string | null; inputCategory?: string; intentBrief?: Record<string, unknown> | null }) {
-  return RunTracker.start(deps.db, deps.creatorId, {
+async function startRun(
+  deps: BrainDeps,
+  intent: string,
+  opts: { conversationId?: string | null; artifactId?: string | null; inputCategory?: string; intentBrief?: Record<string, unknown> | null; request?: Record<string, unknown> | null; retryOf?: string | null },
+) {
+  const run = await RunTracker.start(deps.db, deps.creatorId, {
     intent,
     provider: deps.provider.name,
     model: deps.provider.modelFor("generate"),
@@ -76,7 +82,11 @@ function startRun(deps: BrainDeps, intent: string, opts: { conversationId?: stri
     inputCategory: opts.inputCategory,
     correlationId: deps.correlationId,
     intentBrief: opts.intentBrief,
+    request: opts.request,
+    retryOf: opts.retryOf,
   });
+  deps.onRunStarted?.(run.id, intent);
+  return run;
 }
 
 /** A working title from the creator's words ("a short film about my father's life" → "My Father's Life"). */
@@ -179,7 +189,7 @@ export type CreateResult =
   | { kind: "artifact"; artifact: Tables<"artifacts">; runId: string; quality: QualityResult; offline: boolean }
   | { kind: "proposal"; proposal: Proposal; runId: string };
 
-export async function create(deps: BrainDeps, input: CreateInput, opts: { approved?: boolean } = {}): Promise<CreateResult> {
+export async function create(deps: BrainDeps, input: CreateInput, opts: { approved?: boolean; retryOf?: string } = {}): Promise<CreateResult> {
   if (!isKnownArtifactType(input.artifactType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
   const def = artifactType(input.artifactType);
   // The chosen material leads; the confirmed brief travels with the request.
@@ -203,6 +213,9 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     conversationId: input.conversationId,
     inputCategory: ctx.selectedMaterials.length ? "materials" : "text",
     intentBrief: input.brief ? { ...input.brief.values, source: input.brief.source, acknowledged: input.brief.acknowledged ?? [] } : null,
+    // Exactly what was asked, so a failed or cancelled run can be retried without guessing.
+    request: { ...input } as Record<string, unknown>,
+    retryOf: opts.retryOf ?? null,
   });
   return runGuarded(run, async () => {
     deps.onProgress?.({ step: "deciding", label: "Checking your autonomy settings" });

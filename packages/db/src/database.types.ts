@@ -81,13 +81,13 @@ isOneToOne: false
                   ]
                 },"ai_runs": {
                   Row: {
-                    "artifact_id": string | null,"completed_at": string | null,"conversation_id": string | null,"correlation_id": string | null,"creator_id": string,"estimated_cost_usd": number | null,"failure_code": string | null,"id": string,"input_category": string | null,"input_tokens": number | null,"intent": string,"intent_brief": Json | null,"latency_ms": number | null,"model": string,"output_category": string | null,"output_tokens": number | null,"provider": string,"started_at": string,"status": string
+                    "artifact_id": string | null,"cancel_requested_at": string | null,"completed_at": string | null,"conversation_id": string | null,"correlation_id": string | null,"creator_id": string,"estimated_cost_usd": number | null,"failure_code": string | null,"id": string,"input_category": string | null,"input_tokens": number | null,"intent": string,"intent_brief": Json | null,"latency_ms": number | null,"model": string,"output_category": string | null,"output_tokens": number | null,"provider": string,"request": Json | null,"retry_of": string | null,"started_at": string,"status": string
                   }
                   Insert: {
-                    "artifact_id"?: string | null,"completed_at"?: string | null,"conversation_id"?: string | null,"correlation_id"?: string | null,"creator_id": string,"estimated_cost_usd"?: number | null,"failure_code"?: string | null,"id"?: string,"input_category"?: string | null,"input_tokens"?: number | null,"intent": string,"intent_brief"?: Json | null,"latency_ms"?: number | null,"model": string,"output_category"?: string | null,"output_tokens"?: number | null,"provider": string,"started_at"?: string,"status"?: string
+                    "artifact_id"?: string | null,"cancel_requested_at"?: string | null,"completed_at"?: string | null,"conversation_id"?: string | null,"correlation_id"?: string | null,"creator_id": string,"estimated_cost_usd"?: number | null,"failure_code"?: string | null,"id"?: string,"input_category"?: string | null,"input_tokens"?: number | null,"intent": string,"intent_brief"?: Json | null,"latency_ms"?: number | null,"model": string,"output_category"?: string | null,"output_tokens"?: number | null,"provider": string,"request"?: Json | null,"retry_of"?: string | null,"started_at"?: string,"status"?: string
                   }
                   Update: {
-                    "artifact_id"?: string | null,"completed_at"?: string | null,"conversation_id"?: string | null,"correlation_id"?: string | null,"creator_id"?: string,"estimated_cost_usd"?: number | null,"failure_code"?: string | null,"id"?: string,"input_category"?: string | null,"input_tokens"?: number | null,"intent"?: string,"intent_brief"?: Json | null,"latency_ms"?: number | null,"model"?: string,"output_category"?: string | null,"output_tokens"?: number | null,"provider"?: string,"started_at"?: string,"status"?: string
+                    "artifact_id"?: string | null,"cancel_requested_at"?: string | null,"completed_at"?: string | null,"conversation_id"?: string | null,"correlation_id"?: string | null,"creator_id"?: string,"estimated_cost_usd"?: number | null,"failure_code"?: string | null,"id"?: string,"input_category"?: string | null,"input_tokens"?: number | null,"intent"?: string,"intent_brief"?: Json | null,"latency_ms"?: number | null,"model"?: string,"output_category"?: string | null,"output_tokens"?: number | null,"provider"?: string,"request"?: Json | null,"retry_of"?: string | null,"started_at"?: string,"status"?: string
                   }
                   Relationships: [
                     {
@@ -107,6 +107,12 @@ isOneToOne: false
       columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ai_runs_retry_of_fkey"
+      columns: ["retry_of"]
+isOneToOne: true
+      referencedRelation: "ai_runs"
       referencedColumns: ["id"]
     }
                   ]
