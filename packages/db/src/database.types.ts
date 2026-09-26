@@ -1255,6 +1255,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"search_embeddings": {
+                  Row: {
+                    "content_hash": string,"creator_id": string,"embedding": string,"model": string,"subject_id": string,"subject_type": string,"updated_at": string
+                  }
+                  Insert: {
+                    "content_hash": string,"creator_id": string,"embedding": string,"model": string,"subject_id": string,"subject_type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "content_hash"?: string,"creator_id"?: string,"embedding"?: string,"model"?: string,"subject_id"?: string,"subject_type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "search_embeddings_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"storage_objects": {
                   Row: {
                     "bucket": string,"created_at": string,"creator_id": string,"declared_mime_type": string | null,"id": string,"mime_type": string,"original_filename": string | null,"path": string,"privacy": Database["public"]['Enums']["privacy_class"],"security_status": string,"sha256": string,"size_bytes": number
@@ -1385,6 +1404,16 @@ isOneToOne: false
                            },
 "record_domain_event":
 { Args: { "p_aggregate_id": string,"p_aggregate_type": string,"p_correlation_id"?: string,"p_event_type": string,"p_payload"?: Json }; Returns: string
+                           },
+"semantic_search":
+{ Args: { "p_limit"?: number,"p_min_similarity"?: number,"p_query": string }; Returns: {
+              "similarity": number,"subject_id": string,"subject_type": string
+            }[]
+                           },
+"stale_search_subjects":
+{ Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
+              "creator_id": string,"subject_id": string,"subject_type": string
+            }[]
                            }
           }
           Enums: {

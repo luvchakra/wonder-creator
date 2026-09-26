@@ -28,4 +28,4 @@ export const POST = withApi(async ({ db, creatorId, req, requestId }) => {
     },
   });
   return new Response(stream, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
-}, { rateLimit: 20 });
+}, { rateLimit: 20, reindex: true });

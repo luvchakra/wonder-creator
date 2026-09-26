@@ -163,3 +163,42 @@ describe("GeminiProvider transcription", () => {
     await expect(new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "video", mimeType: "video/mp4", bytes: new Uint8Array(15 * 1024 * 1024) })).rejects.toMatchObject({ code: "provider_failed" });
   });
 });
+
+describe("GeminiProvider embeddings", () => {
+  const vec = (x: number) => Array.from({ length: 768 }, (_, i) => (i === 0 ? x : 0));
+
+  it("formats documents and queries for gemini-embedding-2 and batches requests", async () => {
+    const { calls, f } = recorder(() => json({ embeddings: Array.from({ length: 100 }, () => ({ values: vec(1) })) }));
+    const p = new GeminiProvider({ apiKey: "k", fetch: f });
+    const items = Array.from({ length: 100 }, (_, i) => ({ title: i === 0 ? "Riverbank" : null, text: `note ${i}\n\nmore` }));
+    const out = await p.embed({ purpose: "document", items });
+    expect(out).toMatchObject({ model: "gemini-embedding-2", dimensions: 768 });
+    expect(out.vectors).toHaveLength(100);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents");
+    const reqs = calls[0].body.requests as Array<{ model: string; content: { parts: Array<{ text: string }> }; output_dimensionality: number }>;
+    expect(reqs[0]).toEqual({ model: "models/gemini-embedding-2", content: { parts: [{ text: "title: Riverbank | text: note 0 more" }] }, output_dimensionality: 768 });
+    expect(reqs[1].content.parts[0].text).toBe("title: none | text: note 1 more");
+
+    const q = recorder(() => json({ embeddings: [{ values: vec(1) }] }));
+    await new GeminiProvider({ apiKey: "k", fetch: q.f }).embed({ purpose: "query", items: [{ text: "quiet river" }] });
+    expect((q.calls[0].body.requests as Array<{ content: { parts: Array<{ text: string }> } }>)[0].content.parts[0].text).toBe("task: search result | query: quiet river");
+  });
+
+  it("splits more than 100 items into several batches", async () => {
+    let n = 0;
+    const f = (async (_u: RequestInfo | URL, init?: RequestInit) => {
+      n++;
+      const count = (JSON.parse(String(init?.body)) as { requests: unknown[] }).requests.length;
+      return json({ embeddings: Array.from({ length: count }, () => ({ values: vec(1) })) });
+    }) as typeof fetch;
+    const out = await new GeminiProvider({ apiKey: "k", fetch: f }).embed({ purpose: "document", items: Array.from({ length: 150 }, () => ({ text: "x" })) });
+    expect(n).toBe(2);
+    expect(out.vectors).toHaveLength(150);
+  });
+
+  it("rejects a response with the wrong count or width", async () => {
+    const { f } = recorder(() => json({ embeddings: [{ values: [1, 2, 3] }] }));
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f }).embed({ purpose: "query", items: [{ text: "x" }] })).rejects.toMatchObject({ code: "provider_failed" });
+  });
+});

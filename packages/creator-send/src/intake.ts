@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { DomainError, fromDbError, isDomainError, log, must, publishEvent } from "@wonder/core";
 import { inspectUpload, parseExternalUrl, safeFetch, safeFilename, type MediaKind } from "@wonder/core/server";
-import { understandMaterial, type CreativeModelProvider } from "@wonder/creator-brain";
+import { indexStaleSubjects, understandMaterial, type CreativeModelProvider } from "@wonder/creator-brain";
 import { createMaterial, MATERIAL_BUCKET, type MaterialType } from "@wonder/creator-library";
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { extractDocxText } from "./docx";
@@ -344,6 +344,10 @@ export async function processIntake(deps: IntakeDeps, intakeId: string): Promise
       item = await transition(deps, item, "ready");
     }
     if (item.state === "understood") item = await transition(deps, item, "ready");
+    // Semantic search index: best effort, never fails the intake.
+    await indexStaleSubjects(deps.service, deps.provider, { creatorId: deps.creatorId, limit: 5 }).catch((e) =>
+      log("warn", "intake.index_failed", { intakeId, code: isDomainError(e) ? e.code : "internal" }),
+    );
     await publishEvent(deps.db, { type: "CreativeMaterialUpdated", aggregate: "material", aggregateId: material.id, payload: { state: item.state } }).catch(() => undefined);
     return item;
   } catch (e) {

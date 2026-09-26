@@ -60,6 +60,21 @@ export interface TranscribeInput {
   bytes: Uint8Array;
 }
 
+export interface EmbedInput {
+  /** "document" for indexed content, "query" for a search query (asymmetric retrieval). */
+  purpose: "document" | "query";
+  items: Array<{ title?: string | null; text: string }>;
+}
+
+export interface EmbedOutput {
+  vectors: number[][];
+  model: string;
+  dimensions: number;
+}
+
+/** Stored embedding width; the database column is vector(768). */
+export const EMBEDDING_DIMENSIONS = 768;
+
 /** Provider-neutral creative model interface. Provider configuration is server-side only. */
 export interface CreativeModelProvider {
   readonly name: string;
@@ -70,6 +85,8 @@ export interface CreativeModelProvider {
   structured<T>(input: StructuredInput<T>): Promise<StructuredOutput<T>>;
   /** Speech-to-text for audio/video. Absent when the provider can't transcribe (never faked). */
   transcribe?(input: TranscribeInput): Promise<GenerateOutput>;
+  /** Text embeddings for semantic search. Absent when the provider has none (search stays lexical). */
+  embed?(input: EmbedInput): Promise<EmbedOutput>;
 }
 
 export interface ProviderReadiness {

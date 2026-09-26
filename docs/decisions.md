@@ -16,3 +16,9 @@
    vector originals are an outstanding asset dependency.
 8. **One tenant per creator** in P0 (personal tenants); team tenants are modelled but not surfaced.
 9. **Settings shown only where implemented** (no fake Billing/Integrations/Notifications panels).
+10. **Semantic search = pgvector + provider embeddings, owner-scoped.** `gemini-embedding-2` at 768 dimensions
+   (fixed: vectors only compare within one model). Only the creator's own active, clean materials and non-archived
+   artifacts are embedded; rows are written by the server pipeline and readable only by their owner. Indexing is
+   incremental (stale = missing or older than the subject; unchanged content is re-stamped, not re-embedded) and runs
+   after intake, after edits (`withApi({ reindex: true })`) and in the cron backfill. Keyword results stay first;
+   meaning-based matches are appended and labelled. Without an embedding provider, search is lexical only.

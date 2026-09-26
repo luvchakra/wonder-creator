@@ -11,7 +11,7 @@ export const GET = withApi<{ id: string }>(async ({ db }, { id }) => {
 export const PATCH = withApi<{ id: string }>(async ({ db, creatorId, req }, { id }) => {
   await updateMaterial(db, creatorId, requireUuid(id, "material"), await readJson(req));
   return { ok: true };
-});
+}, { reindex: true });
 
 export const DELETE = withApi<{ id: string }>(async ({ db, req }, { id }) => {
   // Destructive: the client must confirm explicitly.

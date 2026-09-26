@@ -11,4 +11,4 @@ export const POST = withApi<{ id: string }>(async ({ db, creatorId, req, request
   const b = schema.parse(await readJson(req));
   const res = await transform(brainDeps(db, creatorId, { correlationId: requestId }), { artifactId: requireUuid(id, "piece"), targetType: b.targetType, instruction: b.instruction || "Adapt this piece." });
   return { artifact: res.artifact, offline: res.offline };
-}, { rateLimit: 20 });
+}, { rateLimit: 20, reindex: true });
