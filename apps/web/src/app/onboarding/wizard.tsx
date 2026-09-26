@@ -104,7 +104,6 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
       const r = await api<{ next: Step | "complete" }>(`/api/v1/creators/onboarding/${current}`, { method: "POST", json: skip ? { skip: true } : payload });
       if (r.next === "complete") {
         router.replace("/");
-        router.refresh();
       } else setStep(r.next);
     } catch (e) {
       setError(errorMessage(e));

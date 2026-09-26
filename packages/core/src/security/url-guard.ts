@@ -75,15 +75,15 @@ export function parseExternalUrl(raw: string): URL {
   if (url.username || url.password) {
     throw new DomainError("security_rejected", "Links with embedded credentials can't be added.");
   }
-  if (url.port && url.port !== "80" && url.port !== "443") {
-    throw new DomainError("security_rejected", "Links to non-standard ports can't be added.");
-  }
   const host = url.hostname.toLowerCase();
   if (BLOCKED_HOSTNAMES.has(host) || host.endsWith(".localhost") || host.endsWith(".internal") || host.endsWith(".local")) {
     throw new DomainError("security_rejected", "That link points to a private network.");
   }
   if (isIP(host.replace(/^\[|\]$/g, "")) && isPrivateAddress(host)) {
     throw new DomainError("security_rejected", "That link points to a private network.");
+  }
+  if (url.port && url.port !== "80" && url.port !== "443") {
+    throw new DomainError("security_rejected", "Links to non-standard ports can't be added.");
   }
   if (raw.length > 2048) throw new DomainError("validation", "That link is too long.");
   return url;

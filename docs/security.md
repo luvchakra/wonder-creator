@@ -9,7 +9,7 @@
 - Huddle transitions are security-definer RPCs implementing the authorization matrix (join requests need approval
   by a joined participant other than the requester; host-only remove/end fail closed).
 - `app.*` internal functions are not executable by clients (default privileges revoked).
-- `tests/db` (277 tests) covers isolation, ID tampering, cross-tenant reads/writes, huddle access, dissolution,
+- `tests/db` (278 tests) covers isolation, ID tampering, cross-tenant reads/writes, huddle access, dissolution,
   stale presence, storage, events and audit immutability.
 
 ## Input handling

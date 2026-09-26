@@ -1,5 +1,5 @@
 "use client";
-import { relativeTime } from "@wonder/core";
+import { RelativeTime } from "@/components/client-time";
 import { Button, Card, Input, Textarea, cn } from "@wonder/ui";
 import { Camera, Check, CircleAlert, CloudUpload, FileText, Link2, Loader2, Mic, ShieldAlert } from "lucide-react";
 import Link from "next/link";
@@ -173,7 +173,7 @@ export function SendInbox({ initial }: { initial: Item[] }) {
                         <p className="truncate font-medium text-ink">{i.kind === "url" || i.kind === "youtube" ? "Link" : "File"}</p>
                       )}
                       <p className="text-xs text-ink-subtle">
-                        {i.kind} · {relativeTime(i.createdAt)}
+                        {i.kind} · <RelativeTime iso={i.createdAt} />
                       </p>
                     </div>
                     {failed ? (

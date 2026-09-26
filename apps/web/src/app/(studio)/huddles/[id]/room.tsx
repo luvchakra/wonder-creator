@@ -23,6 +23,7 @@ import { Bookmark, Flag, MessageCircle, Mic, MicOff, MoreHorizontal, PhoneOff, S
 import type { Room as LkRoom, Track } from "livekit-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useNow } from "@/components/client-time";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { createClient } from "@/lib/supabase/client";
@@ -65,7 +66,7 @@ export function HuddleRoom({
   const [audio, setAudio] = useState(false);
   const [video, setVideo] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
-  const [now, setNow] = useState(() => new Date());
+  const now = useNow();
   const [preserveText, setPreserveText] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -103,11 +104,9 @@ export function HuddleRoom({
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "huddle_messages", filter: `huddle_id=eq.${huddleId}` }, () => refresh())
       .subscribe();
     const poll = setInterval(refresh, state.me?.status === "joined" ? 4000 : 6000);
-    const tick = setInterval(() => setNow(new Date()), 1000);
     return () => {
       void supabase.removeChannel(ch);
       clearInterval(poll);
-      clearInterval(tick);
     };
   }, [huddleId, refresh, state.me?.status]);
 
@@ -226,7 +225,7 @@ export function HuddleRoom({
   if (status === "dissolved" || status === "dissolving") {
     return (
       <div className="mx-auto max-w-lg rounded-3xl border border-border-soft bg-surface p-8 text-center">
-        <h1 className="font-display text-3xl text-ink">This Huddle has ended</h1>
+        <h1 className="font-display text-3xl text-ink">{state.huddle ? "This Huddle has ended" : "This Huddle has ended or isn't available to you"}</h1>
         <p className="mt-2 text-ink-muted">Huddles are temporary. When everyone leaves, the conversation dissolves — anything someone saved lives on as their material.</p>
         <Link href="/huddles" className={buttonClasses({ className: "mt-6" })}>
           See who&apos;s live
@@ -250,7 +249,7 @@ export function HuddleRoom({
         </div>
         <h1 className="mt-3 font-display text-3xl text-ink">{participantLine(names, publicCard?.participantCount ?? 0) || "A live Huddle"}</h1>
         <p className="mt-1 text-ink-muted">{publicCard?.topic ? `Talking about ${publicCard.topic}` : "An open conversation"}</p>
-        {publicCard ? <p className="mt-1 text-sm text-ink-subtle">Live for {formatElapsed(publicCard.startedAt, now)}</p> : null}
+        {publicCard && now ? <p className="mt-1 text-sm text-ink-subtle">Live for {formatElapsed(publicCard.startedAt, now)}</p> : null}
 
         {status === "approved" ? (
           <div className="mt-6 rounded-2xl bg-success-soft p-4">
@@ -303,7 +302,7 @@ export function HuddleRoom({
         <header className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-3">
           <LiveBadge />
           <span className="font-mono text-sm tabular-nums text-white/80" aria-label="Elapsed time">
-            {state.huddle ? formatElapsed(state.huddle.started_at, now) : ""}
+            {state.huddle && now ? formatElapsed(state.huddle.started_at, now) : ""}
           </span>
           <h1 className="min-w-0 flex-1 truncate text-[15px] font-medium">{state.huddle?.topic ? `Talking about ${state.huddle.topic}` : "Open conversation"}</h1>
           <span className="inline-flex items-center gap-1 text-sm text-white/80">

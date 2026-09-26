@@ -1,5 +1,5 @@
 "use client";
-import { relativeTime } from "@wonder/core";
+import { RelativeTime } from "@/components/client-time";
 import { ARTIFACT_TYPES, actionsFor } from "@wonder/creator-studio/types";
 import {
   Avatar,
@@ -264,7 +264,7 @@ export function ArtifactView(props: {
                       </ul>
                     </>
                   ) : null}
-                  <p className="mt-3 text-xs text-ink-subtle">Suggestions only — nothing was rewritten. Checked {relativeTime(props.quality.createdAt)}.</p>
+                  <p className="mt-3 text-xs text-ink-subtle">Suggestions only — nothing was rewritten. Checked <RelativeTime iso={props.quality.createdAt} />.</p>
                 </>
               ) : (
                 <p className="mt-2 text-sm text-ink-muted">No quality review yet. Run one from the Studio.</p>
@@ -324,7 +324,7 @@ export function ArtifactView(props: {
 
       {isOwner ? (
         <>
-          <ShareDialog open={shareOpen} onOpenChange={setShareOpen} artifact={a} onSave={patch} />
+          <ShareDialog key={shareOpen ? "open" : "closed"} open={shareOpen} onOpenChange={setShareOpen} artifact={a} onSave={patch} />
           <TransformDialog open={transformOpen} onOpenChange={setTransformOpen} artifactId={a.id} currentType={a.artifact_type} />
           <ConfirmDialog
             open={deleteOpen}
@@ -395,7 +395,7 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
               {v.id === currentId ? <Badge tone="accent">Current</Badge> : null}
               <Badge>{v.author_kind === "ai" ? "CreatorBrain" : v.author_kind === "restore" ? "Restored" : "You"}</Badge>
             </div>
-            <p className="mt-0.5 text-xs text-ink-subtle">{relativeTime(v.created_at)}</p>
+            <p className="mt-0.5 text-xs text-ink-subtle"><RelativeTime iso={v.created_at} /></p>
             {v.change_summary ? <p className="mt-1.5 text-sm text-ink-muted">{v.change_summary}</p> : null}
             {isOwner && v.id !== currentId ? (
               <Button
@@ -828,7 +828,7 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
         <ul className="mt-1 space-y-1 text-xs text-ink-subtle">
           {rights.events.slice(0, 6).map((e) => (
             <li key={e.id}>
-              {e.event.replace(/_/g, " ").replace(".", " · ")} — {relativeTime(e.created_at)}
+              {e.event.replace(/_/g, " ").replace(".", " · ")} — <RelativeTime iso={e.created_at} />
             </li>
           ))}
         </ul>

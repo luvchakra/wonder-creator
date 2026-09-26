@@ -298,6 +298,11 @@ describe("artifact visibility", () => {
     }
   });
 
+  it("the owner still sees the full draft history of a public artifact", async () => {
+    const versions = expectOk(await a.client.from("artifact_versions").select("id").eq("artifact_id", publicId));
+    expect(versions.map((v) => v.id).sort()).toEqual([publicV1, publicV2].sort());
+  });
+
   it("a public + final artifact is readable by B, but only its current version (draft history stays private)", async () => {
     expect(expectOk(await b.client.from("artifacts").select("id").eq("id", publicId))).toHaveLength(1);
     const versions = expectOk(await b.client.from("artifact_versions").select("id").eq("artifact_id", publicId));

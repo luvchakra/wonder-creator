@@ -1,5 +1,5 @@
 "use client";
-import { relativeTime } from "@wonder/core";
+import { RelativeTime } from "@/components/client-time";
 import { artifactType } from "@wonder/creator-studio/types";
 import { Badge, Button, ErrorState, buttonClasses, cn } from "@wonder/ui";
 import { ArrowUpRight, Check, CircleAlert, Lightbulb, MessageSquarePlus, Sparkles, X } from "lucide-react";
@@ -201,7 +201,7 @@ export function Talk({
                 className={cn("block rounded-xl px-3 py-2 text-sm leading-snug", c.id === conversationId ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}
               >
                 {c.title}
-                <span className="block text-xs font-normal text-ink-subtle">{relativeTime(c.updatedAt)}</span>
+                <span className="block text-xs font-normal text-ink-subtle"><RelativeTime iso={c.updatedAt} /></span>
               </Link>
             </li>
           ))}

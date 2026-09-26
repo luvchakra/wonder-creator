@@ -1,5 +1,5 @@
 "use client";
-import { relativeTime } from "@wonder/core";
+import { RelativeTime } from "@/components/client-time";
 import { Button, ConfirmDialog, Dialog, DialogContent, EmptyState, Field, IconButton, Select, Tab, TabList, TabPanel, Tabs, Textarea, BACKGROUNDS } from "@wonder/ui";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -82,8 +82,13 @@ export function MemoryView({ initial }: { initial: Memory[] }) {
                   <li key={m.id} className="flex flex-col rounded-2xl border border-border-soft bg-surface p-4 shadow-[var(--shadow-card)]">
                     <p className="text-[15px] leading-relaxed text-ink">{m.statement}</p>
                     <p className="mt-3 text-xs text-ink-subtle">
-                      {m.sourceLabel ?? SOURCE[m.sourceKind] ?? "Source unknown"} · {relativeTime(m.createdAt)}
-                      {m.lastUsedAt ? ` · last used ${relativeTime(m.lastUsedAt)}` : ""}
+                      {m.sourceLabel ?? SOURCE[m.sourceKind] ?? "Source unknown"} · <RelativeTime iso={m.createdAt} />
+                      {m.lastUsedAt ? (
+                        <>
+                          {" · last used "}
+                          <RelativeTime iso={m.lastUsedAt} />
+                        </>
+                      ) : null}
                     </p>
                     <div className="mt-auto flex justify-end gap-1 pt-2">
                       <IconButton label="Edit memory" onClick={() => setEditing(m)}>

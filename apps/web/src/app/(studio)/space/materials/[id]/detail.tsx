@@ -1,5 +1,5 @@
 "use client";
-import { relativeTime } from "@wonder/core";
+import { RelativeTime } from "@/components/client-time";
 import { Badge, Button, ConfirmDialog, ErrorState, Field, Input, Select, TagInput, Textarea, buttonClasses } from "@wonder/ui";
 import { Archive, BookmarkPlus, ExternalLink, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -231,7 +231,7 @@ export function MaterialDetail({
               </>
             ) : null}
             <dt className="text-ink-subtle">Added</dt>
-            <dd className="text-ink">{relativeTime(m.createdAt)}</dd>
+            <dd className="text-ink"><RelativeTime iso={m.createdAt} /></dd>
           </dl>
           {intake?.state === "failed" ? (
             <div className="mt-3 rounded-xl bg-warning-soft p-3 text-sm text-warning-ink">
