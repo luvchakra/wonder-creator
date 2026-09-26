@@ -43,6 +43,9 @@ the gap listed) · **Not started**.
 
 Plan: [`docs/plan-p0.1-p1.md`](plan-p0.1-p1.md) (owner-supplied; source of truth for scope and order).
 Status legend as above. Items are worked in the plan's order (§51, §52), one PR each.
+UI reference: [`docs/mockups/p0.1-screens.png`](mockups/p0.1-screens.png) (owner-supplied). Where the mockup and the plan
+differ, the plan's product rules win: Scrapbook shows replies without like/engagement counts (plan §16), and follower
+notifications are informational only (no follower-centric mechanics).
 
 | Item | Status | Notes |
 |---|---|---|
