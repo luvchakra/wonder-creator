@@ -59,6 +59,13 @@ export default async function HomePage() {
         </section>
       </BrandBackground>
 
+      <Link href="/scrapbook" className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-3 text-[15px] text-ink hover:bg-black/[0.02]">
+        <span>
+          <span className="font-medium">Scrapbook</span> <span className="text-ink-muted">— share a thought, a sketch or a fragment, and see what others are thinking about.</span>
+        </span>
+        <span aria-hidden className="text-ink-muted">›</span>
+      </Link>
+
       {proposals.count ? (
         <Link href="/approvals" className="flex items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
           <Sparkles className="size-5 text-accent-ink" aria-hidden />

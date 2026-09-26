@@ -12,7 +12,7 @@ const NAV = [
   { href: "/create", label: "Create", icon: PenLine, match: (p: string) => p.startsWith("/create") || p.startsWith("/send") || p.startsWith("/artifacts") },
   { href: "/space", label: "Space", icon: Sparkles, match: (p: string) => p.startsWith("/space") },
   { href: "/huddles", label: "Huddles", icon: Users, match: (p: string) => p.startsWith("/huddles") },
-  { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") || p.startsWith("/creators") || p.startsWith("/settings") || p.startsWith("/memory") },
+  { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") || p.startsWith("/creators") || p.startsWith("/settings") || p.startsWith("/memory") || p.startsWith("/scrapbook") },
 ];
 
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {

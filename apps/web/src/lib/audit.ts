@@ -106,6 +106,12 @@ function describeAudit(r: Row): Described | null {
       return { category: "autonomy", title: "Changed Creator Autonomy", outcome: "done", actor: you, details: [{ label: "Area", value: words(m.domain) }, { label: "Level", value: words(m.level) }] };
     case "autonomy.reset":
       return { category: "autonomy", title: "Reset Creator Autonomy to defaults", outcome: "done", actor: you };
+    case "scrapbook.posted":
+      return { category: "sharing", title: "Shared to your Scrapbook", outcome: "done", actor: you, details: [{ label: "Who can see it", value: m.visibility === "private" ? "Only you" : "People who can see your profile" }, { label: "Replies", value: words(m.replies) }] };
+    case "scrapbook.settings":
+      return { category: "sharing", title: "Changed who can see or reply to a Scrapbook post", outcome: "done", actor: you, details: [{ label: "Who can see it", value: m.visibility === "private" ? "Only you" : "People who can see your profile" }, { label: "Replies", value: words(m.replies) }] };
+    case "scrapbook.deleted":
+      return { category: "exports", title: "Deleted a Scrapbook post", outcome: "done", actor: you };
     case "profile.update":
       return { category: "profile", title: "Updated your profile", outcome: "done", actor: you, details: m.visibility ? [{ label: "Profile visibility", value: words(m.visibility) }] : [] };
   }

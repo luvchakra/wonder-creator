@@ -1471,6 +1471,87 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"scrapbook_attachments": {
+                  Row: {
+                    "artifact_id": string | null,"creator_id": string,"id": string,"material_id": string | null,"position": number,"post_id": string
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"creator_id": string,"id"?: string,"material_id"?: string | null,"position"?: number,"post_id": string
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"creator_id"?: string,"id"?: string,"material_id"?: string | null,"position"?: number,"post_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "scrapbook_attachments_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "scrapbook_attachments_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "scrapbook_attachments_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "scrapbook_attachments_post_id_fkey"
+      columns: ["post_id"]
+isOneToOne: false
+      referencedRelation: "scrapbook_posts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"scrapbook_posts": {
+                  Row: {
+                    "body": string,"created_at": string,"creator_id": string,"id": string,"kind": string,"reply_policy": string,"updated_at": string,"visibility": string
+                  }
+                  Insert: {
+                    "body"?: string,"created_at"?: string,"creator_id": string,"id"?: string,"kind"?: string,"reply_policy"?: string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"kind"?: string,"reply_policy"?: string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "scrapbook_posts_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"scrapbook_replies": {
+                  Row: {
+                    "body": string,"created_at": string,"creator_id": string,"id": string,"post_id": string
+                  }
+                  Insert: {
+                    "body": string,"created_at"?: string,"creator_id": string,"id"?: string,"post_id": string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"post_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "scrapbook_replies_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "scrapbook_replies_post_id_fkey"
+      columns: ["post_id"]
+isOneToOne: false
+      referencedRelation: "scrapbook_posts"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"search_embeddings": {
                   Row: {
                     "content_hash": string,"creator_id": string,"embedding": string,"model": string,"subject_id": string,"subject_type": string,"updated_at": string
@@ -1786,6 +1867,14 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"scrapbook_attachment_details":
+{ Args: { "p_posts": (string)[] }; Returns: {
+              "attachment_id": string,"can_open": boolean,"excerpt": string,"file_path": string,"item_id": string,"item_type": string,"kind": string,"mime_type": string,"post_id": string,"title": string
+            }[]
+                           },
+"scrapbook_can_reply":
+{ Args: { "p_post": string }; Returns: boolean
+                           },
 "semantic_search":
 { Args: { "p_limit"?: number,"p_min_similarity"?: number,"p_query": string }; Returns: {
               "similarity": number,"subject_id": string,"subject_type": string

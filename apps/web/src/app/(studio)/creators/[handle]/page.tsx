@@ -8,6 +8,8 @@ import { ArtifactCard } from "@/components/cards";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
+import { listPosts } from "@wonder/creator-library";
+import { ScrapbookPostCard } from "@/components/scrapbook-post";
 import { requireSession } from "@/lib/session";
 import { ProfileActions } from "./profile-actions";
 
@@ -37,7 +39,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     isMe ? Promise.resolve({ data: null }) : db.from("creator_follows").select("followed_creator_id").eq("follower_creator_id", me.id).eq("followed_creator_id", c.id).maybeSingle(),
     avatarUrls(db, [c.id]),
   ]);
-  const covers = await coverUrls(db, artifacts ?? []);
+  const [covers, scrapbook] = await Promise.all([coverUrls(db, artifacts ?? []), listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 3 })]);
 
   return (
     <div className="space-y-8">
@@ -102,6 +104,28 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           </ul>
         ) : (
           <EmptyState image={BACKGROUNDS.studioDesk} title={isMe ? "Nothing to show yet" : "No public work yet"} body={isMe ? "Mark a piece as final and public to share it on your profile." : "When this creator shares finished work, it will appear here."} />
+        )}
+      </section>
+
+      <section aria-labelledby="scrapbook-h">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="scrapbook-h" className="text-lg font-semibold text-ink">
+            Scrapbook
+          </h2>
+          <Link href="/scrapbook" className="text-sm font-medium text-accent-ink hover:underline">
+            {isMe ? "Share something" : "Open Scrapbook"}
+          </Link>
+        </div>
+        {scrapbook.posts.length ? (
+          <ol className="space-y-3">
+            {scrapbook.posts.map((p) => (
+              <li key={p.id}>
+                <ScrapbookPostCard post={p} />
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-[15px] text-ink-muted">{isMe ? "Thoughts, reflections and sketches you share appear here." : "Nothing shared here yet."}</p>
         )}
       </section>
     </div>

@@ -3,5 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./suggestions": "./src/suggestions.ts" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./suggestions": "./src/suggestions.ts",
+    "./scrapbook-options": "./src/scrapbook-options.ts"
+  }
 }
