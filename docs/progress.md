@@ -26,7 +26,7 @@ the gap listed) · **Not started**.
 | 18 | Creator Huddle | Done (provider-gated media) | Start, invite, discover, request/approve, text chat, presence, leave, host hand-off, remove, end, report, zero-participant dissolve. Voice/video via LiveKit when configured |
 | 19 | Huddle → Material preservation | Done | Explicit save as idea/note with huddle provenance |
 | 20 | Creator Profile + Live Presence | Done | Public-safe profile, live presence card, follow, block, invite to Huddle |
-| 21 | Live Huddle discovery across platform | Done | Home strip, Huddles page, profile, search |
+| 21 | Live Huddle discovery across platform | Done | Home strip, Huddles page, profile, search, notifications (join requests, invitations) |
 | 22 | Security / privacy / governance | Done | RLS everywhere, hardened RPCs, CSP/headers, rate limits, SSRF, upload validation, prompt-injection fencing, export/delete with step-up. 278 DB security tests, 28 E2E tests (desktop + 360px) |
 | 23 | Modular architecture | Done | Domain packages with clear ownership; one app, one database |
 | 24 | Domain events | Done | Immutable `domain_events`, reserved lifecycle events emitted only by the database, idempotent consumer table |
@@ -37,4 +37,3 @@ the gap listed) · **Not started**.
 
 ## Known follow-ups
 - Malware scanning integration at the `security_review` intake step.
-- Notifications panel (P0 surfaces pending proposals and join requests in context instead).
