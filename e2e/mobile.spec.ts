@@ -38,6 +38,7 @@ test.describe("mobile layout @mobile", () => {
       [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],
+      ["/approvals", (p) => expect(p.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible()],
       ["/settings", (p) => expect(p.getByRole("heading", { name: "Account & Profile" })).toBeVisible()],
     ];
     for (const [path, ready] of screens) {

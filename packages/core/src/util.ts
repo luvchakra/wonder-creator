@@ -4,6 +4,13 @@ export const isUuid = (v: unknown): v is string => typeof v === "string" && UUID
 
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const diff = (now.getTime() - new Date(iso).getTime()) / 1000;
+  if (diff < -45) {
+    // A time still to come (an expiry, a schedule).
+    const ahead = -diff;
+    if (ahead < 3600) return `in ${Math.max(1, Math.round(ahead / 60))} min`;
+    if (ahead < 86400) return `in ${Math.round(ahead / 3600)} hour${Math.round(ahead / 3600) === 1 ? "" : "s"}`;
+    return `in ${Math.round(ahead / 86400)} day${Math.round(ahead / 86400) === 1 ? "" : "s"}`;
+  }
   if (diff < 45) return "just now";
   if (diff < 90) return "1 min ago";
   if (diff < 3600) return `${Math.round(diff / 60)} min ago`;

@@ -4,7 +4,7 @@ import { artifactType, createArtifact, createVersion, getArtifact, inheritFromSo
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
-import { authorizeTool, createProposal, getPendingProposal, resolveProposal, type Proposal } from "./governance";
+import { authorizeTool, claimProposal, createProposal, getPendingProposal, resolveProposal, type Proposal } from "./governance";
 import { artifactBrief, renderMaterials, systemPrompt, TASKS } from "./prompts";
 import type { ContentPart, CreativeModelProvider, GenerateInput } from "./providers/types";
 import { heuristicChecks, mergeChecks, type QualityCheck } from "./quality";
@@ -500,7 +500,8 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
 // Proposal execution (after the creator confirms)
 // ---------------------------------------------------------------------------
 export async function approveProposal(deps: BrainDeps, proposalId: string) {
-  const p = await getPendingProposal(deps.db, proposalId);
+  // Claim first (pending → approved, atomically): the stored parameters run once, never client-supplied ones.
+  const p = await claimProposal(deps.db, proposalId);
   const payload = p.payload as Record<string, unknown>;
   try {
     if (p.action === "apply_revision") {
@@ -523,21 +524,22 @@ export async function approveProposal(deps: BrainDeps, proposalId: string) {
     }
     if (p.action === "create_artifact") {
       // The creator's confirmation is consent for this one creation; "never" still blocks it.
-      await resolveProposal(deps.db, p.id, "executed");
       const res = await create(deps, payload as unknown as CreateInput, { approved: true });
       if (res.kind !== "artifact") throw new DomainError("internal", "Approval did not produce a piece.");
+      await resolveProposal(deps.db, p.id, "executed");
       return { kind: "artifact" as const, artifact: res.artifact };
     }
     throw new DomainError("validation", "This kind of proposal can't be approved here.");
   } catch (e) {
-    if (isDomainError(e) && e.code === "conflict") await resolveProposal(deps.db, p.id, "failed").catch(() => undefined);
+    const note = isDomainError(e) ? e.message : "Something went wrong while carrying this out.";
+    await resolveProposal(deps.db, p.id, "failed", note).catch(() => undefined);
     throw e;
   }
 }
 
-export async function rejectProposal(deps: BrainDeps, proposalId: string) {
+export async function rejectProposal(deps: BrainDeps, proposalId: string, note?: string | null) {
   await getPendingProposal(deps.db, proposalId);
-  await resolveProposal(deps.db, proposalId, "rejected");
+  await resolveProposal(deps.db, proposalId, "rejected", note);
 }
 
 export type { Intent };

@@ -26,7 +26,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
   const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers] = await Promise.all([
-    db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(10),
+    db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
       .select("id, huddle_id, created_at, creators!huddle_join_requests_requester_creator_id_fkey(display_name)")
@@ -77,7 +77,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       kind: "proposal",
       title: label ? `Waiting for your OK: ${label.toLowerCase()}` : "CreatorBrain is waiting for your OK",
       detail: p.understood.slice(0, 140),
-      href: p.conversation_id ? `/create?c=${p.conversation_id}` : "/create",
+      href: `/approvals/${p.id}`,
       at: p.created_at,
     });
   }

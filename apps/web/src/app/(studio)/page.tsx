@@ -30,7 +30,7 @@ export default async function HomePage() {
     db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(6),
     listMaterials(db, { limit: 6 }),
     liveCards(db, { limit: 6 }),
-    db.from("ai_proposals").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    db.from("ai_proposals").select("id", { count: "exact", head: true }).eq("status", "pending").gt("expires_at", new Date().toISOString()),
   ]);
   const artifacts = artifactsRes.data ?? [];
   const [covers, previews] = await Promise.all([coverUrls(db, artifacts), signedUrlsFor(db, materials.map((m) => m.storage_object_id))]);
@@ -60,7 +60,7 @@ export default async function HomePage() {
       </BrandBackground>
 
       {proposals.count ? (
-        <Link href="/create" className="flex items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
+        <Link href="/approvals" className="flex items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
           <Sparkles className="size-5 text-accent-ink" aria-hidden />
           CreatorBrain has {proposals.count} {proposals.count === 1 ? "proposal" : "proposals"} waiting for your approval.
         </Link>
