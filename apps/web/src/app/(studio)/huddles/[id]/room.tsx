@@ -492,7 +492,10 @@ function Chat({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [messages.length]);
+  // Block body: newer browsers return a Promise from scrollIntoView, which React would call as a cleanup.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length]);
   return (
     <section aria-label="Chat" className="flex max-h-[28rem] flex-col border-t border-white/10 bg-white/[0.03] lg:max-h-none lg:border-l lg:border-t-0">
       <div className="flex items-center justify-between px-4 py-2">
