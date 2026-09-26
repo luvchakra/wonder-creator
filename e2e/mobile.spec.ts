@@ -33,6 +33,7 @@ test.describe("mobile layout @mobile", () => {
       ["/", (p) => expect(p.getByLabel("What are you thinking about?")).toBeVisible()],
       ["/create", (p) => expect(p.getByRole("region", { name: "CreatorTalk" })).toBeVisible()],
       ["/space", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
+      ["/space?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
       [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],

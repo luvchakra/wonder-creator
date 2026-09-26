@@ -1,11 +1,12 @@
-import { listMaterials, MATERIAL_FILTERS, materialCounts, signedUrlsFor, type MaterialFilter } from "@wonder/creator-library";
+import { collectionCards, listMaterials, MATERIAL_FILTERS, materialCounts, signedUrlsFor, type MaterialFilter } from "@wonder/creator-library";
 import { listArtifacts } from "@wonder/creator-studio";
-import { BACKGROUNDS, EmptyState, PageTitle, buttonClasses, cn } from "@wonder/ui";
-import { Plus } from "lucide-react";
+import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn } from "@wonder/ui";
+import { Layers, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { ArtifactCard, MaterialCard } from "@/components/cards";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
+import { NewCollectionButton } from "./collections/new-collection";
 import { NewPieceButton, SpaceSearch } from "./space-controls";
 
 export const metadata = { title: "Creative Space" };
@@ -17,11 +18,12 @@ const TABS = [
   { key: "created", label: "Created" },
   { key: "shared", label: "Shared" },
   { key: "inspirations", label: "Inspirations" },
+  { key: "collections", label: "Collections" },
 ] as const;
 
 const MATERIAL_LABEL: Record<MaterialFilter, string> = { all: "All", ideas: "Ideas", notes: "Notes", images: "Images", audio: "Audio", video: "Video", documents: "Documents", links: "Links", archived: "Archived" };
 
-export default async function SpacePage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; type?: string }> }) {
+export default async function SpacePage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; type?: string; archived?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const tab = (TABS.find((t) => t.key === sp.tab)?.key ?? "all") as (typeof TABS)[number]["key"];
@@ -29,7 +31,8 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   const mFilter = ((MATERIAL_FILTERS as readonly string[]).includes(sp.type ?? "") ? sp.type : "all") as MaterialFilter;
 
   const wantMaterials = tab === "all" || tab === "ideas";
-  const wantArtifacts = tab !== "ideas" && tab !== "inspirations";
+  const wantArtifacts = tab !== "ideas" && tab !== "inspirations" && tab !== "collections";
+  const showArchived = sp.archived === "1";
   const [materials, counts, artifacts, refs] = await Promise.all([
     wantMaterials ? listMaterials(db, { filter: tab === "ideas" ? mFilter : "all", q, limit: tab === "all" ? 24 : 120 }) : Promise.resolve([]),
     tab === "ideas" ? materialCounts(db) : Promise.resolve(null),
@@ -38,6 +41,9 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
       : Promise.resolve([]),
     tab === "inspirations" ? db.from("reference_items").select("material_id").limit(200) : Promise.resolve({ data: [] as Array<{ material_id: string }> }),
   ]);
+  const allCollections = tab === "collections" ? await collectionCards(db, { includeArchived: showArchived }) : [];
+  const collections = q ? allCollections.filter((c) => `${c.name} ${c.description ?? ""}`.toLowerCase().includes(q.toLowerCase())) : allCollections;
+  const collectionCovers = await signedUrlsFor(db, collections.map((c) => c.coverObjectId));
   const shownArtifacts = tab === "shared" ? artifacts.filter((a) => a.privacy !== "creator_private") : artifacts;
   const inspirations = tab === "inspirations" ? await listMaterials(db, { ids: (refs.data ?? []).map((r) => r.material_id), q, limit: 120 }) : [];
   const allMaterials = [...materials, ...inspirations];
@@ -93,7 +99,49 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
           ))}
         </nav>
       ) : null}
-      {items.length ? (
+      {tab === "collections" ? (
+        <section aria-label="Collections">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <Link href={href({ archived: showArchived ? undefined : "1" })} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+              {showArchived ? "Hide archived collections" : "Show archived collections"}
+            </Link>
+            <NewCollectionButton existing={allCollections.map((c) => c.name)} />
+          </div>
+          {collections.length ? (
+            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {collections.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/space/collections/${c.id}`} className="group block rounded-2xl focus-visible:outline-2">
+                    <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
+                      {c.coverObjectId && collectionCovers[c.coverObjectId] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={collectionCovers[c.coverObjectId]} alt="" className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center bg-accent-softer text-accent-ink">
+                          <Layers className="size-8" aria-hidden />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2 px-0.5">
+                      <p className="line-clamp-2 text-[15px] font-medium leading-snug text-ink">{c.name}</p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-subtle">
+                        {c.count} item{c.count === 1 ? "" : "s"} · <Lock className="size-3" aria-hidden /> Private
+                        {c.status === "archived" ? <Badge tone="neutral">Archived</Badge> : null}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              image={BACKGROUNDS.studioDesk}
+              title={q ? `No collection matches “${q}”` : "No collections yet"}
+              body={q ? "Try another word, or clear the search." : "Collections group material without moving it — film references, a visual style, locations, people. One piece can live in several."}
+            />
+          )}
+        </section>
+      ) : items.length ? (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {items.map((i) => (
             <li key={i.key}>{i.node}</li>

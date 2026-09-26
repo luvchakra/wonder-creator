@@ -329,16 +329,22 @@ isOneToOne: false
                   ]
                 },"conversations": {
                   Row: {
-                    "created_at": string,"creator_id": string,"id": string,"status": string,"title": string,"updated_at": string
+                    "collection_id": string | null,"created_at": string,"creator_id": string,"id": string,"status": string,"title": string,"updated_at": string
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                    "collection_id"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                    "collection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "conversations_collection_id_fkey"
+      columns: ["collection_id"]
+isOneToOne: false
+      referencedRelation: "material_collections"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "conversations_creator_id_fkey"
       columns: ["creator_id"]
 isOneToOne: false
@@ -982,13 +988,13 @@ isOneToOne: false
                   ]
                 },"material_collection_items": {
                   Row: {
-                    "added_at": string,"collection_id": string,"creator_id": string,"material_id": string
+                    "added_at": string,"collection_id": string,"creator_id": string,"material_id": string,"position": number | null
                   }
                   Insert: {
-                    "added_at"?: string,"collection_id": string,"creator_id": string,"material_id": string
+                    "added_at"?: string,"collection_id": string,"creator_id": string,"material_id": string,"position"?: number | null
                   }
                   Update: {
-                    "added_at"?: string,"collection_id"?: string,"creator_id"?: string,"material_id"?: string
+                    "added_at"?: string,"collection_id"?: string,"creator_id"?: string,"material_id"?: string,"position"?: number | null
                   }
                   Relationships: [
                     {
@@ -1013,16 +1019,22 @@ isOneToOne: false
                   ]
                 },"material_collections": {
                   Row: {
-                    "created_at": string,"creator_id": string,"description": string | null,"id": string,"name": string,"privacy": Database["public"]['Enums']["privacy_class"]
+                    "cover_material_id": string | null,"created_at": string,"creator_id": string,"description": string | null,"id": string,"name": string,"privacy": Database["public"]['Enums']["privacy_class"],"status": string,"updated_at": string
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"description"?: string | null,"id"?: string,"name": string,"privacy"?: Database["public"]['Enums']["privacy_class"]
+                    "cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"description"?: string | null,"id"?: string,"name": string,"privacy"?: Database["public"]['Enums']["privacy_class"],"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"description"?: string | null,"id"?: string,"name"?: string,"privacy"?: Database["public"]['Enums']["privacy_class"]
+                    "cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"description"?: string | null,"id"?: string,"name"?: string,"privacy"?: Database["public"]['Enums']["privacy_class"],"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "material_collections_cover_material_id_fkey"
+      columns: ["cover_material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "material_collections_creator_id_fkey"
       columns: ["creator_id"]
 isOneToOne: false

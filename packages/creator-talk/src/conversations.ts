@@ -28,8 +28,9 @@ export function titleFrom(message: string): string {
   return (first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first).replace(/[.!?]$/, "");
 }
 
-export async function startConversation(db: Db, creatorId: string, firstMessage: string): Promise<Conversation> {
-  const c = must(await db.from("conversations").insert({ creator_id: creatorId, title: titleFrom(firstMessage) }).select("*").single());
+/** `collectionId` links the conversation to the collection it started from (RLS: owner's own collections only). */
+export async function startConversation(db: Db, creatorId: string, firstMessage: string, collectionId: string | null = null): Promise<Conversation> {
+  const c = must(await db.from("conversations").insert({ creator_id: creatorId, title: titleFrom(firstMessage), collection_id: collectionId }).select("*").single());
   await publishEvent(db, { type: "ConversationStarted", aggregate: "conversation", aggregateId: c.id });
   return c;
 }

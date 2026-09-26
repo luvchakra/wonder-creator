@@ -10,7 +10,7 @@ export type LineageRelationship = Enums<"lineage_relationship">;
 export type ArtifactStatus = Enums<"artifact_status">;
 
 export interface LineageSource {
-  type: "material" | "artifact" | "artifact_version" | "reference" | "conversation" | "huddle";
+  type: "material" | "artifact" | "artifact_version" | "reference" | "conversation" | "huddle" | "collection";
   id: string;
   relationship: LineageRelationship;
 }
@@ -246,7 +246,7 @@ export async function addLineage(
 
 export interface GraphNode {
   key: string;
-  type: "material" | "artifact" | "conversation" | "huddle" | "reference" | "artifact_version";
+  type: "material" | "artifact" | "conversation" | "huddle" | "reference" | "artifact_version" | "collection";
   id: string;
   title: string;
   subtitle: string;
@@ -291,10 +291,11 @@ export async function lineageGraph(db: Db, artifactId: string, maxDepth = 4): Pr
 
   // Resolve titles (RLS decides what the viewer may see; unreadable nodes stay generic).
   const ids = (t: GraphNode["type"]) => [...nodes.values()].filter((n) => n.type === t).map((n) => n.id);
-  const [arts, mats, convs] = await Promise.all([
+  const [arts, mats, convs, cols] = await Promise.all([
     ids("artifact").length ? db.from("artifacts").select("id, title, artifact_type").in("id", ids("artifact")) : Promise.resolve({ data: [] as Array<{ id: string; title: string; artifact_type: string }> }),
     ids("material").length ? db.from("creative_materials").select("id, title, type").in("id", ids("material")) : Promise.resolve({ data: [] as Array<{ id: string; title: string | null; type: string }> }),
     ids("conversation").length ? db.from("conversations").select("id, title").in("id", ids("conversation")) : Promise.resolve({ data: [] as Array<{ id: string; title: string }> }),
+    ids("collection").length ? db.from("material_collections").select("id, name").in("id", ids("collection")) : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
   ]);
   for (const a of arts.data ?? []) {
     const n = nodes.get(`artifact:${a.id}`);
@@ -307,6 +308,10 @@ export async function lineageGraph(db: Db, artifactId: string, maxDepth = 4): Pr
   for (const c of convs.data ?? []) {
     const n = nodes.get(`conversation:${c.id}`);
     if (n) Object.assign(n, { title: c.title, subtitle: "Conversation" });
+  }
+  for (const c of cols.data ?? []) {
+    const n = nodes.get(`collection:${c.id}`);
+    if (n) Object.assign(n, { title: c.name, subtitle: "Collection" });
   }
   for (const n of nodes.values()) {
     if (!n.title) {

@@ -50,7 +50,7 @@ notifications are informational only (no follower-centric mechanics).
 | Item | Status | Notes |
 |---|---|---|
 | P0.1-01 Creative Material Detail | Done | Preview (with a fallback for unsupported or held files), description and source & rights note, Details / Insights / Links / Usage tabs, owner and privacy shown, collections add/remove, Reference Shelf, similar material (semantic index), used-in artifacts, Use in creation, Ask CreatorBrain, download original (short-lived signed URL, clean files only), archive, delete with confirmation. Remaining: back link doesn't yet restore Library filters |
-| P0.1-02 Material Collections | Partial | Tables, RLS and API exist; no UI |
+| P0.1-02 Material Collections | Done | Space → Collections tab (cover, name, count, "Private"; archived toggle; search), create with suggested names (Film References, Visual Style, Music Inspiration, Writing References, Locations, People) and description, rename, archive, delete (material kept). Collection page: multi-select add from the Creative Space, remove one or many (material kept), manual order, set cover, search within, Use in creation / Ask CreatorBrain (conversation linked to the collection; what's created records the collection in its lineage). Collections are private by constraint; covers, items and linked conversations are ownership-checked by RLS |
 | P0.1-03 Intent Clarification | Partial | Ambiguity question exists; no editable understood-intent step |
 | P0.1-04 Creation Run Progress | Partial | Streamed stages; runs happen in the request (no durable job, cancel or retry) |
 | P0.1-05 Quality Review & Selective Refinement | Partial | Findings + suggestions; no select-and-apply |

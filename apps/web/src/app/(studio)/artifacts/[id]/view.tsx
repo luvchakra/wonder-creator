@@ -516,6 +516,10 @@ function Lineage({ nodes, edges }: { nodes: GraphNode[]; edges: Array<{ from: st
                     <Link href={`/create?c=${n.id}`} className={cn(cls, "hover:border-accent")}>
                       {inner}
                     </Link>
+                  ) : n.type === "collection" && n.subtitle === "Collection" ? (
+                    <Link href={`/space/collections/${n.id}`} className={cn(cls, "hover:border-accent")}>
+                      {inner}
+                    </Link>
                   ) : (
                     <div className={cls}>{inner}</div>
                   )}

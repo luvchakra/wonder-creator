@@ -26,6 +26,8 @@ export const turnSchema = z.object({
   inputMode: z.enum(["text", "voice"]).default("text"),
   materialIds: z.array(z.string().uuid()).max(12).default([]),
   artifactId: z.string().uuid().nullable().optional(),
+  /** Starting a conversation from a collection: what's made there records the collection in its lineage. */
+  collectionId: z.string().uuid().nullable().optional(),
   /** Choose a direction previously offered in a "directions" message. */
   direction: z.object({ messageId: z.string().uuid(), index: z.number().int().min(0).max(9) }).optional(),
 });
@@ -55,6 +57,12 @@ async function ownedMaterialIds(deps: BrainDeps, ids: string[]): Promise<string[
   return ids.filter((id) => ok.has(id));
 }
 
+async function ownedCollectionId(deps: BrainDeps, id: string | null | undefined): Promise<string | null> {
+  if (!id) return null;
+  const { data } = await deps.db.from("material_collections").select("id").eq("id", id).eq("creator_id", deps.creatorId).maybeSingle();
+  return data?.id ?? null;
+}
+
 /**
  * One CreatorTalk turn. Text and voice share this engine:
  * grounding → intent → CreatorBrain → proposal / artifact / question.
@@ -77,7 +85,7 @@ export async function handleTurn(deps: BrainDeps, raw: unknown): Promise<TurnRes
 
   const conversation = input.conversationId
     ? must(await db.from("conversations").select("*").eq("id", input.conversationId).maybeSingle(), "We couldn't find that conversation.")
-    : await startConversation(db, creatorId, input.message || directionChoice?.title || "New idea");
+    : await startConversation(db, creatorId, input.message || directionChoice?.title || "New idea", await ownedCollectionId(deps, input.collectionId));
 
   const out: Message[] = [];
   const creatorText = directionChoice ? `Let's make: ${directionChoice.title}` : input.message;

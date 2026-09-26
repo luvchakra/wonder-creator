@@ -259,7 +259,11 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     const quality = await qualityChecks(deps, ctx, run, def.type, draft);
 
     progress(deps, "render");
+    const collectionId = input.conversationId
+      ? ((await deps.db.from("conversations").select("collection_id").eq("id", input.conversationId).maybeSingle()).data?.collection_id ?? null)
+      : null;
     const sources: LineageSource[] = [
+      ...(collectionId ? [{ type: "collection" as const, id: collectionId, relationship: "references" as const }] : []),
       ...ctx.selectedMaterials.map((m) => ({ type: "material" as const, id: m.id, relationship: "created_from" as const })),
       ...ctx.references.map((m) => ({ type: "material" as const, id: m.id, relationship: "references" as const })),
       ...(input.conversationId ? [{ type: "conversation" as const, id: input.conversationId, relationship: "created_from" as const }] : []),
