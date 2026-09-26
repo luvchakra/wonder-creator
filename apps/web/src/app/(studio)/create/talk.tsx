@@ -126,7 +126,9 @@ export function Talk({
     sessionStorage.removeItem(PENDING_TURN_KEY);
     if (!raw) return;
     const p = JSON.parse(raw) as PendingTurn;
-    if (p.rejected?.length) setNotices(p.rejected.map((r) => `${r.name}: ${r.message}`));
+    void Promise.resolve().then(() => {
+      if (p.rejected?.length) setNotices(p.rejected.map((r) => `${r.name}: ${r.message}`));
+    });
     if (!p.message && !p.materialIds.length) return;
     void refreshMaterials(p.materialIds).then(() => runTurn({ message: p.message, materialIds: p.materialIds, inputMode: p.inputMode }, { content: p.message || `Shared ${p.materialIds.length} piece${p.materialIds.length === 1 ? "" : "s"} of material`, materialIds: p.materialIds }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +180,7 @@ export function Talk({
   const empty = messages.length === 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[250px_1fr]">
+    <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[250px_1fr]">
       <aside className="hidden lg:block" aria-label="Conversations">
         <Link href="/create" className={buttonClasses({ className: "w-full justify-start" })}>
           <MessageSquarePlus className="size-4" aria-hidden /> New conversation

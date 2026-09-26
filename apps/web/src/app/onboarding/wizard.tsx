@@ -68,16 +68,14 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const set = <K extends keyof OnboardingState>(k: K, v: OnboardingState[K]) => setS((p) => ({ ...p, [k]: v }));
   const idx = STEPS.findIndex((x) => x.key === step);
+  const shownHandleStatus = step === "about" && s.handle.length >= 3 ? handleStatus : null;
 
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
 
   useEffect(() => {
-    if (step !== "about" || s.handle.length < 3) {
-      setHandleStatus(null);
-      return;
-    }
+    if (step !== "about" || s.handle.length < 3) return;
     const t = setTimeout(async () => {
       try {
         const r = await api<{ available: boolean; reason?: string }>(`/api/v1/creators/handle-available?handle=${encodeURIComponent(s.handle)}`);
@@ -188,12 +186,12 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
                 <Field
                   label="Handle"
                   htmlFor="handle"
-                  error={handleStatus && !handleStatus.ok ? handleStatus.msg ?? "That handle isn't available." : null}
-                  hint={handleStatus?.ok ? "Available ✓" : "Letters, numbers and underscores."}
+                  error={shownHandleStatus && !shownHandleStatus.ok ? shownHandleStatus.msg ?? "That handle isn't available." : null}
+                  hint={shownHandleStatus?.ok ? "Available ✓" : "Letters, numbers and underscores."}
                 >
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle">@</span>
-                    <Input id="handle" className="pl-8" value={s.handle} onChange={(e) => set("handle", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30))} aria-invalid={handleStatus?.ok === false} />
+                    <Input id="handle" className="pl-8" value={s.handle} onChange={(e) => set("handle", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30))} aria-invalid={shownHandleStatus?.ok === false} />
                   </div>
                 </Field>
                 <Field label="Short description" htmlFor="bio" counter={`${s.bio.length}/300`} className="sm:col-span-2">
@@ -353,7 +351,7 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
                     Skip for now
                   </Button>
                 ) : null}
-                <Button onClick={() => save(step)} disabled={busy || (step === "about" && (!s.displayName.trim() || s.handle.length < 3 || handleStatus?.ok === false))}>
+                <Button onClick={() => save(step)} disabled={busy || (step === "about" && (!s.displayName.trim() || s.handle.length < 3 || shownHandleStatus?.ok === false))}>
                   {busy ? <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden /> : null}
                   Next <ArrowRight className="size-4" aria-hidden />
                 </Button>

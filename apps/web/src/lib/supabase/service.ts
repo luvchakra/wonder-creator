@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { DomainError } from "@wonder/core";
 import type { Database, Db } from "@wonder/db";
 
 /**
@@ -9,7 +10,7 @@ import type { Database, Db } from "@wonder/db";
  */
 export function serviceClient(): Db {
   const key = process.env.SUPABASE_SECRET_KEY;
-  if (!key) throw new Error("SUPABASE_SECRET_KEY is not configured");
+  if (!key) throw new DomainError("provider_unavailable", "Uploads and background processing aren't configured on this server yet.");
   return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });

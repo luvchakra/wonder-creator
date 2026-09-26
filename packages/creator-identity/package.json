@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./vocabulary": "./src/vocabulary.ts"
+    "./vocabulary": "./src/vocabulary.ts",
+    "./autonomy": "./src/autonomy.ts"
   }
 }

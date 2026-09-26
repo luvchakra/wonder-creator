@@ -8,7 +8,7 @@ import { serviceClient } from "@/lib/supabase/service";
  * Deleting the auth user cascades to all creator-owned data; personal tenants are cleaned up.
  */
 export const POST = withApi(async ({ db, userId, req }) => {
-  const { password, confirm } = z.object({ password: z.string().min(1), confirm: z.literal("DELETE") }).parse(await readJson(req));
+  const { password } = z.object({ password: z.string().min(1), confirm: z.literal("DELETE") }).parse(await readJson(req));
   const { data: user } = await db.auth.getUser();
   if (!user.user?.email || user.user.id !== userId) throw new DomainError("unauthenticated", "Please sign in again.");
   const check = await db.auth.signInWithPassword({ email: user.user.email, password });

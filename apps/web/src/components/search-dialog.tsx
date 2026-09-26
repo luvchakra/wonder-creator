@@ -20,10 +20,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (q.trim().length < 2) {
-      setRes(null);
-      return;
-    }
+    if (q.trim().length < 2) return;
     const t = setTimeout(async () => {
       setLoading(true);
       setError(null);
@@ -39,7 +36,8 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   }, [q]);
 
   const close = () => onOpenChange(false);
-  const empty = res && !res.materials.length && !res.artifacts.length && !res.creators.length && !res.conversations.length && !res.huddles.length;
+  const shown = q.trim().length >= 2 ? res : null;
+  const empty = shown && !shown.materials.length && !shown.artifacts.length && !shown.creators.length && !shown.conversations.length && !shown.huddles.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,13 +47,13 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           {loading ? <Spinner label="Searching" /> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {empty ? <p className="text-sm text-ink-muted">Nothing found for “{q}”. Try another word.</p> : null}
-          {res ? (
+          {shown ? (
             <>
-              <Group title="Your creations" items={res.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, icon: <Sparkles className="size-4" /> }))} onPick={close} />
-              <Group title="Your material" items={res.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", icon: <FileText className="size-4" /> }))} onPick={close} />
-              <Group title="Conversations" items={res.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={close} />
-              <Group title="Creators" items={res.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={close} />
-              <Group title="Live now" items={res.huddles.map((h) => ({ href: `/huddles/${h.huddleId}`, label: h.topic || h.participantNames.join(" · "), icon: <LiveBadge /> }))} onPick={close} />
+              <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, icon: <Sparkles className="size-4" /> }))} onPick={close} />
+              <Group title="Your material" items={shown.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", icon: <FileText className="size-4" /> }))} onPick={close} />
+              <Group title="Conversations" items={shown.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={close} />
+              <Group title="Creators" items={shown.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={close} />
+              <Group title="Live now" items={shown.huddles.map((h) => ({ href: `/huddles/${h.huddleId}`, label: h.topic || h.participantNames.join(" · "), icon: <LiveBadge /> }))} onPick={close} />
             </>
           ) : null}
         </div>

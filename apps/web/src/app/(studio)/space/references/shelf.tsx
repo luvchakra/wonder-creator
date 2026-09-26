@@ -42,7 +42,7 @@ export function ReferenceShelf({ shelves, activeShelf, items }: { shelves: Array
           </div>
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[220px_1fr_300px]">
+      <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[220px_1fr_300px]">
         <nav aria-label="Shelves" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:block lg:space-y-1 lg:px-0">
           <Link href="/space/references" aria-current={!activeShelf ? "page" : undefined} className={cn("flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-sm", !activeShelf ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}>
             All References <span className="text-xs">{total}</span>

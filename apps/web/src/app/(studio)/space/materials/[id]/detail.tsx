@@ -92,7 +92,7 @@ export function MaterialDetail({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.4fr_1fr]">
       <section className="space-y-4">
         <Link href="/space?tab=ideas" className="text-sm text-accent-ink hover:underline">
           ← Creative Space

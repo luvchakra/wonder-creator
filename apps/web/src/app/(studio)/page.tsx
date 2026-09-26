@@ -7,6 +7,8 @@ import Link from "next/link";
 import { ArtifactCard, MaterialCard } from "@/components/cards";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
 import { coverUrls } from "@/lib/covers";
+import { after } from "next/server";
+import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
 import { HomeComposer } from "./home-composer";
 
@@ -23,6 +25,7 @@ const POSSIBILITIES = [
 
 export default async function HomePage() {
   const { db, creator } = await requireSession();
+  after(sweepStalePresence);
   const [artifactsRes, materials, live, proposals] = await Promise.all([
     db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(6),
     listMaterials(db, { limit: 6 }),

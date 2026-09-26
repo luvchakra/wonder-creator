@@ -1,9 +1,12 @@
 import { liveCards, startHuddle } from "@wonder/creator-huddle";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
+import { after } from "next/server";
 import { readJson, withApi } from "@/lib/api";
+import { sweepStalePresence } from "@/lib/presence";
 
 /** Live Huddles: public metadata only. */
 export const GET = withApi(async ({ db, req }) => {
+  after(sweepStalePresence);
   const creator = req.nextUrl.searchParams.get("creator");
   return { huddles: await liveCards(db, { limit: 48, creatorId: creator && /^[0-9a-f-]{36}$/i.test(creator) ? creator : undefined }) };
 });

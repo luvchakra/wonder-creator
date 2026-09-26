@@ -93,7 +93,6 @@ export async function inspectUpload(bytes: Uint8Array, declaredName?: string): P
 export function safeFilename(name: string | undefined | null): string | null {
   if (!name) return null;
   const base = name.split(/[\\/]/).pop() ?? "";
-  // eslint-disable-next-line no-control-regex
   const clean = base.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 180);
   return clean || null;
 }

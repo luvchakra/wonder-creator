@@ -112,7 +112,7 @@ export function ArtifactView(props: {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.5fr_1fr]">
         <section aria-label="Preview" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
           {props.coverUrl ? (
             <div className="relative aspect-[16/8]">
@@ -237,7 +237,7 @@ export function ArtifactView(props: {
         </TabList>
 
         <TabPanel value="details">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
             <section className="rounded-2xl border border-border-soft bg-surface p-5">
               <h2 className="font-semibold text-ink">Quality</h2>
               {props.quality ? (
@@ -383,7 +383,7 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
   }, [left, right, versions]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+    <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1fr_1.4fr]">
       <ol className="relative space-y-3 border-l-2 border-border-soft pl-5" aria-label="Version history">
         {versions.map((v) => (
           <li key={v.id} className="relative rounded-2xl border border-border-soft bg-surface p-4">
@@ -671,7 +671,7 @@ function RightsPanel({ artifactId, rights, disclaimer, isOwner }: { artifactId: 
   const total = form.owners.reduce((s, o) => s + (Number(o.sharePercent) || 0), 0);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+    <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1.2fr_1fr]">
       <section className="rounded-2xl border border-border-soft bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-semibold text-ink">

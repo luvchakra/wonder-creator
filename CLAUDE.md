@@ -1,28 +1,43 @@
 @apps/web/AGENTS.md
 
-# wonder-creator
+# Wonder Creator — working agreement for Claude Code
 
-Next.js 16 (App Router, TypeScript, Tailwind CSS v4) with Supabase, deployed on Vercel.
+Product contract, UI contract and P0 scope: the Wonder Creator specs the owner supplied (summarised in `docs/`).
+Brand authority: `packages/ui/src/brand/ASSETS.md` + the supplied brand board. **Never create, redraw or regenerate
+the logo or brand artwork.** Missing assets are documented, not invented.
 
 ## Commands
 
-- `npm run dev`: start the dev server on http://localhost:3000
-- `npm run lint`: ESLint
-- `npm run typecheck`: `tsc --noEmit`
-- `npm run build`: production build
-
-CI (`.github/workflows/ci.yml`) runs lint, typecheck and build on pushes to `main` and on PRs. Run all three before pushing.
+- `npm run dev` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run build`
+- `npx supabase start` then `npm run test:db` (RLS/security suite) and `npm run test:e2e` (app on :3000)
+- Run lint, typecheck, unit tests and build before pushing. Run `test:db` after any migration change.
 
 ## Layout
 
-- `src/app/`: routes (App Router)
-- `src/lib/supabase/client.ts`: Supabase client for Client Components
-- `src/lib/supabase/server.ts`: Supabase client for Server Components, Server Functions and Route Handlers (create one per request)
-- `src/lib/supabase/proxy.ts` + `src/proxy.ts`: refreshes the auth session on each request. Next.js 16 renamed `middleware.ts` to `proxy.ts`.
-- `@/*` maps to `src/*`
+- `apps/web/src/app/(studio)` — signed-in screens; `(auth)` sign in/up; `onboarding`; `api/v1/**` route handlers.
+- Every route handler uses `withApi` (`apps/web/src/lib/api.ts`): auth → creator resolution → rate limit →
+  validation → domain service → event/audit → response. Route handlers and Server Functions are public endpoints.
+- Domain logic lives in `packages/creator-*`; the app composes it. Keep business rules out of React components.
+- `packages/ui` is the only place for tokens and shared components. New patterns go there.
+
+## Invariants (do not break)
+
+1. RLS on every creator-owned table; UI visibility is never authorization. Add a `tests/db` case for new policies.
+2. The browser never gets the service key. `serviceClient()` is only for pipeline-owned state, always scoped by a
+   server-resolved creator id. Huddle state changes go through security-definer RPCs.
+3. AI never writes to the database directly and never authorizes itself: CreatorBrain goes through governed tools
+   (`packages/creator-brain/src/governance.ts`) + autonomy policy. Rights, commerce and destructive actions can never
+   auto-execute.
+4. External material is untrusted: fence it (`fenceUntrusted`), never let it change settings. URL fetches go through
+   `safeFetch` (SSRF guard). Uploads go through `inspectUpload` (content-detected MIME, size limits, SHA-256).
+5. Versions are immutable; restore creates a new version. Derivatives record lineage.
+6. Huddles are ephemeral: dissolve at zero participants; only explicitly preserved outcomes persist.
+7. No fake providers: unconfigured AI/media/transcription show honest "not connected" states.
+8. Model: Anthropic Claude via `@anthropic-ai/sdk` (`claude-opus-5` default, override with `WONDER_AI_MODEL`).
 
 ## Conventions
 
-- Env vars: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (see `.env.example`). Never commit `.env.local` or a service-role/secret key.
-- On the server, check identity with `supabase.auth.getClaims()` or `getUser()`, never `getSession()`.
-- Enable Row Level Security on every new Supabase table.
+- Env vars: see `.env.example`. Never commit `.env*` files or keys (GitHub push protection will block them).
+- Migrations are append-only in `supabase/migrations`; regenerate types with `npm run db:types`.
+- UI: warm cream surfaces, Inter + Playfair Display, brand tokens only, 44px targets, works at 360px,
+  loading/empty/error states for every screen, reduced motion respected, colour never the only signal.

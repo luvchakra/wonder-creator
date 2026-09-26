@@ -100,9 +100,40 @@ function firstLine(s: string): string {
   return line.trim().replace(/^#+\s*/, "").slice(0, 80);
 }
 
+export const INCOMING_PREFIX = "incoming";
+
+/** Where a browser may upload directly (signed upload URL). Only the owner's own incoming folder. */
+export function incomingPath(creatorId: string): string {
+  return `${creatorId}/${INCOMING_PREFIX}/${randomUUID()}`;
+}
+
+export function isOwnIncomingPath(creatorId: string, path: string): boolean {
+  return new RegExp(`^${creatorId}/${INCOMING_PREFIX}/[0-9a-f-]{36}$`).test(path);
+}
+
+/**
+ * A file the browser uploaded directly to storage. It is downloaded and validated exactly like a
+ * posted file; rejected bytes are deleted, never registered.
+ */
+export async function receiveUploadedObject(
+  deps: IntakeDeps,
+  input: { batchId: string; path: string; filename?: string | null; kind?: "camera" | "voice" | null; instruction?: string | null },
+) {
+  if (!isOwnIncomingPath(deps.creatorId, input.path)) throw new DomainError("forbidden", "That upload doesn't belong to you.");
+  const dl = await deps.service.storage.from(MATERIAL_BUCKET).download(input.path);
+  if (dl.error || !dl.data) throw new DomainError("validation", "We couldn't find that upload. Please try again.");
+  const bytes = new Uint8Array(await dl.data.arrayBuffer());
+  try {
+    return await receiveFile(deps, { ...input, bytes, existingPath: input.path });
+  } catch (e) {
+    await deps.service.storage.from(MATERIAL_BUCKET).remove([input.path]).catch(() => undefined);
+    throw e;
+  }
+}
+
 export async function receiveFile(
   deps: IntakeDeps,
-  input: { batchId: string; bytes: Uint8Array; filename?: string | null; kind?: "camera" | "voice" | null; instruction?: string | null },
+  input: { batchId: string; bytes: Uint8Array; filename?: string | null; kind?: "camera" | "voice" | null; instruction?: string | null; existingPath?: string },
 ) {
   const name = safeFilename(input.filename);
   const item0 = await newIntake(deps, { batchId: input.batchId, kind: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice" : "document", instruction: input.instruction });
@@ -125,8 +156,8 @@ export async function receiveFile(
   item = await transition(deps, item, "security_review");
 
   // Store the original privately. Path is opaque and never shown to clients.
-  const path = `${deps.creatorId}/${randomUUID()}`;
-  const up = await deps.service.storage.from(MATERIAL_BUCKET).upload(path, input.bytes, { contentType: inspected.mime, upsert: false });
+  const path = input.existingPath ?? `${deps.creatorId}/${randomUUID()}`;
+  const up = input.existingPath ? { error: null } : await deps.service.storage.from(MATERIAL_BUCKET).upload(path, input.bytes, { contentType: inspected.mime, upsert: false });
   if (up.error) {
     await transition(deps, item, "failed", { error_code: "storage", error_message: "We couldn't store the file. Please try again." });
     throw new DomainError("provider_failed", "We couldn't store the file. Please try again.", { cause: up.error });

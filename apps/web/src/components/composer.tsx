@@ -1,7 +1,7 @@
 "use client";
 import { Button, IconButton, cn } from "@wonder/ui";
 import { ArrowRight, Camera, FileText, Link2, Mic, MicOff, Paperclip, PenLine, Square, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export interface ComposerPayload {
   message: string;
@@ -50,7 +50,7 @@ export function Composer({
   className?: string;
   prompt?: string;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(prompt ?? "");
   const [files, setFiles] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<File[]>([]);
@@ -60,15 +60,10 @@ export function Composer({
   const [recording, setRecording] = useState(false);
   const [voiceUsed, setVoiceUsed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const textRef = useRef<HTMLTextAreaElement>(null);
+  const uid = useId();
+  const ids = { text: `composer-text-${uid}`, files: `composer-files-${uid}`, camera: `composer-camera-${uid}` };
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
-
-  useEffect(() => {
-    if (prompt) setText(prompt);
-  }, [prompt]);
 
   useEffect(() => () => {
     recRef.current?.stop();
@@ -169,21 +164,28 @@ export function Composer({
   ];
 
   const actions = [
-    { label: "Write", icon: PenLine, onClick: () => textRef.current?.focus() },
-    { label: dictating ? "Stop" : "Talk", icon: dictating ? MicOff : Mic, onClick: toggleDictation, active: dictating },
-    { label: "Add files", icon: Paperclip, onClick: () => fileRef.current?.click() },
-    { label: "Add link", icon: Link2, onClick: () => setLinkDraft(linkDraft === null ? "" : null) },
-    { label: "Take a photo", icon: Camera, onClick: () => cameraRef.current?.click() },
-  ];
+    { key: "write", label: "Write", icon: PenLine, active: false },
+    { key: "talk", label: dictating ? "Stop" : "Talk", icon: dictating ? MicOff : Mic, active: dictating },
+    { key: "files", label: "Add files", icon: Paperclip, active: false },
+    { key: "link", label: "Add link", icon: Link2, active: false },
+    { key: "photo", label: "Take a photo", icon: Camera, active: false },
+  ] as const;
+
+  function handleAction(key: (typeof actions)[number]["key"]) {
+    if (key === "write") document.getElementById(ids.text)?.focus();
+    else if (key === "talk") toggleDictation();
+    else if (key === "files") document.getElementById(ids.files)?.click();
+    else if (key === "link") setLinkDraft(linkDraft === null ? "" : null);
+    else document.getElementById(ids.camera)?.click();
+  }
 
   return (
     <div className={cn("rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]", className)}>
-      <label htmlFor="composer-text" className="sr-only">
+      <label htmlFor={ids.text} className="sr-only">
         What are you thinking about?
       </label>
       <textarea
-        id="composer-text"
-        ref={textRef}
+        id={ids.text}
         value={text}
         autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
@@ -249,7 +251,7 @@ export function Composer({
             <button
               key={a.label}
               type="button"
-              onClick={a.onClick}
+              onClick={() => handleAction(a.key)}
               aria-pressed={a.active}
               className={cn(
                 "flex min-h-11 shrink-0 flex-col items-center justify-center rounded-2xl px-2.5 text-[11px] text-ink-muted hover:bg-surface-muted sm:min-w-16",
@@ -274,8 +276,8 @@ export function Composer({
           {busy ? <span className="size-4 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden /> : <ArrowRight className="size-5" aria-hidden />}
         </IconButton>
       </div>
-      <input ref={fileRef} type="file" multiple hidden accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx" onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
-      <input ref={cameraRef} type="file" hidden accept="image/*" capture="environment" onChange={(e) => setPhotos((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
+      <input id={ids.files} type="file" multiple hidden accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx" onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
+      <input id={ids.camera} type="file" hidden accept="image/*" capture="environment" onChange={(e) => setPhotos((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
     </div>
   );
 }

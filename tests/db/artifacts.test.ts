@@ -298,10 +298,10 @@ describe("artifact visibility", () => {
     }
   });
 
-  it("a public + final artifact is readable by B with all versions", async () => {
+  it("a public + final artifact is readable by B, but only its current version (draft history stays private)", async () => {
     expect(expectOk(await b.client.from("artifacts").select("id").eq("id", publicId))).toHaveLength(1);
     const versions = expectOk(await b.client.from("artifact_versions").select("id").eq("artifact_id", publicId));
-    expect(versions.map((v) => v.id).sort()).toEqual([publicV1, publicV2].sort());
+    expect(versions.map((v) => v.id)).toEqual([publicV2]);
   });
 
   it("a public + final artifact is readable by anon, current version only", async () => {

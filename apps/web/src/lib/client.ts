@@ -28,6 +28,8 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     } catch {
       /* non-JSON */
     }
+    // Session expired: a full reload clears client state before signing in again.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     if (res.status === 401 && typeof window !== "undefined") window.location.href = "/sign-in";
     throw new ApiError(msg, code, res.status);
   }

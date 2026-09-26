@@ -20,7 +20,6 @@ class UnavailableProvider implements CreativeModelProvider {
   async generate(): Promise<never> {
     this.fail();
   }
-  // eslint-disable-next-line require-yield
   async *stream(): AsyncIterable<never> {
     this.fail();
   }

@@ -81,8 +81,8 @@ export class AnthropicProvider implements CreativeModelProvider {
   private client: Anthropic;
   private model: string;
 
-  constructor(opts: { apiKey?: string; model?: string } = {}) {
-    this.client = new Anthropic({ apiKey: opts.apiKey, maxRetries: 2 });
+  constructor(opts: { apiKey?: string; model?: string; fetch?: typeof fetch; maxRetries?: number } = {}) {
+    this.client = new Anthropic({ apiKey: opts.apiKey, maxRetries: opts.maxRetries ?? 2, fetch: opts.fetch });
     this.model = opts.model || DEFAULT_MODEL;
   }
 

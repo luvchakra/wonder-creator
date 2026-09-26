@@ -4,7 +4,7 @@ import { Badge, Button, ErrorState, Input, buttonClasses, cn } from "@wonder/ui"
 import { ArrowLeft, Check, CircleAlert, ClipboardCheck, Save, Share2, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
@@ -40,9 +40,11 @@ export function Studio({
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState(pendingProposal);
   const [q, setQ] = useState(quality);
-  const [transformType, setTransformType] = useState<string | null>(null);
+  const [transformType, setTransformType] = useState<string | null>(() => {
+    const a = actions.find((x) => x.key === initialAction);
+    return a?.kind === "transform" ? (a.targetType ?? null) : null;
+  });
   const dirty = content !== (base?.content ?? "");
-  const actionRef = useRef(false);
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
@@ -51,13 +53,6 @@ export function Studio({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-
-  useEffect(() => {
-    if (actionRef.current || !initialAction) return;
-    actionRef.current = true;
-    const a = actions.find((x) => x.key === initialAction);
-    if (a?.kind === "transform" && a.targetType) setTransformType(a.targetType);
-  }, [initialAction, actions]);
 
   async function save() {
     setSaving(true);
@@ -167,7 +162,7 @@ export function Studio({
       {offline ? <p className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-2 text-sm text-warning-ink">Offline development model: CreatorBrain actions produce placeholder revisions.</p> : null}
       {error ? <ErrorState title="That didn't work" body={error} /> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1fr_320px]">
         <section aria-label="Editor" className="rounded-3xl border border-border-soft bg-surface p-2 shadow-[var(--shadow-card)]">
           {proposal ? (
             <div className="p-3">
