@@ -164,6 +164,8 @@ export const updateMaterialSchema = z.object({
   textContent: z.string().max(200000).optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   status: z.enum(["active", "archived"]).optional(),
+  description: z.string().trim().max(2000).optional(),
+  sourceNote: z.string().trim().max(1000).optional(),
 });
 
 export async function updateMaterial(db: Db, creatorId: string, id: string, raw: unknown): Promise<void> {
@@ -172,6 +174,8 @@ export async function updateMaterial(db: Db, creatorId: string, id: string, raw:
   if (input.title !== undefined) patch.title = input.title || null;
   if (input.textContent !== undefined) patch.text_content = input.textContent;
   if (input.status !== undefined) patch.status = input.status;
+  if (input.description !== undefined) patch.description = input.description || null;
+  if (input.sourceNote !== undefined) patch.source_note = input.sourceNote || null;
   if (Object.keys(patch).length) {
     const res = await db.from("creative_materials").update(patch).eq("id", id).select("id");
     if (res.error) throw fromDbError(res.error);
@@ -213,6 +217,26 @@ export async function signedUrlFor(db: Db, storageObjectId: string, expiresIn = 
   const { data, error } = await db.storage.from(obj.data.bucket).createSignedUrl(obj.data.path, expiresIn);
   if (error) return null;
   return data.signedUrl;
+}
+
+/** Short-lived URL that downloads the original under its original filename (owner only, via RLS; never quarantined files). */
+export async function downloadUrlFor(db: Db, storageObjectId: string, expiresIn = 60): Promise<string | null> {
+  const obj = await db.from("storage_objects").select("bucket, path, security_status, original_filename").eq("id", storageObjectId).maybeSingle();
+  if (obj.error) throw fromDbError(obj.error);
+  if (!obj.data || obj.data.security_status !== "clean") return null;
+  const { data, error } = await db.storage.from(obj.data.bucket).createSignedUrl(obj.data.path, expiresIn, { download: obj.data.original_filename || true });
+  if (error) return null;
+  return data.signedUrl;
+}
+
+/** The creator's other materials closest in meaning (needs the semantic index; [] otherwise). */
+export async function similarMaterials(db: Db, materialId: string, limit = 6) {
+  const { data, error } = await db.rpc("similar_materials", { p_material: materialId, p_limit: limit });
+  if (error || !data?.length) return [];
+  const ids = data.map((r) => r.material_id);
+  const rows = await db.from("creative_materials").select("id, title, type, storage_object_id").in("id", ids);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return (rows.data ?? []).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 export async function signedUrlsFor(db: Db, ids: Array<string | null | undefined>, expiresIn = 600): Promise<Record<string, string>> {

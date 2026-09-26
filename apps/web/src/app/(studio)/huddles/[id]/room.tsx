@@ -139,9 +139,18 @@ export function HuddleRoom({
     let cancelled = false;
     (async () => {
       try {
-        const token = await api<{ url: string; token: string }>(`/api/v1/huddles/${huddleId}/media-token`, { method: "POST" });
-        const { Room, RoomEvent } = await import("livekit-client");
-        const room = new Room({ adaptiveStream: true, dynacast: true });
+        // Fetch the token and load the SDK in parallel; both sit on the join path.
+        const [token, { Room, RoomEvent, VideoPresets }] = await Promise.all([
+          api<{ url: string; token: string }>(`/api/v1/huddles/${huddleId}/media-token`, { method: "POST" }),
+          import("livekit-client"),
+        ]);
+        const room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+          // 540p capture with simulcast: quicker to start and lighter on weak uplinks; receivers get the layer they can take.
+          videoCaptureDefaults: { resolution: VideoPresets.h540.resolution },
+          publishDefaults: { simulcast: true, videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360], dtx: true, red: true },
+        });
         room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
           if (track.kind === "video") setRemoteTracks((t) => ({ ...t, [participant.identity]: track }));
           if (track.kind === "audio") {

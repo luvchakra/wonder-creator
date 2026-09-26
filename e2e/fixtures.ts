@@ -280,7 +280,7 @@ export async function poemFromNote(page: Page, noteText = `The tide keeps our ol
   const materialId = await saveNote(page, noteText);
   const noteTitle = noteText.split("\n")[0];
   await page.goto(`/space/materials/${materialId}`);
-  await page.getByRole("link", { name: "Create from this" }).click();
+  await page.getByRole("link", { name: "Use in creation" }).click();
   await expect(page).toHaveURL(new RegExp(`/create\\?material=${materialId}`));
   const talk = page.getByRole("region", { name: "CreatorTalk" });
   await expect(talk.getByText(noteTitle)).toBeVisible(); // attached chip

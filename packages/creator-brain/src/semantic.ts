@@ -29,9 +29,9 @@ async function loadDocs(service: Db, subjects: Array<{ subject_type: string; sub
   const artifactIds = subjects.filter((s) => s.subject_type === "artifact").map((s) => s.subject_id);
   const docs: IndexDoc[] = [];
   if (materialIds.length) {
-    const { data } = await service.from("creative_materials").select("id, creator_id, title, text_content, extracted_text, understanding").in("id", materialIds);
+    const { data } = await service.from("creative_materials").select("id, creator_id, title, description, text_content, extracted_text, understanding").in("id", materialIds);
     for (const m of data ?? []) {
-      const text = [m.text_content, m.extracted_text, understandingText(m.understanding)].filter(Boolean).join("\n\n").slice(0, MAX_DOC_CHARS);
+      const text = [m.description, m.text_content, m.extracted_text, understandingText(m.understanding)].filter(Boolean).join("\n\n").slice(0, MAX_DOC_CHARS);
       if (text || m.title) docs.push({ subjectType: "material", subjectId: m.id, creatorId: m.creator_id, title: m.title, text: text || m.title || "" });
     }
   }

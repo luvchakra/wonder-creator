@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, saveNote, test, uid, type Page } from "./fixtures";
 
 async function expectNoHorizontalOverflow(page: Page) {
   const m = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
@@ -27,11 +27,13 @@ test.describe("mobile layout @mobile", () => {
     await dialog.getByRole("button", { name: "Open Studio" }).click();
     await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
     const studio = new URL(page.url()).pathname;
+    const material = `/space/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
 
     const screens: Array<[string, (p: Page) => Promise<void>]> = [
       ["/", (p) => expect(p.getByLabel("What are you thinking about?")).toBeVisible()],
       ["/create", (p) => expect(p.getByRole("region", { name: "CreatorTalk" })).toBeVisible()],
       ["/space", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
+      [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],
       ["/settings", (p) => expect(p.getByRole("heading", { name: "Account & Profile" })).toBeVisible()],

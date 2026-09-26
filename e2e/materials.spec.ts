@@ -60,6 +60,7 @@ test.describe("CreatorSend & material", () => {
     const facts = page.locator("dl").first();
     await expect(facts).toContainText("audio/wav");
     await expect(facts).toContainText("Ready");
+    await page.getByRole("tab", { name: "Insights" }).click();
     await expect(page.getByText("Transcription isn't available with the current AI setup. The original is saved and playable.")).toBeVisible();
   });
 
@@ -155,5 +156,45 @@ test.describe("CreatorSend & material", () => {
     await expect(page.getByLabel("Title")).toHaveValue("Harbour notebook");
     await expect(page.getByLabel("Text")).toHaveValue(`${text}\nThe ferry horn at dusk.`);
     await expect(page.getByRole("button", { name: "Remove sea" })).toBeVisible();
+  });
+
+  test("material detail: description, source note, collections, download", async ({ page }) => {
+    const name = `tide-${uid()}`;
+    const collection = `Coast ${uid()}`;
+    expect((await page.request.post("/api/v1/collections", { data: { name: collection } })).ok()).toBe(true);
+    await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes() }]);
+    await expect(sendItem(page, name).getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+    await page.goto("/space?tab=ideas");
+    await page.getByRole("link").filter({ hasText: name }).click();
+    await expect(page).toHaveURL(/\/space\/materials\/[0-9a-f-]{36}$/);
+
+    // Details tab is the default: owner, privacy and provenance.
+    const facts = page.locator("dl").first();
+    await expect(facts).toContainText("Private to you");
+    await expect(facts).toContainText("Owner");
+
+    await page.getByLabel("Description").fill("Low tide colours for the album cover.");
+    await page.getByLabel("Source & rights note").fill("My own photo.");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+
+    await page.getByRole("tab", { name: "Links" }).click();
+    await expect(page.getByText("Not in a collection yet.")).toBeVisible();
+    await page.getByLabel("Collection").selectOption({ label: collection });
+    await page.getByRole("button", { name: "Add to collection" }).click();
+    await expect(page.getByRole("status").filter({ hasText: `Added to ${collection}.` })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByLabel("Description")).toHaveValue("Low tide colours for the album cover.");
+    await expect(page.getByLabel("Source & rights note")).toHaveValue("My own photo.");
+    await page.getByRole("tab", { name: "Links" }).click();
+    await expect(page.getByRole("list", { name: "In collections" })).toContainText(collection);
+    await page.getByRole("button", { name: `Remove from ${collection}` }).click();
+    await expect(page.getByText("Not in a collection yet.")).toBeVisible();
+
+    // The original downloads under its filename; the link is short-lived and owner-only.
+    const download = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download original" }).click();
+    expect((await download).suggestedFilename()).toBe(`${name}.png`);
   });
 });

@@ -14,6 +14,7 @@ the logo or brand artwork.** Missing assets are documented, not invented.
   can make, credentials, or something destructive or irreversible).
 - Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
 - Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
+- Mobile: `docs/mobile-guidelines.md` (per-story mobile rules; bottom nav Home · Create · Huddles · Library · Profile) and the boards in `docs/mockups/`. Plan guardrails win over mockups (no like counts, platform-only analytics).
 
 ## Commands
 

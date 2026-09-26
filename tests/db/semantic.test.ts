@@ -79,6 +79,21 @@ describe("semantic search", () => {
     expect(tamper.data ?? []).toEqual([]);
   });
 
+  it("similar material is the owner's own, closest in meaning, and active only", async () => {
+    const boats = await note(a, "River boats", "Boats drifting down the river");
+    const archived = await note(a, "Old river", "An archived river sketch");
+    await indexStaleSubjects(admin as unknown as AppDb, fakeProvider, { creatorId: a.creatorId });
+    expectOk(await a.client.from("creative_materials").update({ status: "archived" }).eq("id", archived).select("id"));
+
+    const mine = expectOk(await a.client.rpc("similar_materials", { p_material: river }));
+    expect(mine.map((r) => r.material_id)).toEqual([boats]);
+    expect(mine[0].similarity).toBeGreaterThan(0.9);
+
+    // Another creator can't probe someone else's material, even by id.
+    expect(expectOk(await b.client.rpc("similar_materials", { p_material: river }))).toEqual([]);
+    expectDenied(await loose(anonClient()).rpc("similar_materials", { p_material: river }));
+  });
+
   it("the stale-subject scan is server-only", async () => {
     expectDenied(await loose(a.client).rpc("stale_search_subjects", { p_creator: b.creatorId }));
     expectDenied(await loose(anonClient()).rpc("stale_search_subjects", {}));

@@ -95,7 +95,7 @@ export function Tab({ value, children, className }: { value: string; children: R
     <T.Trigger
       value={value}
       className={cn(
-        "inline-flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm text-ink-muted transition-colors hover:bg-black/[0.04]",
+        "inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm text-ink-muted transition-colors hover:bg-black/[0.04]",
         "data-[state=active]:bg-accent data-[state=active]:font-medium data-[state=active]:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         className,
       )}

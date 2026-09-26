@@ -373,13 +373,13 @@ isOneToOne: false
                   ]
                 },"creative_materials": {
                   Row: {
-                    "created_at": string,"creator_id": string,"extracted_text": string | null,"id": string,"metadata": NonNullable<Json>,"privacy": Database["public"]['Enums']["privacy_class"],"processing_state": Database["public"]['Enums']["intake_state"],"provenance_id": string,"search": unknown,"security_status": Database["public"]['Enums']["security_status"],"source_type": string | null,"source_url": string | null,"status": string,"storage_object_id": string | null,"text_content": string | null,"title": string | null,"type": Database["public"]['Enums']["material_type"],"understanding": Json | null,"updated_at": string
+                    "created_at": string,"creator_id": string,"description": string | null,"extracted_text": string | null,"id": string,"metadata": NonNullable<Json>,"privacy": Database["public"]['Enums']["privacy_class"],"processing_state": Database["public"]['Enums']["intake_state"],"provenance_id": string,"search": unknown,"security_status": Database["public"]['Enums']["security_status"],"source_note": string | null,"source_type": string | null,"source_url": string | null,"status": string,"storage_object_id": string | null,"text_content": string | null,"title": string | null,"type": Database["public"]['Enums']["material_type"],"understanding": Json | null,"updated_at": string
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"extracted_text"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"processing_state"?: Database["public"]['Enums']["intake_state"],"provenance_id": string,"search"?: never,"security_status"?: Database["public"]['Enums']["security_status"],"source_type"?: string | null,"source_url"?: string | null,"status"?: string,"storage_object_id"?: string | null,"text_content"?: string | null,"title"?: string | null,"type": Database["public"]['Enums']["material_type"],"understanding"?: Json | null,"updated_at"?: string
+                    "created_at"?: string,"creator_id": string,"description"?: string | null,"extracted_text"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"processing_state"?: Database["public"]['Enums']["intake_state"],"provenance_id": string,"search"?: never,"security_status"?: Database["public"]['Enums']["security_status"],"source_note"?: string | null,"source_type"?: string | null,"source_url"?: string | null,"status"?: string,"storage_object_id"?: string | null,"text_content"?: string | null,"title"?: string | null,"type": Database["public"]['Enums']["material_type"],"understanding"?: Json | null,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"extracted_text"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"processing_state"?: Database["public"]['Enums']["intake_state"],"provenance_id"?: string,"search"?: never,"security_status"?: Database["public"]['Enums']["security_status"],"source_type"?: string | null,"source_url"?: string | null,"status"?: string,"storage_object_id"?: string | null,"text_content"?: string | null,"title"?: string | null,"type"?: Database["public"]['Enums']["material_type"],"understanding"?: Json | null,"updated_at"?: string
+                    "created_at"?: string,"creator_id"?: string,"description"?: string | null,"extracted_text"?: string | null,"id"?: string,"metadata"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"processing_state"?: Database["public"]['Enums']["intake_state"],"provenance_id"?: string,"search"?: never,"security_status"?: Database["public"]['Enums']["security_status"],"source_note"?: string | null,"source_type"?: string | null,"source_url"?: string | null,"status"?: string,"storage_object_id"?: string | null,"text_content"?: string | null,"title"?: string | null,"type"?: Database["public"]['Enums']["material_type"],"understanding"?: Json | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1408,6 +1408,11 @@ isOneToOne: false
 "semantic_search":
 { Args: { "p_limit"?: number,"p_min_similarity"?: number,"p_query": string }; Returns: {
               "similarity": number,"subject_id": string,"subject_type": string
+            }[]
+                           },
+"similar_materials":
+{ Args: { "p_limit"?: number,"p_material": string,"p_min_similarity"?: number }; Returns: {
+              "material_id": string,"similarity": number
             }[]
                            },
 "stale_search_subjects":

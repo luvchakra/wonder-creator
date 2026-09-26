@@ -5,6 +5,7 @@ export const DOMAIN_EVENTS = [
   "CreativeMaterialCreated",
   "CreativeMaterialUpdated",
   "CreativeMaterialSecurityRejected",
+  "CreativeMaterialExported",
   "ConversationStarted",
   "ConversationMessageCreated",
   "ConversationCompleted",
