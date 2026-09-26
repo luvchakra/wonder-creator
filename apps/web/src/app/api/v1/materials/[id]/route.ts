@@ -1,4 +1,4 @@
-import { DomainError } from "@wonder/core";
+import { audit, DomainError } from "@wonder/core";
 import { deleteMaterial, getMaterial, signedUrlFor, updateMaterial } from "@wonder/creator-library";
 import { readJson, requireUuid, withApi } from "@/lib/api";
 
@@ -16,6 +16,8 @@ export const PATCH = withApi<{ id: string }>(async ({ db, creatorId, req }, { id
 export const DELETE = withApi<{ id: string }>(async ({ db, req }, { id }) => {
   // Destructive: the client must confirm explicitly.
   if (req.nextUrl.searchParams.get("confirm") !== "true") throw new DomainError("validation", "Please confirm before deleting.");
-  await deleteMaterial(db, requireUuid(id, "material"));
+  const materialId = requireUuid(id, "material");
+  await deleteMaterial(db, materialId);
+  await audit(db, { action: "material.deleted", objectType: "material", objectId: materialId });
   return { ok: true };
 });

@@ -397,6 +397,13 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-ink">Privacy & Security</h2>
+      <Link href="/settings/audit" className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border-soft px-4 py-3 hover:bg-black/[0.02]">
+        <span>
+          <span className="block font-medium text-ink">Security & activity</span>
+          <span className="text-sm text-ink-muted">Sign-ins, sharing, publishing, approvals and other changes to your account.</span>
+        </span>
+        <span aria-hidden className="text-ink-muted">›</span>
+      </Link>
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           ["Your content", "You own your materials and artifacts."],
