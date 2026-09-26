@@ -49,7 +49,8 @@ npx supabase status -o env              # copy values into apps/web/.env.local (
 npm run dev                             # http://localhost:3000
 ```
 
-Without `ANTHROPIC_API_KEY`, development uses the **offline development model**: deterministic placeholder drafts,
+CreatorBrain reads `WONDERCREATOR_AI_PROVIDER` (`gemini` or `anthropic`) and `WONDERCREATOR_AI_API_KEY`.
+Without them, development uses the **offline development model**: deterministic placeholder drafts,
 clearly labelled in the UI. It never pretends to be real AI. In production without a key, CreatorBrain reports
 itself as not connected.
 
@@ -69,7 +70,7 @@ itself as not connected.
 
 ## Configuration
 
-See `.env.example`. Server-only secrets (`SUPABASE_SECRET_KEY`, `ANTHROPIC_API_KEY`, `LIVEKIT_API_SECRET`,
+See `.env.example`. Server-only secrets (`SUPABASE_SECRET_KEY`, `WONDERCREATOR_AI_API_KEY`, `LIVEKIT_API_SECRET`,
 `CRON_SECRET`) are never exposed to the browser.
 
 ## Deploying

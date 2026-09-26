@@ -1,10 +1,12 @@
 import { DomainError } from "@wonder/core";
 import { AnthropicProvider } from "./anthropic";
+import { GeminiProvider } from "./gemini";
 import { OfflineProvider } from "./offline";
 import type { CreativeModelProvider, ProviderReadiness } from "./types";
 
 export * from "./types";
 export { AnthropicProvider } from "./anthropic";
+export { GeminiProvider } from "./gemini";
 export { OfflineProvider, OFFLINE_MODEL } from "./offline";
 
 /** A provider that is honestly unavailable: every call fails with a recoverable, creator-readable error. */
@@ -29,20 +31,26 @@ class UnavailableProvider implements CreativeModelProvider {
 }
 
 export interface ProviderEnv {
-  ANTHROPIC_API_KEY?: string;
-  WONDER_AI_PROVIDER?: string; // "anthropic" | "offline"
-  WONDER_AI_MODEL?: string;
+  WONDERCREATOR_AI_PROVIDER?: string; // "gemini" | "anthropic" | "offline"
+  WONDERCREATOR_AI_API_KEY?: string;
+  WONDERCREATOR_AI_MODEL?: string; // optional model override
   NODE_ENV?: string;
 }
 
+export const AI_PROVIDERS = ["gemini", "anthropic", "offline"] as const;
+
 /**
- * Model routing / selection. Anthropic Claude is primary. The offline provider is used only when
- * explicitly requested or outside production; production without credentials is "unavailable".
+ * Model routing / selection from WONDERCREATOR_AI_PROVIDER + WONDERCREATOR_AI_API_KEY.
+ * The offline provider is used only when explicitly requested or outside production; production
+ * without a usable provider and key is "unavailable" (never a fake model).
  */
 export function selectProvider(env: ProviderEnv = process.env as ProviderEnv): CreativeModelProvider {
-  const wanted = env.WONDER_AI_PROVIDER?.toLowerCase();
+  const wanted = env.WONDERCREATOR_AI_PROVIDER?.trim().toLowerCase();
+  const apiKey = env.WONDERCREATOR_AI_API_KEY?.trim();
+  const model = env.WONDERCREATOR_AI_MODEL?.trim() || undefined;
   if (wanted === "offline") return new OfflineProvider();
-  if (env.ANTHROPIC_API_KEY) return new AnthropicProvider({ apiKey: env.ANTHROPIC_API_KEY, model: env.WONDER_AI_MODEL });
+  if (apiKey && wanted === "gemini") return new GeminiProvider({ apiKey, model });
+  if (apiKey && wanted === "anthropic") return new AnthropicProvider({ apiKey, model });
   if (env.NODE_ENV !== "production") return new OfflineProvider();
   return new UnavailableProvider();
 }
@@ -53,5 +61,13 @@ export function providerReadiness(env: ProviderEnv = process.env as ProviderEnv)
   if (p.name === "offline") {
     return { provider: "offline", live: false, configured: false, note: "Offline development model: drafts are deterministic placeholders, not real AI output." };
   }
-  return { provider: "none", live: false, configured: false, note: "No AI provider is configured." };
+  return { provider: "none", live: false, configured: false, note: misconfiguration(env) };
+}
+
+/** Owner-facing reason the AI provider is not connected (names settings, never values). */
+function misconfiguration(env: ProviderEnv): string {
+  const wanted = env.WONDERCREATOR_AI_PROVIDER?.trim().toLowerCase();
+  if (!wanted) return "No AI provider is configured.";
+  if (!(AI_PROVIDERS as readonly string[]).includes(wanted)) return `Unknown AI provider "${wanted}". Use gemini or anthropic.`;
+  return `AI provider "${wanted}" is selected but no API key is configured.`;
 }

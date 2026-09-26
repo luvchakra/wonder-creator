@@ -68,7 +68,7 @@ jobs:
               `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${d.PUBLISHABLE_KEY}`,
               `SUPABASE_SECRET_KEY=${d.SECRET_KEY}`,
               "CRON_SECRET=ci-cron-secret-0000000000000000",
-              "WONDER_AI_PROVIDER=offline",
+              "WONDERCREATOR_AI_PROVIDER=offline",
             ].join("\n"));'
       - run: npm run build
       - name: Start app

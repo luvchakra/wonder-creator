@@ -10,7 +10,7 @@ the gap listed) · **Not started**.
 | 2 | Creative Material | Done | Create/import, view, search (FTS), filter, tags, provenance, security status, archive/delete (confirmed), reuse |
 | 3 | CreatorSend | Done / Partial | Text, files, camera, voice notes, PDFs, URLs (SSRF-guarded), multiple URLs, YouTube (oEmbed), explicit states, failure preservation, retry. **Gaps:** audio/video transcription not connected; no malware scanner (see security.md); .docx text extraction not implemented |
 | 4 | CreatorTalk | Done | Text + browser dictation, attachments, persistence, grounding (server-resolved IDs), ambiguity question, streamed progress |
-| 5 | CreatorBrain | Done (provider-gated) | Context minimisation, intent, discovery, generation pipeline, quality, governance, run tracking. Live with `ANTHROPIC_API_KEY`; offline deterministic model in dev/CI |
+| 5 | CreatorBrain | Done (provider-gated) | Context minimisation, intent, discovery, generation pipeline, quality, governance, run tracking. Live with `WONDERCREATOR_AI_PROVIDER` (gemini/anthropic) + `WONDERCREATOR_AI_API_KEY`; offline deterministic model in dev/CI |
 | 6 | Creative Context | Done | Per-intent `CreativeContext` assembly with privacy enforcement |
 | 7 | Creative Memory | Done | Onboarding seeding, conversation extraction (live model), add/edit/remove, source + dates, correction flow |
 | 8 | Artifact | Done | Types catalogue (writing/visual/audio/video/social), status, privacy, rights record, export (.md/.txt) |
