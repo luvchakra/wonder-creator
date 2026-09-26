@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseWs = supabaseUrl.replace(/^http/, "ws");
 const livekit = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? process.env.LIVEKIT_URL ?? "";
+// LiveKit Cloud clients fetch region settings and may reconnect to regional hosts (*.livekit.cloud).
+const livekitCloud = /^wss?:\/\/[^/]+\.livekit\.cloud(\/|$)/.test(livekit) ? "wss://*.livekit.cloud https://*.livekit.cloud" : "";
 const isDev = process.env.NODE_ENV !== "production";
 
 const csp = [
@@ -13,7 +15,7 @@ const csp = [
   `img-src 'self' data: blob: https: ${supabaseUrl}`,
   `media-src 'self' blob: ${supabaseUrl}`,
   "font-src 'self'",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${livekit} ${livekit.replace(/^wss/, "https")}`.trim(),
+  `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${livekit} ${livekit.replace(/^wss/, "https")} ${livekitCloud}`.replace(/\s+/g, " ").trim(),
   "frame-src https://www.youtube-nocookie.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
