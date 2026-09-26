@@ -10,10 +10,33 @@ import type {
   StructuredInput,
   StructuredOutput,
   TaskKind,
+  TranscribeInput,
 } from "./types";
 
 const DEFAULT_MODEL = "gemini-3.8-flash";
-const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const API_ORIGIN = "https://generativelanguage.googleapis.com";
+const API_BASE = `${API_ORIGIN}/v1beta`;
+
+/** Requests are capped at 20 MB; base64 inflates by a third, so larger media goes through the File API. */
+const INLINE_MEDIA_MAX_BYTES = 14 * 1024 * 1024;
+const FILE_READY_TIMEOUT_MS = 120_000;
+const FILE_POLL_MS = 2_000;
+
+/**
+ * Container MIME types Gemini accepts for media it doesn't list by audio name
+ * (browser voice notes are audio/webm; .m4a is audio/mp4).
+ */
+const MEDIA_MIME: Record<string, string> = { "audio/webm": "video/webm", "audio/mp4": "video/mp4", "audio/x-flac": "audio/flac", "audio/x-wav": "audio/wav" };
+
+const TRANSCRIBE_PROMPT = {
+  audio:
+    "Transcribe this recording verbatim in its original language(s). Mark speaker changes as \"Speaker 1:\", \"Speaker 2:\" when there is more than one voice. " +
+    "Write [inaudible] for unclear parts. Output only the transcript, with no introduction or commentary. If there is no speech, output exactly: [no speech]",
+  video:
+    "Transcribe the speech in this video verbatim in its original language(s). Mark speaker changes as \"Speaker 1:\", \"Speaker 2:\" when there is more than one voice. " +
+    "After the transcript, add a line \"Visual notes:\" followed by up to five short lines on what is shown (setting, people, on-screen text). " +
+    "Output nothing else. If there is no speech, write [no speech] in place of the transcript.",
+};
 
 /** Thinking depth per task: quick classification stays light; creative work gets depth. */
 const THINKING: Record<TaskKind, "low" | "medium" | "high"> = {
@@ -52,6 +75,7 @@ const SCHEMA_KEYS = new Set([
 ]);
 
 type GeminiPart = { text?: string; thought?: boolean; inlineData?: { mimeType: string; data: string } };
+type GeminiFile = { name: string; uri?: string; state?: "PROCESSING" | "ACTIVE" | "FAILED"; mimeType?: string };
 type GeminiResponse = {
   candidates?: Array<{ content?: { parts?: GeminiPart[] }; finishReason?: string }>;
   promptFeedback?: { blockReason?: string };
@@ -239,5 +263,91 @@ export class GeminiProvider implements CreativeModelProvider {
     const result = input.schema.safeParse(parsed);
     if (!result.success) throw unexpected(result.error);
     return { value: result.data, usage: out.usage, model: out.model, provider: out.provider };
+  }
+
+  /** Speech-to-text via Gemini's audio/video understanding. Uploaded File API copies are deleted after use. */
+  async transcribe(input: TranscribeInput): Promise<GenerateOutput> {
+    const mimeType = MEDIA_MIME[input.mimeType] ?? input.mimeType;
+    let uploaded: { name: string; uri: string } | null = null;
+    try {
+      let media: Record<string, unknown>;
+      if (input.bytes.byteLength <= INLINE_MEDIA_MAX_BYTES) {
+        media = { inlineData: { mimeType, data: Buffer.from(input.bytes).toString("base64") } };
+      } else {
+        uploaded = await this.uploadFile(input.bytes, mimeType);
+        media = { fileData: { mimeType, fileUri: uploaded.uri } };
+      }
+      return await this.complete({
+        contents: [{ role: "user", parts: [media, { text: TRANSCRIBE_PROMPT[input.kind] }] }],
+        generationConfig: { maxOutputTokens: 32000, thinkingConfig: { thinkingLevel: "low" } },
+      });
+    } finally {
+      if (uploaded) await this.deleteFile(uploaded.name);
+    }
+  }
+
+  private async uploadFile(bytes: Uint8Array, mimeType: string): Promise<{ name: string; uri: string }> {
+    const headers = { "x-goog-api-key": this.apiKey };
+    let start: Response;
+    try {
+      start = await this.fetch(`${API_ORIGIN}/upload/v1beta/files`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "content-type": "application/json",
+          "x-goog-upload-protocol": "resumable",
+          "x-goog-upload-command": "start",
+          "x-goog-upload-header-content-length": String(bytes.byteLength),
+          "x-goog-upload-header-content-type": mimeType,
+        },
+        body: JSON.stringify({ file: { display_name: "wonder-creator-media" } }),
+      });
+    } catch (e) {
+      throw noResponse(e);
+    }
+    if (!start.ok) throw await errorFor(start);
+    const uploadUrl = start.headers.get("x-goog-upload-url");
+    if (!uploadUrl?.startsWith(`${API_ORIGIN}/`)) throw unexpected(new Error("missing or foreign upload URL"));
+
+    let done: Response;
+    try {
+      done = await this.fetch(uploadUrl, {
+        method: "POST",
+        headers: { ...headers, "x-goog-upload-offset": "0", "x-goog-upload-command": "upload, finalize" },
+        body: bytes as unknown as BodyInit,
+      });
+    } catch (e) {
+      throw noResponse(e);
+    }
+    if (!done.ok) throw await errorFor(done);
+    let file = ((await done.json()) as { file?: GeminiFile }).file;
+    if (!file?.name || !file.uri) throw unexpected(new Error("upload returned no file"));
+
+    // Video (and some audio) is processed server-side before it can be referenced.
+    const deadline = Date.now() + FILE_READY_TIMEOUT_MS;
+    while (file.state === "PROCESSING") {
+      if (Date.now() > deadline) {
+        await this.deleteFile(file.name);
+        throw noResponse(new Error("file processing timed out"));
+      }
+      await new Promise((r) => setTimeout(r, FILE_POLL_MS));
+      const res = await this.fetch(`${API_BASE}/${file.name}`, { headers });
+      if (!res.ok) throw await errorFor(res);
+      file = (await res.json()) as GeminiFile;
+    }
+    if (file.state === "FAILED") {
+      await this.deleteFile(file.name);
+      throw new DomainError("provider_failed", "CreatorBrain couldn't read this recording. The original is saved.");
+    }
+    return { name: file.name, uri: file.uri! };
+  }
+
+  /** Best effort: Gemini also expires uploaded files on its own after 48 hours. */
+  private async deleteFile(name: string): Promise<void> {
+    try {
+      await this.fetch(`${API_BASE}/${name}`, { method: "DELETE", headers: { "x-goog-api-key": this.apiKey } });
+    } catch {
+      /* expiry covers it */
+    }
   }
 }

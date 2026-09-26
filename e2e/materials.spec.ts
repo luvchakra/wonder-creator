@@ -1,3 +1,4 @@
+import { strToU8, zipSync } from "fflate";
 import { expect, pngBytes, saveNote, sendItem, test, uid, uploadViaInbox, wavBytes } from "./fixtures";
 
 const HTML_MEDIA_HAVE_METADATA = 1;
@@ -59,7 +60,24 @@ test.describe("CreatorSend & material", () => {
     const facts = page.locator("dl").first();
     await expect(facts).toContainText("audio/wav");
     await expect(facts).toContainText("Ready");
-    await expect(page.getByText("Transcription isn't connected yet — the original is saved and playable.")).toBeVisible();
+    await expect(page.getByText("Transcription isn't available with the current AI setup. The original is saved and playable.")).toBeVisible();
+  });
+
+  test("a Word document's text is extracted onto its material page", async ({ page }) => {
+    const name = `draft-${uid()}`;
+    const docx = zipSync({
+      "[Content_Types].xml": strToU8('<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
+      "word/document.xml": strToU8('<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Rain on the ghats &amp; the evening bells.</w:t></w:r></w:p></w:body></w:document>'),
+    });
+    await uploadViaInbox(page, [{ name: `${name}.docx`, mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from(docx) }]);
+    const item = sendItem(page, name);
+    await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+
+    await page.goto("/space?tab=ideas");
+    await page.getByRole("link").filter({ hasText: name }).click();
+    await expect(page).toHaveURL(/\/space\/materials\/[0-9a-f-]{36}$/);
+    await page.getByText("Extracted text").click();
+    await expect(page.getByText("Rain on the ghats & the evening bells.")).toBeVisible();
   });
 
   test("links to private networks and malformed links are rejected with a readable message", async ({ page }) => {

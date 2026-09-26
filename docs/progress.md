@@ -8,7 +8,7 @@ the gap listed) · **Not started**.
 |---|---|---|---|
 | 1 | Creator Identity | Done | Onboarding (6 steps, progressive, skippable), profile, disciplines/skills/languages, voice, boundaries, visibility |
 | 2 | Creative Material | Done | Create/import, view, search (FTS), filter, tags, provenance, security status, archive/delete (confirmed), reuse |
-| 3 | CreatorSend | Done / Partial | Text, files, camera, voice notes, PDFs, URLs (SSRF-guarded), multiple URLs, YouTube (oEmbed), explicit states, failure preservation, retry. **Gaps:** audio/video transcription not connected; no malware scanner (see security.md); .docx text extraction not implemented |
+| 3 | CreatorSend | Done / Partial | Text, files, camera, voice notes, PDFs, Word (.docx) text, URLs (SSRF-guarded), multiple URLs, YouTube (oEmbed), explicit states, failure preservation, retry. Audio/video transcription via the AI provider (Gemini; inline ≤14 MB, File API above, deleted after use). **Gap:** no malware scanner (see security.md) |
 | 4 | CreatorTalk | Done | Text + browser dictation, attachments, persistence, grounding (server-resolved IDs), ambiguity question, streamed progress |
 | 5 | CreatorBrain | Done (provider-gated) | Context minimisation, intent, discovery, generation pipeline, quality, governance, run tracking. Live with `WONDERCREATOR_AI_PROVIDER` (gemini/anthropic) + `WONDERCREATOR_AI_API_KEY`; offline deterministic model in dev/CI |
 | 6 | Creative Context | Done | Per-intent `CreativeContext` assembly with privacy enforcement |
@@ -38,6 +38,5 @@ the gap listed) · **Not started**.
 ## Known follow-ups
 - Shared rate-limit store for multi-instance deployments.
 - Malware scanning integration at the `security_review` intake step.
-- Transcription provider adapter (voice notes are stored and playable today).
 - Semantic (vector) search on top of the existing lexical search.
 - Notifications panel (P0 surfaces pending proposals and join requests in context instead).

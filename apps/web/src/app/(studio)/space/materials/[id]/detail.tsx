@@ -152,7 +152,8 @@ export function MaterialDetail({
               </Field>
             ) : m.extracted ? (
               <details className="rounded-2xl bg-surface-muted p-4">
-                <summary className="cursor-pointer text-sm font-medium text-ink">Extracted text</summary>
+                <summary className="cursor-pointer text-sm font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
+                {m.metadata.transcription ? <p className="mt-2 text-xs text-ink-muted">Transcribed automatically by CreatorBrain. It may contain mistakes.</p> : null}
                 <p className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-sm text-ink-muted">{m.extracted}</p>
               </details>
             ) : null}
