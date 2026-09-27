@@ -86,6 +86,10 @@ export default async function ApprovalsPage() {
   );
 }
 
+/**
+ * Each card answers the Approval Center's questions (UI redesign §22): what will happen, which Creation, what it means
+ * for rights and cost, who asked and when — then Review opens the exact parameters to approve, decline or edit.
+ */
 function Group({ title, items }: { title: string; items: Awaited<ReturnType<typeof listApprovals>> }) {
   return (
     <div>
@@ -96,20 +100,39 @@ function Group({ title, items }: { title: string; items: Awaited<ReturnType<type
             <Link href={`/approvals/${a.id}`} className="block rounded-2xl border border-border-soft bg-surface p-4 hover:border-[#cfd0ff]">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-medium text-ink">{a.actionLabel}</p>
-                <ChevronRight className="mt-0.5 size-5 shrink-0 text-ink-muted" aria-hidden />
-              </div>
-              <p className="mt-1 line-clamp-2 text-[15px] text-ink-muted">{a.understood}</p>
-              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
-                {a.target.title ? <span>{a.target.title}</span> : null}
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="size-4" aria-hidden /> Expires <RelativeTime iso={a.expiresAt} />
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-accent-ink">
+                  Review <ChevronRight className="size-4" aria-hidden />
                 </span>
-                {a.rightsImplications ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Scale className="size-4" aria-hidden /> Affects rights
-                  </span>
+              </div>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                <dt className="text-ink-subtle">What happens</dt>
+                <dd className="line-clamp-2 text-ink">{a.understood}</dd>
+                {a.target.title ? (
+                  <>
+                    <dt className="text-ink-subtle">{a.target.kind === "artifact" ? "Creation" : "About"}</dt>
+                    <dd className="truncate text-ink">{a.target.title}</dd>
+                  </>
                 ) : null}
-              </p>
+                <dt className="text-ink-subtle">Rights · cost</dt>
+                <dd className="text-ink">
+                  {a.rightsImplications ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Scale className="size-4" aria-hidden /> Affects rights
+                    </span>
+                  ) : (
+                    "No rights change"
+                  )}
+                  {a.cost ? ` · ${a.cost}` : ""}
+                </dd>
+                <dt className="text-ink-subtle">Asked by</dt>
+                <dd className="text-ink">
+                  CreativeMind{a.conversationId ? ", in meTalk" : ""} · <RelativeTime iso={a.createdAt} />
+                </dd>
+                <dt className="text-ink-subtle">Expires</dt>
+                <dd className="inline-flex items-center gap-1 text-ink">
+                  <Clock className="size-4" aria-hidden /> <RelativeTime iso={a.expiresAt} />
+                </dd>
+              </dl>
             </Link>
           </li>
         ))}

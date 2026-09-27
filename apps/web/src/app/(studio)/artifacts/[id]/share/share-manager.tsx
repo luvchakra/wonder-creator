@@ -40,6 +40,13 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
       <p className="mt-1 text-[15px] text-ink-muted">
         {artifact.isPublic ? "This Creation is public on your profile." : "This Creation is private."} Links and shares below show only the Creation itself, never your source material.
       </p>
+      <p className="mt-1 text-sm text-ink-muted">
+        Sharing lets people open it. Sending it out to a platform is{" "}
+        <Link href={`/artifacts/${artifact.id}/publish`} className="font-medium text-accent-ink hover:underline">
+          Publish
+        </Link>
+        ; a copy for yourself is Download on the Creation.
+      </p>
       {artifact.archived ? <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">This Creation is archived, so its shares don&apos;t open until you restore it.</p> : null}
       {error ? (
         <p role="alert" className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[15px] text-danger">

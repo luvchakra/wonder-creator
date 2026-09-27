@@ -26,7 +26,7 @@ type Publication = {
   publication_attempts: Attempt[];
 };
 
-const STEPS = ["Where", "Details", "Review & schedule", "Publish"] as const;
+const STEPS = ["Prepare", "Customize", "Review & schedule", "Publish"] as const;
 const STATUS: Record<string, { label: string; tone: "neutral" | "accent" | "success" | "warning" | "danger" }> = {
   draft: { label: "Draft, not approved", tone: "neutral" },
   approved: { label: "Approved", tone: "accent" },
@@ -191,6 +191,13 @@ export function PublishFlow(props: {
       )}
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">Publish</h1>
       <p className="mt-1 text-[15px] text-ink-muted">Nothing goes out until you approve it, and it&apos;s shown as published only once the destination confirms.</p>
+      <p className="mt-1 text-sm text-ink-muted">
+        Just want people to see it?{" "}
+        <Link href={`/artifacts/${artifact.id}/share`} className="font-medium text-accent-ink hover:underline">
+          Share a link instead
+        </Link>
+        .
+      </p>
 
       {blocked ? <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">{blocked}</p> : null}
       {error ? (
