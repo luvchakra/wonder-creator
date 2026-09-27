@@ -4,7 +4,7 @@ import { liveCards } from "@wonder/creator-huddle";
 import { inviteThreadsWaiting, myCrewInvites } from "@wonder/creator-projects";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added";
 
 export interface Notification {
   id: string;
@@ -26,7 +26,7 @@ const RUN_STALE_MS = 10 * 60 * 1000;
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads] = await Promise.all([
+  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads, toReview, decided, addedAs] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -72,6 +72,16 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     db.rpc("shared_with_me"),
     myCrewInvites(db, creatorId).catch(() => []),
     inviteThreadsWaiting(db, creatorId).catch(() => []),
+    // Collaboration: proposals waiting on me, decisions on mine, and pieces I was added to.
+    db
+      .from("artifact_change_proposals")
+      .select("id, artifact_id, summary, created_at, artifacts!inner(title, creator_id), creators!artifact_change_proposals_creator_id_fkey(display_name)")
+      .eq("status", "open")
+      .eq("artifacts.creator_id", creatorId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    db.from("artifact_change_proposals").select("id, artifact_id, status, decided_at, artifacts(title)").eq("creator_id", creatorId).in("status", ["accepted", "declined"]).gte("decided_at", since).order("decided_at", { ascending: false }).limit(10),
+    db.from("artifact_contributors").select("artifact_id, role, created_at, artifacts(title)").eq("contributor_creator_id", creatorId).gte("created_at", since).order("created_at", { ascending: false }).limit(10),
   ]);
 
   const out: Notification[] = [];
@@ -123,6 +133,16 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   // Direct shares from the last week (they stay under Shared with you for as long as they're live).
   for (const r of (shared.data ?? []).filter((x) => x.shared_at >= since).slice(0, 10)) {
     out.push({ id: `share:${r.share_id}`, kind: "shared_with_you", title: `${r.creator_name} shared “${r.title}” with you`, detail: null, href: `/shared/${r.share_id}`, at: r.shared_at });
+  }
+  for (const p of toReview.data ?? []) {
+    const who = (p.creators as { display_name: string } | null)?.display_name || "A collaborator";
+    out.push({ id: `proposal-review:${p.id}`, kind: "proposal_review", title: `${who} proposed a change to “${(p.artifacts as { title: string } | null)?.title ?? "your piece"}”`, detail: p.summary, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.created_at });
+  }
+  for (const p of decided.data ?? []) {
+    out.push({ id: `proposal-decided:${p.id}`, kind: "proposal_decided", title: `Your change to “${(p.artifacts as { title: string } | null)?.title ?? "a piece"}” was ${p.status}`, detail: null, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.decided_at ?? new Date().toISOString() });
+  }
+  for (const c of addedAs.data ?? []) {
+    out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a piece"}”`, detail: null, href: `/artifacts/${c.artifact_id}/collaborate`, at: c.created_at });
   }
   for (const c of crewInvites) {
     out.push({ id: `crew:${c.crewId}`, kind: "crew_invite", title: `${c.invitedBy} invited you to join ${c.crewName}`, detail: c.roleTitle ? `As ${c.roleTitle} · ${c.projectTitle}` : c.projectTitle, href: `/crews/${c.crewId}`, at: c.invitedAt });

@@ -43,6 +43,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
       artifact={artifact}
       typeLabel={artifactType(artifact.artifact_type).label}
       isOwner={isOwner}
+      canCollaborate={isOwner || (contributors.data ?? []).some((c) => c.contributor_creator_id === creator.id)}
       owner={{ name: owner.data?.display_name ?? "Creator", handle: owner.data?.handle ?? null, avatarUrl: avatars[artifact.creator_id] ?? null }}
       coverUrl={covers[artifact.id] ?? null}
       versions={versions}
