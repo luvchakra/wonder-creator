@@ -34,7 +34,7 @@ export function streamBrainWork(db: Db, creatorId: string, requestId: string, wo
   };
   const job = (async () => {
     try {
-      const deps = brainDeps(db, creatorId, {
+      const deps = await brainDeps(db, creatorId, {
         correlationId: requestId,
         onProgress: (e) => send({ type: "progress", step: e.step, label: e.label }),
         onRunStarted: (runId, intent) => send({ type: "run", runId, intent }),

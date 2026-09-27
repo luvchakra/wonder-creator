@@ -9,5 +9,5 @@ const schema = z.object({ materialIds: z.array(z.string().uuid()).min(1).max(12)
 
 export const POST = withApi(async ({ db, creatorId, req, requestId }) => {
   const input = schema.parse(await readJson(req));
-  return discover(brainDeps(db, creatorId, { correlationId: requestId }), input);
+  return discover(await brainDeps(db, creatorId, { correlationId: requestId }), input);
 }, { rateLimit: 15 });

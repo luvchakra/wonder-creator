@@ -19,6 +19,7 @@ export const AUDIT_CATEGORIES = [
   { key: "exports", label: "Exports & deletion" },
   { key: "collaboration", label: "Huddles & collaboration" },
   { key: "profile", label: "Profile & privacy" },
+  { key: "providers", label: "AI providers" },
 ] as const;
 export type AuditCategory = (typeof AUDIT_CATEGORIES)[number]["key"];
 
@@ -106,6 +107,30 @@ function describeAudit(r: Row): Described | null {
       return { category: "autonomy", title: "Changed Creator Autonomy", outcome: "done", actor: you, details: [{ label: "Area", value: words(m.domain) }, { label: "Level", value: words(m.level) }] };
     case "autonomy.reset":
       return { category: "autonomy", title: "Reset Creator Autonomy to defaults", outcome: "done", actor: you };
+    case "ai_key.connected":
+    case "ai_key.rotated":
+    case "ai_key.removed":
+    case "ai_key.validated":
+    case "ai_key.preferences": {
+      const name = m.provider === "gemini" ? "Gemini" : m.provider === "anthropic" ? "Anthropic" : "AI";
+      const titles: Record<string, string> = {
+        "ai_key.connected": `Connected your ${name} key`,
+        "ai_key.rotated": `Replaced your ${name} key`,
+        "ai_key.removed": `Removed your ${name} key`,
+        "ai_key.validated": m.status === "invalid" ? `Your ${name} key was not accepted` : `Checked your ${name} key`,
+        "ai_key.preferences": `Changed how CreatorBrain uses your ${name} key`,
+      };
+      return {
+        category: "providers",
+        title: titles[r.action],
+        outcome: r.action === "ai_key.validated" && m.status === "invalid" ? "failed" : "done",
+        actor: you,
+        details: [
+          ...(m.status ? [{ label: "Status", value: words(m.status) }] : []),
+          ...(r.action === "ai_key.preferences" ? [{ label: "Model", value: String(m.default_model ?? "Recommended") }, { label: "Used for CreatorBrain", value: yesNo(m.use_for_brain) }] : []),
+        ],
+      };
+    }
     case "scrapbook.posted":
       return { category: "sharing", title: "Shared to your Scrapbook", outcome: "done", actor: you, details: [{ label: "Who can see it", value: m.visibility === "private" ? "Only you" : "People who can see your profile" }, { label: "Replies", value: words(m.replies) }] };
     case "scrapbook.settings":

@@ -12,7 +12,7 @@ export const GET = withApi<{ id: string }>(async ({ db }, { id }) => {
 });
 
 /** Review the current version: suggestions only, never a rewrite. */
-export const POST = withApi<{ id: string }>(async ({ db, creatorId, requestId }, { id }) => reviewQuality(brainDeps(db, creatorId, { correlationId: requestId }), requireUuid(id, "piece")), { rateLimit: 20 });
+export const POST = withApi<{ id: string }>(async ({ db, creatorId, requestId }, { id }) => reviewQuality(await brainDeps(db, creatorId, { correlationId: requestId }), requireUuid(id, "piece")), { rateLimit: 20 });
 
 const dismissSchema = z.object({ reportId: z.string().uuid(), key: z.string().min(1).max(60), dismissed: z.boolean().default(true) });
 

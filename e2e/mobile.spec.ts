@@ -42,6 +42,7 @@ test.describe("mobile layout @mobile", () => {
       ["/shared", (p) => expect(p.getByRole("heading", { name: "Shared with you", level: 1 })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/scrapbook", (p) => expect(p.getByRole("form", { name: "Share to your Scrapbook" })).toBeVisible()],
+      ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       [`${studio.replace(/\/studio$/, "")}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
       [`${studio.replace(/\/studio$/, "")}/publish`, (p) => expect(p.getByRole("heading", { name: "Publish", level: 1 })).toBeVisible()],
       ["/settings", (p) => expect(p.getByRole("heading", { name: "Account & Profile" })).toBeVisible()],

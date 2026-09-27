@@ -501,6 +501,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_ai_keys": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"default_model": string | null,"hint": string,"last_error": string | null,"models": (string)[],"provider": string,"rotated_at": string | null,"status": string,"use_for_brain": boolean,"validated_at": string | null,"vault_secret_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"default_model"?: string | null,"hint": string,"last_error"?: string | null,"models"?: (string)[],"provider": string,"rotated_at"?: string | null,"status": string,"use_for_brain"?: boolean,"validated_at"?: string | null,"vault_secret_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"default_model"?: string | null,"hint"?: string,"last_error"?: string | null,"models"?: (string)[],"provider"?: string,"rotated_at"?: string | null,"status"?: string,"use_for_brain"?: boolean,"validated_at"?: string | null,"vault_secret_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_ai_keys_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_autonomy_policies": {
                   Row: {
                     "creator_id": string,"domain": Database["public"]['Enums']["autonomy_domain"],"level": Database["public"]['Enums']["autonomy_level"],"updated_at": string
@@ -1678,6 +1697,54 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "publications"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"byok_remove":
+{ Args: { "p_creator": string,"p_provider": string }; Returns: undefined
+                           },
+"byok_secret":
+{ Args: { "p_creator": string,"p_provider": string }; Returns: string
+                           },
+"byok_store":
+{ Args: { "p_creator": string,"p_hint": string,"p_models": (string)[],"p_provider": string,"p_secret": string,"p_status": string }; Returns: {
+              "created_at": string,
+"creator_id": string,
+"default_model": string | null,
+"hint": string,
+"last_error": string | null,
+"models": (string)[],
+"provider": string,
+"rotated_at": string | null,
+"status": string,
+"use_for_brain": boolean,
+"validated_at": string | null,
+"vault_secret_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "creator_ai_keys"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"byok_update":
+{ Args: { "p_clear_default"?: boolean,"p_creator": string,"p_default_model"?: string,"p_error"?: string,"p_models"?: (string)[],"p_provider": string,"p_status"?: string,"p_use_for_brain"?: boolean }; Returns: {
+              "created_at": string,
+"creator_id": string,
+"default_model": string | null,
+"hint": string,
+"last_error": string | null,
+"models": (string)[],
+"provider": string,
+"rotated_at": string | null,
+"status": string,
+"use_for_brain": boolean,
+"validated_at": string | null,
+"vault_secret_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "creator_ai_keys"
         isOneToOne: true
         isSetofReturn: false
       } },
