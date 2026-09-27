@@ -18,7 +18,7 @@ import {
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
-import { PaletteActions } from "@/components/creative-palette";
+import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { ProjectView, type ProjectTab } from "./project-view";
 
@@ -97,26 +97,11 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   ]);
   const coverUrl = coverObject ? (previews[coverObject] ?? (await signedUrlsFor(db, [coverObject]))[coverObject] ?? null) : null;
 
-  const room = `/projects/${id}`;
+  // The room's current Creation: the most recently touched one you can open (palette-spec §9.30–9.31).
+  const activeCreationId = items.filter((i) => i.artifact && i.available).sort((a, b) => b.artifact!.updated_at.localeCompare(a.artifact!.updated_at))[0]?.itemId ?? null;
   return (
     <>
-      <PaletteActions
-        title="This Creative Room"
-        actions={[
-          { key: "create", label: "Create", href: `/create?project=${id}`, icon: "spark" },
-          { key: "bring", label: "Bring Material", href: "/send", icon: "add" },
-          ...(crew
-            ? [
-                { key: "people", label: "People", href: `/crews/${crew.crew.id}`, icon: "people" as const },
-                { key: "chat", label: "Chat & Huddle", href: `${room}?tab=chat` },
-              ]
-            : []),
-          { key: "tasks", label: "Tasks", href: `${room}?tab=tasks` },
-          { key: "rights", label: "Rights", href: `${room}?tab=rights` },
-          { key: "contributions", label: "Contributions", href: `${room}?tab=contributions` },
-          ...(canEdit ? [{ key: "complete", label: "Complete or archive", href: `${room}/complete` }] : []),
-        ]}
-      />
+      <PaletteScope context={{ page: "room", entityType: "room", permissions: canEdit ? ["edit", "invite"] : [], ids: { projectId: id, crewId: crew?.crew.id }, facts: { activeCreationId, hasCrew: !!crew } }} />
       <ProjectView
         project={{
           id: p.id,

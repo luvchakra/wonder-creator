@@ -6,6 +6,7 @@ import { listKeys } from "@/lib/byok";
 import { requireSession } from "@/lib/session";
 import { serviceConfigured } from "@/lib/supabase/service";
 import { AiProviders } from "./ai-providers";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "AI Providers" };
 
@@ -23,19 +24,22 @@ export default async function AiProvidersPage() {
   const platform = providerReadiness();
   const lastFailure = failures.data?.[0] ?? null;
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link href="/settings" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← Settings
-      </Link>
-      <PageTitle title="AI Providers" subtitle="Which AI model CreativeMind uses for you, and your own keys if you'd like to use them." />
-      <AiProviders
-        providers={BYOK_PROVIDERS.map((p) => ({ id: p.id, name: p.name, keyLabel: p.keyLabel, keyHelp: p.keyHelp, dataUse: p.dataUse }))}
-        initialKeys={keys}
-        platform={{ live: platform.live, note: platform.note }}
-        inUse={inUse.source === "own_key" ? { source: "own_key", provider: inUse.keyProvider } : { source: "platform", provider: null }}
-        lastFailure={lastFailure ? { code: lastFailure.failure_code ?? "provider_failed", at: lastFailure.completed_at } : null}
-        byokAvailable={serviceConfigured()}
-      />
-    </div>
+    <>
+      <PaletteScope context={{ page: "settings" }} />
+      <div className="mx-auto max-w-3xl">
+        <Link href="/settings" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+          ← Settings
+        </Link>
+        <PageTitle title="AI Providers" subtitle="Which AI model CreativeMind uses for you, and your own keys if you'd like to use them." />
+        <AiProviders
+          providers={BYOK_PROVIDERS.map((p) => ({ id: p.id, name: p.name, keyLabel: p.keyLabel, keyHelp: p.keyHelp, dataUse: p.dataUse }))}
+          initialKeys={keys}
+          platform={{ live: platform.live, note: platform.note }}
+          inUse={inUse.source === "own_key" ? { source: "own_key", provider: inUse.keyProvider } : { source: "platform", provider: null }}
+          lastFailure={lastFailure ? { code: lastFailure.failure_code ?? "provider_failed", at: lastFailure.completed_at } : null}
+          byokAvailable={serviceConfigured()}
+        />
+      </div>
+    </>
   );
 }

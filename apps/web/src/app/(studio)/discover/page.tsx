@@ -2,6 +2,7 @@ import { findCollaborators, listShortlist, parseTerms } from "@wonder/creator-id
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { DiscoverView } from "./discover-view";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Find collaborators" };
 
@@ -45,13 +46,16 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
   const avatars = await avatarUrls(db, [...people.map((p) => p.id), ...shortlist.map((s) => s.candidate.id)]);
 
   return (
-    <DiscoverView
-      filters={filters}
-      searched={searched}
-      people={people.map((p) => ({ ...p, avatarUrl: avatars[p.id] ?? null }))}
-      shortlist={shortlist.map((s) => ({ ...s, avatarUrl: avatars[s.candidate.id] ?? null }))}
-      project={project ? { id: project.id, title: project.title } : null}
-      crew={crew && crew.status !== "completed" && (crewAccess === "owner" || crewAccess === "admin") ? { id: crew.id } : null}
-    />
+    <>
+      <PaletteScope context={{ page: "discover" }} />
+      <DiscoverView
+        filters={filters}
+        searched={searched}
+        people={people.map((p) => ({ ...p, avatarUrl: avatars[p.id] ?? null }))}
+        shortlist={shortlist.map((s) => ({ ...s, avatarUrl: avatars[s.candidate.id] ?? null }))}
+        project={project ? { id: project.id, title: project.title } : null}
+        crew={crew && crew.status !== "completed" && (crewAccess === "owner" || crewAccess === "admin") ? { id: crew.id } : null}
+      />
+    </>
   );
 }

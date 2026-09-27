@@ -142,7 +142,7 @@ export function MaterialDetail({
 
   return (
     <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.4fr_1fr]">
-      <section className="space-y-4">
+      <section id="details" className="scroll-mt-20 space-y-4">
         <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           ← Materials
         </Link>
@@ -223,7 +223,7 @@ export function MaterialDetail({
                 <Textarea id="m-text" value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 font-display text-[17px]" />
               </Field>
             ) : m.extracted ? (
-              <details className="rounded-2xl bg-surface-muted p-4">
+              <details id="transcript" open={Boolean(m.metadata.transcription)} className="scroll-mt-20 rounded-2xl bg-surface-muted p-4">
                 <summary className="cursor-pointer text-sm font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
                 {m.metadata.transcription ? <p className="mt-2 text-xs text-ink-muted">Transcribed automatically by CreativeMind. It may contain mistakes.</p> : null}
                 <p className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-sm text-ink-muted">{m.extracted}</p>
@@ -400,7 +400,7 @@ export function MaterialDetail({
             </section>
           </TabPanel>
           <TabPanel value="links" className="mt-3 space-y-4">
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
+            <section id="collections" className="scroll-mt-20 rounded-2xl border border-border-soft bg-surface p-5">
               <h2 className="font-semibold text-ink">Collections</h2>
               {member.length ? (
                 <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="In collections">

@@ -8,6 +8,7 @@ import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
 import { NewCollectionButton } from "./collections/new-collection";
 import { NewPieceButton, SpaceSearch } from "./space-controls";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Creative Space" };
 
@@ -65,6 +66,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   if (tab === "ideas") {
     return (
       <div>
+        <PaletteScope context={{ page: "materials" }} />
         <PageTitle title="Materials" subtitle="Your visual memory — photos, notes, sounds, links and ideas." action={<SpaceSearch initial={q} />} />
         {counts ? (
           <nav aria-label="Material type" className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
@@ -110,102 +112,105 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <div>
-      <PageTitle
-        title="My Creative Space"
-        subtitle="Ideas, materials and creations — all in one place."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
-              Shared with you
-            </Link>
-            <Link href="/space/references" className={buttonClasses({ variant: "secondary" })}>
-              Reference Shelf
-            </Link>
-            <NewPieceButton />
-          </div>
-        }
-      />
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <nav aria-label="Filter" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-          {TABS.map((t) => (
-            <Link
-              key={t.key}
-              href={href({ tab: t.key === "all" ? undefined : t.key, type: undefined })}
-              aria-current={t.key === tab ? "page" : undefined}
-              className={cn("inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-sm", t.key === tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </nav>
-        <SpaceSearch initial={q} />
-      </div>
-      {tab === "collections" ? (
-        <section aria-label="Collections">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <Link href={href({ archived: showArchived ? undefined : "1" })} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-              {showArchived ? "Hide archived collections" : "Show archived collections"}
-            </Link>
-            <NewCollectionButton existing={allCollections.map((c) => c.name)} />
-          </div>
-          {collections.length ? (
-            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {collections.map((c) => (
-                <li key={c.id}>
-                  <Link href={`/space/collections/${c.id}`} className="group block rounded-2xl focus-visible:outline-2">
-                    <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
-                      {c.coverObjectId && collectionCovers[c.coverObjectId] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={collectionCovers[c.coverObjectId]} alt="" className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center bg-accent-softer text-accent-ink">
-                          <Layers className="size-8" aria-hidden />
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 px-0.5">
-                      <p className="line-clamp-2 text-[15px] font-medium leading-snug text-ink">{c.name}</p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-subtle">
-                        {c.count} item{c.count === 1 ? "" : "s"} · <Lock className="size-3" aria-hidden /> Private
-                        {c.status === "archived" ? <Badge tone="neutral">Archived</Badge> : null}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState
-              image={BACKGROUNDS.studioDesk}
-              title={q ? `No collection matches “${q}”` : "No collections yet"}
-              body={q ? "Try another word, or clear the search." : "Collections group material without moving it — film references, a visual style, locations, people. One piece can live in several."}
-            />
-          )}
-        </section>
-      ) : items.length ? (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {items.map((i) => (
-            <li key={i.key}>{i.node}</li>
-          ))}
-          <li>
-            <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
-              <Plus className="size-6" aria-hidden /> Add new material
-            </Link>
-          </li>
-        </ul>
-      ) : (
-        <EmptyState
-          image={BACKGROUNDS.studioDesk}
-          title={q ? `Nothing matches “${q}”` : "Nothing here yet"}
-          body={q ? "Try another word, or clear the search." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
+    <>
+      <PaletteScope context={{ page: "spaces", facts: { activeCreationId: shownArtifacts.find((a) => a.status === "draft" || a.status === "in_review")?.id ?? null } }} />
+      <div>
+        <PageTitle
+          title="My Creative Space"
+          subtitle="Ideas, materials and creations — all in one place."
           action={
-            <Link href="/send" className={buttonClasses({})}>
-              Bring something
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
+                Shared with you
+              </Link>
+              <Link href="/space/references" className={buttonClasses({ variant: "secondary" })}>
+                Reference Shelf
+              </Link>
+              <NewPieceButton />
+            </div>
           }
         />
-      )}
-    </div>
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Filter" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+            {TABS.map((t) => (
+              <Link
+                key={t.key}
+                href={href({ tab: t.key === "all" ? undefined : t.key, type: undefined })}
+                aria-current={t.key === tab ? "page" : undefined}
+                className={cn("inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-sm", t.key === tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </nav>
+          <SpaceSearch initial={q} />
+        </div>
+        {tab === "collections" ? (
+          <section aria-label="Collections">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <Link href={href({ archived: showArchived ? undefined : "1" })} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+                {showArchived ? "Hide archived collections" : "Show archived collections"}
+              </Link>
+              <NewCollectionButton existing={allCollections.map((c) => c.name)} />
+            </div>
+            {collections.length ? (
+              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {collections.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/space/collections/${c.id}`} className="group block rounded-2xl focus-visible:outline-2">
+                      <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
+                        {c.coverObjectId && collectionCovers[c.coverObjectId] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={collectionCovers[c.coverObjectId]} alt="" className="size-full object-cover" />
+                        ) : (
+                          <div className="flex size-full items-center justify-center bg-accent-softer text-accent-ink">
+                            <Layers className="size-8" aria-hidden />
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 px-0.5">
+                        <p className="line-clamp-2 text-[15px] font-medium leading-snug text-ink">{c.name}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-subtle">
+                          {c.count} item{c.count === 1 ? "" : "s"} · <Lock className="size-3" aria-hidden /> Private
+                          {c.status === "archived" ? <Badge tone="neutral">Archived</Badge> : null}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                image={BACKGROUNDS.studioDesk}
+                title={q ? `No collection matches “${q}”` : "No collections yet"}
+                body={q ? "Try another word, or clear the search." : "Collections group material without moving it — film references, a visual style, locations, people. One piece can live in several."}
+              />
+            )}
+          </section>
+        ) : items.length ? (
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {items.map((i) => (
+              <li key={i.key}>{i.node}</li>
+            ))}
+            <li>
+              <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
+                <Plus className="size-6" aria-hidden /> Add new material
+              </Link>
+            </li>
+          </ul>
+        ) : (
+          <EmptyState
+            image={BACKGROUNDS.studioDesk}
+            title={q ? `Nothing matches “${q}”` : "Nothing here yet"}
+            body={q ? "Try another word, or clear the search." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
+            action={
+              <Link href="/send" className={buttonClasses({})}>
+                Bring something
+              </Link>
+            }
+          />
+        )}
+      </div>
+    </>
   );
 }

@@ -62,13 +62,16 @@ test.describe("mobile layout @mobile", () => {
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     const palette = page.getByRole("dialog", { name: "Creative Palette" });
     await expect(palette).toBeVisible();
-    await expect(palette.getByRole("button", { name: "Home" })).toBeFocused();
+    await expect(palette.getByRole("button", { name: "Home", exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(palette).toHaveCount(0);
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await palette.getByRole("button", { name: /Go to…/ }).click();
     await palette.getByRole("button", { name: "Materials" }).click();
     await expect(page).toHaveURL(/\/space\?tab=ideas$/);
+    // Inside Materials the Palette is contextual; the destinations are one step away under Go to….
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await palette.getByRole("button", { name: /Go to…/ }).click();
     await expect(palette.getByRole("button", { name: "Materials" })).toHaveAttribute("aria-current", "page");
     await page.keyboard.press("Escape");
   });

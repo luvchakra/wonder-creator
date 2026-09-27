@@ -7,6 +7,7 @@ test.describe("creating with CreativeMind", () => {
     // meTalk is a transient sheet from the Palette, not a chat screen.
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Create" }).click();
     await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /meTalk/ }).click();
     const sheet = page.getByRole("dialog", { name: "meTalk" });
     const composer = sheet.getByLabel("What are you thinking about?");

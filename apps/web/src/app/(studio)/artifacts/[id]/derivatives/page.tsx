@@ -2,6 +2,7 @@ import { artifactType, listDerivatives, publicationDerivativesFor } from "@wonde
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { DerivativesView } from "./derivatives-view";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Derivatives" };
 
@@ -17,17 +18,20 @@ export default async function DerivativesPage({ params }: { params: Promise<{ id
     a.current_version_id ? db.from("artifact_versions").select("version_number").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   return (
-    <DerivativesView
-      source={{
-        id: a.id,
-        title: a.title,
-        typeLabel: artifactType(a.artifact_type).label,
-        version: current.data?.version_number ?? null,
-        hasContent: !!a.current_version_id,
-        attributionRequired: rights.data?.attribution_required ?? true,
-      }}
-      presets={publicationDerivativesFor(a.artifact_type)}
-      derivatives={derivatives}
-    />
+    <>
+      <PaletteScope context={{ page: "derivatives", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id } }} />
+      <DerivativesView
+        source={{
+          id: a.id,
+          title: a.title,
+          typeLabel: artifactType(a.artifact_type).label,
+          version: current.data?.version_number ?? null,
+          hasContent: !!a.current_version_id,
+          attributionRequired: rights.data?.attribution_required ?? true,
+        }}
+        presets={publicationDerivativesFor(a.artifact_type)}
+        derivatives={derivatives}
+      />
+    </>
   );
 }

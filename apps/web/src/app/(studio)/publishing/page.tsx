@@ -2,6 +2,7 @@ import { getPublishingPreferences, publishingOverview, UNCONNECTED_PLATFORMS } f
 import { requireSession } from "@/lib/session";
 import { serviceConfigured } from "@/lib/supabase/service";
 import { PublishingHub } from "./publishing-hub";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Publishing" };
 
@@ -26,13 +27,16 @@ export default async function PublishingPage() {
     updatedAt: p.updated_at,
   });
   return (
-    <PublishingHub
-      queue={o.queue.map(slim)}
-      history={o.history.map(slim)}
-      destinations={o.destinations.map((d) => ({ id: d.id, name: d.name, host: new URL(d.url).host, status: d.status, lastUsedAt: d.last_used_at }))}
-      unconnected={[...UNCONNECTED_PLATFORMS]}
-      preferences={preferences}
-      available={serviceConfigured()}
-    />
+    <>
+      <PaletteScope context={{ page: "publishing" }} />
+      <PublishingHub
+        queue={o.queue.map(slim)}
+        history={o.history.map(slim)}
+        destinations={o.destinations.map((d) => ({ id: d.id, name: d.name, host: new URL(d.url).host, status: d.status, lastUsedAt: d.last_used_at }))}
+        unconnected={[...UNCONNECTED_PLATFORMS]}
+        preferences={preferences}
+        available={serviceConfigured()}
+      />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { listShares, listVersions } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { ShareManager } from "./share-manager";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Share" };
 
@@ -13,10 +14,13 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
   if (!artifact || artifact.creator_id !== creator.id) notFound();
   const [versions, shares] = await Promise.all([listVersions(db, id), listShares(db, id)]);
   return (
-    <ShareManager
-      artifact={{ id: artifact.id, title: artifact.title, isPublic: artifact.privacy === "public" && (artifact.status === "final" || artifact.status === "published"), archived: artifact.status === "archived" }}
-      versions={versions.map((v) => ({ id: v.id, number: v.version_number, label: v.label, current: v.id === artifact.current_version_id }))}
-      initialShares={shares}
-    />
+    <>
+      <PaletteScope context={{ page: "share", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id } }} />
+      <ShareManager
+        artifact={{ id: artifact.id, title: artifact.title, isPublic: artifact.privacy === "public" && (artifact.status === "final" || artifact.status === "published"), archived: artifact.status === "archived" }}
+        versions={versions.map((v) => ({ id: v.id, number: v.version_number, label: v.label, current: v.id === artifact.current_version_id }))}
+        initialShares={shares}
+      />
+    </>
   );
 }

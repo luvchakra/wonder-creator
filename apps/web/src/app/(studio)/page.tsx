@@ -12,6 +12,7 @@ import { after } from "next/server";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
 import { HomeBegin } from "./home-begin";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Home" };
 
@@ -62,63 +63,66 @@ export default async function HomePage() {
   ) : null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-7">
-      <header className="relative isolate">
-        {/* The one decoration on Home (§46): a supplied floral corner behind the greeting, never over a control. */}
-        <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="pointer-events-none absolute -right-4 -top-3 -z-10 h-auto w-[8.5rem] opacity-90 sm:-right-2 sm:w-[11rem]" />
-        <h1 className="pr-24 text-ink sm:pr-40">
-          <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
-          <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
-        </h1>
-      </header>
+    <>
+      <PaletteScope context={{ page: "home" }} />
+      <div className="mx-auto max-w-3xl space-y-7">
+        <header className="relative isolate">
+          {/* The one decoration on Home (§46): a supplied floral corner behind the greeting, never over a control. */}
+          <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="pointer-events-none absolute -right-4 -top-3 -z-10 h-auto w-[8.5rem] opacity-90 sm:-right-2 sm:w-[11rem]" />
+          <h1 className="pr-24 text-ink sm:pr-40">
+            <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
+            <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
+          </h1>
+        </header>
 
-      {creation ? (
-        <Link href={`/artifacts/${creation.id}`} aria-label={`Continue ${creation.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover ?? BACKGROUNDS.sunsetCoast} alt="" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none sm:aspect-[16/10]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-navy/75 via-navy/15 to-transparent" aria-hidden />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
-            <p className="text-sm text-white/85">Continue</p>
-            <p className="font-display text-3xl leading-tight sm:text-4xl">{creation.title}</p>
-            <p className="mt-1 text-sm text-white/85">
-              {artifactType(creation.artifact_type).label} · {STATUS_LABEL[creation.status] ?? creation.status}
-            </p>
-          </div>
-        </Link>
-      ) : (
-        <HomeBegin hasMaterials={materials.length > 0} />
-      )}
+        {creation ? (
+          <Link href={`/artifacts/${creation.id}`} aria-label={`Continue ${creation.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cover ?? BACKGROUNDS.sunsetCoast} alt="" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none sm:aspect-[16/10]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-navy/75 via-navy/15 to-transparent" aria-hidden />
+            <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+              <p className="text-sm text-white/85">Continue</p>
+              <p className="font-display text-3xl leading-tight sm:text-4xl">{creation.title}</p>
+              <p className="mt-1 text-sm text-white/85">
+                {artifactType(creation.artifact_type).label} · {STATUS_LABEL[creation.status] ?? creation.status}
+              </p>
+            </div>
+          </Link>
+        ) : (
+          <HomeBegin hasMaterials={materials.length > 0} />
+        )}
 
-      {insight}
+        {insight}
 
-      {materials.length ? (
-        <section aria-labelledby="recent-materials">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 id="recent-materials" className="text-lg font-semibold text-ink">
-              Recent Materials
+        {materials.length ? (
+          <section aria-labelledby="recent-materials">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 id="recent-materials" className="text-lg font-semibold text-ink">
+                Recent Materials
+              </h2>
+              <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                See all
+              </Link>
+            </div>
+            <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+              {materials.map((m) => (
+                <li key={m.id} className="w-40 shrink-0 snap-start sm:w-44">
+                  <MaterialCard m={{ ...m, previewUrl: m.storage_object_id ? (previews[m.storage_object_id] ?? null) : null }} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {live[0] ? (
+          <section aria-labelledby="live-now">
+            <h2 id="live-now" className="mb-2 text-lg font-semibold text-ink">
+              Live now
             </h2>
-            <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-              See all
-            </Link>
-          </div>
-          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
-            {materials.map((m) => (
-              <li key={m.id} className="w-40 shrink-0 snap-start sm:w-44">
-                <MaterialCard m={{ ...m, previewUrl: m.storage_object_id ? (previews[m.storage_object_id] ?? null) : null }} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {live[0] ? (
-        <section aria-labelledby="live-now">
-          <h2 id="live-now" className="mb-2 text-lg font-semibold text-ink">
-            Live now
-          </h2>
-          <LiveHuddleCard h={live[0]} />
-        </section>
-      ) : null}
-    </div>
+            <LiveHuddleCard h={live[0]} />
+          </section>
+        ) : null}
+      </div>
+    </>
   );
 }

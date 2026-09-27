@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { Lineage, MaterialGrid } from "../context-parts";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Context" };
 
@@ -27,7 +28,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
   const { tab } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const section: Section = SECTIONS.some(([k]) => k === tab) ? (tab as Section) : "materials";
-  const { db } = await requireSession();
+  const { db, creator } = await requireSession();
   const { data: a } = await db.from("artifacts").select("id, title, creator_id").eq("id", id).maybeSingle();
   if (!a) notFound();
 
@@ -61,64 +62,67 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
   const counts: Record<Section, number | null> = { materials: createdFrom.length, references: references.length, people: people.length, related: related.length };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <Link href={`/artifacts/${a.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-        ← {a.title}
-      </Link>
-      <header>
-        <h1 className="font-display text-3xl text-ink sm:text-4xl">Context</h1>
-        <p className="mt-1 text-[15px] text-ink-muted">Everything around “{a.title}”.</p>
-      </header>
-      <nav aria-label="Context sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
-        {SECTIONS.map(([k, label]) => (
-          <Link
-            key={k}
-            href={`/artifacts/${a.id}/context?tab=${k}`}
-            aria-current={section === k ? "page" : undefined}
-            className={cn(
-              "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium",
-              section === k ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-border-soft bg-surface text-ink hover:bg-accent-softer",
-            )}
-          >
-            {label}
-            {counts[k] ? <span className="ml-1.5 text-ink-subtle">{counts[k]}</span> : null}
-          </Link>
-        ))}
-      </nav>
+    <>
+      <PaletteScope context={{ page: "context", permissions: a.creator_id === creator.id ? ["edit", "collaborate"] : [], ids: { artifactId: id } }} />
+      <div className="mx-auto max-w-3xl space-y-5">
+        <Link href={`/artifacts/${a.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+          ← {a.title}
+        </Link>
+        <header>
+          <h1 className="font-display text-3xl text-ink sm:text-4xl">Context</h1>
+          <p className="mt-1 text-[15px] text-ink-muted">Everything around “{a.title}”.</p>
+        </header>
+        <nav aria-label="Context sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+          {SECTIONS.map(([k, label]) => (
+            <Link
+              key={k}
+              href={`/artifacts/${a.id}/context?tab=${k}`}
+              aria-current={section === k ? "page" : undefined}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium",
+                section === k ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-border-soft bg-surface text-ink hover:bg-accent-softer",
+              )}
+            >
+              {label}
+              {counts[k] ? <span className="ml-1.5 text-ink-subtle">{counts[k]}</span> : null}
+            </Link>
+          ))}
+        </nav>
 
-      {section === "materials" ? (
-        <section aria-label="Materials">
-          <MaterialGrid items={createdFrom} empty="This Creation wasn't made from saved Materials." />
-        </section>
-      ) : section === "references" ? (
-        <section aria-label="References">
-          <MaterialGrid items={references} empty="No references yet. Attach them from your Reference Shelf in meTalk." />
-        </section>
-      ) : section === "people" ? (
-        <section aria-label="People">
-          <ul className="space-y-2">
-            {people.map((p) => (
-              <li key={`${p.id}-${p.role}`} className="flex min-h-14 items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-2">
-                <Avatar name={p.name} src={p.id ? (avatars[p.id] ?? null) : null} size={36} />
-                <div className="min-w-0">
-                  {p.handle ? (
-                    <Link href={`/creators/${p.handle}`} className="font-medium text-ink hover:underline">
-                      {p.name}
-                    </Link>
-                  ) : (
-                    <p className="font-medium text-ink">{p.name}</p>
-                  )}
-                  <p className="text-xs capitalize text-ink-subtle">{p.role}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <section aria-label="Related">
-          <Lineage nodes={graph.nodes} edges={graph.edges} />
-        </section>
-      )}
-    </div>
+        {section === "materials" ? (
+          <section aria-label="Materials">
+            <MaterialGrid items={createdFrom} empty="This Creation wasn't made from saved Materials." />
+          </section>
+        ) : section === "references" ? (
+          <section aria-label="References">
+            <MaterialGrid items={references} empty="No references yet. Attach them from your Reference Shelf in meTalk." />
+          </section>
+        ) : section === "people" ? (
+          <section aria-label="People">
+            <ul className="space-y-2">
+              {people.map((p) => (
+                <li key={`${p.id}-${p.role}`} className="flex min-h-14 items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-2">
+                  <Avatar name={p.name} src={p.id ? (avatars[p.id] ?? null) : null} size={36} />
+                  <div className="min-w-0">
+                    {p.handle ? (
+                      <Link href={`/creators/${p.handle}`} className="font-medium text-ink hover:underline">
+                        {p.name}
+                      </Link>
+                    ) : (
+                      <p className="font-medium text-ink">{p.name}</p>
+                    )}
+                    <p className="text-xs capitalize text-ink-subtle">{p.role}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section aria-label="Related">
+            <Lineage nodes={graph.nodes} edges={graph.edges} />
+          </section>
+        )}
+      </div>
+    </>
   );
 }

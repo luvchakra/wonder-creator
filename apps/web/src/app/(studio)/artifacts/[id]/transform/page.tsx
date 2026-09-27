@@ -1,6 +1,6 @@
 import { actionsFor, ARTIFACT_TYPES, artifactType, getRights, listVersions } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
-import { PaletteActions } from "@/components/creative-palette";
+import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { TransformChooser, type FormatOption } from "./chooser";
 
@@ -34,18 +34,10 @@ export default async function TransformPage({ params, searchParams }: { params: 
       return { type: t.type, label: t.label, action: x.label, sentence: t.description, format: t.format, category: t.category };
     });
   const others: FormatOption[] = ARTIFACT_TYPES.filter((t) => t.type !== a.artifact_type && !suggested.some((s) => s.type === t.type)).map((t) => ({ type: t.type, label: t.label, action: null, sentence: t.description, format: t.format, category: t.category }));
-  const base = `/artifacts/${id}`;
 
   return (
     <>
-      <PaletteActions
-        title="This Creation"
-        actions={[
-          { key: "open", label: "Back to the Creation", href: base, icon: "pen" },
-          { key: "for", label: "For a destination", hint: "YouTube description, post, thumbnail…", href: `${base}/derivatives`, icon: "spark" },
-          { key: "context", label: "Context", href: `${base}/context?tab=related`, icon: "compass" },
-        ]}
-      />
+      <PaletteScope context={{ page: "transform", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id } }} />
       <TransformChooser
         artifactId={id}
         sourceType={a.artifact_type}

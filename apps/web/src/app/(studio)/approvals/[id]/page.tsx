@@ -4,6 +4,7 @@ import { AUTONOMY_LEVELS } from "@wonder/creator-identity/autonomy";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { ApprovalDetail } from "./approval-detail";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Approval" };
 
@@ -15,5 +16,10 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
   if (!approval) notFound();
   const level = autonomy[approval.domain as keyof typeof autonomy];
   const setting = level ? (AUTONOMY_LEVELS.find((l) => l.level === level)?.label ?? level) : null;
-  return <ApprovalDetail key={approval.id} approval={approval} setting={setting} />;
+  return (
+    <>
+      <PaletteScope context={{ page: "approval", ids: { approvalArtifactId: approval.target.kind === "artifact" ? (approval.target.id ?? undefined) : undefined } }} />
+      <ApprovalDetail key={approval.id} approval={approval} setting={setting} />
+    </>
+  );
 }

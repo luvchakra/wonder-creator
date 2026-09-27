@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { HuddleRoom } from "./room";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Huddle" };
 
@@ -20,13 +21,16 @@ export default async function HuddlePage({ params }: { params: Promise<{ id: str
     db.from("huddle_history").select("huddle_id").eq("huddle_id", id).maybeSingle(),
   ]);
   return (
-    <HuddleRoom
-      huddleId={id}
-      me={{ id: creator.id, name: creator.display_name }}
-      initial={{ ...state, related, media: { configured: selectMediaProvider().configured } }}
-      card={card}
-      avatars={avatars}
-      wasInIt={!!history.data}
-    />
+    <>
+      <PaletteScope context={{ page: "huddle", ids: { artifactId: related?.kind === "artifact" && related.canOpen ? (related.id ?? undefined) : undefined, materialId: related?.kind === "material" && related.canOpen ? (related.id ?? undefined) : undefined } }} />
+      <HuddleRoom
+        huddleId={id}
+        me={{ id: creator.id, name: creator.display_name }}
+        initial={{ ...state, related, media: { configured: selectMediaProvider().configured } }}
+        card={card}
+        avatars={avatars}
+        wasInIt={!!history.data}
+      />
+    </>
   );
 }
