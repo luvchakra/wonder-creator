@@ -3,7 +3,7 @@ import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLe
 import { CONTACT_PREFERENCES, EXCLUSIVITY, RATE_VISIBILITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +14,7 @@ const SECTIONS = [
   { key: "identity", label: "Creative Identity", icon: Palette },
   { key: "preferences", label: "Creative Preferences", icon: SlidersHorizontal },
   { key: "collaboration", label: "Collaboration", icon: Handshake },
+  { key: "brand", label: "Brand work", icon: BadgeCheck },
   { key: "autonomy", label: "AI & CreativeMind", icon: Sparkles },
   { key: "privacy", label: "Privacy & Security", icon: Shield },
 ];
@@ -29,6 +30,20 @@ type Props = {
   voice: { tones: string[]; writingStyle: string | null; formality: string | null; visualStyles: string[]; recurringThemes: string[]; narrativeStyle: string; vocabulary: string; codeSwitching: boolean; experimentation: "stay_close" | "balanced" | "experiment" };
   boundaries: { preserve: string[]; avoid: string[]; sensitive: string[] };
   autonomy: Record<AutonomyDomain, AutonomyLevel>;
+  brand: {
+    openToBrands: boolean;
+    niches: string[];
+    industries: string[];
+    regions: string[];
+    expertise: string[];
+    platforms: string[];
+    deliverables: string[];
+    priorCollaborations: string[];
+    turnaround: string | null;
+    commercialBoundaries: string | null;
+    exclusivity: string | null;
+    usageRights: string | null;
+  };
   collaboration: {
     projectTypes: string[];
     interests: string[];
@@ -77,6 +92,7 @@ export function SettingsView(props: Props) {
         {section === "identity" ? <IdentitySection {...props} /> : null}
         {section === "preferences" ? <PreferencesSection {...props} /> : null}
         {section === "collaboration" ? <CollaborationSection {...props} /> : null}
+        {section === "brand" ? <BrandSection {...props} /> : null}
         {section === "autonomy" ? <AutonomySection {...props} /> : null}
         {section === "privacy" ? <PrivacySection {...props} /> : null}
       </div>
@@ -668,6 +684,63 @@ function CollaborationSection({ collaboration, profile }: Props) {
       <div className="flex items-center gap-3">
         <Button type="submit" loading={busy}>
           Save collaboration profile
+        </Button>
+        {status}
+      </div>
+    </form>
+  );
+}
+
+/** Brand work (P1-15): opt in and describe what you'd make. No marketplace or pricing yet; only a short summary is shown. */
+function BrandSection({ brand }: Props) {
+  const [b, setB] = useState(brand);
+  const { busy, save, status } = useSaver();
+  const tags = (key: "niches" | "industries" | "regions" | "expertise" | "platforms" | "deliverables" | "priorCollaborations", label: string, hint: string, max = 12) => (
+    <Field label={label} htmlFor={`br-${key}`} hint={hint}>
+      <TagInput id={`br-${key}`} value={b[key]} onChange={(v) => setB({ ...b, [key]: v })} max={max} />
+    </Field>
+  );
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(() => api("/api/v1/creators/brand", { method: "PUT", json: b }), "Brand-work profile saved.");
+      }}
+    >
+      <div>
+        <h2 className="text-xl font-semibold text-ink">Brand work</h2>
+        <p className="mt-1 text-[15px] text-ink-muted">
+          Say whether you&rsquo;re open to working with brands and what you&rsquo;d make. When you&rsquo;re open, your profile shows a short summary (niches, industries, platforms, deliverables); everything else here stays with you. Nothing is priced or sold.
+        </p>
+      </div>
+      <Switch id="br-open" checked={b.openToBrands} onCheckedChange={(v) => setB({ ...b, openToBrands: v })} label="Open to brand work" />
+      <div className="grid gap-5 sm:grid-cols-2">
+        {tags("niches", "Niches", "e.g. travel, food, slow living")}
+        {tags("industries", "Industries", "e.g. hospitality, outdoor gear")}
+        {tags("platforms", "Platforms", "Where you publish, e.g. YouTube, Instagram")}
+        {tags("deliverables", "Deliverables", "e.g. short film, photo series, reel")}
+        {tags("expertise", "Expertise", "What you're known for")}
+        {tags("regions", "Regions", "Where you can work")}
+      </div>
+      {tags("priorCollaborations", "Prior brand collaborations (private)", "Only you see these for now", 20)}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Typical turnaround (optional)" htmlFor="br-turn">
+          <Input id="br-turn" value={b.turnaround ?? ""} maxLength={120} onChange={(e) => setB({ ...b, turnaround: e.target.value })} />
+        </Field>
+        <Field label="Exclusivity constraints (optional)" htmlFor="br-excl">
+          <Input id="br-excl" value={b.exclusivity ?? ""} maxLength={500} onChange={(e) => setB({ ...b, exclusivity: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Commercial boundaries (optional)" htmlFor="br-comm" hint="Brands, products or uses you won't take on">
+        <Textarea id="br-comm" value={b.commercialBoundaries ?? ""} maxLength={1000} onChange={(e) => setB({ ...b, commercialBoundaries: e.target.value })} />
+      </Field>
+      <Field label="Usage-right preferences (optional)" htmlFor="br-usage" hint="e.g. organic social only, 12 months, no paid ads without a new agreement">
+        <Textarea id="br-usage" value={b.usageRights ?? ""} maxLength={1000} onChange={(e) => setB({ ...b, usageRights: e.target.value })} />
+      </Field>
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={busy}>
+          Save brand-work profile
         </Button>
         {status}
       </div>

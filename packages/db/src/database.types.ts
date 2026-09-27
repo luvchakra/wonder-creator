@@ -394,6 +394,25 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"brand_profiles": {
+                  Row: {
+                    "commercial_boundaries": string | null,"creator_id": string,"deliverables": (string)[],"exclusivity": string | null,"expertise": (string)[],"industries": (string)[],"niches": (string)[],"open_to_brands": boolean,"platforms": (string)[],"prior_collaborations": (string)[],"regions": (string)[],"turnaround": string | null,"updated_at": string,"usage_rights": string | null
+                  }
+                  Insert: {
+                    "commercial_boundaries"?: string | null,"creator_id": string,"deliverables"?: (string)[],"exclusivity"?: string | null,"expertise"?: (string)[],"industries"?: (string)[],"niches"?: (string)[],"open_to_brands"?: boolean,"platforms"?: (string)[],"prior_collaborations"?: (string)[],"regions"?: (string)[],"turnaround"?: string | null,"updated_at"?: string,"usage_rights"?: string | null
+                  }
+                  Update: {
+                    "commercial_boundaries"?: string | null,"creator_id"?: string,"deliverables"?: (string)[],"exclusivity"?: string | null,"expertise"?: (string)[],"industries"?: (string)[],"niches"?: (string)[],"open_to_brands"?: boolean,"platforms"?: (string)[],"prior_collaborations"?: (string)[],"regions"?: (string)[],"turnaround"?: string | null,"updated_at"?: string,"usage_rights"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "brand_profiles_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"collaboration_profiles": {
                   Row: {
                     "commercial_boundaries": string | null,"contact_preference": string,"creator_id": string,"exclusivity": string,"interests": (string)[],"project_types": (string)[],"rate_guidance": string | null,"rate_visibility": string,"region": string | null,"rights_preferences": string | null,"turnaround": string | null,"updated_at": string,"work_mode": string
@@ -2585,6 +2604,9 @@ isOneToOne: false
                            },
 "assert_ownership":
 { Args: { "p_artifact": string,"p_claim": string,"p_project": string,"p_share"?: number,"p_statement": string }; Returns: string
+                           },
+"brand_summary_of":
+{ Args: { "p_creator": string }; Returns: Json
                            },
 "byok_remove":
 { Args: { "p_creator": string,"p_provider": string }; Returns: undefined

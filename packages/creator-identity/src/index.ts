@@ -4,3 +4,4 @@ export * from "./schemas";
 export * from "./service";
 export * from "./discovery";
 export * from "./collaboration";
+export * from "./brand";

@@ -1,4 +1,4 @@
-import { collaborationProfileOf, getCreatorByHandle } from "@wonder/creator-identity";
+import { brandSummaryOf, collaborationProfileOf, getCreatorByHandle } from "@wonder/creator-identity";
 import { EXCLUSIVITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { liveCards } from "@wonder/creator-huddle";
 import { canMessage } from "@wonder/creator-projects";
@@ -34,7 +34,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   // Own profile shows everything you own; others see only public, final work.
   let q = db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, privacy, featured_on_profile").eq("creator_id", c.id).neq("status", "archived").order("featured_on_profile", { ascending: false }).order("updated_at", { ascending: false }).limit(12);
   if (!isMe) q = q.eq("privacy", "public").in("status", ["final", "published"]);
-  const [{ data: artifacts }, live, myLive, follow, avatars, messageable, collab] = await Promise.all([
+  const [{ data: artifacts }, live, myLive, follow, avatars, messageable, collab, brand] = await Promise.all([
     q,
     liveCards(db, { creatorId: c.id, limit: 3 }),
     isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }),
@@ -42,6 +42,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     avatarUrls(db, [c.id]),
     isMe ? Promise.resolve(false) : canMessage(db, c.id),
     collaborationProfileOf(db, c.id).catch(() => null),
+    brandSummaryOf(db, c.id).catch(() => null),
   ]);
   const [covers, scrapbook] = await Promise.all([coverUrls(db, artifacts ?? []), listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 3 })]);
 
@@ -96,6 +97,30 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
       </section>
 
       {collab && (collab.hasProfile || isMe) && collab.availability !== "closed" ? <HowICollaborate p={collab} isMe={isMe} /> : null}
+      {brand ? (
+        <section aria-labelledby="brand-h" className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-5 shadow-[var(--shadow-card)]">
+          <h2 id="brand-h" className="text-lg font-semibold text-ink">
+            Open to brand work
+          </h2>
+          <dl className="mt-2 grid gap-x-6 gap-y-2 text-[15px] sm:grid-cols-[auto_1fr]">
+            {(
+              [
+                ["Niches", brand.niches],
+                ["Industries", brand.industries],
+                ["Platforms", brand.platforms],
+                ["Makes", brand.deliverables],
+              ] as const
+            )
+              .filter(([, v]) => v.length)
+              .map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-ink-subtle">{k}</dt>
+                  <dd className="text-ink">{v.join(", ")}</dd>
+                </div>
+              ))}
+          </dl>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold text-ink">{isMe ? "Your work" : "Selected work"}</h2>

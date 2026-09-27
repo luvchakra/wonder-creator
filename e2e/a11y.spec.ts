@@ -39,6 +39,7 @@ test.describe("accessibility", () => {
       `/artifacts/${art.id}/transform`,
       `/artifacts/${art.id}/compare`,
       "/settings?section=collaboration",
+      "/settings?section=brand",
       `/artifacts/${art.id}/share`,
       `/artifacts/${art.id}/publish`,
       `/artifacts/${art.id}/derivatives`,
