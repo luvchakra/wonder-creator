@@ -7,6 +7,10 @@ test.describe("Home Canvas", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "What would you like to begin with?" })).toBeVisible();
     await expect(page.getByLabel("What are you thinking about?")).toHaveCount(0);
+    // The supplied artwork: one decorative floral corner, and the watercolor motif on the Palette trigger — both hidden
+    // from assistive tech (the trigger keeps its own name).
+    await expect(page.locator('main img[src*="/brand/watercolor/floral-corner"]')).toHaveAttribute("aria-hidden", "true");
+    await expect(page.getByRole("button", { name: "Open Creative Palette" }).locator('img[src*="/brand/watercolor/watercolor-paint-palette"]')).toHaveAttribute("alt", "");
     await page.getByRole("button", { name: "meTalk" }).click();
     await expect(page.getByRole("dialog", { name: "meTalk" })).toBeVisible();
     await page.keyboard.press("Escape");

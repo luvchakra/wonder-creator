@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../cn";
+import { type BrandImageVariant, WATERCOLOR, type WatercolorKey } from "../brand/watercolor";
 
 /**
  * Brand assets are the supplied files (pixel crops of the brand board) — never redrawn.
@@ -81,5 +82,34 @@ export function BrandBackground({
       {ov ? <div aria-hidden className={cn("pointer-events-none absolute inset-0", ov)} /> : null}
       <div className="relative">{children}</div>
     </div>
+  );
+}
+
+/**
+ * An owner-supplied watercolor piece (see `brand/watercolor.ts`) as a responsive AVIF/WebP <picture>. Decorative by
+ * default (empty alt, hidden from assistive tech); lazy unless `priority`.
+ */
+export function Watercolor({ name, sizes, className, alt = "", priority = false }: { name: WatercolorKey; sizes: string; className?: string; alt?: string; priority?: boolean }) {
+  const a = WATERCOLOR[name];
+  const set = (v: readonly BrandImageVariant[]) => v.map((x) => `${x.src} ${x.width}w`).join(", ");
+  const fallback = a.webp[a.webp.length - 1]!;
+  return (
+    <picture>
+      <source type="image/avif" srcSet={set(a.avif)} sizes={sizes} />
+      <img
+        src={fallback.src}
+        srcSet={set(a.webp)}
+        sizes={sizes}
+        width={a.width}
+        height={a.height}
+        alt={alt}
+        aria-hidden={alt ? undefined : true}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : undefined}
+        draggable={false}
+        className={cn("select-none", className)}
+      />
+    </picture>
   );
 }

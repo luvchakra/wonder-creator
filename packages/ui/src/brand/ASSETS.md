@@ -2,7 +2,7 @@
 
 Source of truth: the supplied brand board (`assets/brand-board-reference.png`) and the supplied
 background image set (`assets/backgrounds/background-set-source.png`). Nothing here is redrawn,
-regenerated or reinterpreted. Every file in `apps/web/public/brand/` is a **pixel crop** of one
+regenerated or reinterpreted. Every file in `apps/web/public/brand/` (outside `watercolor/`) is a **pixel crop** of one
 of those two supplied images — no recolouring, no effects.
 
 | Published file (`apps/web/public/brand/…`) | Derived from | Crop (x0,y0,x1,y1) | Use |
@@ -11,6 +11,7 @@ of those two supplied images — no recolouring, no effects.
 | `logo-mark.png` | brand board, panel 4 "Favicon / Monogram" | 1185,60,1330,180 | Compact mark (mobile header, small spaces) |
 | `app-icon.png` | brand board, panel 3 "App Icon" (gradient variant) | 935,58,1035,158 | Favicon, PWA icon |
 | `brand-elements.png` | brand board, panel 9 "Brand Elements" | 1262,352,1528,668 | Faint decorative framing (`BrandDecor`) |
+| `watercolor/*.{avif,webp}` (60 files) | owner-supplied watercolor set (27 Sep 2026): `Watercolor-PNG-5000px-part1-florals-TL-TR-BR.zip`, `…-part2-BL-palette-wash.zip` (the matching `Watercolor-Vectors-SVG.zip` is the vector master, not published) | trimmed to opaque bounds, downscaled only (430/768/1024/1440/1920w; the palette motif 96–768w), AVIF + WebP, content-hashed names — `scripts/prepare-watercolor-assets.mjs` | Palette trigger motif; floral corners and peach wash as sparse decoration (≤1–2 per mobile viewport). Registry: `brand/watercolor.ts`, component `Watercolor` |
 | `backgrounds/*.webp` (11 files) | supplied background set, one tile each | see `scripts/extract-brand-assets.py` | Atmospheric hero/empty-state/onboarding backgrounds |
 
 Fonts: **Inter** (UI) and **Playfair Display** (display/headings), exactly as named on the brand
@@ -33,8 +34,6 @@ White #FEFFFF). No other prominent colours are introduced.
    available (file names can stay the same).
 4. **Tagline lock-up** ("Ideas Become Real.") artwork — rendered as live text in Playfair Display
    until an approved asset is supplied.
-5. **Palette motif** (UI redesign §7, §46): the painter's-palette artwork shown on the reference boards is not in the
-   supplied asset set. The Creative Palette trigger uses a stock line icon (lucide `Palette`) until the approved motif
-   is supplied — the boards must not be cropped for it.
-6. **Composable botanical/watercolour pieces** (UI redesign §44): separate botanical corners and watercolour washes
-   aren't supplied; only the 11 full background tiles are. Decoration stays limited to those until they are.
+5. ~~Palette motif~~ — supplied 27 Sep 2026 (`watercolor-paint-palette`); now the Creative Palette trigger.
+6. ~~Composable botanical/watercolour pieces~~ — supplied 27 Sep 2026: four floral corners (TL/TR/BL/BR) and a peach
+   wash. The 5000px PNG sources and SVG masters stay with the owner (not committed); re-run the script to republish.

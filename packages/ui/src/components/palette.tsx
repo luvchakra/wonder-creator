@@ -1,8 +1,9 @@
 "use client";
-import { Palette as PaletteIcon, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Dialog as D } from "radix-ui";
 import * as React from "react";
 import { cn } from "../cn";
+import { Watercolor } from "./brand";
 
 export interface PaletteItem {
   key: string;
@@ -22,7 +23,7 @@ export interface PaletteGroup {
 }
 
 /**
- * The Creative Palette: the corner control that replaces bottom navigation. A thumb-reachable trigger in the lower
+ * The Creative Palette: the corner control that replaces bottom navigation. A thumb-reachable trigger (the watercolor palette motif) in the lower
  * right (safe-area aware) opens a fan of menu "leaves" — destinations, quick actions and whatever the current screen
  * offers. It traps focus, closes on Escape, outside tap or the trigger, and respects reduced motion.
  */
@@ -42,7 +43,8 @@ export function Palette({ groups, open, onOpenChange, className }: { groups: Pal
           className,
         )}
       >
-        {open ? <X className="size-6 text-ink" aria-hidden /> : <PaletteIcon className="size-7" aria-hidden strokeWidth={1.75} />}
+        {/* The owner-supplied watercolor palette motif; the trigger keeps its label for assistive tech. */}
+        {open ? <X className="size-6 text-ink" aria-hidden /> : <Watercolor name="paletteMotif" sizes="2.75rem" priority className="h-auto w-[2.75rem]" />}
       </D.Trigger>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-[45] bg-cream/55 backdrop-blur-[3px] motion-safe:data-[state=open]:animate-[fade-in_180ms_ease-out]" />

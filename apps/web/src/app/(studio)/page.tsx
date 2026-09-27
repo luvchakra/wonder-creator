@@ -2,10 +2,11 @@ import { greetingFor } from "@wonder/core";
 import { liveCards } from "@wonder/creator-huddle";
 import { listMaterials, signedUrlsFor } from "@wonder/creator-library";
 import { artifactType } from "@wonder/creator-studio/types";
-import { BACKGROUNDS, CreativeMindInsight } from "@wonder/ui";
+import { BACKGROUNDS, CreativeMindInsight, Watercolor } from "@wonder/ui";
 import Link from "next/link";
 import { MaterialCard } from "@/components/cards";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
+import { preloadWatercolor } from "@/lib/brand-preload";
 import { coverUrls } from "@/lib/covers";
 import { after } from "next/server";
 import { sweepStalePresence } from "@/lib/presence";
@@ -21,8 +22,11 @@ const STATUS_LABEL: Record<string, string> = { draft: "In Progress", in_review: 
  * in the middle of, one honest CreativeMind moment, your recent Materials and at most one more thing. Not a dashboard;
  * everything else is in the Palette.
  */
+const CORNER_SIZES = "(min-width: 640px) 11rem, 8.5rem";
+
 export default async function HomePage() {
   const { db, creator } = await requireSession();
+  preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
   const [current, materials, live, proposals] = await Promise.all([
     db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, description").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
@@ -59,10 +63,14 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-7">
-      <h1 className="text-ink">
-        <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
-        <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
-      </h1>
+      <header className="relative isolate">
+        {/* The one decoration on Home (§46): a supplied floral corner behind the greeting, never over a control. */}
+        <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="pointer-events-none absolute -right-4 -top-3 -z-10 h-auto w-[8.5rem] opacity-90 sm:-right-2 sm:w-[11rem]" />
+        <h1 className="pr-24 text-ink sm:pr-40">
+          <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
+          <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
+        </h1>
+      </header>
 
       {creation ? (
         <Link href={`/artifacts/${creation.id}`} aria-label={`Continue ${creation.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
