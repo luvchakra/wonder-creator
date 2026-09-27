@@ -104,6 +104,7 @@ test.describe("mobile layout @mobile", () => {
       [`${project}?tab=rights`, (p) => expect(p.getByRole("region", { name: "Project policy" })).toBeVisible()],
       [`${project}/complete`, (p) => expect(p.getByRole("region", { name: "Unresolved tasks" })).toBeVisible()],
       ["/discover?terms=writing", (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
+      ["/publishing", (p) => expect(p.getByRole("region", { name: "Queue" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],

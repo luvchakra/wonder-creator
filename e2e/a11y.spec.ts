@@ -52,6 +52,7 @@ test.describe("accessibility", () => {
       crew,
       "/search?q=tide",
       "/messages",
+      "/publishing",
       "/settings",
       "/settings/ai",
       "/settings/audit",

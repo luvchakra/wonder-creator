@@ -77,6 +77,45 @@ const copyFields = {
     .refine((v) => !v || new Date(v).getTime() > Date.now() + 60_000, "Pick a time at least a minute from now."),
 };
 
+/**
+ * Platform-specific metadata (P1-12): tags (no "#", deduplicated), alt text, a link, and for webhooks a few extra
+ * key/value fields the receiving site understands. Sent with the publication; never used to authorize anything.
+ */
+export const publicationMetadataSchema = z
+  .object({
+    tags: z
+      .array(z.string().trim().max(40))
+      .max(10)
+      .transform((ts) => [...new Set(ts.map((t) => t.replace(/^#+/, "").trim()).filter(Boolean))])
+      .optional(),
+    altText: z.string().trim().max(500).optional(),
+    link: z
+      .string()
+      .trim()
+      .max(2000)
+      .refine((u) => /^https:\/\/[^\s]+$/i.test(u), "Links must start with https://")
+      .optional(),
+    fields: z
+      .record(z.string().trim().min(1).max(40), z.string().trim().max(500))
+      .refine((f) => Object.keys(f).length <= 10, "At most 10 extra fields.")
+      .optional(),
+  })
+  .strict();
+export type PublicationMetadata = z.infer<typeof publicationMetadataSchema>;
+
+/** Per-destination changes on top of the shared copy ("profile" or a destination id). */
+const perDestinationSchema = z
+  .record(
+    z.string(),
+    z.object({
+      caption: copyFields.caption.optional(),
+      description: copyFields.description.optional(),
+      metadata: publicationMetadataSchema.optional(),
+      scheduledFor: copyFields.scheduledFor.optional(),
+    }),
+  )
+  .refine((r) => Object.keys(r).length <= 10);
+
 export const preparePublicationSchema = z.object({
   destinations: z
     .array(z.union([z.object({ kind: z.literal("profile") }), z.object({ kind: z.literal("webhook"), id: z.string().uuid() })]))
@@ -84,9 +123,11 @@ export const preparePublicationSchema = z.object({
     .max(10),
   ...copyFields,
   preparedBy: z.enum(["creator", "creatorbrain"]).default("creator"),
+  metadata: publicationMetadataSchema.default({}),
+  perDestination: perDestinationSchema.default({}),
 });
 
-export const updatePublicationSchema = z.object(copyFields).partial();
+export const updatePublicationSchema = z.object({ ...copyFields, metadata: publicationMetadataSchema }).partial();
 
 /** One draft publication per destination, sharing the same copy. Nothing is published yet. */
 export async function preparePublications(db: Db, creatorId: string, artifactId: string, raw: unknown): Promise<Publication[]> {
@@ -95,30 +136,34 @@ export async function preparePublications(db: Db, creatorId: string, artifactId:
   const { data: dests } = webhooks.length ? await db.from("publishing_destinations").select("id, name, status").in("id", webhooks) : { data: [] };
   const byId = new Map((dests ?? []).map((d) => [d.id, d]));
   const seen = new Set<string>();
-  const rows = input.destinations.flatMap((d): Array<{ destination_kind: "profile" | "webhook"; destination_id: string | null; destination_name: string }> => {
+  const rows = input.destinations.flatMap((d): Array<{ key: string; destination_kind: "profile" | "webhook"; destination_id: string | null; destination_name: string }> => {
     const key = d.kind === "profile" ? "profile" : d.id;
     if (seen.has(key)) return [];
     seen.add(key);
     if (d.kind === "webhook") {
       const dest = byId.get(d.id);
       if (!dest || dest.status !== "active") throw new DomainError("validation", "One of those destinations isn't connected.");
-      return [{ destination_kind: "webhook", destination_id: d.id, destination_name: dest.name }];
+      return [{ key, destination_kind: "webhook", destination_id: d.id, destination_name: dest.name }];
     }
-    return [{ destination_kind: "profile", destination_id: null, destination_name: "Your Wonder Creator profile" }];
+    return [{ key, destination_kind: "profile", destination_id: null, destination_name: "Your Wonder Creator profile" }];
   });
   const res = await db
     .from("publications")
     .insert(
-      rows.map((r) => ({
-        ...r,
-        artifact_id: artifactId,
-        creator_id: creatorId,
-        title: input.title,
-        caption: input.caption,
-        description: input.description,
-        scheduled_for: input.scheduledFor,
-        prepared_by: input.preparedBy,
-      })),
+      rows.map(({ key, ...r }) => {
+        const own = input.perDestination[key] ?? {};
+        return {
+          ...r,
+          artifact_id: artifactId,
+          creator_id: creatorId,
+          title: input.title,
+          caption: own.caption !== undefined ? own.caption : input.caption,
+          description: own.description !== undefined ? own.description : input.description,
+          scheduled_for: own.scheduledFor !== undefined ? own.scheduledFor : input.scheduledFor,
+          metadata: { ...input.metadata, ...(own.metadata ?? {}) },
+          prepared_by: input.preparedBy,
+        };
+      }),
     )
     .select("*");
   if (res.error) throw fromDbError(res.error);
@@ -135,6 +180,11 @@ export async function updatePublication(db: Db, id: string, raw: unknown): Promi
   if (input.caption !== undefined) patch.caption = input.caption;
   if (input.description !== undefined) patch.description = input.description;
   if (input.scheduledFor !== undefined) patch.scheduled_for = input.scheduledFor;
+  if (input.metadata !== undefined) {
+    // Merge: editing tags keeps alt text, link and extra fields.
+    const { data: cur } = await db.from("publications").select("metadata").eq("id", id).maybeSingle();
+    patch.metadata = { ...((cur?.metadata as Record<string, unknown> | null) ?? {}), ...input.metadata };
+  }
   const res = await db.from("publications").update(patch).eq("id", id).select("*").maybeSingle();
   if (res.error?.code === "55000") throw new DomainError("conflict", "This publication was already approved. Cancel it and prepare a new one to change it.");
   if (res.error) throw fromDbError(res.error);
@@ -300,6 +350,7 @@ async function publishToWebhook(deps: AttemptDeps, p: Publication): Promise<Outc
     title: p.title,
     caption: p.caption,
     description: p.description,
+    metadata: p.metadata ?? {},
     content: version.data.content,
     creator: { name: creator.data?.display_name, handle: creator.data?.handle ?? null, profileUrl: creator.data?.handle ? `${deps.appOrigin}/creators/${creator.data.handle}` : null },
     approvedAt: p.approved_at,
@@ -338,4 +389,84 @@ export async function duePublications(service: Db, limit = 20) {
   const { data, error } = await service.from("publications").select("id, creator_id").eq("status", "scheduled").lte("scheduled_for", new Date().toISOString()).order("scheduled_for").limit(limit);
   if (error) throw fromDbError(error);
   return data ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// CreatorPublish v1 (P1-12): preferences and the publishing overview
+// ---------------------------------------------------------------------------
+export const publishingPreferencesSchema = z.object({
+  defaultDestinations: z.array(z.string().max(60)).max(10).default([]),
+  defaultTags: z
+    .array(z.string().trim().max(40))
+    .max(10)
+    .default([])
+    .transform((ts) => [...new Set(ts.map((t) => t.replace(/^#+/, "").trim()).filter(Boolean))]),
+  preferredTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a time like 18:30.")
+    .nullish()
+    .transform((v) => v || null),
+  timeZone: z
+    .string()
+    .max(60)
+    .nullish()
+    .transform((v) => v || null)
+    .refine((tz) => {
+      if (!tz) return true;
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Choose a valid time zone."),
+  captionStyle: z.string().trim().max(500).nullish().transform((v) => v || null),
+});
+export type PublishingPreferences = z.infer<typeof publishingPreferencesSchema>;
+
+export async function getPublishingPreferences(db: Db, creatorId: string): Promise<PublishingPreferences> {
+  const { data, error } = await db.from("publishing_preferences").select("*").eq("creator_id", creatorId).maybeSingle();
+  if (error) throw fromDbError(error);
+  return {
+    defaultDestinations: ((data?.default_destinations ?? []) as unknown[]).filter((d): d is string => typeof d === "string"),
+    defaultTags: data?.default_tags ?? [],
+    preferredTime: data?.preferred_time ? data.preferred_time.slice(0, 5) : null,
+    timeZone: data?.time_zone ?? null,
+    captionStyle: data?.caption_style ?? null,
+  };
+}
+
+export async function savePublishingPreferences(db: Db, creatorId: string, raw: unknown): Promise<PublishingPreferences> {
+  const p = publishingPreferencesSchema.parse(raw);
+  const { error } = await db.from("publishing_preferences").upsert(
+    { creator_id: creatorId, default_destinations: p.defaultDestinations, default_tags: p.defaultTags, preferred_time: p.preferredTime, time_zone: p.timeZone, caption_style: p.captionStyle },
+    { onConflict: "creator_id" },
+  );
+  if (error) throw fromDbError(error);
+  return p;
+}
+
+export type QueueItem = Publication & { artifacts: { id: string; title: string } | null; publication_attempts: Array<Pick<PublicationAttempt, "attempt_no" | "finished_at" | "outcome" | "error">> };
+
+/** Everything across pieces: what's waiting (queue), what happened (history) and where it can go. */
+export async function publishingOverview(db: Db) {
+  const [queue, history, destinations] = await Promise.all([
+    db
+      .from("publications")
+      .select("*, artifacts(id, title), publication_attempts(attempt_no, finished_at, outcome, error)")
+      .in("status", ["draft", "approved", "scheduled", "publishing", "failed"])
+      .order("scheduled_for", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(200),
+    db
+      .from("publications")
+      .select("*, artifacts(id, title), publication_attempts(attempt_no, finished_at, outcome, error)")
+      .in("status", ["published", "cancelled"])
+      .order("updated_at", { ascending: false })
+      .limit(100),
+    listDestinations(db),
+  ]);
+  if (queue.error) throw fromDbError(queue.error);
+  if (history.error) throw fromDbError(history.error);
+  return { queue: (queue.data ?? []) as QueueItem[], history: (history.data ?? []) as QueueItem[], destinations };
 }

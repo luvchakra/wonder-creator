@@ -1,10 +1,11 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, StickyActions, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, Field, Input, StickyActions, Textarea, cn } from "@wonder/ui";
 import { ArrowUpRight, Check, CircleAlert, Globe, Loader, Sparkles, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LocalTime, RelativeTime } from "@/components/client-time";
+import { ConnectWebhookDialog as ConnectDialog } from "@/components/connect-webhook-dialog";
 import { api, errorMessage } from "@/lib/client";
 
 type Destination = { id: string; name: string; url: string; secret: string };
@@ -43,16 +44,21 @@ export function PublishFlow(props: {
   unconnected: string[];
   initialPublications: Publication[];
   available: boolean;
+  preferences: { defaultDestinations: string[]; defaultTags: string[] };
 }) {
   const { artifact } = props;
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [destinations, setDestinations] = useState(props.destinations);
-  const [chosen, setChosen] = useState<string[]>([]); // "profile" or destination ids
+  // "profile" or destination ids; your default destinations are preselected.
+  const [chosen, setChosen] = useState<string[]>(() => props.preferences.defaultDestinations.filter((k) => k === "profile" || props.destinations.some((d) => d.id === k)));
+  const [tags, setTags] = useState(props.preferences.defaultTags.join(", "));
+  const [perDest, setPerDest] = useState<Record<string, { caption?: string; tags?: string[]; at?: string | null }>>({});
+  const [plan, setPlan] = useState<{ reasons: Array<{ key: string; why: string }>; notes: string[]; offline: boolean; timed: boolean } | null>(null);
   const [title, setTitle] = useState(artifact.title);
   const [caption, setCaption] = useState("");
   const [description, setDescription] = useState(artifact.description ?? "");
-  const [when, setWhen] = useState<"now" | "later">("now");
+  const [when, setWhen] = useState<"now" | "later" | "suggested">("now");
   const [at, setAt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +82,35 @@ export function PublishFlow(props: {
   }
 
   const scheduledFor = when === "later" && at ? new Date(at).toISOString() : null;
-  const canNext = step === 0 ? chosen.length > 0 : step === 1 ? !!title.trim() : step === 2 ? when === "now" || !!at : false;
+  const canNext = step === 0 ? chosen.length > 0 : step === 1 ? !!title.trim() : step === 2 ? when !== "later" || !!at : false;
+  const nameOf = (k: string) => (k === "profile" ? "Your Wonder Creator profile" : (destinations.find((d) => d.id === k)?.name ?? "A destination"));
+  const parseTags = (t: string) => t.split(",").map((x) => x.replace(/^#+/, "").trim()).filter(Boolean).slice(0, 10);
+
+  async function planWithBrain() {
+    setBusy("plan");
+    setError(null);
+    try {
+      const r = await api<{
+        destinations: Array<{ key: string; why: string }>;
+        adaptations: Array<{ key: string; caption?: string | null; tags?: string[] }>;
+        schedule: Array<{ key: string; at: string | null; why?: string }>;
+        notes: string[];
+        offline: boolean;
+      }>(`/api/v1/artifacts/${artifact.id}/publications/plan`, { method: "POST" });
+      if (r.destinations.length) setChosen(r.destinations.map((d) => d.key));
+      const next: Record<string, { caption?: string; tags?: string[]; at?: string | null }> = {};
+      for (const a of r.adaptations) next[a.key] = { ...next[a.key], ...(a.caption ? { caption: a.caption } : {}), ...(a.tags?.length ? { tags: a.tags } : {}) };
+      for (const x of r.schedule) next[x.key] = { ...next[x.key], at: x.at };
+      setPerDest(next);
+      const timed = r.schedule.some((x) => x.at);
+      if (timed) setWhen("suggested");
+      setPlan({ reasons: [...r.destinations, ...r.schedule.filter((x) => x.why).map((x) => ({ key: x.key, why: x.why! }))], notes: r.notes, offline: r.offline, timed });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function publish() {
     setBusy("publish");
@@ -90,7 +124,21 @@ export function PublishFlow(props: {
           caption,
           description,
           scheduledFor,
-          preparedBy: drafted ? "creatorbrain" : "creator",
+          preparedBy: drafted || plan ? "creatorbrain" : "creator",
+          metadata: parseTags(tags).length ? { tags: parseTags(tags) } : {},
+          perDestination: Object.fromEntries(
+            chosen.map((k) => {
+              const o = perDest[k] ?? {};
+              return [
+                k,
+                {
+                  ...(o.caption?.trim() ? { caption: o.caption.trim() } : {}),
+                  ...(o.tags?.length ? { metadata: { tags: o.tags } } : {}),
+                  ...(when === "suggested" && o.at ? { scheduledFor: o.at } : {}),
+                },
+              ];
+            }),
+          ),
         },
       });
       setStep(3);
@@ -166,6 +214,24 @@ export function PublishFlow(props: {
 
           {step === 0 ? (
             <div className="mt-3 space-y-2">
+              <Button variant="soft" size="sm" loading={busy === "plan"} onClick={planWithBrain}>
+                <Sparkles className="size-4" aria-hidden /> Plan with CreatorBrain
+              </Button>
+              {plan ? (
+                <div role="status" className="rounded-xl bg-accent-softer p-3 text-sm text-ink">
+                  <p className="font-medium">CreatorBrain suggests — nothing is prepared or sent until you approve.</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {plan.reasons.map((r, i) => (
+                      <li key={`${r.key}-${i}`}>
+                        {nameOf(r.key)}: {r.why}
+                      </li>
+                    ))}
+                    {plan.notes.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <Choice id="profile" checked={chosen.includes("profile")} onChange={(on) => setChosen((c) => (on ? [...c, "profile"] : c.filter((x) => x !== "profile")))} icon={<Globe className="size-5" aria-hidden />} label="Your Wonder Creator profile" note="Public, shown on your profile to people who can see it." />
               {destinations.map((d) => (
                 <Choice key={d.id} id={d.id} checked={chosen.includes(d.id)} onChange={(on) => setChosen((c) => (on ? [...c, d.id] : c.filter((x) => x !== d.id)))} icon={<Webhook className="size-5" aria-hidden />} label={d.name} note={new URL(d.url).host} />
@@ -218,6 +284,27 @@ export function PublishFlow(props: {
               <Field label="Description" htmlFor="pub-description">
                 <Textarea id="pub-description" value={description} maxLength={5000} rows={4} onChange={(e) => setDescription(e.target.value)} />
               </Field>
+              <Field label="Tags" htmlFor="pub-tags" hint="Comma-separated, without #. Sent to each destination.">
+                <Input id="pub-tags" value={tags} onChange={(e) => setTags(e.target.value)} maxLength={400} />
+              </Field>
+              {chosen.length > 1 ? (
+                <details className="rounded-xl border border-border-soft px-3" open={Object.values(perDest).some((o) => o.caption)}>
+                  <summary className="min-h-11 cursor-pointer py-2 text-[15px] font-medium text-ink">Customize for each destination</summary>
+                  <div className="space-y-3 pb-3">
+                    {chosen.map((k) => (
+                      <Field key={k} label={`Caption for ${nameOf(k)}`} htmlFor={`pub-caption-${k}`} hint="Leave empty to use the caption above.">
+                        <Textarea
+                          id={`pub-caption-${k}`}
+                          value={perDest[k]?.caption ?? ""}
+                          maxLength={2200}
+                          rows={2}
+                          onChange={(e) => setPerDest((p) => ({ ...p, [k]: { ...p[k], caption: e.target.value } }))}
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
           ) : null}
 
@@ -258,8 +345,22 @@ export function PublishFlow(props: {
                   <label className="flex min-h-11 items-center gap-2 text-[15px]">
                     <input type="radio" name="when" checked={when === "later"} onChange={() => setWhen("later")} className="size-5 accent-[var(--color-accent)]" /> Later
                   </label>
+                  {plan?.timed ? (
+                    <label className="flex min-h-11 items-center gap-2 text-[15px]">
+                      <input type="radio" name="when" checked={when === "suggested"} onChange={() => setWhen("suggested")} className="size-5 accent-[var(--color-accent)]" /> As CreatorBrain suggested
+                    </label>
+                  ) : null}
                 </div>
               </fieldset>
+              {when === "suggested" ? (
+                <ul className="space-y-1 text-[15px] text-ink">
+                  {chosen.map((k) => (
+                    <li key={k}>
+                      {nameOf(k)}: {perDest[k]?.at ? <LocalTime iso={perDest[k]!.at!} options={{ dateStyle: "medium", timeStyle: "short" }} /> : "now"}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {when === "later" ? (
                 <Field label="Publish at" htmlFor="pub-at" hint="Scheduled publications are sent by our publishing run once this time has passed; it runs daily, so allow up to a day.">
                   <Input id="pub-at" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />
@@ -292,7 +393,7 @@ export function PublishFlow(props: {
                 </Button>
               ) : (
                 <Button onClick={publish} loading={busy === "publish"} disabled={!canNext}>
-                  {when === "later" ? "Approve and schedule" : "Approve and publish"}
+                  {when === "now" ? "Approve and publish" : "Approve and schedule"}
                 </Button>
               )}
             </StickyActions>
@@ -304,6 +405,8 @@ export function PublishFlow(props: {
                   setResults(null);
                   setChosen([]);
                   setDrafted(null);
+                  setPlan(null);
+                  setPerDest({});
                   setStep(0);
                 }}
               >
@@ -318,6 +421,13 @@ export function PublishFlow(props: {
         <h2 id="history-h" className="text-lg font-semibold text-ink">
           Publication history
         </h2>
+        <p className="text-sm text-ink-muted">
+          Everything you&rsquo;re publishing, across pieces, is in{" "}
+          <Link href="/publishing" className="font-medium text-accent-ink hover:underline">
+            Publishing
+          </Link>
+          .
+        </p>
         {publications.length ? (
           <ul className="mt-3 space-y-3">
             {publications.map((p) => (
@@ -431,74 +541,3 @@ function ResultRow({ p, busy, history, onRetry, onApprove, onCancel }: { p: Publ
     </li>
   );
 }
-
-function ConnectDialog({ open, onOpenChange, onConnected }: { open: boolean; onOpenChange: (o: boolean) => void; onConnected: (d: Destination) => void }) {
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [made, setMade] = useState<Destination | null>(null);
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o);
-        if (!o) {
-          setMade(null);
-          setName("");
-          setUrl("");
-          setError(null);
-        }
-      }}
-    >
-      <DialogContent title="Connect a webhook" description="We'll send each approved publication to this address as signed JSON. It counts as published when it answers with a 2xx status.">
-        {made ? (
-          <div className="space-y-3">
-            <p className="text-[15px] text-ink">Connected. Use this secret to check the x-wonder-signature header (HMAC-SHA256 of “timestamp.body”).</p>
-            <Field label="Signing secret" htmlFor="hook-secret">
-              <Input id="hook-secret" readOnly value={made.secret} onFocus={(e) => e.currentTarget.select()} />
-            </Field>
-            <div className="flex justify-end">
-              <Button onClick={() => onOpenChange(false)}>Done</Button>
-            </div>
-          </div>
-        ) : (
-          <form
-            className="space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError(null);
-              try {
-                const { destination } = await api<{ destination: { id: string; name: string; url: string; signing_secret: string } }>("/api/v1/publishing/destinations", { method: "POST", json: { name, url } });
-                const d = { id: destination.id, name: destination.name, url: destination.url, secret: destination.signing_secret };
-                setMade(d);
-                onConnected(d);
-              } catch (err) {
-                setError(errorMessage(err));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <Field label="Name" htmlFor="hook-name" hint="e.g. My website">
-              <Input id="hook-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} required />
-            </Field>
-            <Field label="Webhook address" htmlFor="hook-url" error={error}>
-              <Input id="hook-url" type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} required />
-            </Field>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={busy}>
-                Connect
-              </Button>
-            </div>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-

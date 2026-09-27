@@ -1,4 +1,4 @@
-import { listDestinations, listPublications, UNCONNECTED_PLATFORMS } from "@wonder/creator-studio";
+import { getPublishingPreferences, listDestinations, listPublications, UNCONNECTED_PLATFORMS } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { serviceConfigured } from "@/lib/supabase/service";
@@ -12,7 +12,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
   const { db, creator } = await requireSession();
   const { data: artifact } = await db.from("artifacts").select("id, title, description, creator_id, status, privacy, current_version_id").eq("id", id).maybeSingle();
   if (!artifact || artifact.creator_id !== creator.id) notFound();
-  const [destinations, publications] = await Promise.all([listDestinations(db), listPublications(db, id)]);
+  const [destinations, publications, prefs] = await Promise.all([listDestinations(db), listPublications(db, id), getPublishingPreferences(db, creator.id)]);
   return (
     <PublishFlow
       artifact={{ id: artifact.id, title: artifact.title, description: artifact.description, archived: artifact.status === "archived", hasContent: !!artifact.current_version_id }}
@@ -21,6 +21,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
       unconnected={[...UNCONNECTED_PLATFORMS]}
       initialPublications={publications}
       available={serviceConfigured()}
+      preferences={{ defaultDestinations: prefs.defaultDestinations, defaultTags: prefs.defaultTags }}
     />
   );
 }
