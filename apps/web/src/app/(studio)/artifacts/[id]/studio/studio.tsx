@@ -1,6 +1,6 @@
 "use client";
 import type { StudioAction } from "@wonder/creator-studio/types";
-import { Button, ErrorState, Input, buttonClasses, cn } from "@wonder/ui";
+import { Button, ErrorState, Input, Segmented, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, Save, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,6 +40,7 @@ export function Studio({
   const [working, setWorking] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
+  const [view, setView] = useState<"changes" | "original" | "proposed">("changes");
   const [q, setQ] = useState(quality);
   // Keep the panel in sync with server data after refreshes (dismiss, apply).
   const [lastQuality, setLastQuality] = useState(quality);
@@ -221,14 +222,32 @@ export function Studio({
                 </Button>
               </div>
             </div>
-            <div className="max-h-[65vh] overflow-auto rounded-2xl bg-surface-muted p-4 font-mono text-[13px] leading-relaxed">
-              {diffLines(base?.content ?? "", proposal.preview).map((d, i) => (
-                <div key={i} className={cn("whitespace-pre-wrap px-2", d.kind === "added" && "bg-success-soft text-success-ink", d.kind === "removed" && "bg-danger-soft text-danger line-through decoration-danger/40")}>
-                  <span className="sr-only">{d.kind === "added" ? "Added: " : d.kind === "removed" ? "Removed: " : ""}</span>
-                  {d.text || " "}
-                </div>
-              ))}
-            </div>
+            {/* Original / proposed switch (UI redesign §18): read either whole, or just what changes. */}
+            <Segmented
+              label="Show"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "changes", label: "Changes" },
+                { value: "original", label: `Original (v${base?.number ?? 1})` },
+                { value: "proposed", label: "Proposed" },
+              ]}
+              className="mb-3"
+            />
+            {view === "changes" ? (
+              <div aria-label="Changes" role="region" className="max-h-[65vh] overflow-auto rounded-2xl bg-surface-muted p-4 font-mono text-[13px] leading-relaxed">
+                {diffLines(base?.content ?? "", proposal.preview).map((d, i) => (
+                  <div key={i} className={cn("whitespace-pre-wrap px-2", d.kind === "added" && "bg-success-soft text-success-ink", d.kind === "removed" && "bg-danger-soft text-danger line-through decoration-danger/40")}>
+                    <span className="sr-only">{d.kind === "added" ? "Added: " : d.kind === "removed" ? "Removed: " : ""}</span>
+                    {d.text || " "}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <article aria-label={view === "original" ? "Original" : "Proposed"} className={cn("max-h-[65vh] overflow-auto whitespace-pre-wrap rounded-2xl bg-surface-muted px-5 py-6 text-ink sm:px-8", editorFont)}>
+                {(view === "original" ? base?.content : proposal.preview) || "Empty."}
+              </article>
+            )}
           </div>
         ) : (
           <>

@@ -15,6 +15,14 @@ test.describe("Quality review & selective refinement", () => {
     await quality.getByRole("button", { name: "Preview 1 change" }).click();
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByText("Applying: Try a closer detail")).toBeVisible();
+    // Original / proposed switch: read either whole, or just the changes.
+    const show = editor.getByRole("radiogroup", { name: "Show" });
+    await expect(show.getByRole("radio", { name: "Changes" })).toHaveAttribute("aria-checked", "true");
+    await show.getByRole("radio", { name: "Proposed" }).click();
+    await expect(editor.getByRole("article", { name: "Proposed" })).toBeVisible();
+    await show.getByRole("radio", { name: /^Original/ }).click();
+    await expect(editor.getByRole("article", { name: "Original" })).toBeVisible();
+    await show.getByRole("radio", { name: "Changes" }).click();
 
     await editor.getByRole("button", { name: "Try another version" }).click();
     await expect(editor.getByText("Applying: Try a closer detail")).toBeVisible();

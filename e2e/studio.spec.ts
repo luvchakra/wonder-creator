@@ -84,6 +84,20 @@ test.describe("Studio, versions and lineage", () => {
     await compare.getByLabel("Compare").selectOption({ label: "v2 Revised" });
     await compare.getByLabel("with").selectOption({ index: 0 });
     await expect(compare.getByText(`Removed: ${added}`)).toBeVisible();
+
+    // The dedicated compare view: single view, before / after, and swipe.
+    await compare.getByLabel("Compare").selectOption({ index: 0 });
+    await compare.getByLabel("with").selectOption({ index: 1 });
+    await compare.getByRole("link", { name: /Open the compare view/ }).click();
+    await expect(page.getByRole("heading", { name: "Compare versions", level: 1 })).toBeVisible();
+    const modes = page.getByRole("radiogroup", { name: "Compare as" });
+    await expect(page.getByRole("region", { name: "Changes" })).toBeVisible();
+    await modes.getByRole("radio", { name: "Before / After" }).click();
+    await expect(page.getByRole("article", { name: /^Before: v/ })).toBeVisible();
+    await expect(page.getByRole("article", { name: /^After: v/ })).toBeVisible();
+    await modes.getByRole("radio", { name: "Before / After" }).press("ArrowRight");
+    await expect(modes.getByRole("radio", { name: "Swipe" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("region", { name: "Swipe between before and after" })).toBeVisible();
   });
 
   test("lineage shows the source material", async ({ page }) => {

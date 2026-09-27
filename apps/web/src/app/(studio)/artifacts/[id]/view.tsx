@@ -495,6 +495,11 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
         {error ? <li className="text-sm text-danger">{error}</li> : null}
       </ol>
       <section aria-label="Compare versions" className="rounded-2xl border border-border-soft bg-surface p-4">
+        {left && right && left !== right ? (
+          <Link href={`/artifacts/${artifactId}/compare?a=${left}&b=${right}`} className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            Open the compare view — before / after, or swipe
+          </Link>
+        ) : null}
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Compare" htmlFor="left" className="min-w-36 flex-1">
             <Select id="left" value={left} onChange={(e) => setLeft(e.target.value)}>
