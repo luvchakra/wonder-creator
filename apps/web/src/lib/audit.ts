@@ -139,6 +139,19 @@ function describeAudit(r: Row): Described | null {
       return { category: "exports", title: "Deleted a Scrapbook post", outcome: "done", actor: you };
     case "profile.update":
       return { category: "profile", title: "Updated your profile", outcome: "done", actor: you, details: m.visibility ? [{ label: "Profile visibility", value: words(m.visibility) }] : [] };
+    case "brand_profile.update":
+      return { category: "profile", title: m.openToBrands ? "Opened your profile to brand work" : "Updated your brand-work profile", outcome: "done", actor: you };
+    case "collaboration_profile.update":
+      return {
+        category: "profile",
+        title: "Updated how you collaborate",
+        outcome: "done",
+        actor: you,
+        details: [
+          { label: "Who can contact you", value: m.contactPreference === "network" ? "Only people you've worked with" : "Anyone" },
+          { label: "Rate guidance shown to", value: m.rateVisibility === "public" ? "Anyone who can see your profile" : m.rateVisibility === "collaborators" ? "People you've shared a crew with" : "Only you" },
+        ],
+      };
   }
   if (r.action.startsWith("approval.")) {
     const status = r.action.slice("approval.".length);

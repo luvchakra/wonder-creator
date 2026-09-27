@@ -46,16 +46,20 @@ test.describe("CreatorPublish", () => {
     await expect(card).toContainText("#poetry #sea");
     await expect(card).toContainText("Your Wonder Creator profile");
     await card.getByRole("button", { name: "Cancel" }).click();
-    await expect(page.getByRole("region", { name: "History" })).toContainText(title);
+    const views = page.getByRole("radiogroup", { name: "Publishing view" });
+    await views.getByRole("radio", { name: /^Published/ }).click();
+    await expect(page.getByRole("region", { name: "Published" })).toContainText(title);
 
     // A draft can be edited per destination from the queue.
     await page.request.post(`/api/v1/artifacts/${id}/publications`, { data: { destinations: [{ kind: "profile" }], title } });
     await page.reload();
-    const draft = queue.getByRole("listitem").filter({ hasText: "waiting for your approval" }).first();
+    await views.getByRole("radio", { name: /^Drafts/ }).click();
+    const drafts = page.getByRole("region", { name: "Drafts" });
+    const draft = drafts.getByRole("listitem").filter({ hasText: "waiting for your approval" }).first();
     await draft.getByRole("button", { name: "Edit" }).click();
     const edit = page.getByRole("dialog", { name: /Edit for/ });
     await edit.getByLabel("Tags").fill("tides");
     await edit.getByRole("button", { name: "Save draft" }).click();
-    await expect(queue.getByRole("listitem").filter({ hasText: "#tides" })).toBeVisible();
+    await expect(drafts.getByRole("listitem").filter({ hasText: "#tides" })).toBeVisible();
   });
 });

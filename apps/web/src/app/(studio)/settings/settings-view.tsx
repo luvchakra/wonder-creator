@@ -1,8 +1,9 @@
 "use client";
 import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLevel } from "@wonder/creator-identity/autonomy";
+import { CONTACT_PREFERENCES, EXCLUSIVITY, RATE_VISIBILITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { Brain, Download, KeyRound, Palette, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +13,9 @@ const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
   { key: "identity", label: "Creative Identity", icon: Palette },
   { key: "preferences", label: "Creative Preferences", icon: SlidersHorizontal },
-  { key: "autonomy", label: "Creator Autonomy", icon: Sparkles },
+  { key: "collaboration", label: "Collaboration", icon: Handshake },
+  { key: "brand", label: "Brand work", icon: BadgeCheck },
+  { key: "autonomy", label: "AI & CreativeMind", icon: Sparkles },
   { key: "privacy", label: "Privacy & Security", icon: Shield },
 ];
 
@@ -27,6 +30,33 @@ type Props = {
   voice: { tones: string[]; writingStyle: string | null; formality: string | null; visualStyles: string[]; recurringThemes: string[]; narrativeStyle: string; vocabulary: string; codeSwitching: boolean; experimentation: "stay_close" | "balanced" | "experiment" };
   boundaries: { preserve: string[]; avoid: string[]; sensitive: string[] };
   autonomy: Record<AutonomyDomain, AutonomyLevel>;
+  brand: {
+    openToBrands: boolean;
+    niches: string[];
+    industries: string[];
+    regions: string[];
+    expertise: string[];
+    platforms: string[];
+    deliverables: string[];
+    priorCollaborations: string[];
+    turnaround: string | null;
+    commercialBoundaries: string | null;
+    exclusivity: string | null;
+    usageRights: string | null;
+  };
+  collaboration: {
+    projectTypes: string[];
+    interests: string[];
+    workMode: "either" | "remote" | "local";
+    region: string | null;
+    turnaround: string | null;
+    contactPreference: "anyone" | "network";
+    commercialBoundaries: string | null;
+    rateGuidance: string | null;
+    rateVisibility: "private" | "collaborators" | "public";
+    rightsPreferences: string | null;
+    exclusivity: "open" | "case_by_case" | "non_exclusive_only";
+  };
   blocked: Array<{ id: string; name: string; handle: string | null }>;
   readiness: { ai: { provider: string; live: boolean; note: string }; mediaConfigured: boolean };
 };
@@ -53,11 +83,16 @@ export function SettingsView(props: Props) {
         <Link href="/settings/ai" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
           <KeyRound className="size-4" aria-hidden /> AI Providers
         </Link>
+        <Link href="/publishing" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
+          <Plug className="size-4" aria-hidden /> Connected apps
+        </Link>
       </nav>
       <div className="min-w-0 rounded-3xl border border-border-soft bg-surface p-5 sm:p-7">
         {section === "profile" ? <ProfileSection {...props} /> : null}
         {section === "identity" ? <IdentitySection {...props} /> : null}
         {section === "preferences" ? <PreferencesSection {...props} /> : null}
+        {section === "collaboration" ? <CollaborationSection {...props} /> : null}
+        {section === "brand" ? <BrandSection {...props} /> : null}
         {section === "autonomy" ? <AutonomySection {...props} /> : null}
         {section === "privacy" ? <PrivacySection {...props} /> : null}
       </div>
@@ -321,7 +356,7 @@ function AutonomySection({ autonomy }: Props) {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Creator Autonomy</h2>
+          <h2 className="text-xl font-semibold text-ink">AI & CreativeMind</h2>
           <p className="mt-1 text-[15px] text-ink-muted">Choose how CreativeMind can work with you. Be bold with creativity; be conservative with consequences.</p>
           <Link href="/approvals" className="mt-1 inline-flex min-h-11 items-center text-[15px] font-medium text-accent-ink hover:underline">
             Review approvals
@@ -562,5 +597,153 @@ function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** How you want to collaborate (P1-14). Rates stay private unless you choose otherwise. */
+function CollaborationSection({ collaboration, profile }: Props) {
+  const [c, setC] = useState(collaboration);
+  const { busy, save, status } = useSaver();
+  const availability = profile.collaborationAvailability === "open" ? "Open to collaborations" : profile.collaborationAvailability === "selective" ? "Selective" : "Not taking collaborations";
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(() => api("/api/v1/creators/collaboration", { method: "PUT", json: c }), "Collaboration profile saved.");
+      }}
+    >
+      <div>
+        <h2 className="text-xl font-semibold text-ink">Collaboration</h2>
+        <p className="mt-1 text-[15px] text-ink-muted">
+          How you like to work with others. Availability is <span className="font-medium text-ink">{availability}</span> — change it under Account &amp; Profile. Your disciplines and languages come from your profile too.
+        </p>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Project types you'd like" htmlFor="co-types" hint="e.g. short film, podcast, photo essay">
+          <TagInput id="co-types" value={c.projectTypes} onChange={(v) => setC({ ...c, projectTypes: v })} max={12} />
+        </Field>
+        <Field label="Collaboration interests" htmlFor="co-interests" hint="What you'd love to make with someone">
+          <TagInput id="co-interests" value={c.interests} onChange={(v) => setC({ ...c, interests: v })} max={12} />
+        </Field>
+        <Field label="Where you work" htmlFor="co-mode">
+          <Select id="co-mode" value={c.workMode} onChange={(e) => setC({ ...c, workMode: e.target.value as typeof c.workMode })}>
+            {WORK_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Region (optional)" htmlFor="co-region" hint="Only what you're happy to share">
+          <Input id="co-region" value={c.region ?? ""} maxLength={120} onChange={(e) => setC({ ...c, region: e.target.value })} />
+        </Field>
+        <Field label="Typical turnaround (optional)" htmlFor="co-turn" hint="e.g. about two weeks for a short">
+          <Input id="co-turn" value={c.turnaround ?? ""} maxLength={120} onChange={(e) => setC({ ...c, turnaround: e.target.value })} />
+        </Field>
+        <Field label="Exclusivity" htmlFor="co-excl">
+          <Select id="co-excl" value={c.exclusivity} onChange={(e) => setC({ ...c, exclusivity: e.target.value as typeof c.exclusivity })}>
+            {EXCLUSIVITY.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium text-ink">Who can message or invite you</legend>
+        <div className="flex flex-wrap gap-2">
+          {CONTACT_PREFERENCES.map((m) => (
+            <ChoiceChip key={m.value} selected={c.contactPreference === m.value} onToggle={() => setC({ ...c, contactPreference: m.value })}>
+              {m.label}
+            </ChoiceChip>
+          ))}
+        </div>
+      </fieldset>
+      <Field label="Commercial boundaries (optional)" htmlFor="co-comm" hint="Brands, uses or kinds of work you won't take on">
+        <Textarea id="co-comm" value={c.commercialBoundaries ?? ""} maxLength={1000} onChange={(e) => setC({ ...c, commercialBoundaries: e.target.value })} />
+      </Field>
+      <Field label="Rights preferences (optional)" htmlFor="co-rights" hint="e.g. keeping authorship credit, how you like usage licensed">
+        <Textarea id="co-rights" value={c.rightsPreferences ?? ""} maxLength={1000} onChange={(e) => setC({ ...c, rightsPreferences: e.target.value })} />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Rate guidance (optional)" htmlFor="co-rate" hint="A range or a starting point — never required">
+          <Input id="co-rate" value={c.rateGuidance ?? ""} maxLength={300} onChange={(e) => setC({ ...c, rateGuidance: e.target.value })} />
+        </Field>
+        <Field label="Who sees your rate guidance" htmlFor="co-rate-vis" hint={c.rateGuidance ? undefined : "Add rate guidance first — until then nobody sees one."}>
+          <Select id="co-rate-vis" value={c.rateGuidance ? c.rateVisibility : "private"} disabled={!c.rateGuidance} onChange={(e) => setC({ ...c, rateVisibility: e.target.value as typeof c.rateVisibility })}>
+            {RATE_VISIBILITY.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={busy}>
+          Save collaboration profile
+        </Button>
+        {status}
+      </div>
+    </form>
+  );
+}
+
+/** Brand work (P1-15): opt in and describe what you'd make. No marketplace or pricing yet; only a short summary is shown. */
+function BrandSection({ brand }: Props) {
+  const [b, setB] = useState(brand);
+  const { busy, save, status } = useSaver();
+  const tags = (key: "niches" | "industries" | "regions" | "expertise" | "platforms" | "deliverables" | "priorCollaborations", label: string, hint: string, max = 12) => (
+    <Field label={label} htmlFor={`br-${key}`} hint={hint}>
+      <TagInput id={`br-${key}`} value={b[key]} onChange={(v) => setB({ ...b, [key]: v })} max={max} />
+    </Field>
+  );
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(() => api("/api/v1/creators/brand", { method: "PUT", json: b }), "Brand-work profile saved.");
+      }}
+    >
+      <div>
+        <h2 className="text-xl font-semibold text-ink">Brand work</h2>
+        <p className="mt-1 text-[15px] text-ink-muted">
+          Say whether you&rsquo;re open to working with brands and what you&rsquo;d make. When you&rsquo;re open, your profile shows a short summary (niches, industries, platforms, deliverables); everything else here stays with you. Nothing is priced or sold.
+        </p>
+      </div>
+      <Switch id="br-open" checked={b.openToBrands} onCheckedChange={(v) => setB({ ...b, openToBrands: v })} label="Open to brand work" />
+      <div className="grid gap-5 sm:grid-cols-2">
+        {tags("niches", "Niches", "e.g. travel, food, slow living")}
+        {tags("industries", "Industries", "e.g. hospitality, outdoor gear")}
+        {tags("platforms", "Platforms", "Where you publish, e.g. YouTube, Instagram")}
+        {tags("deliverables", "Deliverables", "e.g. short film, photo series, reel")}
+        {tags("expertise", "Expertise", "What you're known for")}
+        {tags("regions", "Regions", "Where you can work")}
+      </div>
+      {tags("priorCollaborations", "Prior brand collaborations (private)", "Only you see these for now", 20)}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Typical turnaround (optional)" htmlFor="br-turn">
+          <Input id="br-turn" value={b.turnaround ?? ""} maxLength={120} onChange={(e) => setB({ ...b, turnaround: e.target.value })} />
+        </Field>
+        <Field label="Exclusivity constraints (optional)" htmlFor="br-excl">
+          <Input id="br-excl" value={b.exclusivity ?? ""} maxLength={500} onChange={(e) => setB({ ...b, exclusivity: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Commercial boundaries (optional)" htmlFor="br-comm" hint="Brands, products or uses you won't take on">
+        <Textarea id="br-comm" value={b.commercialBoundaries ?? ""} maxLength={1000} onChange={(e) => setB({ ...b, commercialBoundaries: e.target.value })} />
+      </Field>
+      <Field label="Usage-right preferences (optional)" htmlFor="br-usage" hint="e.g. organic social only, 12 months, no paid ads without a new agreement">
+        <Textarea id="br-usage" value={b.usageRights ?? ""} maxLength={1000} onChange={(e) => setB({ ...b, usageRights: e.target.value })} />
+      </Field>
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={busy}>
+          Save brand-work profile
+        </Button>
+        {status}
+      </div>
+    </form>
   );
 }

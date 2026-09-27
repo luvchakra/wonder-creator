@@ -37,6 +37,9 @@ Spec: [`spec.md`](spec.md) (owner-supplied, 27 Sep 2026). Boards: [`boards/`](bo
 | UI-C | Contributions: All activity · By version · By people (grouping only; shares only where recorded) | Done |
 | UI-C | Huddles: Live now · My Huddles (no fake "Upcoming"/"For you" — Huddles are spontaneous; never ranked by viewer count) | Done |
 | UI-C | Collaborative editing, Find collaborators: reviewed against §27/§29 — Creation stays dominant, no ranking/score; availability waits for P1-14 | Reviewed |
+| UI-D | CreatorPublish: Queue · Drafts · Published views; cards show the Creation, destination, schedule and status; "published" only once the destination confirms | Done |
+| UI-D | Settings: "AI & CreativeMind" (the governed autonomy levels, conservative for publishing, commerce, rights and destructive actions), AI providers and Connected apps entries; Privacy & Security keeps activity, access, data export and deletion | Done |
+| UI-D | Brand, Campaign, Commercial Rights, Market, Business, Analytics — screens arrive with P1-15+; they'll be built in the Canvas/Palette language | Waiting on P1 |
 | UI-B | Transform · Quality · Versions · Rights · Share/Publish · Approval Center | Not started |
 | UI-C | Creative Room · Crew · Invitations · Tasks · Collaborative editing · Contributions · Find collaborators · Huddles | Not started |
 | UI-D | Autonomy · Privacy · CreatorPublish · Brand · Campaign · Commercial rights · Market · Business · Analytics | Not started |

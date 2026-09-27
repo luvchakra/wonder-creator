@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, PageTitle, Select, Textarea, buttonClasses } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, PageTitle, Segmented, Select, Textarea, buttonClasses } from "@wonder/ui";
 import { ArrowUpRight, Globe, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -115,6 +115,10 @@ export function PublishingHub({
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<Item | null>(null);
   const [connecting, setConnecting] = useState(false);
+  // Queue · Drafts · Published (UI redesign §35).
+  const [view, setView] = useState<"queue" | "drafts" | "published">("queue");
+  const drafts = queue.filter((p) => p.status === "draft");
+  const waiting = queue.filter((p) => p.status !== "draft");
   const [disconnecting, setDisconnecting] = useState<{ id: string; name: string } | null>(null);
   const active = destinations.filter((d) => d.status === "active");
 
@@ -157,11 +161,23 @@ export function PublishingHub({
       ) : null}
       {!available ? <p className="rounded-2xl border border-border-soft bg-surface px-4 py-3 text-[15px] text-ink-muted">Publishing isn&rsquo;t set up on this server yet, so approvals can&rsquo;t be sent.</p> : null}
 
-      <section aria-label="Queue">
-        <h2 className="mb-3 text-lg font-semibold text-ink">Queue</h2>
-        {queue.length ? (
+      <Segmented
+        label="Publishing view"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: "queue", label: `Queue (${waiting.length})` },
+          { value: "drafts", label: `Drafts (${drafts.length})` },
+          { value: "published", label: `Published (${history.length})` },
+        ]}
+      />
+
+      {view !== "published" ? (
+      <section aria-label={view === "queue" ? "Queue" : "Drafts"}>
+        <h2 className="mb-3 text-lg font-semibold text-ink">{view === "queue" ? "Queue" : "Drafts"}</h2>
+        {(view === "queue" ? waiting : drafts).length ? (
           <ul className="space-y-3">
-            {queue.map((p) => (
+            {(view === "queue" ? waiting : drafts).map((p) => (
               <li key={p.id} className="rounded-2xl border border-border-soft bg-surface px-4 py-3">
                 <div className="flex flex-wrap items-start gap-2">
                   <div className="min-w-0 flex-1">
@@ -215,12 +231,16 @@ export function PublishingHub({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing waiting. Publish a Creation from its page (Publish) to start.</p>
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+            {view === "queue" ? "Nothing waiting. Approved and scheduled publications appear here." : "No drafts. Publish a Creation from its page (Publish) to start."}
+          </p>
         )}
       </section>
+      ) : null}
 
-      <section aria-label="History">
-        <h2 className="mb-3 text-lg font-semibold text-ink">History</h2>
+      {view === "published" ? (
+      <section aria-label="Published">
+        <h2 className="mb-3 text-lg font-semibold text-ink">Published</h2>
         {history.length ? (
           <ul className="space-y-2">
             {history.map((p) => (
@@ -244,6 +264,7 @@ export function PublishingHub({
           <p className="text-sm text-ink-muted">Nothing published yet.</p>
         )}
       </section>
+      ) : null}
 
       <section aria-label="Destinations">
         <h2 className="mb-3 text-lg font-semibold text-ink">Destinations</h2>
