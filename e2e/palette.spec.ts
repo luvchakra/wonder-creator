@@ -12,7 +12,7 @@ test.describe("Creative Palette", () => {
     await expect(palette.getByRole("navigation", { name: "Destinations" }).getByRole("button", { name: "Creation" })).toHaveAttribute("aria-current", "page");
     await expect(palette.getByRole("navigation", { name: "Create" }).getByRole("button", { name: /meTalk/ })).toBeVisible();
     await creation.getByRole("button", { name: /Transform/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/derivatives$`));
+    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/transform$`));
     // Leaving the Creation clears its actions.
     await page.goto("/huddles");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();

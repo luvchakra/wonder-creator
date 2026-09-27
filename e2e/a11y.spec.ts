@@ -36,6 +36,7 @@ test.describe("accessibility", () => {
       `/artifacts/${art.id}/studio`,
       `/artifacts/${art.id}/context`,
       `/artifacts/${art.id}/context?tab=related`,
+      `/artifacts/${art.id}/transform`,
       `/artifacts/${art.id}/share`,
       `/artifacts/${art.id}/publish`,
       `/artifacts/${art.id}/derivatives`,

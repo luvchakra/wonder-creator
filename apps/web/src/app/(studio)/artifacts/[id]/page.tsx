@@ -60,6 +60,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     : finished
       ? [
           { key: "from", label: "Create from this", hint: "Trailer, carousel, post…", href: `${base}/derivatives`, icon: "spark" },
+          { key: "transform", label: "Transform", hint: "Into a new form", href: `${base}/transform`, icon: "pen" },
           { key: "share", label: "Share", href: `${base}/share` },
           { key: "publish", label: "Publish", href: `${base}/publish` },
           { key: "license", label: "License", href: `${base}?tab=rights` },
@@ -69,7 +70,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
         ]
       : [
           { key: "refine", label: "Refine", hint: "Open the Creative Studio", href: `${base}/studio`, icon: "pen" },
-          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/derivatives`, icon: "spark" },
+          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/transform`, icon: "spark" },
           { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
           { key: "references", label: "References", href: `${base}/context?tab=references` },
           { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
