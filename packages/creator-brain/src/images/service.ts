@@ -1,4 +1,4 @@
-import { DomainError, log } from "@wonder/core";
+import { audit, DomainError, log } from "@wonder/core";
 import { inspectUpload } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
 import { buildImagePrompt, contextHash, directionsFor, hasMeaningfulContext, IMAGE_SYSTEM, PROMPT_VERSION, type ImageGenerationContext } from "./context";
@@ -89,14 +89,14 @@ export interface GenerationView {
   aspectRatio: string;
   requestedCount: number;
   createdAt: string;
-  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean }>;
+  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null }>;
 }
 
 /** A generation and its images, with short-lived signed URLs (§45). Null when the caller can't see it. */
 export async function generationView(db: Db, service: Db, generationId: string, cached = false): Promise<GenerationView | null> {
   const { data: g } = await db.from("image_generations").select("id, status, purpose, quality_intent, aspect_ratio, requested_count, created_at").eq("id", generationId).maybeSingle();
   if (!g) return null;
-  const { data: assets } = await db.from("image_generation_assets").select("id, sequence, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected").eq("generation_id", generationId).order("sequence");
+  const { data: assets } = await db.from("image_generation_assets").select("id, sequence, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id").eq("generation_id", generationId).order("sequence");
   // Access was just checked under RLS; the objects belong to the generation's creator, so sign with the service client.
   const ids = (assets ?? []).flatMap((a) => [a.storage_object_id, a.thumbnail_object_id]).filter((x): x is string => !!x);
   const { data: objs } = ids.length ? await service.from("storage_objects").select("id, bucket, path").in("id", ids) : { data: [] };
@@ -124,6 +124,7 @@ export async function generationView(db: Db, service: Db, generationId: string, 
       directionLabel: a.direction_label,
       rationale: a.rationale,
       selected: a.selected,
+      savedMaterialId: a.saved_material_id,
     })),
   };
 }
@@ -138,7 +139,7 @@ export async function requestImageGeneration(deps: ImageDeps, req: ImageGenerati
   const purpose = req.purpose;
   const qualityIntent = req.qualityIntent ?? defaultQualityFor(purpose);
   const aspectRatio = req.aspectRatio ?? (purpose === "hero" ? "16:9" : purpose === "carousel" || purpose === "explore" ? "4:5" : "1:1");
-  const count = purpose === "carousel" || purpose === "explore" || purpose === "moodboard" ? Math.min(Math.max(req.count ?? 4, 3), 5) : 1;
+  const count = purpose === "carousel" || purpose === "explore" || purpose === "moodboard" || purpose === "transform-preview" ? Math.min(Math.max(req.count ?? 4, 3), 5) : 1;
 
   if (req.idempotencyKey) {
     const { data: dup } = await deps.db.from("image_generations").select("id").eq("creator_id", deps.creatorId).eq("idempotency_key", req.idempotencyKey).maybeSingle();
@@ -295,4 +296,83 @@ export async function runImageGeneration(deps: Omit<ImageDeps, "db" | "creatorId
     .update({ status, completed_at: new Date().toISOString(), latency_ms: Date.now() - started, error_code: status === "failed" ? "generation_failed" : null })
     .eq("id", g.id);
   log("info", status === "failed" ? "image_generation_failed" : "image_generation_completed", { purpose: g.purpose, count: g.requested_count, ok, ms: Date.now() - started });
+}
+
+/**
+ * Keep a generated image (§61, §64): it becomes one of the creator's Creative Materials — origin ai_generated, with the
+ * generation's provenance (provider, model, prompt version, purpose, source Creation/version and Materials) and
+ * lineage from its sources — and can join the Creation as a reference. Saving again returns the same Material.
+ * The Material row is pipeline output (already checked, clean), so the server writes it, scoped to this creator.
+ */
+export async function saveGeneratedAsset(deps: Pick<ImageDeps, "db" | "service" | "creatorId">, generationId: string, assetId: string, opts: { useInCreation?: boolean } = {}): Promise<{ materialId: string }> {
+  const { data: g } = await deps.db
+    .from("image_generations")
+    .select("id, creator_id, artifact_id, source_material_ids, source_version, purpose, provider, model, prompt_version, routing_version, quality_intent")
+    .eq("id", generationId)
+    .maybeSingle();
+  if (!g || g.creator_id !== deps.creatorId) throw new DomainError("not_found", "That isn't available.");
+  const { data: a } = await deps.db.from("image_generation_assets").select("id, storage_object_id, direction_label, saved_material_id").eq("id", assetId).eq("generation_id", generationId).maybeSingle();
+  if (!a) throw new DomainError("not_found", "That image isn't available.");
+
+  let materialId = a.saved_material_id;
+  if (!materialId) {
+    const { data: prov, error: pErr } = await deps.service
+      .from("provenance_records")
+      .insert({
+        creator_id: deps.creatorId,
+        origin: "ai_generated",
+        details: {
+          generationId: g.id,
+          assetId: a.id,
+          purpose: g.purpose,
+          provider: g.provider,
+          model: g.model,
+          promptVersion: g.prompt_version,
+          routingVersion: g.routing_version,
+          qualityIntent: g.quality_intent,
+          sourceArtifactId: g.artifact_id,
+          sourceVersion: g.source_version,
+          sourceMaterialIds: g.source_material_ids,
+          direction: a.direction_label,
+        },
+      })
+      .select("id")
+      .single();
+    if (pErr || !prov) throw new DomainError("internal", "Couldn't save that image.", { cause: pErr });
+    const { data: m, error: mErr } = await deps.service
+      .from("creative_materials")
+      .insert({
+        creator_id: deps.creatorId,
+        type: "image",
+        title: `${a.direction_label ?? "Visual"} direction`,
+        storage_object_id: a.storage_object_id,
+        source_type: "generated",
+        security_status: "clean",
+        processing_state: "ready",
+        provenance_id: prov.id,
+        metadata: { generated: { generationId: g.id, assetId: a.id } },
+      })
+      .select("id")
+      .single();
+    if (mErr || !m) throw new DomainError("internal", "Couldn't save that image.", { cause: mErr });
+    materialId = m.id;
+    const edges = [
+      ...(g.artifact_id ? [{ source_type: "artifact", source_id: g.artifact_id, relationship: "derived_from" as const }] : []),
+      ...g.source_material_ids.map((id) => ({ source_type: "material", source_id: id, relationship: "inspired_by" as const })),
+    ].map((e) => ({ ...e, creator_id: deps.creatorId, target_type: "material", target_id: materialId! }));
+    if (edges.length) await deps.service.from("lineage_edges").upsert(edges, { onConflict: "source_type,source_id,target_type,target_id,relationship", ignoreDuplicates: true });
+    await deps.service.from("image_generation_assets").update({ saved_material_id: materialId, selected: true }).eq("id", a.id);
+    await audit(deps.db, { action: "generated_image.saved", objectType: "material", objectId: materialId, metadata: { generationId: g.id, purpose: g.purpose } });
+    log("info", "image_generation_saved", { purpose: g.purpose });
+  }
+  if (opts.useInCreation && g.artifact_id) {
+    // Joins the Creation as a reference Material.
+    await deps.service
+      .from("lineage_edges")
+      .upsert([{ creator_id: deps.creatorId, source_type: "material", source_id: materialId, target_type: "artifact", target_id: g.artifact_id, relationship: "references" }], {
+        onConflict: "source_type,source_id,target_type,target_id,relationship",
+        ignoreDuplicates: true,
+      });
+  }
+  return { materialId };
 }

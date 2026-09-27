@@ -1,6 +1,7 @@
 import { actionsFor, ARTIFACT_TYPES, artifactType, getRights, listVersions } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
+import { VisualDirections } from "@/components/visual-directions";
 import { requireSession } from "@/lib/session";
 import { TransformChooser, type FormatOption } from "./chooser";
 
@@ -54,6 +55,8 @@ export default async function TransformPage({ params, searchParams }: { params: 
           rights: rights ? { ownershipKind: rights.ownership_kind, owners: rights.rights_owners.map((o) => o.owner_name), attributionRequired: rights.attribution_required } : null,
         }}
       />
+      {/* Before a costly full transformation, cheap preview-tier looks at where it could go (image-generation §33). */}
+      <VisualDirections creationId={id} purpose="transform-preview" title="See it first" className="mx-auto mt-6 max-w-3xl" />
     </>
   );
 }

@@ -1489,13 +1489,13 @@ isOneToOne: false
                   ]
                 },"image_generation_assets": {
                   Row: {
-                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"rationale": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"rationale": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Relationships: [
                     {
@@ -1509,6 +1509,12 @@ isOneToOne: false
       columns: ["generation_id"]
 isOneToOne: false
       referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_saved_material_id_fkey"
+      columns: ["saved_material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "image_generation_assets_storage_object_id_fkey"

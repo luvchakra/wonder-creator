@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
+import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, saveGeneratedAsset, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
 import { DomainError } from "@wonder/core";
 import { addCollaborator, createArtifact, saveCreatorVersion } from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
@@ -112,5 +112,40 @@ describe("contextual image generation", () => {
   it("uses only the creator's own Materials as context", async () => {
     const mine = await createMaterial(db(out), out.creatorId, { type: "note", title: "Out's private note", textContent: "secret", provenance: { origin: "typed" } });
     await expect(requestImageGeneration(deps(owner, fakeProvider()), { materialIds: [mine.id], purpose: "explore" })).rejects.toThrow(/aren't available/);
+  });
+});
+
+describe("keeping a generated image", () => {
+  it("saves it as a Material with provenance and lineage, once, and can add it to the Creation", async () => {
+    const provider = fakeProvider();
+    const gen = await requestImageGeneration(deps(owner, provider), { artifactId: piece, purpose: "explore" });
+    if (gen.kind !== "generation") throw new Error(gen.kind);
+    await runImageGeneration({ service: admin, provider, derive }, gen.view.id);
+    const view = (await generationView(db(owner), admin, gen.view.id))!;
+    const asset = view.assets[0]!;
+
+    // Only the owner can keep it.
+    await expect(saveGeneratedAsset({ db: db(pia), service: admin, creatorId: pia.creatorId }, gen.view.id, asset.id)).rejects.toThrow(/isn't available/);
+
+    const { materialId } = await saveGeneratedAsset({ db: db(owner), service: admin, creatorId: owner.creatorId }, gen.view.id, asset.id, { useInCreation: true });
+    const again = await saveGeneratedAsset({ db: db(owner), service: admin, creatorId: owner.creatorId }, gen.view.id, asset.id);
+    expect(again.materialId).toBe(materialId);
+
+    const m = expectOk(await db(owner).from("creative_materials").select("type, source_type, security_status, provenance_records(origin, details)").eq("id", materialId).single());
+    expect(m).toMatchObject({ type: "image", source_type: "generated", security_status: "clean" });
+    const prov = (m as unknown as { provenance_records: { origin: string; details: Record<string, unknown> } }).provenance_records;
+    expect(prov.origin).toBe("ai_generated");
+    expect(prov.details).toMatchObject({ generationId: gen.view.id, sourceArtifactId: piece, provider: "test", promptVersion: "context-image-v1" });
+
+    const edges = expectOk(await db(owner).from("lineage_edges").select("source_type, source_id, target_type, target_id, relationship").or(`target_id.eq.${materialId},source_id.eq.${materialId}`));
+    expect(edges).toEqual(
+      expect.arrayContaining([
+        { source_type: "artifact", source_id: piece, target_type: "material", target_id: materialId, relationship: "derived_from" },
+        { source_type: "material", source_id: materialId, target_type: "artifact", target_id: piece, relationship: "references" },
+      ]),
+    );
+    expect((await generationView(db(owner), admin, gen.view.id))!.assets[0]!.savedMaterialId).toBe(materialId);
+    // It's the owner's Material, not a collaborator's.
+    expect(expectOk(await db(out).from("creative_materials").select("id").eq("id", materialId))).toEqual([]);
   });
 });

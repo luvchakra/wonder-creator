@@ -4,7 +4,7 @@ import { Check, ImageOff, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
-type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean };
+type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null };
 type Generation = { id: string; status: "queued" | "processing" | "complete" | "partial" | "failed" | "cancelled"; requestedCount: number; aspectRatio: string; assets: Asset[] };
 type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; generation?: Generation; available: boolean };
 
@@ -13,7 +13,7 @@ type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; gene
  * 3–5 concepts. It shows what's already stored for this context at once; it generates only when the creator asks; it
  * says plainly when image generation isn't connected. Small skeletons while creating, a short crossfade when ready.
  */
-export function VisualDirections({ creationId, materialIds, purpose = "explore", title = "Visual directions", className }: { creationId?: string; materialIds?: string[]; purpose?: "explore" | "carousel"; title?: string; className?: string }) {
+export function VisualDirections({ creationId, materialIds, purpose = "explore", title = "Visual directions", className }: { creationId?: string; materialIds?: string[]; purpose?: "explore" | "carousel" | "transform-preview"; title?: string; className?: string }) {
   const [reply, setReply] = useState<Reply | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,6 +64,24 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
       setBusy(false);
     }
   }
+
+  const [saving, setSaving] = useState(false);
+  // Keep the chosen concept (§61, §64): as a Material, or straight into this Creation's references.
+  async function save(a: Asset, useInCreation: boolean) {
+    if (!gen) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const r = await api<{ materialId: string }>(`/api/v1/image-generations/${gen.id}/save`, { method: "POST", json: { assetId: a.id, useInCreation } });
+      setReply((prev) => (prev?.generation ? { ...prev, generation: { ...prev.generation, assets: prev.generation.assets.map((x) => (x.id === a.id ? { ...x, savedMaterialId: r.materialId, selected: true } : x)) } } : prev));
+      setSavedTo(useInCreation ? "creation" : "material");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+  const [savedTo, setSavedTo] = useState<"material" | "creation" | null>(null);
 
   async function choose(a: Asset) {
     if (!gen) return;
@@ -156,6 +174,32 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
               </li>
             ))}
           </ul>
+          {(() => {
+            const chosen = gen!.assets.find((a) => a.selected);
+            if (!chosen) return <p className="text-xs text-ink-subtle">Tap a direction to choose it.</p>;
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                {chosen.savedMaterialId ? (
+                  <p role="status" className="text-sm text-ink-muted">
+                    {savedTo === "creation" ? "Added to this Creation's references. " : "Saved to your Materials. "}
+                    <a href={`/space/materials/${chosen.savedMaterialId}`} className="font-medium text-accent-ink hover:underline">
+                      Open Material
+                    </a>
+                  </p>
+                ) : null}
+                {creationId && savedTo !== "creation" ? (
+                  <Button size="sm" onClick={() => save(chosen, true)} loading={saving}>
+                    Use in this Creation
+                  </Button>
+                ) : null}
+                {!chosen.savedMaterialId ? (
+                  <Button size="sm" variant={creationId ? "secondary" : "primary"} onClick={() => save(chosen, false)} loading={saving}>
+                    Save as Material
+                  </Button>
+                ) : null}
+              </div>
+            );
+          })()}
           {gen!.status === "partial" ? (
             <p className="text-xs text-ink-subtle">
               {gen!.assets.length} of {gen!.requestedCount} ready.
