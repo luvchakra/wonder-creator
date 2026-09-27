@@ -4,7 +4,7 @@ import { MAX_UPLOAD_BYTES } from "@wonder/core/server";
 import { listIntake, processIntake, receiveFile, receiveText, receiveUploadedObject, receiveUrl, type IntakeDeps } from "@wonder/creator-send";
 import { after } from "next/server";
 import { withApi } from "@/lib/api";
-import { brainDeps } from "@/lib/brain";
+import { providerFor } from "@/lib/brain";
 import { serviceClient } from "@/lib/supabase/service";
 
 export const maxDuration = 120;
@@ -23,7 +23,7 @@ export const POST = withApi(async ({ db, creatorId, req }) => {
   const len = Number(req.headers.get("content-length") ?? 0);
   if (len > MAX_UPLOAD_BYTES * 5) throw new DomainError("payload_too_large", "That's too much at once — try sending fewer files.");
   const form = await req.formData();
-  const deps: IntakeDeps = { db, service: serviceClient(), creatorId, provider: brainDeps(db, creatorId).provider };
+  const deps: IntakeDeps = { db, service: serviceClient(), creatorId, provider: (await providerFor(creatorId)).provider };
   const batchId = randomUUID();
   const kind = form.get("kind");
   const text = String(form.get("text") ?? "").trim();

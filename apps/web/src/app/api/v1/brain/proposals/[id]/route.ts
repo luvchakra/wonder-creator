@@ -20,7 +20,7 @@ const body = z.discriminatedUnion("decision", [
 export const POST = withApi<{ id: string }>(async ({ db, creatorId, req, requestId }, { id }) => {
   const proposalId = requireUuid(id, "proposal");
   const b = body.parse(await readJson(req));
-  const deps = brainDeps(db, creatorId, { correlationId: requestId });
+  const deps = await brainDeps(db, creatorId, { correlationId: requestId });
   if (b.decision === "reject") {
     await rejectProposal(deps, proposalId, b.note);
     return { ok: true };

@@ -2,7 +2,7 @@
 import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLevel } from "@wonder/creator-identity/autonomy";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { Brain, Download, Palette, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { Brain, Download, KeyRound, Palette, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -49,6 +49,9 @@ export function SettingsView(props: Props) {
         ))}
         <Link href="/memory" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
           <Brain className="size-4" aria-hidden /> Creative Memory
+        </Link>
+        <Link href="/settings/ai" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
+          <KeyRound className="size-4" aria-hidden /> AI Providers
         </Link>
       </nav>
       <div className="min-w-0 rounded-3xl border border-border-soft bg-surface p-5 sm:p-7">

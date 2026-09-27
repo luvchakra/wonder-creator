@@ -8,6 +8,13 @@ export * from "./types";
 export { AnthropicProvider } from "./anthropic";
 export { GeminiProvider } from "./gemini";
 export { OfflineProvider, OFFLINE_MODEL } from "./offline";
+export * from "./catalog";
+export * from "./validate";
+
+/** A provider on a creator's own key (BYOK). */
+export function providerWithKey(provider: "gemini" | "anthropic", apiKey: string, model?: string | null): CreativeModelProvider {
+  return provider === "gemini" ? new GeminiProvider({ apiKey, model: model ?? undefined }) : new AnthropicProvider({ apiKey, model: model ?? undefined });
+}
 
 /** A provider that is honestly unavailable: every call fails with a recoverable, creator-readable error. */
 class UnavailableProvider implements CreativeModelProvider {
