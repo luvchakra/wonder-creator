@@ -99,9 +99,10 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
 
   // The room's current Creation: the most recently touched one you can open (palette-spec §9.30–9.31).
   const activeCreationId = items.filter((i) => i.artifact && i.available).sort((a, b) => b.artifact!.updated_at.localeCompare(a.artifact!.updated_at))[0]?.itemId ?? null;
+  const activeCreationTitle = items.find((i) => i.itemId === activeCreationId)?.artifact?.title ?? null;
   return (
     <>
-      <PaletteScope context={{ page: "room", entityType: "room", permissions: canEdit ? ["edit", "invite"] : [], ids: { projectId: id, crewId: crew?.crew.id }, facts: { activeCreationId, hasCrew: !!crew } }} />
+      <PaletteScope context={{ page: "room", entityType: "room", permissions: canEdit ? ["edit", "invite"] : [], ids: { projectId: id, crewId: crew?.crew.id }, facts: { activeCreationId, hasCrew: !!crew }, strip: { label: activeCreationTitle ? `${activeCreationTitle} · Active` : "No active Creation" } }} />
       <ProjectView
         project={{
           id: p.id,

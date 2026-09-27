@@ -4,6 +4,8 @@
  * that belong on the server (the Palette only hides what the server would refuse anyway; it is not a security boundary).
  */
 
+import type { StripFacts } from "../context-strip/types";
+
 export type PaletteIcon = "home" | "pen" | "images" | "users" | "user" | "spark" | "add" | "camera" | "mic" | "search" | "compass" | "people" | "room" | "more" | "go" | "back";
 
 /** §13 action classes. DANGEROUS never reaches the first level. */
@@ -69,6 +71,8 @@ export interface PaletteContext {
   ids?: { artifactId?: string; materialId?: string; projectId?: string; crewId?: string; huddleId?: string; collectionId?: string; approvalArtifactId?: string };
   /** Small facts that change the offer (e.g. a room with or without an active Creation). */
   facts?: { activeCreationId?: string | null; related?: string | null; hasCrew?: boolean; format?: string; name?: string | null };
+  /** What the navbar Context Strip says about this screen (docs/ui-redesign/context-strip.md). */
+  strip?: StripFacts;
   /** Current path, to mark the global destination you're on. */
   pathname?: string;
 }

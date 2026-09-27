@@ -25,7 +25,7 @@ export default async function ApprovalsPage() {
 
   return (
     <>
-      <PaletteScope context={{ page: "approvals" }} />
+      <PaletteScope context={{ page: "approvals", strip: pending.length ? { pendingApprovalCount: pending.length } : undefined }} />
       <div className="mx-auto max-w-3xl">
         <PageTitle title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
 

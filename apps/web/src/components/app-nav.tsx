@@ -1,19 +1,21 @@
 "use client";
-import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
+import { Avatar, ContextStrip, Logo, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
 import { Brain, FolderKanban, LogOut, MessageCircle, NotebookPen, Search, Send, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useContextStrip } from "./creative-palette";
 import { NotificationsButton } from "./notifications";
 import { SearchDialog } from "./search-dialog";
 
 /**
- * The top bar (UI redesign §6): logo, search, notifications and your account — nothing else. There is no module tab
+ * The top bar (UI redesign §6): logo, the Context Strip, search, notifications and your account — nothing else. There is no module tab
  * bar and no bottom navigation: destinations and actions live in the corner Creative Palette.
  */
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const strip = useContextStrip();
 
   async function signOut() {
     await fetch("/auth/sign-out", { method: "POST" });
@@ -24,12 +26,14 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border-soft/70 bg-cream/85 backdrop-blur-md">
-        <div className="mx-auto flex h-[var(--nav-height)] max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-[var(--nav-height)] max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
           <Link href="/" className="inline-flex min-h-11 shrink-0 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-accent" aria-label="Wonder Creator home">
             <Logo height={46} className="hidden sm:block" />
             <Logo variant="mark" height={40} className="sm:hidden" />
           </Link>
-          <div className="ml-auto flex items-center gap-1.5">
+          {/* The Context Strip (docs/ui-redesign/context-strip.md): what's happening here, in one quiet line. */}
+          <ContextStrip primary={strip.primary} secondary={strip.secondary} LinkComponent={Link} />
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}

@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LocalTime, useNow } from "@/components/client-time";
 import { CreatorPicker } from "@/components/creator-picker";
+import { useStripSignal } from "@/components/creative-palette";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { createClient } from "@/lib/supabase/client";
@@ -234,6 +235,15 @@ export function HuddleRoom({
       setError(errorMessage(e));
     }
   }
+
+  // Navbar Context Strip (context-strip §11.38): "● Live · 4 people · 12:42" while the Huddle is live.
+  const strip = useStripSignal();
+  const liveSince = state.huddle ? (state.huddle.status === "live" ? state.huddle.started_at : null) : (publicCard?.startedAt ?? null);
+  const liveCount = state.me?.status === "joined" ? state.participants.filter((p) => p.status === "joined").length : (publicCard?.participantCount ?? 0);
+  useEffect(() => {
+    strip("live", liveSince ? { text: liveCount ? `Live · ${liveCount} ${liveCount === 1 ? "person" : "people"}` : "Live", shortText: "Live", tone: "live", priority: 4, since: liveSince } : null);
+    return () => strip("live", null);
+  }, [strip, liveSince, liveCount]);
 
   const nameOf = (id: string) => state.participants.find((p) => p.creator_id === id)?.creators?.display_name ?? (id === me.id ? me.name : "Creator");
 

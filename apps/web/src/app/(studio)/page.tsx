@@ -64,7 +64,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <PaletteScope context={{ page: "home" }} />
+      <PaletteScope context={{ page: "home", strip: { continueTitle: creation && (creation.status === "draft" || creation.status === "in_review") ? creation.title : null } }} />
       <div className="mx-auto max-w-3xl space-y-7">
         <header className="relative isolate">
           {/* The one decoration on Home (§46): a supplied floral corner behind the greeting, never over a control. */}

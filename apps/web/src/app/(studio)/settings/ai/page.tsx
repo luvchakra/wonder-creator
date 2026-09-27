@@ -25,7 +25,7 @@ export default async function AiProvidersPage() {
   const lastFailure = failures.data?.[0] ?? null;
   return (
     <>
-      <PaletteScope context={{ page: "settings" }} />
+      <PaletteScope context={{ page: "settings", strip: { label: "AI & CreativeMind" } }} />
       <div className="mx-auto max-w-3xl">
         <Link href="/settings" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           ← Settings

@@ -6,6 +6,8 @@ import { MaterialDetail } from "./detail";
 
 export const metadata = { title: "Material" };
 
+const KIND_LABEL: Record<string, string> = { image: "Photo", sketch: "Sketch", voice: "Voice", audio: "Audio", video: "Video", note: "Note", text: "Note", document: "Document", pdf: "Document", url: "Link" };
+
 export default async function MaterialPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -29,9 +31,17 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const { data: arts } = artIds.length ? await db.from("artifacts").select("id, title, artifact_type").in("id", artIds) : { data: [] };
   const obj = m.storage_object_id ? (await db.from("storage_objects").select("mime_type, size_bytes, original_filename, sha256").eq("id", m.storage_object_id).maybeSingle()).data : null;
   const related = (m.title ?? "").trim().slice(0, 60);
+  // Navbar Context Strip: what it is and when, or what's happening to it (context-strip §11.5–11.8).
+  const kind = KIND_LABEL[m.type] ?? "Material";
+  const settled = ["ready", "understood", "failed", "quarantined"].includes(m.processing_state);
+  const strip = {
+    kindLabel: kind,
+    date: new Date(m.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+    processing: settled ? null : m.type === "voice" || m.type === "audio" ? "Transcribing…" : "Understanding…",
+  };
   return (
     <>
-      <PaletteScope context={{ page: "material", entityType: m.type === "image" || m.type === "sketch" ? "photo" : m.type === "voice" || m.type === "audio" ? "audio" : m.type === "video" ? "video" : m.type === "url" ? "link" : m.type === "document" || m.type === "pdf" ? "document" : "note", permissions: m.creator_id === creator.id ? ["edit"] : [], ids: { materialId: id }, facts: { related: related || null } }} />
+      <PaletteScope context={{ page: "material", entityType: m.type === "image" || m.type === "sketch" ? "photo" : m.type === "voice" || m.type === "audio" ? "audio" : m.type === "video" ? "video" : m.type === "url" ? "link" : m.type === "document" || m.type === "pdf" ? "document" : "note", permissions: m.creator_id === creator.id ? ["edit"] : [], ids: { materialId: id }, facts: { related: related || null }, strip }} />
       <MaterialDetail
         m={{
           id: m.id,

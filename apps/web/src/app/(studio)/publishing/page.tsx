@@ -28,7 +28,16 @@ export default async function PublishingPage() {
   });
   return (
     <>
-      <PaletteScope context={{ page: "publishing" }} />
+      <PaletteScope
+        context={{
+          page: "publishing",
+          strip: o.queue.some((p) => p.status === "failed")
+            ? { publishState: "failed" }
+            : o.queue.some((p) => p.status === "publishing")
+              ? { publishState: "publishing" }
+              : { label: o.queue.length ? `${o.queue.length} scheduled` : "Nothing scheduled" },
+        }}
+      />
       <PublishingHub
         queue={o.queue.map(slim)}
         history={o.history.map(slim)}

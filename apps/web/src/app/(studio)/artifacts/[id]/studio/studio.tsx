@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useStripSignal } from "@/components/creative-palette";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
@@ -54,6 +55,15 @@ export function Studio({
     return a?.kind === "transform" ? (a.targetType ?? null) : null;
   });
   const dirty = content !== (base?.content ?? "");
+  // Save state lives in the navbar Context Strip (context-strip §23): Unsaved → Saving… → Saved, then back to the version.
+  const strip = useStripSignal();
+  useEffect(() => {
+    if (saving) strip("save", { text: "Saving…", tone: "active" });
+    else if (dirty) strip("save", { text: "Unsaved changes", shortText: "Unsaved", tone: "neutral" });
+    else if (savedAt) strip("save", { text: "Saved", tone: "success", ttl: 1500 });
+    else strip("save", null);
+    return () => strip("save", null);
+  }, [saving, dirty, savedAt, strip]);
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
