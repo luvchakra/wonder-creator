@@ -8,7 +8,7 @@ async function pieceWithText(page: Page, title: string, content: string): Promis
 }
 
 test.describe("CreatorPublish", () => {
-  test("preferences prefill, CreatorBrain plans (suggestions only), schedule as suggested, and the queue shows it per destination", async ({ page, creator }) => {
+  test("preferences prefill, CreativeMind plans (suggestions only), schedule as suggested, and the queue shows it per destination", async ({ page, creator }) => {
     void creator;
     test.setTimeout(120_000);
     const title = `Tide tables ${uid()}`;
@@ -29,12 +29,12 @@ test.describe("CreatorPublish", () => {
     // The flow starts from them; CreatorBrain's plan is a suggestion.
     await page.goto(`/artifacts/${id}/publish`);
     await expect(page.getByLabel(/Your Wonder Creator profile/)).toBeChecked();
-    await page.getByRole("button", { name: "Plan with CreatorBrain" }).click();
+    await page.getByRole("button", { name: "Plan with CreativeMind" }).click();
     await expect(page.getByRole("status").filter({ hasText: "nothing is prepared or sent until you approve" })).toContainText("AI isn't connected");
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByLabel("Tags")).toHaveValue("poetry, sea");
     await page.getByRole("button", { name: "Next" }).click();
-    await expect(page.getByLabel("As CreatorBrain suggested")).toBeChecked();
+    await expect(page.getByLabel("As CreativeMind suggested")).toBeChecked();
     await page.getByRole("button", { name: "Approve and schedule" }).click();
     await expect(page.getByText("Scheduled").first()).toBeVisible();
 

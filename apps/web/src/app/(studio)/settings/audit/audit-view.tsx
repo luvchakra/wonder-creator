@@ -62,7 +62,7 @@ export function AuditView(props: {
       <ul className="grid gap-3 sm:grid-cols-2" aria-label="Summary">
         <SummaryCard title="Last sign-in" value={s.lastSignIn ? <RelativeTime iso={s.lastSignIn.at} /> : "Not recorded yet"} note={s.lastSignIn?.device ?? undefined} />
         <SummaryCard title="Password checks that failed" value={String(s.failedChecks)} note={s.failedChecks ? "Recent password confirmations that didn't match. If this wasn't you, change your password." : "None recently."} warn={s.failedChecks > 0} />
-        <SummaryCard title="Live shares" value={String(s.liveShares)} note="Private links and creators who can open your pieces." />
+        <SummaryCard title="Live shares" value={String(s.liveShares)} note="Private links and creators who can open your Creations." />
         <SummaryCard title="Publications" value={String(s.published)} note="Confirmed by their destination." />
       </ul>
 
@@ -121,7 +121,7 @@ export function AuditView(props: {
                   ))}
                   {e.entity?.href ? (
                     <Link href={e.entity.href} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
-                      Open {e.entity.label.startsWith("The request") ? "the request" : e.entity.label.split(":")[0].toLowerCase()}
+                      Open {e.entity.label.startsWith("The request") ? "the request" : e.entity.label.startsWith("Creation:") ? "Creation" : e.entity.label.split(":")[0].toLowerCase()}
                     </Link>
                   ) : null}
                 </dl>

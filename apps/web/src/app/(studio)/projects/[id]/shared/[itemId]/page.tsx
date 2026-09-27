@@ -21,7 +21,7 @@ export default async function SharedItemPage({ params }: { params: Promise<{ id:
   return (
     <article className="mx-auto max-w-3xl space-y-6">
       <Link href={`/projects/${id}?tab=work`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> Back to the project
+        <ArrowLeft className="size-4" aria-hidden /> Back to the Creative Room
       </Link>
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -34,7 +34,7 @@ export default async function SharedItemPage({ params }: { params: Promise<{ id:
         {item.kind === "artifact" && item.versionNumber ? <p className="text-sm text-ink-subtle">Version {item.versionNumber}</p> : null}
       </header>
       {item.kind === "artifact" ? (
-        <div className="whitespace-pre-wrap rounded-3xl border border-border-soft bg-surface p-5 font-serif text-[17px] leading-relaxed text-ink sm:p-8">{item.content || "This piece is empty so far."}</div>
+        <div className="whitespace-pre-wrap rounded-3xl border border-border-soft bg-surface p-5 font-serif text-[17px] leading-relaxed text-ink sm:p-8">{item.content || "This Creation is empty so far."}</div>
       ) : (
         <div className="space-y-4">
           {image ? (
@@ -51,7 +51,7 @@ export default async function SharedItemPage({ params }: { params: Promise<{ id:
           {!item.text && !item.fileUrl ? <p className="text-ink-muted">Nothing to preview for this material.</p> : null}
         </div>
       )}
-      <p className="text-sm text-ink-muted">Shared with this project&rsquo;s crew. It stays {item.mine ? "yours" : `${item.sharedBy}'s`}: the crew can read it, not change or reuse it elsewhere.</p>
+      <p className="text-sm text-ink-muted">Shared with this Creative Room&rsquo;s crew. It stays {item.mine ? "yours" : `${item.sharedBy}'s`}: the crew can read it, not change or reuse it elsewhere.</p>
     </article>
   );
 }

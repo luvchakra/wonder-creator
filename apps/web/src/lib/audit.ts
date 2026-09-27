@@ -67,7 +67,7 @@ function describeAudit(r: Row): Described | null {
     case "share.created":
       return {
         category: "sharing",
-        title: m.kind === "link" ? "Made a private link" : "Shared a piece with a creator",
+        title: m.kind === "link" ? "Made a private link" : "Shared a Creation with a creator",
         outcome: "done",
         actor: you,
         entity: r.objectId ? { kind: "artifact", id: r.objectId } : null,
@@ -80,11 +80,11 @@ function describeAudit(r: Row): Described | null {
     case "share.revoked":
       return { category: "sharing", title: m.kind === "link" ? "Turned off a private link" : "Stopped sharing with a creator", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null };
     case "artifact.visibility":
-      return { category: "sharing", title: "Changed who can see a piece", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null, details: [{ label: "Now", value: m.privacy === "public" ? "Public" : "Private" }] };
+      return { category: "sharing", title: "Changed who can see a Creation", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null, details: [{ label: "Now", value: m.privacy === "public" ? "Public" : "Private" }] };
     case "material.downloaded":
       return { category: "exports", title: "Downloaded an original file", outcome: "done", actor: you, entity: r.objectId ? { kind: "material", id: r.objectId } : null };
     case "artifact.exported":
-      return { category: "exports", title: "Downloaded a piece", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null, details: [{ label: "Format", value: String(m.format ?? "") }, { label: "Version", value: String(m.version ?? "") }] };
+      return { category: "exports", title: "Downloaded a Creation", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null, details: [{ label: "Format", value: String(m.format ?? "") }, { label: "Version", value: String(m.version ?? "") }] };
     case "account.exported":
       return { category: "exports", title: "Exported your account data", outcome: "done", actor: you };
     case "audit.exported":
@@ -92,7 +92,7 @@ function describeAudit(r: Row): Described | null {
     case "material.deleted":
       return { category: "exports", title: "Deleted material", outcome: "done", actor: you };
     case "artifact.delete":
-      return { category: "exports", title: "Deleted a piece", outcome: "done", actor: you };
+      return { category: "exports", title: "Deleted a Creation", outcome: "done", actor: you };
     case "artifact.restore":
       return { category: "profile", title: "Restored an earlier version", outcome: "done", actor: you, entity: r.objectId ? { kind: "artifact", id: r.objectId } : null, details: [{ label: "From version", value: String(m.from ?? "") }] };
     case "publication.approved":
@@ -118,7 +118,7 @@ function describeAudit(r: Row): Described | null {
         "ai_key.rotated": `Replaced your ${name} key`,
         "ai_key.removed": `Removed your ${name} key`,
         "ai_key.validated": m.status === "invalid" ? `Your ${name} key was not accepted` : `Checked your ${name} key`,
-        "ai_key.preferences": `Changed how CreatorBrain uses your ${name} key`,
+        "ai_key.preferences": `Changed how CreativeMind uses your ${name} key`,
       };
       return {
         category: "providers",
@@ -127,7 +127,7 @@ function describeAudit(r: Row): Described | null {
         actor: you,
         details: [
           ...(m.status ? [{ label: "Status", value: words(m.status) }] : []),
-          ...(r.action === "ai_key.preferences" ? [{ label: "Model", value: String(m.default_model ?? "Recommended") }, { label: "Used for CreatorBrain", value: yesNo(m.use_for_brain) }] : []),
+          ...(r.action === "ai_key.preferences" ? [{ label: "Model", value: String(m.default_model ?? "Recommended") }, { label: "Used for CreativeMind", value: yesNo(m.use_for_brain) }] : []),
         ],
       };
     }
@@ -143,12 +143,12 @@ function describeAudit(r: Row): Described | null {
   if (r.action.startsWith("approval.")) {
     const status = r.action.slice("approval.".length);
     const label: Record<string, [string, AuditEntry["outcome"], string]> = {
-      approved: ["Approved a CreatorBrain request", "done", "You"],
-      executed: ["CreatorBrain carried out an approved request", "done", "CreatorBrain, on your approval"],
-      failed: ["An approved request didn't finish", "failed", "CreatorBrain, on your approval"],
-      rejected: ["Declined a CreatorBrain request", "declined", "You"],
-      cancelled: ["A CreatorBrain request was replaced or cancelled", "declined", "You"],
-      expired: ["A CreatorBrain request expired", "declined", "Wonder Creator"],
+      approved: ["Approved a CreativeMind request", "done", "You"],
+      executed: ["CreativeMind carried out an approved request", "done", "CreativeMind, on your approval"],
+      failed: ["An approved request didn't finish", "failed", "CreativeMind, on your approval"],
+      rejected: ["Declined a CreativeMind request", "declined", "You"],
+      cancelled: ["A CreativeMind request was replaced or cancelled", "declined", "You"],
+      expired: ["A CreativeMind request expired", "declined", "Wonder Creator"],
     };
     const [title, outcome, actor] = label[status] ?? ["Approval updated", "done", "You"];
     return { category: "approvals", title, outcome, actor, entity: r.objectId ? { kind: "approval", id: r.objectId } : null, details: [{ label: "Action", value: words(m.action) }, { label: "Area", value: words(m.domain) }] };
@@ -233,7 +233,7 @@ export async function listAudit(db: Db, raw: unknown): Promise<{ entries: AuditE
   const matTitle = new Map((mats.data ?? []).map((x) => [x.id, x.title]));
   const entries = page.map(({ ref, ...e }) => {
     let entity: AuditEntry["entity"] = null;
-    if (ref?.kind === "artifact") entity = artTitle.has(ref.id) ? { label: `Piece: ${artTitle.get(ref.id)}`, href: `/artifacts/${ref.id}` } : { label: "A piece that's no longer here", href: null };
+    if (ref?.kind === "artifact") entity = artTitle.has(ref.id) ? { label: `Creation: ${artTitle.get(ref.id)}`, href: `/artifacts/${ref.id}` } : { label: "A Creation that's no longer here", href: null };
     if (ref?.kind === "material") entity = matTitle.has(ref.id) ? { label: `Material: ${matTitle.get(ref.id) || "Untitled"}`, href: `/space/materials/${ref.id}` } : { label: "Material that's no longer here", href: null };
     if (ref?.kind === "approval") entity = { label: "The request", href: `/approvals/${ref.id}` };
     return { ...e, entity };

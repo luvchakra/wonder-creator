@@ -6,7 +6,7 @@ export const BYOK_PROVIDERS = [
     keyLabel: "Gemini API key",
     keyHelp: "Create one in Google AI Studio.",
     dataUse:
-      "With your key, CreatorBrain sends the material and pieces you work on (and the context it needs) to Google under your own account and its terms. Google's handling of that data follows your agreement with Google, not Wonder Creator's.",
+      "With your key, CreativeMind sends the material and Creations you work on (and the context it needs) to Google under your own account and its terms. Google's handling of that data follows your agreement with Google, not Wonder Creator's.",
   },
   {
     id: "anthropic",
@@ -14,7 +14,7 @@ export const BYOK_PROVIDERS = [
     keyLabel: "Anthropic API key",
     keyHelp: "Create one in the Anthropic Console.",
     dataUse:
-      "With your key, CreatorBrain sends the material and pieces you work on (and the context it needs) to Anthropic under your own account and its terms. Anthropic's handling of that data follows your agreement with Anthropic, not Wonder Creator's.",
+      "With your key, CreativeMind sends the material and Creations you work on (and the context it needs) to Anthropic under your own account and its terms. Anthropic's handling of that data follows your agreement with Anthropic, not Wonder Creator's.",
   },
 ] as const;
 export type ByokProvider = (typeof BYOK_PROVIDERS)[number]["id"];

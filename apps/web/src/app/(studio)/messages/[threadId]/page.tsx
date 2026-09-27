@@ -24,10 +24,10 @@ export default async function ThreadPage({ params }: { params: Promise<{ threadI
     p.creator_id === who || ([] as Array<{ crew_members: Array<{ creator_id: string; status: string }> }>).concat((p.crews as CrewRow) ?? []).some((c) => c.crew_members.some((m) => m.creator_id === who && m.status === "active"));
   const involved = (a: { creator_id: string; artifact_contributors: Array<{ contributor_creator_id: string }> }, who: string) => a.creator_id === who || a.artifact_contributors.some((c) => c.contributor_creator_id === who);
   const about = [
-    ...(projects.data ?? []).filter((p) => inProject(p, creator.id) && inProject(p, other)).map((p) => ({ value: `project:${p.id}`, label: `Project: ${p.title}` })),
+    ...(projects.data ?? []).filter((p) => inProject(p, creator.id) && inProject(p, other)).map((p) => ({ value: `project:${p.id}`, label: `Creative Room: ${p.title}` })),
     ...(pieces.data ?? [])
       .filter((a) => involved(a, creator.id) && involved(a, other))
-      .map((a) => ({ value: `artifact:${a.id}`, label: `Piece: ${a.title}` })),
+      .map((a) => ({ value: `artifact:${a.id}`, label: `Creation: ${a.title}` })),
   ];
   return <ThreadView thread={thread} about={about} />;
 }

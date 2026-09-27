@@ -99,7 +99,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     out.push({
       id: `proposal:${p.id}`,
       kind: "proposal",
-      title: label ? `Waiting for your OK: ${label.toLowerCase()}` : "CreatorBrain is waiting for your OK",
+      title: label ? `Waiting for your OK: ${label.toLowerCase()}` : "CreativeMind is waiting for your OK",
       detail: p.understood.slice(0, 140),
       href: `/approvals/${p.id}`,
       at: p.created_at,
@@ -124,18 +124,18 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     if (r.artifact_id || ((r.retries as unknown as Array<{ id: string }>) ?? []).length) continue;
     const stale = r.status === "running" && Date.now() - new Date(r.started_at).getTime() > RUN_STALE_MS;
     if (r.status === "running" && !stale) {
-      out.push({ id: `run:${r.id}`, kind: "run_active", title: "CreatorBrain is working on a draft", detail: "See its progress", href: `/create/runs/${r.id}`, at: r.started_at });
+      out.push({ id: `run:${r.id}`, kind: "run_active", title: "CreativeMind is working on a draft", detail: "See its progress", href: `/create/runs/${r.id}`, at: r.started_at });
     } else if (r.status !== "cancelled") {
       out.push({ id: `run:${r.id}`, kind: "run_unfinished", title: "A draft didn't finish", detail: "You can try again — nothing was lost.", href: `/create/runs/${r.id}`, at: r.completed_at ?? r.started_at });
     }
   }
   for (const r of licenseAsks.data ?? []) {
     const who = (r.creators as { display_name: string } | null)?.display_name || "A creator";
-    const title = (r.artifacts as { title: string } | null)?.title ?? "your piece";
+    const title = (r.artifacts as { title: string } | null)?.title ?? "your Creation";
     out.push({ id: `license-ask:${r.id}`, kind: "license_request", title: `${who} asked to license “${title}”`, detail: "Review the proposed use and terms", href: `/artifacts/${r.artifact_id}?tab=rights`, at: r.created_at });
   }
   for (const r of licenseAnswers.data ?? []) {
-    const title = (r.artifacts as { title: string } | null)?.title ?? "a piece";
+    const title = (r.artifacts as { title: string } | null)?.title ?? "a Creation";
     const verb = r.status === "approved" ? "approved" : r.status === "declined" ? "declined" : "sent a counter-offer for";
     out.push({ id: `license-answer:${r.id}`, kind: "license_response", title: `The creator ${verb} your license request for “${title}”`, detail: null, href: `/artifacts/${r.artifact_id}`, at: r.responded_at ?? new Date().toISOString() });
   }
@@ -145,13 +145,13 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const p of toReview.data ?? []) {
     const who = (p.creators as { display_name: string } | null)?.display_name || "A collaborator";
-    out.push({ id: `proposal-review:${p.id}`, kind: "proposal_review", title: `${who} proposed a change to “${(p.artifacts as { title: string } | null)?.title ?? "your piece"}”`, detail: p.summary, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.created_at });
+    out.push({ id: `proposal-review:${p.id}`, kind: "proposal_review", title: `${who} proposed a change to “${(p.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: p.summary, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.created_at });
   }
   for (const p of decided.data ?? []) {
-    out.push({ id: `proposal-decided:${p.id}`, kind: "proposal_decided", title: `Your change to “${(p.artifacts as { title: string } | null)?.title ?? "a piece"}” was ${p.status}`, detail: null, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.decided_at ?? new Date().toISOString() });
+    out.push({ id: `proposal-decided:${p.id}`, kind: "proposal_decided", title: `Your change to “${(p.artifacts as { title: string } | null)?.title ?? "a Creation"}” was ${p.status}`, detail: null, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.decided_at ?? new Date().toISOString() });
   }
   for (const c of addedAs.data ?? []) {
-    out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a piece"}”`, detail: null, href: `/artifacts/${c.artifact_id}/collaborate`, at: c.created_at });
+    out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a Creation"}”`, detail: null, href: `/artifacts/${c.artifact_id}/collaborate`, at: c.created_at });
   }
   for (const u of unread) {
     const n = `${u.unread} new ${u.unread === 1 ? "message" : "messages"}`;
@@ -163,7 +163,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const c of claims.data ?? []) {
     const who = (c.creators as { display_name: string } | null)?.display_name || "A collaborator";
-    out.push({ id: `rights-claim:${c.id}`, kind: "rights_claim", title: `${who} made an ownership claim on “${(c.artifacts as { title: string } | null)?.title ?? "your piece"}”`, detail: "Acknowledge or dispute it", href: `/projects/${c.project_id}?tab=rights`, at: c.created_at });
+    out.push({ id: `rights-claim:${c.id}`, kind: "rights_claim", title: `${who} made an ownership claim on “${(c.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: "Acknowledge or dispute it", href: `/projects/${c.project_id}?tab=rights`, at: c.created_at });
   }
   for (const c of crewInvites) {
     out.push({ id: `crew:${c.crewId}`, kind: "crew_invite", title: `${c.invitedBy} invited you to join ${c.crewName}`, detail: c.roleTitle ? `As ${c.roleTitle} · ${c.projectTitle}` : c.projectTitle, href: `/crews/${c.crewId}`, at: c.invitedAt });

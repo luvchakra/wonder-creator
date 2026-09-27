@@ -16,7 +16,7 @@ const OPEN_LABEL: Record<string, string> = {
   proposals: "change proposals",
   claims: "ownership claims",
   licence_requests: "licence requests",
-  approvals: "CreatorBrain approvals",
+  approvals: "CreativeMind approvals",
 };
 
 function Step({ n, title, ok, okText, children }: { n: number; title: string; ok: boolean; okText: string; children?: React.ReactNode }) {
@@ -78,11 +78,11 @@ export function CompleteView({
         <ArrowLeft className="size-4" aria-hidden /> {project.title}
       </Link>
       <header className="space-y-2">
-        <h1 className="font-display text-3xl text-ink sm:text-4xl">{closed ? "Project closed" : "Complete this project"}</h1>
+        <h1 className="font-display text-3xl text-ink sm:text-4xl">{closed ? "Creative Room closed" : "Complete this Creative Room"}</h1>
         <p className="text-[15px] text-ink-muted">
           {closed
-            ? `This project is ${PROJECT_STATUS_LABEL[project.status as ProjectStatus].toLowerCase()}. Everything in it is kept.`
-            : "Walk through what's still open before closing. Nothing is deleted: pieces, material, contributions, rights, approvals and history all stay, and everyone in the crew keeps access to them."}
+            ? `This Creative Room is ${PROJECT_STATUS_LABEL[project.status as ProjectStatus].toLowerCase()}. Everything in it is kept.`
+            : "Walk through what's still open before closing. Nothing is deleted: Creations, material, contributions, rights, approvals and history all stay, and everyone in the crew keeps access to them."}
         </p>
         {!closed && openTotal ? (
           <p className="text-[15px] text-ink">
@@ -176,14 +176,14 @@ export function CompleteView({
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-ink-muted">Tasks left open stay on the project as a record of what wasn&rsquo;t finished.</p>
+            <p className="text-sm text-ink-muted">Tasks left open stay on the Creative Room as a record of what wasn&rsquo;t finished.</p>
           </Step>
 
           <Step
             n={2}
-            title="Pieces"
+            title="Creations"
             ok={!review.pieces.some((p) => p.status === "draft") && !review.proposals.length}
-            okText={review.pieces.length ? `${review.pieces.length} ${review.pieces.length === 1 ? "piece" : "pieces"}, none left in draft.` : "No pieces are linked to this project."}
+            okText={review.pieces.length ? `${review.pieces.length} ${review.pieces.length === 1 ? "Creation" : "Creations"}, none left in draft.` : "No Creations are linked to this Creative Room."}
           >
             {review.pieces.filter((p) => p.status === "draft").length ? (
               <ul className="space-y-1">
@@ -215,7 +215,7 @@ export function CompleteView({
             <p className="text-sm text-ink-muted">Drafts are fine to keep; open change proposals should be accepted or declined so contributors know where they stand.</p>
           </Step>
 
-          <Step n={3} title="Rights" ok={!review.rights.unrecorded.length && !review.rights.claims.length} okText="Every piece has a rights record and no ownership claims are waiting.">
+          <Step n={3} title="Rights" ok={!review.rights.unrecorded.length && !review.rights.claims.length} okText="Every Creation has a rights record and no ownership claims are waiting.">
             {review.rights.claims.map((a) => (
               <p key={a.id} className="text-[15px] text-ink">
                 {a.creator.name}&rsquo;s claim on {a.artifact.title}: {a.claimLabel} <Badge tone={a.status === "disputed" ? "warning" : "accent"}>{a.statusLabel}</Badge>
@@ -234,7 +234,7 @@ export function CompleteView({
             n={4}
             title="Attribution"
             ok={!review.attribution.uncredited.length}
-            okText={`${review.attribution.contributions} ${review.attribution.contributions === 1 ? "contribution is" : "contributions are"} recorded, and everyone in the project has at least one.`}
+            okText={`${review.attribution.contributions} ${review.attribution.contributions === 1 ? "contribution is" : "contributions are"} recorded, and everyone in the Creative Room has at least one.`}
           >
             <p className="text-[15px] text-ink">No contributions recorded for: {review.attribution.uncredited.map((p) => p.name).join(", ")}.</p>
             <p className="text-sm text-ink-muted">Record what they did so they&rsquo;re credited — or leave it if they didn&rsquo;t contribute.</p>
@@ -246,7 +246,7 @@ export function CompleteView({
           <Step n={5} title="Approvals" ok={!open.approvals && !open.licence_requests} okText="Nothing is waiting for approval.">
             {approvals.map((a) => (
               <p key={a.id} className="text-[15px] text-ink">
-                CreatorBrain is waiting:{" "}
+                CreativeMind is waiting:{" "}
                 <Link href={`/approvals/${a.id}`} className="font-medium hover:underline">
                   {a.actionLabel}
                 </Link>
@@ -261,14 +261,14 @@ export function CompleteView({
               </p>
             ))}
             {open.approvals + open.licence_requests > approvals.length + licenceRequests.length ? (
-              <p className="text-sm text-ink-muted">Some are on other people&rsquo;s pieces or conversations.</p>
+              <p className="text-sm text-ink-muted">Some are on other people&rsquo;s Creations or conversations.</p>
             ) : null}
           </Step>
 
-          <section aria-label="Close the project" className="rounded-2xl border border-border bg-surface px-4 py-4 sm:px-5">
+          <section aria-label="Close the Creative Room" className="rounded-2xl border border-border bg-surface px-4 py-4 sm:px-5">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
               <span className="inline-flex size-7 items-center justify-center rounded-full bg-accent text-sm text-white">6</span>
-              Close the project
+              Close the Creative Room
             </h2>
             {isOwner ? (
               <form
@@ -288,7 +288,7 @@ export function CompleteView({
                         note: note.trim() || null,
                       },
                     });
-                    setMsg(outcome === "completed" ? "Project completed. Everything is kept." : "Project archived. Everything is kept.");
+                    setMsg(outcome === "completed" ? "Creative Room completed. Everything is kept." : "Creative Room archived. Everything is kept.");
                     router.refresh();
                   } catch (err) {
                     setError(errorMessage(err));
@@ -301,8 +301,8 @@ export function CompleteView({
                   <legend className="text-sm font-medium text-ink">Outcome</legend>
                   {(
                     [
-                      ["completed", "Completed", "The work is finished. The project stays in your list as completed."],
-                      ["archived", "Archived", "Put away. It moves out of your active projects but stays searchable."],
+                      ["completed", "Completed", "The work is finished. The Creative Room stays in your list as completed."],
+                      ["archived", "Archived", "Put away. It moves out of your active Creative Rooms but stays searchable."],
                     ] as const
                   ).map(([value, label, help]) => (
                     <label key={value} className="flex min-h-11 items-start gap-3 text-[15px] text-ink">
@@ -322,7 +322,7 @@ export function CompleteView({
                       <span className="block text-sm text-ink-muted">
                         The crew stops taking new members
                         {crew.invited ? ` and ${crew.invited} pending ${crew.invited === 1 ? "invitation lapses" : "invitations lapse"}` : ""}. Its {crew.active}{" "}
-                        {crew.active === 1 ? "member keeps" : "members keep"} access to the project&rsquo;s history, chat and records.
+                        {crew.active === 1 ? "member keeps" : "members keep"} access to the Creative Room&rsquo;s history, chat and records.
                       </span>
                     </span>
                   </label>
@@ -336,24 +336,24 @@ export function CompleteView({
                     </span>
                   </label>
                 ) : null}
-                <Field label="Closing note (optional)" htmlFor="complete-note" hint="For the crew and the project's history.">
+                <Field label="Closing note (optional)" htmlFor="complete-note" hint="For the crew and the Creative Room's history.">
                   <Textarea id="complete-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} className="min-h-20" />
                 </Field>
                 <Field label={`Type “${project.title}” to confirm`} htmlFor="complete-confirm">
                   <Input id="complete-confirm" value={confirmTitle} onChange={(e) => setConfirmTitle(e.target.value)} autoComplete="off" />
                 </Field>
                 <Button type="submit" loading={busy} disabled={confirmTitle.trim().toLowerCase() !== project.title.trim().toLowerCase() || (openTotal > 0 && !acknowledge)}>
-                  {outcome === "completed" ? "Complete project" : "Archive project"}
+                  {outcome === "completed" ? "Complete Creative Room" : "Archive Creative Room"}
                 </Button>
               </form>
             ) : (
-              <p className="mt-2 text-[15px] text-ink-muted">Only the project&rsquo;s owner can complete it. You can help by resolving the items above.</p>
+              <p className="mt-2 text-[15px] text-ink-muted">Only the Creative Room&rsquo;s owner can complete it. You can help by resolving the items above.</p>
             )}
           </section>
         </>
       ) : isOwner ? (
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setReopening(true)}>Reopen project</Button>
+          <Button onClick={() => setReopening(true)}>Reopen Creative Room</Button>
           {project.status === "completed" ? <p className="w-full text-sm text-ink-muted">To archive it instead, reopen it and close it again.</p> : null}
         </div>
       ) : null}
@@ -390,10 +390,10 @@ export function CompleteView({
       <ConfirmDialog
         open={reopening}
         onOpenChange={setReopening}
-        title="Reopen this project?"
+        title="Reopen this Creative Room?"
         body={crew?.status === "completed" ? "It becomes active again, and so does its crew." : "It becomes active again."}
         confirmLabel="Reopen"
-        onConfirm={() => act(() => api(`/api/v1/projects/${project.id}/reopen`, { method: "POST" }), "Project reopened.").then(() => setReopening(false))}
+        onConfirm={() => act(() => api(`/api/v1/projects/${project.id}/reopen`, { method: "POST" }), "Creative Room reopened.").then(() => setReopening(false))}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { expect, saveNote, test, uid } from "./fixtures";
 test.describe("Unified search", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("search across material and collections, filter by tab, tag and date, and ask CreatorBrain about the results", async ({ page }) => {
+  test("search across material and collections, filter by tab, tag and date, and ask CreativeMind about the results", async ({ page }) => {
     const word = `zephyr${uid()}`;
     const tagged = `${word} tide pools at dawn`;
     const plain = `${word} market lanterns`;
@@ -48,9 +48,9 @@ test.describe("Unified search", () => {
     await expect(material.getByRole("link").filter({ hasText: "market lanterns" })).toBeVisible();
 
     // Ask CreatorBrain about the result set: CreatorTalk opens with those pieces attached.
-    await page.getByRole("link", { name: "Ask CreatorBrain about these" }).click();
+    await page.getByRole("link", { name: "Ask CreativeMind about these" }).click();
     await expect(page).toHaveURL(/\/create\?materials=/);
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await expect(talk.getByText(tagged)).toBeVisible();
     await expect(talk.getByText(plain)).toBeVisible();
   });

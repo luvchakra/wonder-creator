@@ -146,9 +146,9 @@ export function RightsPanel({
       </div>
       {msg ? <p className="rounded-2xl bg-accent-softer px-4 py-3 text-[15px] text-ink">{msg}</p> : null}
 
-      <section aria-label="Project policy">
+      <section aria-label="Creative Room policy">
         <SectionHeader
-          title="Project policy"
+          title="Creative Room policy"
           action={
             isOwner ? (
               <Button variant="secondary" onClick={() => setEditingPolicy(true)}>
@@ -167,7 +167,7 @@ export function RightsPanel({
             <dt className="text-sm text-ink-subtle">Publishing</dt>
             <dd className="text-[15px] font-medium text-ink">{policy.publicationSignoff ? "Collaborators sign off first" : "Owner decides"}</dd>
             <dd className="text-sm text-ink-muted">
-              {policy.publicationSignoff ? "A piece can't be published until its collaborators and co-owners approve the current version." : "Each piece's owner publishes on their own approval."}
+              {policy.publicationSignoff ? "A Creation can't be published until its collaborators and co-owners approve the current version." : "Each Creation's owner publishes on their own approval."}
             </dd>
           </div>
           <div>
@@ -213,8 +213,8 @@ export function RightsPanel({
         </section>
       ) : null}
 
-      <section aria-label="Pieces">
-        <SectionHeader title="Pieces" />
+      <section aria-label="Creations">
+        <SectionHeader title="Creations" />
         {pieces.length ? (
           <ul className="space-y-2">
             {pieces.map((p) => {
@@ -249,9 +249,9 @@ export function RightsPanel({
                           <dt className="text-ink-subtle">Derivatives</dt>
                           <dd className="text-ink">
                             {policy.derivatives === "not_allowed"
-                              ? "Not allowed (project policy)"
+                              ? "Not allowed (Creative Room policy)"
                               : policy.derivatives === "crew_allowed"
-                                ? "Crew may adapt (project policy)"
+                                ? "Crew may adapt (Creative Room policy)"
                                 : p.derivativesAllowed
                                   ? "Allowed by the owner"
                                   : "Only with the owner's permission"}
@@ -264,7 +264,7 @@ export function RightsPanel({
                       </dl>
                       {ownsPiece ? (
                         <Link href={`/artifacts/${p.artifactId}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-                          Edit this piece&rsquo;s rights record
+                          Edit this Creation&rsquo;s rights record
                         </Link>
                       ) : null}
 
@@ -328,7 +328,7 @@ export function RightsPanel({
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-sm text-ink-muted">Only the owner works on this piece.</p>
+                          <p className="text-sm text-ink-muted">Only the owner works on this Creation.</p>
                         )}
                       </div>
 
@@ -372,7 +372,7 @@ export function RightsPanel({
           </ul>
         ) : (
           <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
-            No pieces are linked to this project yet. Rights appear here once pieces are added.
+            No Creations are linked to this Creative Room yet. Rights appear here once Creations are added.
           </p>
         )}
       </section>
@@ -389,7 +389,7 @@ export function RightsPanel({
           }
         />
         <p className="mb-3 text-sm text-ink-muted">
-          People who worked on a piece can record what they believe their ownership is. The piece&rsquo;s owner acknowledges or disputes it. A claim never changes a piece&rsquo;s rights record by
+          People who worked on a Creation can record what they believe their ownership is. The Creation&rsquo;s owner acknowledges or disputes it. A claim never changes a Creation&rsquo;s rights record by
           itself.
         </p>
         {assertions.length ? (
@@ -472,7 +472,7 @@ export function RightsPanel({
           pieces={claimable}
           initial={claiming}
           onOpenChange={(o) => !o && setClaiming(null)}
-          onSaved={() => (setClaiming(null), done("Claim recorded. The piece's owner will be asked to respond."))}
+          onSaved={() => (setClaiming(null), done("Claim recorded. The Creation's owner will be asked to respond."))}
         />
       ) : null}
       {responding ? <RespondDialog {...responding} onOpenChange={(o) => !o && setResponding(null)} onSaved={(t) => (setResponding(null), done(t))} /> : null}
@@ -522,7 +522,7 @@ function PolicyDialog({ projectId, policy, onOpenChange, onSaved }: { projectId:
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Project rights policy" description="Applies to pieces linked to this project. Every change is kept in the rights history." wide>
+      <DialogContent title="Creative Room rights policy" description="Applies to Creations linked to this Creative Room. Every change is kept in the rights history." wide>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -638,7 +638,7 @@ function ClaimDialog({
             }
           }}
         >
-          <Field label="Piece" htmlFor="claim-piece">
+          <Field label="Creation" htmlFor="claim-piece">
             <Select id="claim-piece" value={artifactId} onChange={(e) => setArtifactId(e.target.value)}>
               {pieces.map((p) => (
                 <option key={p.artifactId} value={p.artifactId}>
@@ -686,7 +686,7 @@ function ClaimDialog({
 const RESPONSE_COPY = {
   acknowledge: {
     title: "Acknowledge this claim?",
-    body: "You're recording that you agree with it. Update the piece's rights record separately if ownership should change.",
+    body: "You're recording that you agree with it. Update the Creation's rights record separately if ownership should change.",
     button: "Acknowledge",
     done: "Claim acknowledged.",
   },

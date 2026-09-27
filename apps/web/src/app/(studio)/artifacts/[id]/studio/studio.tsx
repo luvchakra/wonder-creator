@@ -70,7 +70,7 @@ export function Studio({
       if (dirty) {
         const r = await api<{ version: { id: string; version_number: number; content: string } }>(`/api/v1/artifacts/${artifact.id}/versions`, {
           method: "POST",
-          json: { content, baseVersionId: base?.id, label: "Revised", changeSummary: "Edited in Studio." },
+          json: { content, baseVersionId: base?.id, label: "Revised", changeSummary: "Edited in the Creative Studio." },
         });
         setBase({ id: r.version.id, number: r.version.version_number, content: r.version.content });
       }

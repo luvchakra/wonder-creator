@@ -63,7 +63,7 @@ test.describe("Collaborative editing", () => {
     const cur = ((await (await a.request.get(`/api/v1/artifacts/${art.id}`)).json()) as { artifact: { current_version_id: string } }).artifact.current_version_id;
     expect((await a.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "Owner's newer text.", baseVersionId: cur, label: "Owner" } })).ok()).toBeTruthy();
     await a.reload();
-    await expect(a.getByRole("region", { name: "Proposed changes" })).toContainText("Piece changed since");
+    await expect(a.getByRole("region", { name: "Proposed changes" })).toContainText("Creation changed since");
     await a.getByRole("region", { name: "Proposed changes" }).getByRole("button", { name: "Review" }).click();
     const r2 = a.getByRole("dialog", { name: "Rewrite" });
     await expect(r2.getByRole("status")).toContainText("has changed since this was proposed");
@@ -76,8 +76,8 @@ test.describe("Collaborative editing", () => {
     await a.getByLabel(`What ${mo.name} can do`).selectOption("edit");
     await expect(a.getByText(`${mo.name}: can edit.`).first()).toBeVisible();
     await b.reload();
-    await b.getByRole("button", { name: "Edit the piece" }).click();
-    const edit = b.getByRole("dialog", { name: "Edit the piece" });
+    await b.getByRole("button", { name: "Edit the Creation" }).click();
+    const edit = b.getByRole("dialog", { name: "Edit the Creation" });
     await edit.getByLabel("Text").fill("Mo's tightened version.");
     const cur2 = ((await (await a.request.get(`/api/v1/artifacts/${art.id}`)).json()) as { artifact: { current_version_id: string } }).artifact.current_version_id;
     await a.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "Owner raced ahead.", baseVersionId: cur2, label: "Owner" } });
@@ -86,9 +86,9 @@ test.describe("Collaborative editing", () => {
     await expect(edit.getByLabel("Text")).toHaveValue("Mo's tightened version.");
     await edit.getByRole("button", { name: "Cancel" }).click();
     await b.reload();
-    await b.getByRole("button", { name: "Edit the piece" }).click();
-    await b.getByRole("dialog", { name: "Edit the piece" }).getByLabel("Text").fill("Mo's tightened version.");
-    await b.getByRole("dialog", { name: "Edit the piece" }).getByRole("button", { name: "Save new version" }).click();
+    await b.getByRole("button", { name: "Edit the Creation" }).click();
+    await b.getByRole("dialog", { name: "Edit the Creation" }).getByLabel("Text").fill("Mo's tightened version.");
+    await b.getByRole("dialog", { name: "Edit the Creation" }).getByRole("button", { name: "Save new version" }).click();
     await expect(b.getByText("credited to you").first()).toBeVisible();
   });
 });

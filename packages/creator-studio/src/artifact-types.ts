@@ -26,7 +26,7 @@ export const ARTIFACT_TYPES: ArtifactTypeDef[] = [
   { type: "spoken_word", label: "Spoken Word", category: "writing", format: "verse", description: "Poetry written for the voice" },
   { type: "blog_post", label: "Blog Post", category: "writing", format: "prose", description: "A long-form reflection" },
   // Visual
-  { type: "visual_concept", label: "Visual Concept", category: "visual", format: "concept", description: "Imagery direction for a piece" },
+  { type: "visual_concept", label: "Visual Concept", category: "visual", format: "concept", description: "Imagery direction for a Creation" },
   { type: "poster", label: "Poster", category: "visual", format: "concept", description: "A poster concept and copy" },
   { type: "album_art", label: "Album Art", category: "visual", format: "concept", description: "Cover art direction" },
   { type: "moodboard", label: "Moodboard", category: "visual", format: "list", description: "Mood, palette and references" },
@@ -184,7 +184,7 @@ export function actionsFor(type: string): StudioAction[] {
         def.type === "lyrics" || def.type === "song_concept"
           ? { key: "spoken", label: "Turn into spoken word", hint: "For the voice", kind: "transform", targetType: "spoken_word" }
           : { key: "lyrics", label: "Turn into lyrics", hint: "Make it singable", kind: "transform", targetType: "lyrics" },
-        { key: "visual", label: "Create visual concepts", hint: "Imagery for this piece", kind: "transform", targetType: "visual_concept" },
+        { key: "visual", label: "Create visual concepts", hint: "Imagery for this Creation", kind: "transform", targetType: "visual_concept" },
       ];
     case "prose":
       return [

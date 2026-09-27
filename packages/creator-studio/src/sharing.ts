@@ -96,7 +96,7 @@ export async function shareWithCreator(db: Db, creatorId: string, artifactId: st
     })
     .select("*")
     .single();
-  if (res.error?.code === "23505") throw new DomainError("conflict", `This piece is already shared with @${input.handle}.`);
+  if (res.error?.code === "23505") throw new DomainError("conflict", `This Creation is already shared with @${input.handle}.`);
   if (res.error?.code === "42501") throw new DomainError("forbidden", `You can't share with @${input.handle}.`);
   if (res.error) throw fromDbError(res.error);
   return res.data;

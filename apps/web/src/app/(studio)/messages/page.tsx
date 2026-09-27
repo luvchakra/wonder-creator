@@ -11,7 +11,7 @@ export default async function MessagesPage() {
   const threads = await listThreads(db, creator.id);
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle title="Messages" subtitle="Direct conversations with people you work with. Crew conversations live in each project's Chat." />
+      <PageTitle title="Messages" subtitle="Direct conversations with people you work with. Crew conversations live in each Creative Room's Chat." />
       {threads.length ? (
         <ul aria-label="Conversations" className="space-y-2">
           {threads.map((t) => (

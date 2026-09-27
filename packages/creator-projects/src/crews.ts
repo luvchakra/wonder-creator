@@ -50,7 +50,7 @@ function crewError(e: { code?: string; message?: string }) {
   if (msg.includes("already in this crew")) return new DomainError("validation", "You're already in this crew.");
   if (msg.includes("creator not found")) return new DomainError("not_found", "We couldn't find that creator.");
   if (msg.includes("completed its work")) return new DomainError("conflict", "This crew has completed its work.");
-  if (msg.includes("use the completion checklist")) return new DomainError("conflict", "A crew is dissolved by completing its project. Use the project's completion checklist.");
+  if (msg.includes("use the completion checklist")) return new DomainError("conflict", "A crew is dissolved by completing its Creative Room. Use the Creative Room's completion checklist.");
   if (msg.includes("already invited")) return new DomainError("conflict", "They're already invited or in the crew.");
   if (msg.includes("invitation not found")) return new DomainError("not_found", "That invitation isn't open anymore.");
   if (msg.includes("invitation expired")) return new DomainError("conflict", "This invitation has expired. Ask the crew to invite you again.");
@@ -155,10 +155,10 @@ const ACCESS_ORDER: Record<CrewAccess, number> = { owner: 0, admin: 1, member: 2
 /** Start the crew for a project (owner only). Its name defaults to the project's. */
 export async function startCrew(db: Db, creatorId: string, projectId: string, raw: unknown) {
   const c = crewSchema.parse(raw);
-  const project = must(await db.from("projects").select("id, title, creator_id").eq("id", projectId).maybeSingle(), "We couldn't find that project.");
-  if (project.creator_id !== creatorId) throw new DomainError("forbidden", "Only the project's owner can start its crew.");
+  const project = must(await db.from("projects").select("id, title, creator_id").eq("id", projectId).maybeSingle(), "We couldn't find that Creative Room.");
+  if (project.creator_id !== creatorId) throw new DomainError("forbidden", "Only the Creative Room's owner can start its crew.");
   const res = await db.from("crews").insert({ project_id: projectId, creator_id: creatorId, name: c.name || project.title, purpose: c.purpose }).select("*").single();
-  if (res.error?.code === "23505") throw new DomainError("conflict", "This project already has a crew.");
+  if (res.error?.code === "23505") throw new DomainError("conflict", "This Creative Room already has a crew.");
   return must(res);
 }
 
@@ -187,7 +187,7 @@ export async function getCrew(db: Db, viewerId: string, crewId: string) {
   const o = (overview.data ?? {}) as { projectId?: string; projectTitle?: string; projectBrief?: string; projectStatus?: string };
   return {
     crew: { id: crew.id, name: crew.name, purpose: crew.purpose, status: crew.status as CrewStatus, projectId: crew.project_id, ownerId: crew.creator_id, createdAt: crew.created_at },
-    project: { id: o.projectId ?? crew.project_id, title: o.projectTitle ?? "Project", brief: o.projectBrief ?? "", status: o.projectStatus ?? null },
+    project: { id: o.projectId ?? crew.project_id, title: o.projectTitle ?? "Creative Room", brief: o.projectBrief ?? "", status: o.projectStatus ?? null },
     me,
     active: all.filter((m) => m.status === "active").sort((a, b) => ACCESS_ORDER[a.access] - ACCESS_ORDER[b.access] || (a.joinedAt ?? "").localeCompare(b.joinedAt ?? "")),
     invited: all.filter((m) => m.status === "invited").sort((a, b) => Number(a.expired) - Number(b.expired) || (b.invitedAt ?? "").localeCompare(a.invitedAt ?? "")),
@@ -306,7 +306,7 @@ export async function myCrewInvites(db: Db, creatorId: string): Promise<CrewInvi
   return rows.map((r, i) => ({
     crewId: r.crew_id,
     crewName: (r.crews as { name: string } | null)?.name ?? "A crew",
-    projectTitle: ((overviews[i].data ?? {}) as { projectTitle?: string }).projectTitle ?? "a project",
+    projectTitle: ((overviews[i].data ?? {}) as { projectTitle?: string }).projectTitle ?? "a Creative Room",
     roleTitle: r.role_title,
     access: r.access as CrewAccess,
     invitedBy: (r.inviter as { display_name: string } | null)?.display_name ?? "A creator",

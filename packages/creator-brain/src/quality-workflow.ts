@@ -87,7 +87,7 @@ export async function dismissFinding(db: Db, artifactId: string, reportId: strin
   const report = await getReport(db, artifactId, reportId);
   const finding = findingsOf(report).find((f) => f.key === key);
   if (!finding) throw new DomainError("not_found", "That finding isn't part of this review.");
-  if (finding.locked) throw new DomainError("validation", "Rights and provenance notes stay visible. Check your permissions or set the piece's rights instead.");
+  if (finding.locked) throw new DomainError("validation", "Rights and provenance notes stay visible. Check your permissions or set the Creation's rights instead.");
   const current = new Set((report.dismissed as string[]) ?? []);
   if (dismissed) current.add(key);
   else current.delete(key);

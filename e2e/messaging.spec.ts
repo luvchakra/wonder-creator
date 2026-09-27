@@ -1,7 +1,7 @@
 import { expect, newCreator, test, uid } from "./fixtures";
 
 test.describe("Collaboration messaging", () => {
-  test("crew chat about a task with a CreatorBrain draft, Huddle handoff, direct messages and notifications", async ({ page: a, creator: _owner, openContext }) => {
+  test("crew chat about a task with a CreativeMind draft, Huddle handoff, direct messages and notifications", async ({ page: a, creator: _owner, openContext }) => {
     test.setTimeout(180_000);
     const { page: b } = await openContext("B");
     const jo = await newCreator(b, { name: `Jo ${uid()}` });
@@ -15,7 +15,7 @@ test.describe("Collaboration messaging", () => {
 
     // A CreatorBrain draft is clearly not sent until the creator sends it.
     await a.goto(`/projects/${project.id}?tab=chat`);
-    await a.getByRole("button", { name: "Draft with CreatorBrain" }).click();
+    await a.getByRole("button", { name: "Draft with CreativeMind" }).click();
     await a.getByLabel("What should the message say?").fill("ask Jo to scout the pier this week");
     await a.getByRole("button", { name: "Write draft" }).click();
     await expect(a.getByText("Draft — not sent")).toBeVisible();
@@ -26,7 +26,7 @@ test.describe("Collaboration messaging", () => {
     const messages = a.getByRole("list", { name: "Messages" });
     await expect(messages).toContainText("Jo, could you scout the pier this week?");
     await expect(messages.getByRole("link", { name: "Task: Scout the pier" })).toBeVisible();
-    await expect(messages).toContainText("Drafted with CreatorBrain");
+    await expect(messages).toContainText("Drafted with CreativeMind");
     await expect(a.getByText("Draft — not sent")).toHaveCount(0);
 
     // Jo is told about the unread message; reading clears it.
@@ -47,13 +47,13 @@ test.describe("Collaboration messaging", () => {
     await a.getByRole("button", { name: "Message" }).click();
     await a.waitForURL(/\/messages\//);
     await a.getByLabel(`Message ${jo.name}`).fill("Thanks for joining!");
-    await a.getByLabel("About", { exact: true }).selectOption({ label: `Project: ${title}` });
+    await a.getByLabel("About", { exact: true }).selectOption({ label: `Creative Room: ${title}` });
     await a.getByRole("button", { name: "Send", exact: true }).click();
     await expect(a.getByRole("list", { name: "Messages" })).toContainText("Thanks for joining!");
     const dm = JSON.stringify(await (await b.request.get("/api/v1/notifications")).json());
     expect(dm).toContain("sent you a message");
     await b.goto("/messages");
     await b.getByRole("link", { name: /Thanks for joining/ }).click();
-    await expect(b.getByRole("list", { name: "Messages" }).getByRole("link", { name: `Project: ${title}` })).toBeVisible();
+    await expect(b.getByRole("list", { name: "Messages" }).getByRole("link", { name: `Creative Room: ${title}` })).toBeVisible();
   });
 });

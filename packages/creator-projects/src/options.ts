@@ -16,7 +16,7 @@ export type ProjectItemKind = (typeof PROJECT_ITEM_KINDS)[number];
 export const PROJECT_ITEM_LABEL: Record<ProjectItemKind, { one: string; many: string }> = {
   material: { one: "Material", many: "Material" },
   reference: { one: "Reference", many: "References" },
-  artifact: { one: "Piece", many: "Pieces" },
+  artifact: { one: "Creation", many: "Creations" },
   collection: { one: "Collection", many: "Collections" },
   conversation: { one: "Conversation", many: "Conversations" },
   huddle: { one: "Huddle", many: "Huddles" },
@@ -46,7 +46,7 @@ export const CREW_ACCESS_LABEL: Record<CrewAccess, string> = { owner: "Owner", a
 export const CREW_ACCESS_HELP: Record<CrewAccess, string> = {
   owner: "Started the crew; manages everyone.",
   admin: "Can invite people and manage members.",
-  member: "Part of the crew; can see the project.",
+  member: "Part of the crew; can see the Creative Room.",
 };
 
 /** Examples only: creators can name any role. */
@@ -81,9 +81,9 @@ export const ATTRIBUTION_LABEL = { required: "Credit required", optional: "Credi
 export const DERIVATIVE_POLICIES = ["owner_approval", "crew_allowed", "not_allowed"] as const;
 export type DerivativePolicy = (typeof DERIVATIVE_POLICIES)[number];
 export const DERIVATIVE_POLICY_LABEL: Record<DerivativePolicy, { label: string; help: string }> = {
-  owner_approval: { label: "Owner decides", help: "Each piece's owner allows derivatives on its rights record or through a license." },
-  crew_allowed: { label: "Crew may adapt", help: "People in the project can make derivatives of pieces they can open. Lineage and credit are kept." },
-  not_allowed: { label: "No derivatives", help: "Only a piece's owner can make derivatives of it." },
+  owner_approval: { label: "Owner decides", help: "Each Creation's owner allows derivatives on its rights record or through a license." },
+  crew_allowed: { label: "Crew may adapt", help: "People in the Creative Room can make derivatives of Creations they can open. Lineage and credit are kept." },
+  not_allowed: { label: "No derivatives", help: "Only a Creation's owner can make derivatives of it." },
 };
 export const ATTRIBUTION_POLICIES = ["credit_all", "as_agreed"] as const;
 export type AttributionPolicy = (typeof ATTRIBUTION_POLICIES)[number];
@@ -102,4 +102,4 @@ export const OWNERSHIP_CLAIM_LABEL: Record<OwnershipClaim, string> = {
 export type AssertionStatus = "asserted" | "acknowledged" | "disputed" | "withdrawn";
 export const ASSERTION_STATUS_LABEL: Record<AssertionStatus, string> = { asserted: "Awaiting response", acknowledged: "Acknowledged", disputed: "Disputed", withdrawn: "Withdrawn" };
 export const PROJECT_RIGHTS_DISCLAIMER =
-  "These are platform records of what people in the project said and agreed — not legal determinations. Contributing to a piece doesn't by itself make anyone its owner.";
+  "These are platform records of what people in the Creative Room said and agreed — not legal determinations. Contributing to a Creation doesn't by itself make anyone its owner.";

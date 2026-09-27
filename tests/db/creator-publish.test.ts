@@ -83,7 +83,7 @@ describe("per-destination preparation and metadata", () => {
   });
 });
 
-describe("CreatorBrain publishing plan", () => {
+describe("CreativeMind publishing plan", () => {
   it("offline, follows preferences; owner only; governed by Publishing autonomy; prepares nothing", async () => {
     const before = expectOk(await service.from("publications").select("id").eq("artifact_id", piece)).length;
     const plan = await planPublishing({ db: db(a), creatorId: a.creatorId, provider }, piece);

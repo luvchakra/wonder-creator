@@ -52,9 +52,9 @@ describe("crew chat context and unread", () => {
     const task = await createTask(db(owner), owner.creatorId, projectId, { title: "Scout the pier" });
     await postCrewMessage(db(owner), owner.creatorId, crewId, { body: "Can you take this?", contextKind: "task", contextId: task });
     await postCrewMessage(db(owner), owner.creatorId, crewId, { body: "Thoughts on the poem?", contextKind: "artifact", contextId: piece, draftedByAi: true });
-    await expect(postCrewMessage(db(owner), owner.creatorId, crewId, { body: "Not in the project", contextKind: "artifact", contextId: otherPiece })).rejects.toThrow(/isn't part of this project/);
+    await expect(postCrewMessage(db(owner), owner.creatorId, crewId, { body: "Not in the project", contextKind: "artifact", contextId: otherPiece })).rejects.toThrow(/isn't part of this Creative Room/);
     const { messages } = await listCrewMessages(db(owner), owner.creatorId, crewId);
-    expect(messages.map((m) => m.context?.label)).toEqual(["Task: Scout the pier", "Piece: Harbour"]);
+    expect(messages.map((m) => m.context?.label)).toEqual(["Task: Scout the pier", "Creation: Harbour"]);
     expect(messages[1]).toMatchObject({ draftedByAi: true, context: { href: `/artifacts/${piece}` } });
     // A context never reveals what the reader can't open (Mira isn't on the piece).
     const forMira = (await listCrewMessages(db(mira), mira.creatorId, crewId)).messages;

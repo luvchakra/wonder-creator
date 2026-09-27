@@ -85,14 +85,14 @@ test.describe("Material collections", () => {
     await page.goto(`/space/collections/${col.id}`);
     await page.getByRole("link", { name: "Use in creation" }).click();
     await expect(page).toHaveURL(new RegExp(`/create\\?collection=${col.id}`));
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await expect(talk.getByText(`From collection: ${name}`)).toBeVisible();
     await expect(talk.getByText(note)).toBeVisible();
     await talk.getByLabel("What are you thinking about?").fill("Turn these notes into a poem.");
     await talk.getByRole("button", { name: "Send", exact: true }).click();
     const card = artifactCard(page);
     await expect(card).toBeVisible({ timeout: 45_000 });
-    const href = await card.getByRole("link", { name: "Open in Studio" }).getAttribute("href");
+    const href = await card.getByRole("link", { name: "Open in Creative Studio" }).getAttribute("href");
     const artifactId = /\/artifacts\/([0-9a-f-]{36})/.exec(href ?? "")?.[1];
     expect(artifactId).toBeTruthy();
 

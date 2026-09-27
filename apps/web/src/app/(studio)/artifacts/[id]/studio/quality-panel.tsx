@@ -140,7 +140,7 @@ export function QualityPanel({
                         {f.title}
                       </span>
                       <span className="block text-ink-muted">{f.detail}</span>
-                      {f.locked ? <span className="mt-1 block text-xs text-warning-ink">Stays visible — rewriting can&apos;t resolve it. Check your permissions, or set the piece&apos;s rights.</span> : null}
+                      {f.locked ? <span className="mt-1 block text-xs text-warning-ink">Stays visible — rewriting can&apos;t resolve it. Check your permissions, or set the Creation&apos;s rights.</span> : null}
                     </label>
                     {!f.locked ? (
                       <button

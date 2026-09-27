@@ -63,7 +63,7 @@ export async function setItemShared(db: Db, projectId: string, itemId: string, s
     .select("id");
   if (res.error?.code === "42501") throw new DomainError("forbidden", "Only the person whose work it is can share it with the crew.");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this project.");
+  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this Creative Room.");
 }
 
 // Crew chat -----------------------------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ export async function postCrewMessage(db: Db, creatorId: string, crewId: string,
     .insert({ crew_id: crewId, creator_id: creatorId, body: m.body, item_id: m.itemId ?? null, context_kind: m.contextKind ?? null, context_id: m.contextId ?? null, huddle_id: m.huddleId ?? null, drafted_by_ai: m.draftedByAi })
     .select("id")
     .single();
-  if (res.error?.message?.includes("context not in project")) throw new DomainError("validation", "That isn't part of this project.");
+  if (res.error?.message?.includes("context not in project")) throw new DomainError("validation", "That isn't part of this Creative Room.");
   if (res.error?.message?.includes("not in huddle")) throw new DomainError("forbidden", "You're not in that Huddle.");
   if (res.error?.code === "42501") throw new DomainError("forbidden", "Only people in the crew can post here.");
   if (res.error) throw fromDbError(res.error);

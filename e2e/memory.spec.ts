@@ -55,7 +55,7 @@ test.describe("Creative Memory", () => {
     // Remove (with confirmation)
     await memoryCard(page, "Avoid: Clichés.").getByRole("button", { name: "Remove memory" }).click();
     const confirm = page.getByRole("dialog", { name: "Remove this memory?" });
-    await expect(confirm).toContainText("CreatorBrain will stop using: “Avoid: Clichés.”");
+    await expect(confirm).toContainText("CreativeMind will stop using: “Avoid: Clichés.”");
     await confirm.getByRole("button", { name: "Remove" }).click();
     await expect(memoryCard(page, "Avoid: Clichés.")).toHaveCount(0);
 
@@ -65,9 +65,9 @@ test.describe("Creative Memory", () => {
     await expect(page.getByRole("tab", { name: `All (${ONBOARDING_MEMORIES.length})` })).toBeVisible();
   });
 
-  test("“That's not how I write.” in CreatorTalk corrects Creative Memory", async ({ page }) => {
+  test("“That's not how I write.” in meTalk corrects Creative Memory", async ({ page }) => {
     await page.goto("/create");
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await talk.getByLabel("What are you thinking about?").fill("That's not how I write.");
     await talk.getByRole("button", { name: "Send", exact: true }).click();
     await expect(talk.getByText(/Thank you — I've let go of (that note|those notes) about your style and kept your words instead\./)).toBeVisible({ timeout: 30_000 });
@@ -76,7 +76,7 @@ test.describe("Creative Memory", () => {
     await expect(page).toHaveURL(/\/memory$/);
     const correction = memoryCard(page, "In your words: “That's not how I write.”");
     await expect(correction).toBeVisible();
-    await expect(correction).toContainText("Your correction in CreatorTalk");
+    await expect(correction).toContainText("Your correction in meTalk");
     // Style/voice memories CreatorBrain inferred were let go (two of them at most); facts stay.
     const styleMemories = ONBOARDING_MEMORIES.slice(1);
     let remaining = 0;

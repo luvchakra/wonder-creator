@@ -4,9 +4,9 @@ import { requireUuid, withApi } from "@/lib/api";
 
 /** Credits for the project: plain text (who to credit, and how) or the full ledger as CSV. */
 export const GET = withApi<{ id: string }>(async ({ db, creatorId, req }, { id }) => {
-  const projectId = requireUuid(id, "project");
+  const projectId = requireUuid(id, "Creative Room");
   const { data: p } = await db.from("projects").select("title").eq("id", projectId).maybeSingle();
-  if (!p) throw new DomainError("not_found", "We couldn't find that project.");
+  if (!p) throw new DomainError("not_found", "We couldn't find that Creative Room.");
   const format = req.nextUrl.searchParams.get("format") === "csv" ? "csv" : "txt";
   const body = exportCredits(p.title, await listContributions(db, creatorId, { projectId }), format);
   const name = `${p.title.replace(/[^\p{L}\p{N} _-]+/gu, "").trim().slice(0, 60) || "credits"} credits.${format}`;

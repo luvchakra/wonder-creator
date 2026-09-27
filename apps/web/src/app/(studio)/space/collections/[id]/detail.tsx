@@ -87,7 +87,7 @@ export function CollectionDetail({
                 <Sparkles className="size-4" aria-hidden /> Use in creation
               </Link>
               <Link href={`/create?collection=${c.id}&prompt=${encodeURIComponent(askPrompt)}`} prefetch={false} className={buttonClasses({ variant: "secondary" })}>
-                <MessageCircle className="size-4" aria-hidden /> Ask CreatorBrain
+                <MessageCircle className="size-4" aria-hidden /> Ask CreativeMind
               </Link>
             </>
           ) : null}

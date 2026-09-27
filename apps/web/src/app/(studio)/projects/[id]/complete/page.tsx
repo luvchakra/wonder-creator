@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { CompleteView } from "./complete-view";
 
-export const metadata = { title: "Complete project" };
+export const metadata = { title: "Complete Creative Room" };
 
 export default async function CompleteProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -41,7 +41,7 @@ export default async function CompleteProjectPage({ params }: { params: Promise<
       licenceRequests={licenceRequests.map((l) => ({
         id: l.id,
         artifactId: l.artifact_id,
-        title: (l.artifacts as { title: string } | null)?.title ?? "A piece",
+        title: (l.artifacts as { title: string } | null)?.title ?? "A Creation",
       }))}
     />
   );

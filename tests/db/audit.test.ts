@@ -33,7 +33,7 @@ describe("security & activity history", () => {
     expect(signIn.details).toContainEqual({ label: "Device", value: "Firefox on Linux" });
     expect(entries.find((e) => e.title === "A password confirmation didn't match")?.outcome).toBe("failed");
     const shared = entries.find((e) => e.title === "Made a private link")!;
-    expect(shared.entity).toEqual({ label: "Piece: Private diary poem", href: `/artifacts/${piece}` });
+    expect(shared.entity).toEqual({ label: "Creation: Private diary poem", href: `/artifacts/${piece}` });
     // Licensing comes from the semantic rights history; raw table audits are hidden.
     expect(entries.some((e) => e.category === "rights" && /Editorial Use recorded/.test(e.title))).toBe(true);
     expect(entries.some((e) => e.title === "Account activity")).toBe(false);

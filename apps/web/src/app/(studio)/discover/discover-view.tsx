@@ -78,7 +78,7 @@ export function DiscoverView({
         subtitle={`${project ? `For ${project.title}. ` : ""}Search by what people do and how you know them. Results explain why they're here; nobody is ranked by popularity.`}
       />
 
-      <section aria-label="Ask CreatorBrain" className="rounded-2xl border border-border-soft bg-surface px-4 py-4 sm:px-5">
+      <section aria-label="Ask CreativeMind" className="rounded-2xl border border-border-soft bg-surface px-4 py-4 sm:px-5">
         <form
           className="space-y-3"
           onSubmit={async (e) => {
@@ -100,7 +100,7 @@ export function DiscoverView({
             }
           }}
         >
-          <Field label="Who are you looking for?" htmlFor="discover-ask" hint="For example: “Find three cinematographers in my network who fit this project.”">
+          <Field label="Who are you looking for?" htmlFor="discover-ask" hint="For example: “Find three cinematographers in my network who fit this Creative Room.”">
             <Textarea id="discover-ask" value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={500} className="min-h-16" />
           </Field>
           <Button type="submit" loading={asking} disabled={!ask.trim()}>
@@ -135,7 +135,7 @@ export function DiscoverView({
           </fieldset>
           <label className="flex min-h-11 items-center gap-2 text-[15px] text-ink sm:col-span-2">
             <input type="checkbox" name="network" value="1" defaultChecked={filters.network} className="size-5 accent-[var(--color-accent)]" />
-            Only people I know (crews, Huddles, pieces or follows in common)
+            Only people I know (crews, Huddles, Creations or follows in common)
           </label>
           <div className="sm:col-span-2">
             <Button type="submit">Search</Button>
@@ -156,7 +156,7 @@ export function DiscoverView({
       <section aria-label="People">
         {brain ? (
           <p className="mb-3 text-sm text-ink-muted">
-            CreatorBrain looked for: {brain.summary}.{" "}
+            CreativeMind looked for: {brain.summary}.{" "}
             {brain.offline ? "AI isn't connected, so your request was read with simple rules. " : ""}
             <button type="button" className="font-medium text-accent-ink underline" onClick={() => setBrain(null)}>
               Back to filters
@@ -220,12 +220,12 @@ export function DiscoverView({
             No one matches yet. Try broader words (“photo” finds photographers and photography), or include selective availability.
           </p>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Search by discipline, skill, interest or location — or ask CreatorBrain.</p>
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Search by discipline, skill, interest or location — or ask CreativeMind.</p>
         )}
       </section>
 
       <section aria-label="Shortlist">
-        <h2 className="mb-2 text-lg font-semibold text-ink">{project ? "Shortlist for this project" : "Your shortlist"}</h2>
+        <h2 className="mb-2 text-lg font-semibold text-ink">{project ? "Shortlist for this Creative Room" : "Your shortlist"}</h2>
         <p className="mb-3 text-sm text-ink-muted">Private to you — the people on it aren&rsquo;t told.</p>
         {shortlist.length ? (
           <ul className="space-y-2">

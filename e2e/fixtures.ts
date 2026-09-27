@@ -269,7 +269,7 @@ export async function saveNote(page: Page, text: string): Promise<string> {
 
 /** The CreatorBrain artifact card in CreatorTalk (the one with "Open in Studio"). */
 export function artifactCard(page: Page) {
-  return page.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Open in Studio" }) });
+  return page.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Open in Creative Studio" }) });
 }
 
 /**
@@ -282,15 +282,15 @@ export async function poemFromNote(page: Page, noteText = `The tide keeps our ol
   await page.goto(`/space/materials/${materialId}`);
   await page.getByRole("link", { name: "Use in creation" }).click();
   await expect(page).toHaveURL(new RegExp(`/create\\?material=${materialId}`));
-  const talk = page.getByRole("region", { name: "CreatorTalk" });
+  const talk = page.getByRole("region", { name: "meTalk" });
   await expect(talk.getByText(noteTitle)).toBeVisible(); // attached chip
   await talk.getByLabel("What are you thinking about?").fill("Turn these notes into a poem.");
   await talk.getByRole("button", { name: "Send", exact: true }).click();
   const card = artifactCard(page);
   await expect(card).toBeVisible({ timeout: 45_000 });
-  const href = await card.getByRole("link", { name: "Open in Studio" }).getAttribute("href");
+  const href = await card.getByRole("link", { name: "Open in Creative Studio" }).getAttribute("href");
   const artifactId = /\/artifacts\/([0-9a-f-]{36})\/studio/.exec(href ?? "")?.[1];
-  if (!artifactId) throw new Error(`no artifact link in CreatorTalk (${href})`);
+  if (!artifactId) throw new Error(`no artifact link in meTalk (${href})`);
   return { materialId, noteTitle, artifactId };
 }
 

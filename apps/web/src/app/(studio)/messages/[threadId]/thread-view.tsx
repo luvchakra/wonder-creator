@@ -91,11 +91,11 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
                       href={m.project ? `/projects/${m.project.id}` : `/artifacts/${m.artifact!.id}`}
                       className="mb-1 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-cream px-3 text-sm text-ink hover:underline"
                     >
-                      <Tag className="size-3.5" aria-hidden /> {m.project ? `Project: ${m.project.title}` : `Piece: ${m.artifact!.title}`}
+                      <Tag className="size-3.5" aria-hidden /> {m.project ? `Creative Room: ${m.project.title}` : `Creation: ${m.artifact!.title}`}
                     </Link>
                   ) : null}
                   <p className="whitespace-pre-line break-words">{m.body}</p>
-                  {m.draftedByAi ? <p className="text-xs text-ink-subtle">Drafted with CreatorBrain</p> : null}
+                  {m.draftedByAi ? <p className="text-xs text-ink-subtle">Drafted with CreativeMind</p> : null}
                 </div>
                 {m.mine ? (
                   <Menu>

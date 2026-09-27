@@ -50,14 +50,14 @@ export const signoffSchema = z.object({
 
 function rightsError(e: { code?: string; message?: string }) {
   const msg = e.message ?? "";
-  if (msg.includes("not in project")) return new DomainError("forbidden", "Only people in the project can do that.");
-  if (msg.includes("piece not in project")) return new DomainError("validation", "That piece isn't part of this project.");
-  if (msg.includes("not involved")) return new DomainError("forbidden", "Only people who worked on a piece can make a claim about it.");
+  if (msg.includes("not in project")) return new DomainError("forbidden", "Only people in the Creative Room can do that.");
+  if (msg.includes("piece not in project")) return new DomainError("validation", "That Creation isn't part of this Creative Room.");
+  if (msg.includes("not involved")) return new DomainError("forbidden", "Only people who worked on a Creation can make a claim about it.");
   if (msg.includes("share only")) return new DomainError("validation", "A share only applies to a co-ownership claim.");
-  if (msg.includes("already asserted")) return new DomainError("conflict", "You already have an open claim on this piece. Withdraw it to make a new one.");
+  if (msg.includes("already asserted")) return new DomainError("conflict", "You already have an open claim on this Creation. Withdraw it to make a new one.");
   if (msg.includes("assertion withdrawn")) return new DomainError("conflict", "That claim was withdrawn.");
   if (msg.includes("assertion not found")) return new DomainError("not_found", "We couldn't find that claim.");
-  if (msg.includes("no sign-off needed")) return new DomainError("forbidden", "Your sign-off isn't needed for this piece.");
+  if (msg.includes("no sign-off needed")) return new DomainError("forbidden", "Your sign-off isn't needed for this Creation.");
   if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "You can't do that.");
   return fromDbError(e);
 }
@@ -108,7 +108,7 @@ export async function saveRightsPolicy(db: Db, creatorId: string, projectId: str
     },
     { onConflict: "project_id" },
   );
-  if (error?.code === "42501") throw new DomainError("forbidden", "Only the project's owner can set its rights policy.");
+  if (error?.code === "42501") throw new DomainError("forbidden", "Only the Creative Room's owner can set its rights policy.");
   if (error) throw rightsError(error);
 }
 
@@ -194,7 +194,7 @@ export async function listAssertions(db: Db, viewerId: string, projectId: string
     id: a.id,
     artifact: (a.artifacts as { id: string; title: string } | null) ?? {
       id: a.artifact_id,
-      title: "A piece",
+      title: "A Creation",
     },
     creator: {
       id: a.creator_id,
@@ -282,7 +282,7 @@ export interface RightsEventView {
 }
 
 function describe(event: string, d: Record<string, unknown>, titles: Map<string, string>): string {
-  const piece = typeof d.artifact === "string" ? `“${titles.get(d.artifact) ?? "a piece"}”` : "a piece";
+  const piece = typeof d.artifact === "string" ? `“${titles.get(d.artifact) ?? "a Creation"}”` : "a Creation";
   switch (event) {
     case "policy_updated": {
       const parts = [

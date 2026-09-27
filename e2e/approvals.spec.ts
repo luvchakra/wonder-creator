@@ -22,11 +22,11 @@ test.describe("Approval Center", () => {
     await page.getByRole("link", { name: /2 proposals waiting for your approval/ }).click();
     await expect(page).toHaveURL(/\/approvals$/);
     await expect(page.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible();
-    await expect(page.getByText("CreatorBrain asks before acting on creative generation")).toBeVisible();
+    await expect(page.getByText("CreativeMind asks before acting on creative generation")).toBeVisible();
     await expect(page.getByRole("link", { name: "Change autonomy settings" })).toHaveAttribute("href", "/settings?section=autonomy");
 
     // The detail shows exactly what will run.
-    await page.getByRole("link", { name: new RegExp(`Create a new piece.*${first}`) }).click();
+    await page.getByRole("link", { name: new RegExp(`Create a new Creation.*${first}`) }).click();
     await expect(page).toHaveURL(/\/approvals\/[0-9a-f-]{36}$/);
     const originalUrl = page.url();
     await expect(page.getByText(`Request: Write a poem about ${first}.`)).toBeVisible();
@@ -36,7 +36,7 @@ test.describe("Approval Center", () => {
     // Editing makes a new request that replaces this one.
     await page.getByRole("button", { name: "Edit" }).click();
     const edit = page.getByRole("dialog", { name: "Edit the request" });
-    await edit.getByLabel("Kind of piece").selectOption("story");
+    await edit.getByLabel("Kind of Creation").selectOption("story");
     await edit.getByLabel("Request").fill(`A story about ${first}`);
     await edit.getByRole("button", { name: "Save as new request" }).click();
     await expect(page).not.toHaveURL(originalUrl);
@@ -49,7 +49,7 @@ test.describe("Approval Center", () => {
 
     // The other one is declined with a note.
     await page.goto("/approvals");
-    await page.getByRole("link", { name: new RegExp(`Create a new piece.*${second}`) }).click();
+    await page.getByRole("link", { name: new RegExp(`Create a new Creation.*${second}`) }).click();
     await page.getByRole("button", { name: "Decline" }).click();
     const decline = page.getByRole("dialog", { name: "Decline this?" });
     await decline.getByLabel("Note (optional)").fill("Not this week");
@@ -66,7 +66,7 @@ test.describe("Approval Center", () => {
   });
 });
 
-test.describe("Autonomy approval in CreatorTalk", () => {
+test.describe("Autonomy approval in meTalk", () => {
   test.beforeEach(({ creator }) => void creator);
 
   test("a blocked action asks narrowly, links its detail, and returns to the conversation", async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe("Autonomy approval in CreatorTalk", () => {
     expect(conversationId).toBeTruthy();
 
     await page.goto(`/create?c=${conversationId}`);
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await expect(talk.getByText("I'm asking because creative generation is set to ask first. Approving covers only this.")).toBeVisible();
     await expect(talk.getByRole("link", { name: "Autonomy settings" })).toHaveAttribute("href", "/settings?section=autonomy");
     await talk.getByRole("link", { name: "Details" }).click();

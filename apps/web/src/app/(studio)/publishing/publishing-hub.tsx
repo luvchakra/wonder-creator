@@ -215,7 +215,7 @@ export function PublishingHub({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing waiting. Publish a piece from its page (Publish) to start.</p>
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing waiting. Publish a Creation from its page (Publish) to start.</p>
         )}
       </section>
 
@@ -329,7 +329,7 @@ function PreferencesForm({ preferences, destinations, onSaved }: { preferences: 
   return (
     <section aria-label="Publishing preferences" className="rounded-2xl border border-border-soft bg-surface px-4 py-4 sm:px-5">
       <h2 className="text-lg font-semibold text-ink">Preferences</h2>
-      <p className="text-sm text-ink-muted">These prefill each publication and guide CreatorBrain&rsquo;s suggestions. They never approve or publish anything.</p>
+      <p className="text-sm text-ink-muted">These prefill each publication and guide CreativeMind&rsquo;s suggestions. They never approve or publish anything.</p>
       <form
         className="mt-3 space-y-4"
         onSubmit={async (e) => {
@@ -362,7 +362,7 @@ function PreferencesForm({ preferences, destinations, onSaved }: { preferences: 
           <Input id="pref-tags" value={tags} onChange={(e) => setTags(e.target.value)} maxLength={400} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Preferred time" htmlFor="pref-time" hint="Used when CreatorBrain suggests a schedule.">
+          <Field label="Preferred time" htmlFor="pref-time" hint="Used when CreativeMind suggests a schedule.">
             <Input id="pref-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </Field>
           <Field label="Time zone" htmlFor="pref-tz">
@@ -376,7 +376,7 @@ function PreferencesForm({ preferences, destinations, onSaved }: { preferences: 
             </Select>
           </Field>
         </div>
-        <Field label="Caption style" htmlFor="pref-style" hint="Notes for CreatorBrain, e.g. “short, no emojis, always credit collaborators”.">
+        <Field label="Caption style" htmlFor="pref-style" hint="Notes for CreativeMind, e.g. “short, no emojis, always credit collaborators”.">
           <Textarea id="pref-style" value={style} onChange={(e) => setStyle(e.target.value)} maxLength={500} className="min-h-16" />
         </Field>
         {error ? (

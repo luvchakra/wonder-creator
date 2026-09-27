@@ -81,10 +81,10 @@ export function assessIntent(
 
   const consequential = CONSEQUENTIAL.filter(([r]) => r.test(text)).map(([, c]) => c);
 
-  const label = type ? artifactType(type).label.toLowerCase() : "piece";
+  const label = type ? artifactType(type).label.toLowerCase() : "Creation";
   const safe = [
     ctx.usualVoice ? `In your usual voice (${ctx.usualVoice}).` : "In your usual voice and style.",
-    !missing.includes("length") ? `A first-draft length that suits a ${label}; you can extend it in the Studio.` : null,
+    !missing.includes("length") ? `A first-draft length that suits a ${label}; you can extend it in the Creative Studio.` : null,
     "Saved as a private draft (v1). Nothing is shared or published.",
   ].filter((x): x is string => !!x);
 

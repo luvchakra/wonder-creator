@@ -173,7 +173,7 @@ export async function getAutonomy(db: Db, creatorId: string): Promise<Record<Aut
 export async function setAutonomy(db: Db, creatorId: string, domain: AutonomyDomain, level: AutonomyLevel) {
   const clamped = clampLevel(domain, level);
   if (clamped !== level) {
-    throw new DomainError("validation", "CreatorBrain can't act on its own here. The most it can do is ask for your approval.");
+    throw new DomainError("validation", "CreativeMind can't act on its own here. The most it can do is ask for your approval.");
   }
   const res = await db.from("creator_autonomy_policies").update({ level }).eq("creator_id", creatorId).eq("domain", domain);
   if (res.error) throw fromDbError(res.error);

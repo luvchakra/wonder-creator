@@ -6,7 +6,7 @@ import { SharedPieceView } from "@/components/shared-piece";
 import { createClient } from "@/lib/supabase/server";
 
 // Private links are never indexed, and the token never leaves in a Referer header.
-export const metadata: Metadata = { title: "Shared piece", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: "Shared Creation", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function SharedLinkPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

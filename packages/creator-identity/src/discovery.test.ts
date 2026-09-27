@@ -24,7 +24,7 @@ describe("collaborator discovery", () => {
       "Lists Cinematography as a discipline",
       "Interested in Monsoon light",
       "Based in Goa",
-      "You've worked together on 2 pieces",
+      "You've worked together on 2 Creations",
       "You've met in 1 Huddle",
       "You follow each other",
       "Open to collaborate",

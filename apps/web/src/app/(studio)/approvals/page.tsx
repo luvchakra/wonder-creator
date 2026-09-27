@@ -24,14 +24,14 @@ export default async function ApprovalsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle title="Approvals" subtitle="What CreatorBrain wants to do, waiting on your OK. Nothing here happens until you approve it." />
+      <PageTitle title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
 
       <section aria-labelledby="pending-h" className="space-y-6">
         <h2 id="pending-h" className="sr-only">
           Waiting for you
         </h2>
         {pending.length === 0 ? (
-          <EmptyState title="Nothing waiting" body="When CreatorBrain needs your OK before acting, it shows up here with exactly what it will do." />
+          <EmptyState title="Nothing waiting" body="When CreativeMind needs your OK before acting, it shows up here with exactly what it will do." />
         ) : null}
         {urgent.length ? <Group title="Expiring soon" items={urgent} /> : null}
         {[...byDomain].map(([domain, items]) => (
@@ -44,7 +44,7 @@ export default async function ApprovalsPage() {
           Your autonomy settings
         </h2>
         <p className="mt-1 text-[15px] text-ink-muted">
-          {asking.length ? `CreatorBrain asks before acting on ${asking.map((d) => d.label.toLowerCase()).join(", ")}.` : "No areas are set to ask for approval."} Rights, commerce and destructive actions can never run on their own.
+          {asking.length ? `CreativeMind asks before acting on ${asking.map((d) => d.label.toLowerCase()).join(", ")}.` : "No areas are set to ask for approval."} Rights, commerce and destructive actions can never run on their own.
         </p>
         <details className="mt-3">
           <summary className="min-h-11 cursor-pointer py-2 text-[15px] font-medium text-accent-ink">See every area</summary>

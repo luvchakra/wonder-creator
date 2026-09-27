@@ -97,7 +97,7 @@ export function Talk({
         const res = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId, ...body }) });
         if (!res.ok || !res.body) {
           const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-          throw new Error(j?.error?.message ?? "CreatorBrain didn't respond. Please try again.");
+          throw new Error(j?.error?.message ?? "CreativeMind didn't respond. Please try again.");
         }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -228,9 +228,9 @@ export function Talk({
         </ul>
       </aside>
 
-      <section className="flex min-h-[70dvh] min-w-0 flex-col" aria-label="CreatorTalk">
+      <section className="flex min-h-[70dvh] min-w-0 flex-col" aria-label="meTalk">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="font-display text-2xl text-ink sm:text-3xl">{conversation?.title ?? (empty ? "CreatorTalk" : "New conversation")}</h1>
+          <h1 className="font-display text-2xl text-ink sm:text-3xl">{conversation?.title ?? (empty ? "meTalk" : "New conversation")}</h1>
           <div className="flex gap-2 lg:hidden">
             <Link href="/create" className={buttonClasses({ variant: "secondary", size: "sm" })}>
               New
@@ -242,7 +242,7 @@ export function Talk({
         </div>
         {offline ? (
           <p className="mb-4 rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-2.5 text-sm text-warning-ink">
-            CreatorBrain is in offline development mode: drafts are deterministic placeholders, not real AI writing. Connect Claude to create for real.
+            CreativeMind is in offline development mode: drafts are deterministic placeholders, not real AI writing. Connect Claude to create for real.
           </p>
         ) : null}
 
@@ -289,7 +289,7 @@ export function Talk({
             <li className="flex gap-3" role="status">
               <BrainDot />
               <div className="rounded-2xl bg-surface px-4 py-3 text-sm text-ink-muted shadow-[var(--shadow-card)]">
-                <p className="font-medium text-ink">CreatorBrain is working…</p>
+                <p className="font-medium text-ink">CreativeMind is working…</p>
                 <ul className="mt-1 space-y-0.5">
                   {(progress.length ? progress : ["Reading what you shared"]).map((p, i, arr) => (
                     <li key={p} className="flex items-center gap-2">
@@ -342,12 +342,12 @@ export function Talk({
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
               {projectCtx && conversationId ? (
                 <Link href={`/projects/${projectCtx.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-accent-ink hover:underline">
-                  Project: {projectCtx.title}
+                  Creative Room: {projectCtx.title}
                 </Link>
               ) : projectCtx ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
-                  In project: {projectCtx.title}
-                  <button type="button" onClick={() => setProjectCtx(null)} aria-label="Don't add this conversation to the project" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                  In Creative Room: {projectCtx.title}
+                  <button type="button" onClick={() => setProjectCtx(null)} aria-label="Don't add this conversation to the Creative Room" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
@@ -355,7 +355,7 @@ export function Talk({
               {artifactCtx ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
                   Working on: {artifactCtx.title}
-                  <button type="button" onClick={() => setArtifactCtx(null)} aria-label="Stop working on this piece" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                  <button type="button" onClick={() => setArtifactCtx(null)} aria-label="Stop working on this Creation" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
@@ -441,7 +441,7 @@ function MessageView({
     <li className="flex gap-3">
       <BrainDot />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-ink-subtle">CreatorBrain</p>
+        <p className="text-xs font-medium text-ink-subtle">CreativeMind</p>
         {m.kind === "error" ? (
           <p className="mt-1 flex items-start gap-2 rounded-2xl bg-danger-soft px-4 py-3 text-[15px] text-ink">
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden /> {m.content}
@@ -492,12 +492,12 @@ function MessageView({
           <div className="mt-3 rounded-2xl border border-border-soft bg-surface p-4 shadow-[var(--shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs text-ink-subtle">{typeof p.artifactType === "string" ? artifactType(p.artifactType).label : "Your piece"}</p>
-                <p className="font-display text-xl text-ink">{(p.title as string) ?? "Updated piece"}</p>
+                <p className="text-xs text-ink-subtle">{typeof p.artifactType === "string" ? artifactType(p.artifactType).label : "Your Creation"}</p>
+                <p className="font-display text-xl text-ink">{(p.title as string) ?? "Updated Creation"}</p>
               </div>
               <div className="flex gap-2">
                 <Link href={`/artifacts/${p.artifactId}/studio`} className={buttonClasses({ size: "sm" })}>
-                  Open in Studio
+                  Open in Creative Studio
                 </Link>
                 <Link href={`/artifacts/${p.artifactId}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
                   View <ArrowUpRight className="size-4" aria-hidden />

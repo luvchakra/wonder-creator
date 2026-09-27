@@ -16,7 +16,7 @@ test.describe("Publication derivatives", () => {
     await page.getByRole("button", { name: "Make youtube description" }).click();
     await expect(page.getByText(/for YouTube\. Review it before publishing/).first()).toBeVisible();
 
-    const made = page.getByRole("region", { name: "Derivatives of this piece" }).getByRole("listitem").filter({ hasText: "Video Description" }).first();
+    const made = page.getByRole("region", { name: "Derivatives of this Creation" }).getByRole("listitem").filter({ hasText: "Video Description" }).first();
     await expect(made).toContainText("For YouTube");
     await expect(made).toContainText("from v2");
     await expect(made).toContainText("Not published yet.");

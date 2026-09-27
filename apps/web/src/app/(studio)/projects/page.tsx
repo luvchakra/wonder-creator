@@ -7,7 +7,7 @@ import { ProjectCard } from "@/components/project-card";
 import { requireSession } from "@/lib/session";
 import { NewProjectButton } from "./new-project";
 
-export const metadata = { title: "Projects" };
+export const metadata = { title: "Creative Rooms" };
 
 const FILTERS = [{ key: "open", label: "All" }, ...PROJECT_STATUSES.map((s) => ({ key: s, label: PROJECT_STATUS_LABEL[s] }))] as const;
 
@@ -20,7 +20,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageTitle title="My Projects" subtitle="Bring material, pieces, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
+      <PageTitle title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
       {invites.length ? (
         <section aria-label="Crew invitations" className="mb-6 space-y-2">
           {invites.map((i) => (
@@ -39,7 +39,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           ))}
         </section>
       ) : null}
-      <nav aria-label="Filter projects" className="-mx-4 mb-6 overflow-x-auto px-4">
+      <nav aria-label="Filter Creative Rooms" className="-mx-4 mb-6 overflow-x-auto px-4">
         <ul className="flex gap-2">
           {FILTERS.map((f) => (
             <li key={f.key}>
@@ -68,8 +68,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       ) : (
         <EmptyState
           image={BACKGROUNDS.botanicalLeaves}
-          title={status === "open" ? "No projects yet" : `No ${PROJECT_STATUS_LABEL[status as ProjectStatus].toLowerCase()} projects`}
-          body={status === "open" ? "A project gathers what belongs to one piece of work — your material, pieces, conversations and Huddles — without moving or copying any of it." : "Projects with this status will appear here."}
+          title={status === "open" ? "No Creative Rooms yet" : `No ${PROJECT_STATUS_LABEL[status as ProjectStatus].toLowerCase()} Creative Rooms`}
+          body={status === "open" ? "A Creative Room gathers what belongs to one piece of work — your material, Creations, conversations and Huddles — without moving or copying any of it." : "Creative Rooms with this status will appear here."}
           action={status === "open" ? <NewProjectButton /> : undefined}
         />
       )}

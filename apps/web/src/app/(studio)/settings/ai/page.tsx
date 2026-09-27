@@ -27,7 +27,7 @@ export default async function AiProvidersPage() {
       <Link href="/settings" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
         ← Settings
       </Link>
-      <PageTitle title="AI Providers" subtitle="Which AI model CreatorBrain uses for you, and your own keys if you'd like to use them." />
+      <PageTitle title="AI Providers" subtitle="Which AI model CreativeMind uses for you, and your own keys if you'd like to use them." />
       <AiProviders
         providers={BYOK_PROVIDERS.map((p) => ({ id: p.id, name: p.name, keyLabel: p.keyLabel, keyHelp: p.keyHelp, dataUse: p.dataUse }))}
         initialKeys={keys}

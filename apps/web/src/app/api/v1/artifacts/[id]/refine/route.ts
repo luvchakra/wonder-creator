@@ -9,5 +9,5 @@ const schema = z.object({ instruction: z.string().trim().min(1).max(2000), actio
 
 export const POST = withApi<{ id: string }>(async ({ db, creatorId, req, requestId }, { id }) => {
   const b = schema.parse(await readJson(req));
-  return refine(await brainDeps(db, creatorId, { correlationId: requestId }), { artifactId: requireUuid(id, "piece"), instruction: b.instruction, action: b.action ?? null });
+  return refine(await brainDeps(db, creatorId, { correlationId: requestId }), { artifactId: requireUuid(id, "Creation"), instruction: b.instruction, action: b.action ?? null });
 }, { rateLimit: 20, reindex: true });

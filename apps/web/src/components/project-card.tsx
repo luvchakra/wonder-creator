@@ -20,7 +20,7 @@ export function ProjectCard({ p, className }: { p: Card; className?: string }) {
       </div>
       <div className="px-1 pt-2">
         <p className="line-clamp-1 font-medium text-ink">{p.title}</p>
-        {p.owner ? <p className="line-clamp-1 text-sm text-accent-ink">Crew · {p.owner.name}&rsquo;s project</p> : null}
+        {p.owner ? <p className="line-clamp-1 text-sm text-accent-ink">Crew · {p.owner.name}&rsquo;s Creative Room</p> : null}
         <p className="line-clamp-1 text-sm text-ink-muted">{inside.length ? inside.join(" · ") : p.brief || "Nothing added yet"}</p>
       </div>
     </Link>

@@ -3,10 +3,10 @@ import { expect, test, uid, type Page } from "./fixtures";
 async function newPiece(page: Page, title: string): Promise<string> {
   await page.goto("/space");
   await page.getByRole("button", { name: "New", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Start a new piece" });
-  await dialog.getByLabel("Kind of piece").selectOption({ label: "Poem" });
+  const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
+  await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
   await dialog.getByLabel("Title").fill(title);
-  await dialog.getByRole("button", { name: "Open Studio" }).click();
+  await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
   await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
   await page.getByLabel("Poem text").fill("Salt on the window;\nthe harbour hums.");
   await page.getByRole("button", { name: "Save", exact: true }).click();

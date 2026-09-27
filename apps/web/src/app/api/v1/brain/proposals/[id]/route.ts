@@ -10,7 +10,7 @@ const body = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("approve") }),
   z.object({ decision: z.literal("reject"), note: z.string().trim().max(500).optional() }),
   z.object({ decision: z.literal("cancel") }),
-  z.object({ decision: z.literal("edit"), artifactType: z.string().refine(isKnownArtifactType, "Choose a kind of piece.").optional(), instruction: z.string().trim().min(1).max(4000).optional() }),
+  z.object({ decision: z.literal("edit"), artifactType: z.string().refine(isKnownArtifactType, "Choose a kind of Creation.").optional(), instruction: z.string().trim().min(1).max(4000).optional() }),
 ]);
 
 /**

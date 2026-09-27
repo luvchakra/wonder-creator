@@ -105,7 +105,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             ))}
           </ul>
         ) : (
-          <EmptyState image={BACKGROUNDS.studioDesk} title={isMe ? "Nothing to show yet" : "No public work yet"} body={isMe ? "Mark a piece as final and public to share it on your profile." : "When this creator shares finished work, it will appear here."} />
+          <EmptyState image={BACKGROUNDS.studioDesk} title={isMe ? "Nothing to show yet" : "No public work yet"} body={isMe ? "Mark a Creation as final and public to share it on your profile." : "When this creator shares finished work, it will appear here."} />
         )}
       </section>
 

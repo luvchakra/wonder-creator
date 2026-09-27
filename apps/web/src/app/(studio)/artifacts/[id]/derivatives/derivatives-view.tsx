@@ -37,7 +37,7 @@ export function DerivativesView({
       <Link href={`/artifacts/${source.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> {source.title}
       </Link>
-      <PageTitle title="Derivatives" subtitle="Platform adaptations are pieces in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
+      <PageTitle title="Derivatives" subtitle="Platform adaptations are Creations in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
 
       <section aria-label="Source" className="rounded-2xl border border-border-soft bg-surface px-4 py-3">
         <p className="text-sm text-ink-subtle">Source</p>
@@ -101,12 +101,12 @@ export function DerivativesView({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-ink-muted">No platform adaptations suit this kind of piece yet.</p>
+          <p className="text-sm text-ink-muted">No platform adaptations suit this kind of Creation yet.</p>
         )}
       </section>
 
-      <section aria-label="Derivatives of this piece">
-        <h2 className="mb-3 text-lg font-semibold text-ink">Made from this piece</h2>
+      <section aria-label="Derivatives of this Creation">
+        <h2 className="mb-3 text-lg font-semibold text-ink">Made from this Creation</h2>
         {derivatives.length ? (
           <ul className="space-y-3">
             {derivatives.map((d) => (
@@ -149,7 +149,7 @@ export function DerivativesView({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing made from this piece yet.</p>
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing made from this Creation yet.</p>
         )}
       </section>
     </div>

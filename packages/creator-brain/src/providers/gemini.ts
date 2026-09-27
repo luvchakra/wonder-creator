@@ -125,9 +125,9 @@ function sanitizeSchema(node: unknown): unknown {
   return out;
 }
 
-const unexpected = (cause?: unknown) => new DomainError("provider_failed", "CreatorBrain returned something unexpected. Please try again.", { cause });
-const noResponse = (cause?: unknown) => new DomainError("provider_failed", "CreatorBrain didn't respond. Nothing was changed; please try again.", { cause });
-const declined = () => new DomainError("provider_failed", "CreatorBrain can't help with that particular request. Try rephrasing or choosing different material.");
+const unexpected = (cause?: unknown) => new DomainError("provider_failed", "CreativeMind returned something unexpected. Please try again.", { cause });
+const noResponse = (cause?: unknown) => new DomainError("provider_failed", "CreativeMind didn't respond. Nothing was changed; please try again.", { cause });
+const declined = () => new DomainError("provider_failed", "CreativeMind can't help with that particular request. Try rephrasing or choosing different material.");
 
 async function errorFor(res: Response): Promise<DomainError> {
   let detail = "";
@@ -137,11 +137,11 @@ async function errorFor(res: Response): Promise<DomainError> {
     /* body is not JSON */
   }
   const cause = new Error(`Gemini API ${res.status}: ${detail.slice(0, 500)}`);
-  if (res.status === 429) return new DomainError("provider_unavailable", "CreatorBrain is busy right now. Please try again in a moment.", { cause });
+  if (res.status === 429) return new DomainError("provider_unavailable", "CreativeMind is busy right now. Please try again in a moment.", { cause });
   if (res.status === 401 || res.status === 403 || detail.includes("API_KEY_INVALID")) {
-    return new DomainError("provider_unavailable", "CreatorBrain isn't available right now.", { cause });
+    return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause });
   }
-  if (res.status === 400) return new DomainError("provider_failed", "CreatorBrain couldn't work with that request.", { cause });
+  if (res.status === 400) return new DomainError("provider_failed", "CreativeMind couldn't work with that request.", { cause });
   return noResponse(cause);
 }
 
@@ -359,7 +359,7 @@ export class GeminiProvider implements CreativeModelProvider {
     }
     if (file.state === "FAILED") {
       await this.deleteFile(file.name);
-      throw new DomainError("provider_failed", "CreatorBrain couldn't read this recording. The original is saved.");
+      throw new DomainError("provider_failed", "CreativeMind couldn't read this recording. The original is saved.");
     }
     return { name: file.name, uri: file.uri! };
   }

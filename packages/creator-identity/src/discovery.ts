@@ -98,13 +98,13 @@ export function explainCandidate(c: Pick<CollaboratorCard, "disciplines" | "skil
   }
   if (s.interestMatch && q.interest) out.push(`Interested in ${c.interests.find((i) => i.toLowerCase().includes(q.interest!.toLowerCase())) ?? q.interest}`);
   if (s.locationMatch && c.location) out.push(`Based in ${c.location}`);
-  if (s.workedTogether) out.push(`You've worked together on ${plural(s.workedTogether, "piece")}`);
+  if (s.workedTogether) out.push(`You've worked together on ${plural(s.workedTogether, "Creation")}`);
   if (s.sharedCrews) out.push(`You've been in ${plural(s.sharedCrews, "crew")} together`);
   if (s.metInHuddles) out.push(`You've met in ${plural(s.metInHuddles, "Huddle")}`);
   if (s.iFollow && s.followsMe) out.push("You follow each other");
   else if (s.iFollow) out.push("You follow them");
   else if (s.followsMe) out.push("They follow you");
-  if (s.publishedPieces) out.push(`Has published ${plural(s.publishedPieces, "piece")}`);
+  if (s.publishedPieces) out.push(`Has published ${plural(s.publishedPieces, "Creation")}`);
   out.push(AVAILABILITY_LABEL[c.availability]);
   return out;
 }

@@ -168,7 +168,7 @@ export function describeRightsEvent(event: string, d: Record<string, unknown>): 
       return { title: `Sharing changed: ${parts.join(", ") || "updated"}`, kind: "publication" };
     }
     case "derivative.created":
-      return { title: d.by_self ? "You made a derivative of this piece" : "Another creator made a derivative of this piece (with your permission)", kind: "derivative", derivativeId: d.by_self ? String(d.derivative_id) : undefined };
+      return { title: d.by_self ? "You made a derivative of this Creation" : "Another creator made a derivative of this Creation (with your permission)", kind: "derivative", derivativeId: d.by_self ? String(d.derivative_id) : undefined };
     default:
       // Events recorded before semantic history ("rights_records.update" etc.).
       return { title: `Rights record changed (${event.replace(/_/g, " ").replace(".", " · ")})`, kind: event.startsWith("licenses") ? "license" : "rights" };
@@ -183,14 +183,14 @@ export const licenseRequestSchema = z.object({ proposedUse: z.string().trim().mi
 /** Ask the owner of a piece you can see for a license. RLS checks you can read it and don't own it. */
 export async function requestLicense(db: Db, creatorId: string, artifactId: string, raw: unknown) {
   const input = licenseRequestSchema.parse(raw);
-  const art = must(await db.from("artifacts").select("id, creator_id").eq("id", artifactId).maybeSingle(), "We couldn't find that piece.");
-  if (art.creator_id === creatorId) throw new DomainError("validation", "This is your own piece — add a license from its Rights tab instead.");
+  const art = must(await db.from("artifacts").select("id, creator_id").eq("id", artifactId).maybeSingle(), "We couldn't find that Creation.");
+  if (art.creator_id === creatorId) throw new DomainError("validation", "This is your own Creation — add a license from its Rights tab instead.");
   const res = await db
     .from("license_requests")
     .insert({ artifact_id: artifactId, owner_creator_id: art.creator_id, requester_creator_id: creatorId, proposed_use: input.proposedUse, terms: termsToRecord(input.terms) as NonNullable<Json> })
     .select("*")
     .single();
-  if (res.error?.code === "23505") throw new DomainError("conflict", "You already have an open request for this piece.");
+  if (res.error?.code === "23505") throw new DomainError("conflict", "You already have an open request for this Creation.");
   return must(res);
 }
 

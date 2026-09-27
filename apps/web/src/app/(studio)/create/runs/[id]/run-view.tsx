@@ -22,7 +22,7 @@ const FAILURE_TEXT: Record<string, string> = {
   provider_unavailable: "The AI service isn't available right now. Your material and request are saved, so you can try again once it's back.",
   provider_failed: "The AI service didn't return a usable result this time. Trying again usually works.",
   rate_limited: "Too many requests at once. Wait a moment, then try again.",
-  forbidden: "Your autonomy settings don't allow CreatorBrain to do this on its own.",
+  forbidden: "Your autonomy settings don't allow CreativeMind to do this on its own.",
   cancelled: "You stopped this run before it saved anything.",
   interrupted: "This run stopped unexpectedly (the server was interrupted). Nothing was saved from it.",
   validation: "Something about the request wasn't valid.",
@@ -64,7 +64,7 @@ export function RunView({ initial, providerLive }: { initial: RunProgress; provi
           {p.run.cancelRequested && running ? " · stopping after this step" : ""}
         </p>
         <h1 className="font-display text-3xl text-ink">{running ? (current?.label ?? "Getting started") : p.run.status === "succeeded" ? "Your draft is ready" : "This run didn't finish"}</h1>
-        {running ? <p className="mt-1 text-ink-muted">You can leave this page — CreatorBrain keeps working, and the result appears in your conversation.</p> : null}
+        {running ? <p className="mt-1 text-ink-muted">You can leave this page — CreativeMind keeps working, and the result appears in your conversation.</p> : null}
       </header>
 
       {!providerLive && (running || p.run.failureCode === "provider_unavailable") ? (
@@ -100,7 +100,7 @@ export function RunView({ initial, providerLive }: { initial: RunProgress; provi
         {p.artifact ? (
           <>
             <Link href={`/artifacts/${p.artifact.id}/studio`} className={buttonClasses({})}>
-              Open “{p.artifact.title}” in the Studio
+              Open “{p.artifact.title}” in the Creative Studio
             </Link>
             <Link href={`/artifacts/${p.artifact.id}`} className={buttonClasses({ variant: "secondary" })}>
               View <ArrowUpRight className="size-4" aria-hidden />

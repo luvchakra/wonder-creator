@@ -38,8 +38,8 @@ afterAll(cleanupTestCreators);
 
 describe("collaborators", () => {
   it("only the owner adds and changes collaborators; outsiders see nothing", async () => {
-    await expect(addCollaborator(db(pia), pia.creatorId, piece, { creatorId: out.creatorId, role: "Friend" })).rejects.toThrow(/Only the piece's owner/);
-    await expect(updateCollaborator(db(pia), pia.creatorId, piece, { creatorId: pia.creatorId, access: "edit" })).rejects.toThrow(/Only the piece's owner/);
+    await expect(addCollaborator(db(pia), pia.creatorId, piece, { creatorId: out.creatorId, role: "Friend" })).rejects.toThrow(/Only the Creation's owner/);
+    await expect(updateCollaborator(db(pia), pia.creatorId, piece, { creatorId: pia.creatorId, access: "edit" })).rejects.toThrow(/Only the Creation's owner/);
     expect(await getCollaboration(db(out), out.creatorId, piece)).toBeNull();
     const view = (await getCollaboration(db(cam), cam.creatorId, piece))!;
     expect(view.access).toBe("comment");
