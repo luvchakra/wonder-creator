@@ -1,6 +1,6 @@
 import { getMaterial, listCollections, listShelves, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { notFound } from "next/navigation";
-import { PaletteActions } from "@/components/creative-palette";
+import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { MaterialDetail } from "./detail";
 
@@ -9,7 +9,7 @@ export const metadata = { title: "Material" };
 export default async function MaterialPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const { db } = await requireSession();
+  const { db, creator } = await requireSession();
   const m = await getMaterial(db, id).catch(() => null);
   if (!m) notFound();
   const [url, shelves, intake, usedIn, collections, memberships, similar] = await Promise.all([
@@ -31,15 +31,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const related = (m.title ?? "").trim().slice(0, 60);
   return (
     <>
-      <PaletteActions
-        title="This Material"
-        actions={[
-          { key: "create", label: "Create with this", href: `/create?material=${id}`, icon: "spark" },
-          { key: "explore", label: "Explore possibilities", href: "/create/discover", icon: "compass" },
-          ...(related ? [{ key: "related", label: "Find related", href: `/search?q=${encodeURIComponent(related)}` }] : []),
-          { key: "collections", label: "Collections", href: "/space?tab=collections", icon: "images" as const },
-        ]}
-      />
+      <PaletteScope context={{ page: "material", entityType: m.type === "image" || m.type === "sketch" ? "photo" : m.type === "voice" || m.type === "audio" ? "audio" : m.type === "video" ? "video" : m.type === "url" ? "link" : m.type === "document" || m.type === "pdf" ? "document" : "note", permissions: m.creator_id === creator.id ? ["edit"] : [], ids: { materialId: id }, facts: { related: related || null } }} />
       <MaterialDetail
         m={{
           id: m.id,

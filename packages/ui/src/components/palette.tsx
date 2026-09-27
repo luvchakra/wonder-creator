@@ -12,6 +12,10 @@ export interface PaletteItem {
   /** Short hint shown under the label (optional). */
   hint?: string;
   current?: boolean;
+  /** Opens a sub-view (More…, Go to…, Create) instead of acting, so the Palette stays open. */
+  keepOpen?: boolean;
+  /** Visually quieter (More…, Go to…, Back). */
+  quiet?: boolean;
   onSelect: () => void;
 }
 
@@ -19,6 +23,8 @@ export interface PaletteGroup {
   key: string;
   /** Visible group label (e.g. "This Creation"); omitted for the main destinations. */
   label?: string;
+  /** Accessible name when there's no visible label. */
+  srLabel?: string;
   items: PaletteItem[];
 }
 
@@ -27,7 +33,12 @@ export interface PaletteGroup {
  * right (safe-area aware) opens a fan of menu "leaves" — destinations, quick actions and whatever the current screen
  * offers. It traps focus, closes on Escape, outside tap or the trigger, and respects reduced motion.
  */
-export function Palette({ groups, open, onOpenChange, className }: { groups: PaletteGroup[]; open: boolean; onOpenChange: (open: boolean) => void; className?: string }) {
+export function Palette({ groups, open, onOpenChange, className, announce }: { groups: PaletteGroup[]; open: boolean; onOpenChange: (open: boolean) => void; className?: string; announce?: string }) {
+  // Switching views (More…, Go to…, Create) keeps focus inside, on the first new action.
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (open) contentRef.current?.querySelector<HTMLElement>("[data-palette-item]")?.focus();
+  }, [open, announce]);
   let index = 0;
   const total = groups.reduce((n, g) => n + g.items.length, 0);
   // Leaves arc away from the corner: the ones nearest the trigger sit furthest right.
@@ -38,8 +49,10 @@ export function Palette({ groups, open, onOpenChange, className }: { groups: Pal
         aria-label={open ? "Close Creative Palette" : "Open Creative Palette"}
         className={cn(
           "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-40 inline-flex size-[3.75rem] items-center justify-center rounded-full",
-          "border border-border-soft bg-surface text-accent shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none",
-          open && "z-[55]",
+          // No disc behind the painted palette (owner's request): the artwork is the button. The close state keeps a small
+          // surface so the X stays legible over the dimmed page.
+          "text-accent transition-transform hover:scale-[1.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none",
+          open && "z-[55] border border-border-soft bg-surface shadow-[var(--shadow-lift)]",
           className,
         )}
       >
@@ -48,12 +61,13 @@ export function Palette({ groups, open, onOpenChange, className }: { groups: Pal
           <X className="size-6 text-ink" aria-hidden />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={KIT.paletteButton.svg} alt="" aria-hidden width={44} height={44} fetchPriority="high" draggable={false} className="size-11 select-none" />
+          <img src={KIT.paletteButton.svg} alt="" aria-hidden width={56} height={56} fetchPriority="high" draggable={false} className="size-14 select-none drop-shadow-[0_4px_10px_rgb(107_91_149/0.28)]" />
         )}
       </D.Trigger>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-[45] bg-cream/55 backdrop-blur-[3px] motion-safe:data-[state=open]:animate-[fade-in_180ms_ease-out]" />
         <D.Content
+          ref={contentRef}
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => {
             // Focus the first leaf rather than the container.
@@ -67,12 +81,12 @@ export function Palette({ groups, open, onOpenChange, className }: { groups: Pal
         >
           <D.Title className="sr-only">Creative Palette</D.Title>
           <p className="sr-only" aria-live="polite">
-            Creative Palette opened
+            {announce ?? "Creative Palette opened"}
           </p>
           {groups.map((g, gi) => (
-            <nav key={g.key} aria-label={g.label ?? "Destinations"} className={cn("flex w-full flex-col items-end gap-1.5", gi > 0 && "mt-3 border-t border-border-soft/80 pt-3")}>
-              {g.label ? <p className="mr-3 text-xs font-medium uppercase tracking-[0.12em] text-ink-subtle">{g.label}</p> : null}
-              <ul className="flex w-full flex-col items-end gap-1.5">
+            <nav key={g.key} aria-label={g.label ?? g.srLabel ?? "Destinations"} className={cn("flex w-full flex-col items-end", gi > 0 && "mt-1.5 border-t border-border-soft/80 pt-1.5")}>
+              {g.label ? <p className="mr-3 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-subtle">{g.label}</p> : null}
+              <ul className="flex w-full flex-col items-end">
                 {g.items.map((item) => {
                   const i = index++;
                   return (
@@ -82,21 +96,29 @@ export function Palette({ groups, open, onOpenChange, className }: { groups: Pal
                         data-palette-item
                         aria-current={item.current ? "page" : undefined}
                         onClick={() => {
-                          onOpenChange(false);
+                          if (!item.keepOpen) onOpenChange(false);
                           item.onSelect();
                         }}
-                        style={{ animationDelay: `${i * 25}ms` }}
+                        // Palette reveal (interaction-minimalism §6.3): a soft fan with minimal stagger, finished within 280ms.
+                        style={{ animationDelay: `${Math.min(i * 10, 80)}ms` }}
                         className={cn(
-                          "ml-auto flex min-h-12 w-full max-w-[17rem] items-center gap-3 rounded-full border px-4 text-left shadow-[var(--shadow-card)] transition-colors",
-                          "motion-safe:animate-[palette-leaf_260ms_cubic-bezier(0.2,0.9,0.3,1.05)_both]",
-                          item.current ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-border-soft bg-surface text-ink hover:bg-accent-softer",
-                          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                          // Compact (density spec §15): a 36–40px leaf inside a 44px hit target.
+                          "group ml-auto flex min-h-11 w-full max-w-[16rem] items-center rounded-full text-left focus-visible:outline-none",
+                          "motion-safe:animate-[palette-leaf_200ms_cubic-bezier(0.2,0.8,0.3,1)_both]",
                         )}
                       >
-                        {item.icon ? <span className="inline-flex size-6 shrink-0 items-center justify-center text-accent">{item.icon}</span> : null}
-                        <span className="min-w-0">
-                          <span className="block text-[15px] font-medium">{item.label}</span>
-                          {item.hint ? <span className="block truncate text-xs text-ink-muted">{item.hint}</span> : null}
+                        <span
+                          className={cn(
+                            "flex min-h-[38px] w-full items-center gap-2.5 rounded-full border px-3.5 py-1 shadow-[var(--shadow-card)] transition-colors",
+                            item.current ? "border-accent/40 bg-accent-soft text-accent-ink" : item.quiet ? "border-transparent bg-surface/85 text-ink-muted group-hover:bg-accent-softer" : "border-border-soft bg-surface text-ink group-hover:bg-accent-softer",
+                            "group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-accent",
+                          )}
+                        >
+                          {item.icon ? <span className="inline-flex size-5 shrink-0 items-center justify-center text-accent">{item.icon}</span> : null}
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium leading-tight">{item.label}</span>
+                            {item.hint ? <span className="block truncate text-xs leading-tight text-ink-muted">{item.hint}</span> : null}
+                          </span>
                         </span>
                       </button>
                     </li>

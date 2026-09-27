@@ -1,7 +1,7 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
-import { PaletteActions, type ContextAction } from "@/components/creative-palette";
+import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
@@ -49,38 +49,15 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const refEdges = await db.from("lineage_edges").select("source_id, relationship").eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material");
   const referenceIds = new Set((refEdges.data ?? []).filter((e) => e.relationship === "references").map((e) => e.source_id));
 
-  const base = `/artifacts/${id}`;
-  const finished = artifact.status === "final" || artifact.status === "published";
-  const paletteActions: ContextAction[] = !isOwner
-    ? [
-        { key: "people", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
-        { key: "versions", label: "Versions", href: `${base}?tab=versions` },
-        { key: "context", label: "Context", hint: "Materials, people, related", href: `${base}/context`, icon: "compass" },
-      ]
-    : finished
-      ? [
-          { key: "from", label: "Create from this", hint: "Trailer, carousel, post…", href: `${base}/derivatives`, icon: "spark" },
-          { key: "transform", label: "Transform", hint: "Into a new form", href: `${base}/transform`, icon: "pen" },
-          { key: "share", label: "Share", href: `${base}/share` },
-          { key: "publish", label: "Publish", href: `${base}/publish` },
-          { key: "license", label: "License", href: `${base}?tab=rights` },
-          { key: "collaborate", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
-          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
-          { key: "context", label: "Context", hint: "Materials, people, lineage", href: `${base}/context`, icon: "compass" },
-        ]
-      : [
-          { key: "refine", label: "Refine", hint: "Open the Creative Studio", href: `${base}/studio`, icon: "pen" },
-          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/transform`, icon: "spark" },
-          { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
-          { key: "references", label: "References", href: `${base}/context?tab=references` },
-          { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
-          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
-          { key: "rights", label: "Rights", href: `${base}?tab=rights` },
-          { key: "publish", label: "Publish", href: `${base}/publish` },
-        ];
+  // The Palette follows this Creation's lifecycle and what the viewer may do with it (palette-spec §7, §11).
+  const current = versions.find((v) => v.id === artifact.current_version_id) ?? versions[0];
+  const lifecycle =
+    artifact.status === "archived" ? "archived" : artifact.status === "published" ? "published" : artifact.status === "final" ? "finished" : artifact.status === "in_review" ? "review" : current?.content?.trim() ? "in-progress" : "idea";
+  const collaborator = (contributors.data ?? []).some((c) => c.contributor_creator_id === creator.id);
+  const permissions: Array<"edit" | "publish" | "rights" | "collaborate" | "invite"> = isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : collaborator ? ["collaborate"] : [];
   return (
     <>
-      <PaletteActions title="This Creation" actions={paletteActions} />
+      <PaletteScope context={{ page: "creation", entityType: "creation", lifecycle, permissions, ids: { artifactId: id } }} />
       <ArtifactView
         initialTab={tab}
         artifact={artifact}

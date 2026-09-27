@@ -7,6 +7,7 @@ import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
 import { requireSession } from "@/lib/session";
 import { StateBadge } from "./shared";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Approvals" };
 
@@ -23,66 +24,69 @@ export default async function ApprovalsPage() {
   const levelLabel = (d: (typeof AUTONOMY_DOMAINS)[number]) => AUTONOMY_LEVELS.find((l) => l.level === autonomy[d.domain])?.label ?? autonomy[d.domain];
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageTitle title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
+    <>
+      <PaletteScope context={{ page: "approvals" }} />
+      <div className="mx-auto max-w-3xl">
+        <PageTitle title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
 
-      <section aria-labelledby="pending-h" className="space-y-6">
-        <h2 id="pending-h" className="sr-only">
-          Waiting for you
-        </h2>
-        {pending.length === 0 ? (
-          <EmptyState title="Nothing waiting" body="When CreativeMind needs your OK before acting, it shows up here with exactly what it will do." />
-        ) : null}
-        {urgent.length ? <Group title="Expiring soon" items={urgent} /> : null}
-        {[...byDomain].map(([domain, items]) => (
-          <Group key={domain} title={domain} items={items} />
-        ))}
-      </section>
+        <section aria-labelledby="pending-h" className="space-y-6">
+          <h2 id="pending-h" className="sr-only">
+            Waiting for you
+          </h2>
+          {pending.length === 0 ? (
+            <EmptyState title="Nothing waiting" body="When CreativeMind needs your OK before acting, it shows up here with exactly what it will do." />
+          ) : null}
+          {urgent.length ? <Group title="Expiring soon" items={urgent} /> : null}
+          {[...byDomain].map(([domain, items]) => (
+            <Group key={domain} title={domain} items={items} />
+          ))}
+        </section>
 
-      <section aria-labelledby="autonomy-h" className="mt-10 rounded-2xl border border-border-soft bg-surface p-5">
-        <h2 id="autonomy-h" className="text-lg font-semibold text-ink">
-          Your autonomy settings
-        </h2>
-        <p className="mt-1 text-[15px] text-ink-muted">
-          {asking.length ? `CreativeMind asks before acting on ${asking.map((d) => d.label.toLowerCase()).join(", ")}.` : "No areas are set to ask for approval."} Rights, commerce and destructive actions can never run on their own.
-        </p>
-        <details className="mt-3">
-          <summary className="min-h-11 cursor-pointer py-2 text-[15px] font-medium text-accent-ink">See every area</summary>
-          <ul className="mt-2 grid gap-1 text-[15px] sm:grid-cols-2">
-            {AUTONOMY_DOMAINS.map((d) => (
-              <li key={d.domain} className="flex justify-between gap-3 rounded-lg px-2 py-1.5">
-                <span className="text-ink">{d.label}</span>
-                <span className="text-ink-muted">{levelLabel(d)}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-        <Link href="/settings?section=autonomy" className="mt-3 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-accent-ink hover:underline">
-          Change autonomy settings <ChevronRight className="size-4" aria-hidden />
-        </Link>
-      </section>
+        <section aria-labelledby="autonomy-h" className="mt-10 rounded-2xl border border-border-soft bg-surface p-5">
+          <h2 id="autonomy-h" className="text-lg font-semibold text-ink">
+            Your autonomy settings
+          </h2>
+          <p className="mt-1 text-[15px] text-ink-muted">
+            {asking.length ? `CreativeMind asks before acting on ${asking.map((d) => d.label.toLowerCase()).join(", ")}.` : "No areas are set to ask for approval."} Rights, commerce and destructive actions can never run on their own.
+          </p>
+          <details className="mt-3">
+            <summary className="min-h-11 cursor-pointer py-2 text-[15px] font-medium text-accent-ink">See every area</summary>
+            <ul className="mt-2 grid gap-1 text-[15px] sm:grid-cols-2">
+              {AUTONOMY_DOMAINS.map((d) => (
+                <li key={d.domain} className="flex justify-between gap-3 rounded-lg px-2 py-1.5">
+                  <span className="text-ink">{d.label}</span>
+                  <span className="text-ink-muted">{levelLabel(d)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+          <Link href="/settings?section=autonomy" className="mt-3 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-accent-ink hover:underline">
+            Change autonomy settings <ChevronRight className="size-4" aria-hidden />
+          </Link>
+        </section>
 
-      <section className="mt-10">
-        <SectionHeader title="History" />
-        {history.length ? (
-          <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
-            {history.map((a) => (
-              <li key={a.id}>
-                <Link href={`/approvals/${a.id}`} className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-black/[0.02]">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] text-ink">{a.actionLabel}</p>
-                    <p className="truncate text-sm text-ink-muted">{a.target.title ?? a.understood}</p>
-                  </div>
-                  <StateBadge state={a.state} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-[15px] text-ink-muted">Decisions you make will be listed here.</p>
-        )}
-      </section>
-    </div>
+        <section className="mt-10">
+          <SectionHeader title="History" />
+          {history.length ? (
+            <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
+              {history.map((a) => (
+                <li key={a.id}>
+                  <Link href={`/approvals/${a.id}`} className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-black/[0.02]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] text-ink">{a.actionLabel}</p>
+                      <p className="truncate text-sm text-ink-muted">{a.target.title ?? a.understood}</p>
+                    </div>
+                    <StateBadge state={a.state} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[15px] text-ink-muted">Decisions you make will be listed here.</p>
+          )}
+        </section>
+      </div>
+    </>
   );
 }
 

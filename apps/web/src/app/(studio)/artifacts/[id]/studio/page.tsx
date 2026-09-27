@@ -2,7 +2,7 @@ import { signedUrlsFor } from "@wonder/creator-library";
 import { actionsFor, artifactType } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { findingsOf, providerReadiness } from "@wonder/creator-brain";
-import { PaletteActions } from "@/components/creative-palette";
+import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { Studio } from "./studio";
 
@@ -32,23 +32,10 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
   );
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
   const def = artifactType(a.artifact_type);
-  const base = `/artifacts/${id}`;
   return (
     <>
-      {/* The Creation Palette during active work (UI redesign §7.3). */}
-      <PaletteActions
-        title="This Creation"
-        actions={[
-          { key: "refine", label: "Refine", hint: "CreativeMind suggestions", href: `${base}/studio#creativemind`, icon: "spark" },
-          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/transform`, icon: "pen" },
-          { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
-          { key: "references", label: "References", href: `${base}/context?tab=references` },
-          { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
-          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
-          { key: "share", label: "Share", href: `${base}/share` },
-          { key: "publish", label: "Publish", href: `${base}/publish` },
-        ]}
-      />
+      {/* The Creation Palette during active work (palette-spec §9.16). */}
+      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id }, facts: { format: def.format } }} />
       <Studio
         artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status }}
         version={version ? { id: version.id, number: version.version_number, content: version.content } : null}

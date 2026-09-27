@@ -2,6 +2,7 @@ import { huddleSummary } from "@wonder/creator-huddle";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { SummaryView } from "./summary-view";
+import { PaletteScope } from "@/components/creative-palette";
 
 export const metadata = { title: "Huddle summary" };
 
@@ -12,5 +13,10 @@ export default async function HuddleSummaryPage({ params }: { params: Promise<{ 
   const { db } = await requireSession();
   const summary = await huddleSummary(db, id);
   if (!summary) notFound();
-  return <SummaryView summary={summary} />;
+  return (
+    <>
+      <PaletteScope context={{ page: "huddle-summary" }} />
+      <SummaryView summary={summary} />
+    </>
+  );
 }
