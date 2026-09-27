@@ -4,6 +4,7 @@ import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog,
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
+import { RightsPanel } from "./rights-panel";
 import { TasksPanel } from "./tasks-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,7 +52,7 @@ export interface SharedSummary {
   mine: boolean;
 }
 
-export type ProjectTab = "overview" | "work" | "tasks" | "chat" | "contributions";
+export type ProjectTab = "overview" | "work" | "tasks" | "chat" | "contributions" | "rights";
 const SHAREABLE: ProjectItemKind[] = ["material", "reference", "artifact"];
 
 /** Sections in the order the work matters: what's being made, what it's made from, then how it's being made. */
@@ -84,6 +85,7 @@ export function ProjectView({
   chat,
   tasks,
   contributions,
+  rights,
 }: {
   project: Project;
   items: Item[];
@@ -99,6 +101,7 @@ export function ProjectView({
   chat: { messages: ChatMessage[]; olderBefore: string | null } | null;
   tasks: Omit<React.ComponentProps<typeof TasksPanel>, "projectId" | "viewerId"> | null;
   contributions: Omit<React.ComponentProps<typeof ContributionsPanel>, "projectId"> | null;
+  rights: Omit<React.ComponentProps<typeof RightsPanel>, "projectId" | "viewerId" | "isOwner"> | null;
 }) {
   // Your own links here; work others shared with the crew is listed separately (and opened read-only).
   const items = allItems.filter((i) => i.linkedBy === viewerId && (canEdit || i.available));
@@ -267,6 +270,7 @@ export function ProjectView({
                 ["tasks", "Tasks", `/projects/${project.id}?tab=tasks`],
                 ...(crew ? ([["chat", "Chat", `/projects/${project.id}?tab=chat`]] as const) : []),
                 ["contributions", "Contributions", `/projects/${project.id}?tab=contributions`],
+                ["rights", "Rights", `/projects/${project.id}?tab=rights`],
               ] as const
             ).map(([key, label, href]) => (
               <li key={key}>
@@ -420,6 +424,7 @@ export function ProjectView({
       })}
 
       {tab === "contributions" && contributions ? <ContributionsPanel projectId={project.id} {...contributions} /> : null}
+      {tab === "rights" && rights ? <RightsPanel projectId={project.id} viewerId={viewerId} isOwner={canEdit} {...rights} /> : null}
       {tab === "tasks" && tasks ? <TasksPanel projectId={project.id} viewerId={viewerId} {...tasks} /> : null}
 
       {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} /> : null}

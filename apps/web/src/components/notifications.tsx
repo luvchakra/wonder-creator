@@ -9,14 +9,14 @@ import { RelativeTime } from "./client-time";
 
 interface Item {
   id: string;
-  kind: "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added";
+  kind: "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim";
   title: string;
   detail: string | null;
   href: string;
   at: string;
 }
 
-const ICON = { proposal: Brain, join_request: UserPlus, huddle_invite: Users, intake_failed: AlertCircle, run_active: Loader, run_unfinished: AlertCircle, license_request: Scale, license_response: Scale, shared_with_you: Share2, crew_invite: UsersRound, crew_question: MessageCircleQuestion, proposal_review: FilePenLine, proposal_decided: FilePenLine, collaborator_added: UserPlus } as const;
+const ICON = { proposal: Brain, join_request: UserPlus, huddle_invite: Users, intake_failed: AlertCircle, run_active: Loader, run_unfinished: AlertCircle, license_request: Scale, license_response: Scale, shared_with_you: Share2, crew_invite: UsersRound, crew_question: MessageCircleQuestion, proposal_review: FilePenLine, proposal_decided: FilePenLine, collaborator_added: UserPlus, rights_claim: Scale } as const;
 const POLL_MS = 60_000;
 
 /** Things waiting on the creator. Derived from live state, so items leave once they're resolved. */

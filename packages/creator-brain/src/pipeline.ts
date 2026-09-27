@@ -446,10 +446,11 @@ export async function refine(
 export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null }) {
   if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
   const source = await getArtifact(deps.db, input.artifactId);
-  // Someone else's work can only be adapted when they allowed derivatives.
+  // Someone else's work can only be adapted when they allowed derivatives (or their project's rights policy does).
   if (source.creator_id !== deps.creatorId) {
-    const r = await deps.db.from("rights_records").select("derivatives_allowed").eq("artifact_id", source.id).maybeSingle();
-    if (!r.data?.derivatives_allowed) throw new DomainError("forbidden", "The creator of this piece hasn't allowed derivatives.");
+    const { data: permission } = await deps.db.rpc("derivative_permission", { p_artifact: source.id });
+    if (permission === "project_not_allowed") throw new DomainError("forbidden", "This piece's project doesn't allow derivatives.");
+    if (permission !== "allowed") throw new DomainError("forbidden", "The creator of this piece hasn't allowed derivatives.");
   }
   const def = artifactType(input.targetType);
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "transform", instruction: input.instruction, artifactType: def.type, artifactIds: [source.id], conversationId: input.conversationId });
