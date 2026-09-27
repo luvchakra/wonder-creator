@@ -112,6 +112,7 @@ export function ProjectView({
   const [sharing, setSharing] = useState(false);
   const router = useRouter();
   const [status, setStatus] = useState(project.status);
+  const closed = status === "completed" || status === "archived";
   const [adding, setAdding] = useState<ProjectItemKind | null>(null);
   const [editing, setEditing] = useState(false);
   const [noteFor, setNoteFor] = useState<Item | null>(null);
@@ -198,19 +199,25 @@ export function ProjectView({
               <label htmlFor="project-status" className="sr-only">
                 Status
               </label>
-              <Select id="project-status" value={status} onChange={(e) => changeStatus(e.target.value as ProjectStatus)} className="w-40">
-                {PROJECT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {PROJECT_STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </Select>
+              {crew && closed ? (
+                <Badge tone="accent">{PROJECT_STATUS_LABEL[status]}</Badge>
+              ) : (
+                <Select id="project-status" value={status} onChange={(e) => changeStatus(e.target.value as ProjectStatus)} className="w-40">
+                  {/* With a crew, completing or archiving goes through the checklist. */}
+                  {PROJECT_STATUSES.filter((s) => !crew || (s !== "completed" && s !== "archived")).map((s) => (
+                    <option key={s} value={s}>
+                      {PROJECT_STATUS_LABEL[s]}
+                    </option>
+                  ))}
+                </Select>
+              )}
               <Menu>
                 <MenuTrigger className="inline-flex size-11 items-center justify-center rounded-full border border-border bg-surface hover:bg-black/[0.03]" aria-label="More project actions">
                   <MoreHorizontal className="size-5" aria-hidden />
                 </MenuTrigger>
                 <MenuContent>
                   <MenuItem onSelect={() => setEditing(true)}>Edit details</MenuItem>
+                  <MenuItem onSelect={() => router.push(`/projects/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
                   <MenuItem destructive onSelect={() => setDeleting(true)}>
                     Delete project
                   </MenuItem>

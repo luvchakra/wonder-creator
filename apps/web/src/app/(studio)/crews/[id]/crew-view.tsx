@@ -191,8 +191,8 @@ export function CrewView({
               <MenuContent>
                 <MenuItem onSelect={() => me && setRoleFor(me)}>Change my role</MenuItem>
                 {manages ? <MenuItem onSelect={() => setEditing(true)}>Edit crew</MenuItem> : null}
-                {manages && crew.status !== "completed" ? (
-                  <MenuItem onSelect={() => act("complete", () => api(`/api/v1/crews/${crew.id}`, { method: "PATCH", json: { status: "completed" } }), "The crew is marked completed.")}>Mark completed</MenuItem>
+                {myAccess === "owner" && crew.status !== "completed" ? (
+                  <MenuItem onSelect={() => router.push(`/projects/${crew.projectId}/complete`)}>Dissolve crew…</MenuItem>
                 ) : null}
                 {myAccess !== "owner" ? (
                   <MenuItem

@@ -228,6 +228,7 @@ export async function updateProject(db: Db, id: string, raw: unknown) {
   if (!Object.keys(patch).length) return;
   const res = await db.from("projects").update(patch).eq("id", id).select("id");
   if (res.error?.code === "42501") throw new DomainError("validation", "The cover has to be one of your own images.");
+  if (res.error?.message?.includes("use the completion checklist")) throw new DomainError("conflict", "This project has a crew. Use the completion checklist to complete, archive or reopen it.");
   if (res.error) throw fromDbError(res.error);
   if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that project.");
 }
@@ -235,6 +236,7 @@ export async function updateProject(db: Db, id: string, raw: unknown) {
 /** Deletes the project and its links. Everything it referenced stays where it is. */
 export async function deleteProject(db: Db, id: string) {
   const res = await db.from("projects").delete().eq("id", id).select("id");
+  if (res.error?.code === "55000") throw new DomainError("conflict", res.error.message);
   if (res.error) throw fromDbError(res.error);
   if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that project.");
 }
