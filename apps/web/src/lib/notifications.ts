@@ -1,10 +1,10 @@
 import "server-only";
 import { TOOLS } from "@wonder/creator-brain";
 import { liveCards } from "@wonder/creator-huddle";
-import { myCrewInvites } from "@wonder/creator-projects";
+import { inviteThreadsWaiting, myCrewInvites } from "@wonder/creator-projects";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question";
 
 export interface Notification {
   id: string;
@@ -26,7 +26,7 @@ const RUN_STALE_MS = 10 * 60 * 1000;
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites] = await Promise.all([
+  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -71,6 +71,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .limit(10),
     db.rpc("shared_with_me"),
     myCrewInvites(db, creatorId).catch(() => []),
+    inviteThreadsWaiting(db, creatorId).catch(() => []),
   ]);
 
   const out: Notification[] = [];
@@ -125,6 +126,16 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const c of crewInvites) {
     out.push({ id: `crew:${c.crewId}`, kind: "crew_invite", title: `${c.invitedBy} invited you to join ${c.crewName}`, detail: c.roleTitle ? `As ${c.roleTitle} · ${c.projectTitle}` : c.projectTitle, href: `/crews/${c.crewId}`, at: c.invitedAt });
+  }
+  for (const t of crewThreads) {
+    out.push({
+      id: `crew-q:${t.crewId}:${t.inviteeId}`,
+      kind: "crew_question",
+      title: t.kind === "question" ? `${t.author} asked about joining ${t.crewName}` : `${t.author} answered your question about ${t.crewName}`,
+      detail: null,
+      href: `/crews/${t.crewId}`,
+      at: t.at,
+    });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }

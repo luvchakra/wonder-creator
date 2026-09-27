@@ -2,6 +2,7 @@ import { signedUrlsFor } from "@wonder/creator-library";
 import { listProjects, myCrewInvites, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
 import { BACKGROUNDS, EmptyState, PageTitle, cn } from "@wonder/ui";
 import Link from "next/link";
+import { LocalTime } from "@/components/client-time";
 import { ProjectCard } from "@/components/project-card";
 import { requireSession } from "@/lib/session";
 import { NewProjectButton } from "./new-project";
@@ -27,6 +28,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{i.invitedBy}</span> invited you to join <span className="font-medium">{i.crewName}</span>
                 {i.roleTitle ? ` as ${i.roleTitle}` : ""} <span className="text-ink-muted">· {i.projectTitle}</span>
+                {i.expiresAt ? (
+                  <span className="block text-sm text-ink-muted">
+                    Answer by <LocalTime iso={i.expiresAt} />
+                  </span>
+                ) : null}
               </span>
               <span className="shrink-0 text-sm font-medium text-accent-ink">View invitation</span>
             </Link>

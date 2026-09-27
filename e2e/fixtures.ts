@@ -343,3 +343,13 @@ async function newWatchedContext(browser: Browser, guard: ConsoleGuard, label: s
   guard.watch(context, label);
   return context;
 }
+
+/** Test-only: move a crew invitation's expiry into the past (there's no way to wait days in a test). */
+export async function expireCrewInvite(crewId: string, creatorId: string): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/crew_members?crew_id=eq.${crewId}&creator_id=eq.${creatorId}`, {
+    method: "PATCH",
+    headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json" },
+    body: JSON.stringify({ expires_at: new Date(Date.now() - 60_000).toISOString() }),
+  });
+  if (!res.ok) throw new Error(`expireCrewInvite failed: ${res.status} ${await res.text()}`);
+}

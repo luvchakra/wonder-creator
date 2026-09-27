@@ -1,4 +1,4 @@
-import { expect, newCreator, test, uid } from "./fixtures";
+import { expect, expireCrewInvite, newCreator, test, uid } from "./fixtures";
 
 test.describe("CreatorCrew", () => {
   test("start a crew, invite with a flexible role, join, see the project read-only, huddle, and remove while keeping the record", async ({ page: a, creator: _owner, openContext }) => {
@@ -77,5 +77,81 @@ test.describe("CreatorCrew", () => {
     await expect(a.getByRole("region", { name: "Former members" })).toContainText(bea.name);
     await b.goto(`/projects/${project.id}`);
     await expect(b.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
+  });
+});
+
+test.describe("Crew invitations", () => {
+  test("a scoped invitation: ask before deciding, get an answer, decline with a reason; an expired one can't be accepted", async ({ page: a, creator: _owner, openContext }) => {
+    test.setTimeout(180_000);
+    const { page: b } = await openContext("B");
+    const kai = await newCreator(b, { name: `Kai ${uid()}` });
+    const res = await a.request.post("/api/v1/projects", { data: { title: `Monsoon Reflections ${uid()}`, brief: "A short documentary about rain." } });
+    const { project } = (await res.json()) as { project: { id: string } };
+    const crew = ((await (await a.request.post(`/api/v1/projects/${project.id}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew;
+
+    // The owner invites with scope, compensation, rights and a 3-day expiry.
+    await a.goto(`/crews/${crew.id}`);
+    await a.getByRole("button", { name: "Invite people" }).click();
+    const invite = a.getByRole("dialog", { name: "Invite to the crew" });
+    await invite.getByLabel("Find a creator").fill(kai.handle);
+    await invite.getByRole("button", { name: `Choose ${kai.name}` }).click();
+    await invite.getByLabel("Role").fill("Editor");
+    await invite.getByLabel("What you're asking them to do").fill("Cut a 12-minute film from about six hours of footage.");
+    await invite.getByLabel("Compensation").fill("Flat fee, agreed separately.");
+    await invite.getByLabel("Rights & credit").fill("Editing credit.");
+    await invite.getByLabel("Expires in").selectOption("3");
+    await invite.getByRole("button", { name: "Send invitation" }).click();
+    await expect(a.getByRole("region", { name: "Invited" })).toContainText("Answer by");
+
+    // Kai reads it all and asks a question.
+    await b.goto(`/crews/${crew.id}`);
+    const card = b.getByRole("region", { name: "Your invitation" });
+    await expect(card).toContainText("Cut a 12-minute film from about six hours of footage.");
+    await expect(card).toContainText("Flat fee, agreed separately.");
+    await expect(card).toContainText("Editing credit.");
+    await expect(card).toContainText("Answer by");
+    await card.getByLabel("Ask a question before you decide").fill("Can I edit remotely?");
+    await card.getByRole("button", { name: "Send" }).click();
+    await expect(card.getByRole("list", { name: "Questions and answers" })).toContainText("Can I edit remotely?");
+
+    // The owner sees the question (notification + badge) and answers.
+    await a.reload();
+    await expect(a.getByRole("region", { name: "Invited" })).toContainText("Question asked");
+    const notes = await (await a.request.get("/api/v1/notifications")).json();
+    expect(JSON.stringify(notes)).toContain(`${kai.name} asked about joining`);
+    await a.getByRole("button", { name: `Invitation options for ${kai.name}` }).click();
+    await a.getByRole("menuitem", { name: "Questions & answers" }).click();
+    const thread = a.getByRole("dialog", { name: `Invitation for ${kai.name}` });
+    await thread.getByLabel("Your answer").fill("Yes — we'll share proxies.");
+    await thread.getByRole("button", { name: "Send" }).click();
+    await expect(thread.getByRole("list", { name: "Questions and answers" })).toContainText("Yes — we'll share proxies.");
+    await thread.getByRole("button", { name: "Close" }).click();
+
+    // Kai sees the answer and declines, with a reason.
+    await b.reload();
+    await expect(card.getByRole("list", { name: "Questions and answers" })).toContainText("Yes — we'll share proxies.");
+    await card.getByRole("button", { name: "Decline" }).click();
+    const decline = b.getByRole("dialog", { name: /^Decline / });
+    await decline.getByLabel("Reason (optional)").fill("Booked that month, sorry!");
+    await decline.getByRole("button", { name: "Decline" }).click();
+    await b.waitForURL(/\/projects$/);
+    await b.goto(`/crews/${crew.id}`);
+    await expect(b.getByRole("heading", { name: "You declined this invitation" })).toBeVisible();
+
+    const kaiId = ((await (await a.request.get(`/api/v1/search?type=creators&q=${kai.handle}`)).json()) as { creators: Array<{ id: string }> }).creators[0].id;
+    // Invited again, but the invitation expires: it can't be accepted, and the owner can send it again.
+    const again = await a.request.post(`/api/v1/crews/${crew.id}/members`, { data: { creatorId: kaiId, roleTitle: "Editor" } });
+    expect(again.ok()).toBeTruthy();
+    await expireCrewInvite(crew.id, kaiId);
+    await b.goto(`/crews/${crew.id}`);
+    await expect(b.getByRole("heading", { name: "This invitation has expired" })).toBeVisible();
+    expect((await b.request.post(`/api/v1/crews/${crew.id}/respond`, { data: { accept: true } })).status()).toBe(409);
+    await a.goto(`/crews/${crew.id}`);
+    await expect(a.getByRole("region", { name: "Invited" })).toContainText("Expired");
+    await a.getByRole("button", { name: `Invitation options for ${kai.name}` }).click();
+    await a.getByRole("menuitem", { name: "Invite again" }).click();
+    await expect(a.getByText(`Invited ${kai.name} again.`).first()).toBeVisible();
+    await b.goto(`/crews/${crew.id}`);
+    await expect(b.getByRole("region", { name: "Your invitation" })).toBeVisible();
   });
 });

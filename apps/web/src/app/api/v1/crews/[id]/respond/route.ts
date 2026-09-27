@@ -2,9 +2,9 @@ import { respondToCrew } from "@wonder/creator-projects";
 import { z } from "zod";
 import { readJson, requireUuid, withApi } from "@/lib/api";
 
-/** Accept or decline your invitation. */
+/** Accept or decline your invitation (optionally saying why you're declining). Expired invitations can't be accepted. */
 export const POST = withApi<{ id: string }>(async ({ db, req }, { id }) => {
-  const { accept } = z.object({ accept: z.boolean() }).parse(await readJson(req));
-  await respondToCrew(db, requireUuid(id, "crew"), accept);
+  const { accept, note } = z.object({ accept: z.boolean(), note: z.string().max(500).optional() }).parse(await readJson(req));
+  await respondToCrew(db, requireUuid(id, "crew"), accept, note);
   return { ok: true };
 });
