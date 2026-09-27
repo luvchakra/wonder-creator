@@ -1,11 +1,13 @@
 "use client";
-import { Button, cn } from "@wonder/ui";
-import { Check, ImageOff, RefreshCw } from "lucide-react";
+import { Button, Dialog, DialogContent, Field, Menu, MenuContent, MenuItem, MenuTrigger, Textarea, cn } from "@wonder/ui";
+import { ArrowLeft, ArrowRight, Check, ImageOff, MoreHorizontal, RefreshCw, Save, Type, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { SlideTextDialog } from "./slide-text-dialog";
 
-type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null };
-type Generation = { id: string; status: "queued" | "processing" | "complete" | "partial" | "failed" | "cancelled"; requestedCount: number; aspectRatio: string; assets: Asset[] };
+type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised?: boolean };
+type Revision = { id: string; assetId: string; status: "queued" | "processing" | "failed" };
+type Generation = { id: string; status: "queued" | "processing" | "complete" | "partial" | "failed" | "cancelled"; requestedCount: number; aspectRatio: string; assets: Asset[]; revisions?: Revision[] };
 type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; generation?: Generation; available: boolean };
 
 /**
@@ -13,7 +15,23 @@ type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; gene
  * 3–5 concepts. It shows what's already stored for this context at once; it generates only when the creator asks; it
  * says plainly when image generation isn't connected. Small skeletons while creating, a short crossfade when ready.
  */
-export function VisualDirections({ creationId, materialIds, purpose = "explore", title = "Visual directions", className }: { creationId?: string; materialIds?: string[]; purpose?: "explore" | "carousel" | "transform-preview"; title?: string; className?: string }) {
+export function VisualDirections({
+  creationId,
+  materialIds,
+  purpose = "explore",
+  title = "Visual directions",
+  className,
+  slideTexts,
+}: {
+  creationId?: string;
+  materialIds?: string[];
+  purpose?: "explore" | "carousel" | "transform-preview";
+  title?: string;
+  className?: string;
+  /** A Carousel's words per slide, in order: the text editor starts each image with its slide's line. */
+  slideTexts?: string[];
+}) {
+  const [textAt, setTextAt] = useState<number | null>(null);
   const [reply, setReply] = useState<Reply | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,9 +53,11 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
 
   const gen = reply?.generation;
   const working = gen && (gen.status === "queued" || gen.status === "processing");
-  // Follow a generation in flight; the page never waits on it.
+  const changing = new Set((gen?.revisions ?? []).filter((r) => r.status !== "failed").map((r) => r.assetId));
+  const follow = !!working || changing.size > 0;
+  // Follow a generation (or an image being changed) in flight; the page never waits on it.
   useEffect(() => {
-    if (!working || !gen) return;
+    if (!follow || !gen) return;
     const t = setInterval(async () => {
       try {
         const r = await api<{ generation: Generation }>(`/api/v1/image-generations/${gen.id}`);
@@ -47,7 +67,7 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
       }
     }, 3000);
     return () => clearInterval(t);
-  }, [working, gen]);
+  }, [follow, gen]);
 
   async function create(regenerate = false) {
     setBusy(true);
@@ -87,6 +107,56 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
     if (!gen) return;
     setReply((prev) => (prev?.generation ? { ...prev, generation: { ...prev.generation, assets: prev.generation.assets.map((x) => ({ ...x, selected: x.id === a.id })) } } : prev));
     await api(`/api/v1/image-generations/${gen.id}/select`, { method: "POST", json: { assetId: a.id } }).catch(() => undefined);
+  }
+
+  const isCarousel = purpose === "carousel";
+  async function move(a: Asset, dir: -1 | 1) {
+    if (!gen) return;
+    const ids = gen.assets.map((x) => x.id);
+    const i = ids.indexOf(a.id);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    const prevAssets = gen.assets;
+    const byId = new Map(prevAssets.map((x) => [x.id, x]));
+    setReply((prev) => (prev?.generation ? { ...prev, generation: { ...prev.generation, assets: ids.map((id) => byId.get(id)!) } } : prev));
+    try {
+      await api(`/api/v1/image-generations/${gen.id}/order`, { method: "POST", json: { assetIds: ids } });
+    } catch (e) {
+      setReply((prev) => (prev?.generation ? { ...prev, generation: { ...prev.generation, assets: prevAssets } } : prev));
+      setError(errorMessage(e));
+    }
+  }
+
+  const [changeFor, setChangeFor] = useState<Asset | null>(null);
+  const [instruction, setInstruction] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const revKey = useRef<string | null>(null);
+  async function askChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gen || !changeFor) return;
+    setAsking(true);
+    setChangeError(null);
+    try {
+      revKey.current ??= crypto.randomUUID();
+      const r = await api<{ state: "generation" | "unavailable"; generation?: Generation }>(`/api/v1/image-generations/${gen.id}/assets/${changeFor.id}/revise`, {
+        method: "POST",
+        json: { instruction, idempotencyKey: revKey.current },
+      });
+      if (r.state === "unavailable" || !r.generation) {
+        setChangeError("Image generation isn't connected.");
+        return;
+      }
+      setReply((prev) => (prev ? { ...prev, state: "generation", generation: r.generation } : prev));
+      setChangeFor(null);
+      setInstruction("");
+      revKey.current = null;
+    } catch (err) {
+      setChangeError(errorMessage(err));
+    } finally {
+      setAsking(false);
+    }
   }
 
   const aspect = gen?.aspectRatio === "16:9" ? "aspect-video" : gen?.aspectRatio === "1:1" ? "aspect-square" : "aspect-[4/5]";
@@ -162,13 +232,27 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={a.thumbnailUrl} alt={a.directionLabel ? `${a.directionLabel} direction` : "Visual direction"} loading={i === 0 ? "eager" : "lazy"} className="size-full object-cover motion-safe:animate-[fade-in_140ms_ease-out]" />
                     ) : null}
+                    {isCarousel ? (
+                      <span aria-hidden className="absolute left-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-navy/75 text-xs font-semibold text-white">
+                        {i + 1}
+                      </span>
+                    ) : null}
+                    {changing.has(a.id) ? (
+                      <span className="absolute inset-0 flex items-end bg-surface-muted/70 p-2 text-xs font-medium text-ink motion-safe:animate-pulse" role="status">
+                        Changing…
+                      </span>
+                    ) : null}
                     {a.selected ? (
                       <span className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-accent text-white">
                         <Check className="size-4" aria-hidden />
                       </span>
                     ) : null}
                   </span>
-                  <span className="mt-1 block text-[13px] font-medium text-ink">{a.directionLabel ?? "Direction"}</span>
+                  <span className="mt-1 block text-[13px] font-medium text-ink">
+                    {isCarousel ? <span className="sr-only">Slide {i + 1}: </span> : null}
+                    {a.directionLabel ?? "Direction"}
+                    {a.revised ? <span className="font-normal text-ink-subtle"> · changed</span> : null}
+                  </span>
                   {a.rationale ? <span className="block text-xs leading-snug text-ink-subtle">{a.rationale}</span> : null}
                 </button>
               </li>
@@ -177,8 +261,52 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
           {(() => {
             const chosen = gen!.assets.find((a) => a.selected);
             if (!chosen) return <p className="text-xs text-ink-subtle">Tap a direction to choose it.</p>;
+            const at = gen!.assets.indexOf(chosen);
+            const failed = gen!.revisions?.find((r) => r.status === "failed" && r.assetId === chosen.id);
             return (
-              <div className="flex flex-wrap items-center gap-2">
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setTextAt(at)} className={isCarousel ? "order-first" : "order-last"}>
+                    <Type className="size-4" aria-hidden /> Add text
+                  </Button>
+                  {creationId && savedTo !== "creation" ? (
+                    <Button size="sm" onClick={() => save(chosen, true)} loading={saving}>
+                      Use in this Creation
+                    </Button>
+                  ) : null}
+                  {!creationId && !chosen.savedMaterialId ? (
+                    <Button size="sm" onClick={() => save(chosen, false)} loading={saving}>
+                      Save as Material
+                    </Button>
+                  ) : null}
+                  <Menu>
+                    <MenuTrigger asChild>
+                      <Button variant="ghost" size="sm" aria-label="More for this image" className="order-last">
+                        <MoreHorizontal className="size-4" aria-hidden />
+                      </Button>
+                    </MenuTrigger>
+                    <MenuContent>
+                      <MenuItem onSelect={() => setChangeFor(chosen)}>
+                        <Wand2 className="size-4" aria-hidden /> Change this image…
+                      </MenuItem>
+                      {isCarousel && at > 0 ? (
+                        <MenuItem onSelect={() => move(chosen, -1)}>
+                          <ArrowLeft className="size-4" aria-hidden /> Move earlier
+                        </MenuItem>
+                      ) : null}
+                      {isCarousel && at < gen!.assets.length - 1 ? (
+                        <MenuItem onSelect={() => move(chosen, 1)}>
+                          <ArrowRight className="size-4" aria-hidden /> Move later
+                        </MenuItem>
+                      ) : null}
+                      {creationId && !chosen.savedMaterialId ? (
+                        <MenuItem onSelect={() => save(chosen, false)}>
+                          <Save className="size-4" aria-hidden /> Save as Material
+                        </MenuItem>
+                      ) : null}
+                    </MenuContent>
+                  </Menu>
+                </div>
                 {chosen.savedMaterialId ? (
                   <p role="status" className="text-sm text-ink-muted">
                     {savedTo === "creation" ? "Added to this Creation's references. " : "Saved to your Materials. "}
@@ -187,19 +315,65 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
                     </a>
                   </p>
                 ) : null}
-                {creationId && savedTo !== "creation" ? (
-                  <Button size="sm" onClick={() => save(chosen, true)} loading={saving}>
-                    Use in this Creation
-                  </Button>
-                ) : null}
-                {!chosen.savedMaterialId ? (
-                  <Button size="sm" variant={creationId ? "secondary" : "primary"} onClick={() => save(chosen, false)} loading={saving}>
-                    Save as Material
-                  </Button>
-                ) : null}
-              </div>
+                {failed ? <p className="text-sm text-ink-muted">Couldn&apos;t change that image. Try saying it differently.</p> : null}
+              </>
             );
           })()}
+          {textAt !== null ? (
+            <SlideTextDialog
+              key={`${gen!.id}-${textAt}`}
+              open
+              onOpenChange={(o) => !o && setTextAt(null)}
+              generationId={gen!.id}
+              assets={gen!.assets}
+              startAt={textAt}
+              creationId={creationId}
+              prefill={(a) => (isCarousel ? (slideTexts?.[gen!.assets.findIndex((x) => x.id === a.id)] ?? "") : "")}
+            />
+          ) : null}
+          <Dialog
+            open={!!changeFor}
+            onOpenChange={(o) => {
+              if (!o) {
+                setChangeFor(null);
+                setChangeError(null);
+              }
+            }}
+          >
+            <DialogContent title="Change this image">
+              <form onSubmit={askChange} className="space-y-3">
+                <div className="flex items-start gap-3">
+                  {changeFor?.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={changeFor.thumbnailUrl} alt="" className={cn("w-16 shrink-0 rounded-lg object-cover", aspect)} />
+                  ) : null}
+                  <Field label="What should change?" htmlFor="change-image" className="min-w-0 flex-1">
+                    <Textarea
+                      id="change-image"
+                      rows={3}
+                      className="min-h-0"
+                      maxLength={300}
+                      required
+                      value={instruction}
+                      placeholder="e.g. make it night, with rain on the window"
+                      onChange={(e) => setInstruction(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <p className="text-xs text-ink-subtle">It keeps this image&apos;s place in the set. The current one stays in its history.</p>
+                {changeError ? (
+                  <p role="alert" className="text-sm text-danger">
+                    {changeError}
+                  </p>
+                ) : null}
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm" loading={asking} disabled={!instruction.trim()}>
+                    Change image
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
           {gen!.status === "partial" ? (
             <p className="text-xs text-ink-subtle">
               {gen!.assets.length} of {gen!.requestedCount} ready.

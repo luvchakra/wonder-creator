@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { isDomainError, log } from "@wonder/core";
-import { indexStaleSubjects, runImageGeneration, selectProvider } from "@wonder/creator-brain";
+import { indexStaleSubjects, runImageGeneration, runImageRevision, selectProvider } from "@wonder/creator-brain";
 import { processIntake } from "@wonder/creator-send";
 import { attemptPublication, duePublications } from "@wonder/creator-studio";
 import { NextResponse, type NextRequest } from "next/server";
@@ -47,6 +47,9 @@ async function run(req: NextRequest) {
       }
       if (job.kind === "image.generate" && job.subject_id) {
         await runImageGeneration(imageWorkerDeps(), job.subject_id);
+      }
+      if (job.kind === "image.revise" && job.subject_id) {
+        await runImageRevision(imageWorkerDeps(), job.subject_id);
       }
       await service.from("jobs").update({ status: "succeeded", last_error: null }).eq("id", job.id);
       results.push({ id: job.id, ok: true });

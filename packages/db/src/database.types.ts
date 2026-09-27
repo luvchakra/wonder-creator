@@ -413,6 +413,93 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"campaign_deliverables": {
+                  Row: {
+                    "artifact_id": string | null,"campaign_id": string,"created_at": string,"creator_id": string,"description": string | null,"due_on": string | null,"format": string | null,"id": string,"proposed_by": string,"review_note": string | null,"status": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"campaign_id": string,"created_at"?: string,"creator_id": string,"description"?: string | null,"due_on"?: string | null,"format"?: string | null,"id"?: string,"proposed_by": string,"review_note"?: string | null,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"campaign_id"?: string,"created_at"?: string,"creator_id"?: string,"description"?: string | null,"due_on"?: string | null,"format"?: string | null,"id"?: string,"proposed_by"?: string,"review_note"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_deliverables_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_deliverables_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_deliverables_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_deliverables_proposed_by_fkey"
+      columns: ["proposed_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaign_invitations": {
+                  Row: {
+                    "campaign_id": string,"creator_id": string,"invited_at": string,"note": string | null,"responded_at": string | null,"response_note": string | null,"status": string
+                  }
+                  Insert: {
+                    "campaign_id": string,"creator_id": string,"invited_at"?: string,"note"?: string | null,"responded_at"?: string | null,"response_note"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"creator_id"?: string,"invited_at"?: string,"note"?: string | null,"responded_at"?: string | null,"response_note"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_invitations_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_invitations_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaigns": {
+                  Row: {
+                    "brand_name": string,"brief": string,"channels": (string)[],"created_at": string,"due_on": string | null,"id": string,"owner_creator_id": string,"project_id": string | null,"status": string,"title": string,"updated_at": string,"usage_rights": string
+                  }
+                  Insert: {
+                    "brand_name": string,"brief": string,"channels"?: (string)[],"created_at"?: string,"due_on"?: string | null,"id"?: string,"owner_creator_id": string,"project_id"?: string | null,"status"?: string,"title": string,"updated_at"?: string,"usage_rights": string
+                  }
+                  Update: {
+                    "brand_name"?: string,"brief"?: string,"channels"?: (string)[],"created_at"?: string,"due_on"?: string | null,"id"?: string,"owner_creator_id"?: string,"project_id"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string,"usage_rights"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaigns_owner_creator_id_fkey"
+      columns: ["owner_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaigns_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"collaboration_profiles": {
                   Row: {
                     "commercial_boundaries": string | null,"contact_preference": string,"creator_id": string,"exclusivity": string,"interests": (string)[],"project_types": (string)[],"rate_guidance": string | null,"rate_visibility": string,"region": string | null,"rights_preferences": string | null,"turnaround": string | null,"updated_at": string,"work_mode": string
@@ -1487,15 +1574,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"image_generation_assets": {
+                },"image_asset_revisions": {
                   Row: {
-                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"rationale": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                    "asset_id": string,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string,"result_asset_id": string | null,"status": string
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "asset_id": string,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction": string,"result_asset_id"?: string | null,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "asset_id"?: string,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string,"result_asset_id"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "image_asset_revisions_asset_id_fkey"
+      columns: ["asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_generation_id_fkey"
+      columns: ["generation_id"]
+isOneToOne: false
+      referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_result_asset_id_fkey"
+      columns: ["result_asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"image_generation_assets": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"position": number | null,"rationale": string | null,"replaced_by": string | null,"revision_of": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Relationships: [
                     {
@@ -1509,6 +1633,18 @@ isOneToOne: false
       columns: ["generation_id"]
 isOneToOne: false
       referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_replaced_by_fkey"
+      columns: ["replaced_by"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_revision_of_fkey"
+      columns: ["revision_of"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "image_generation_assets_saved_material_id_fkey"
@@ -2151,6 +2287,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"publication_metrics": {
+                  Row: {
+                    "artifact_id": string,"creator_id": string,"destination_id": string | null,"id": string,"metric": string,"observed_at": string,"publication_id": string,"received_at": string,"reported_by": string,"value": number
+                  }
+                  Insert: {
+                    "artifact_id": string,"creator_id": string,"destination_id"?: string | null,"id"?: string,"metric": string,"observed_at": string,"publication_id": string,"received_at"?: string,"reported_by": string,"value": number
+                  }
+                  Update: {
+                    "artifact_id"?: string,"creator_id"?: string,"destination_id"?: string | null,"id"?: string,"metric"?: string,"observed_at"?: string,"publication_id"?: string,"received_at"?: string,"reported_by"?: string,"value"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "publication_metrics_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_destination_id_fkey"
+      columns: ["destination_id"]
+isOneToOne: false
+      referencedRelation: "publishing_destinations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_publication_id_fkey"
+      columns: ["publication_id"]
+isOneToOne: false
+      referencedRelation: "publications"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"publication_signoffs": {
                   Row: {
                     "artifact_id": string,"created_at": string,"creator_id": string,"decision": string,"note": string | null,"version_id": string
@@ -2762,6 +2935,30 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"campaign_agree_deliverable":
+{ Args: { "p_deliverable": string }; Returns: undefined
+                           },
+"campaign_invite":
+{ Args: { "p_campaign": string,"p_creator": string,"p_note"?: string }; Returns: undefined
+                           },
+"campaign_propose_deliverable":
+{ Args: { "p_campaign": string,"p_creator": string,"p_description"?: string,"p_due_on"?: string,"p_format"?: string,"p_title": string }; Returns: string
+                           },
+"campaign_respond":
+{ Args: { "p_accept": boolean,"p_campaign": string,"p_note"?: string }; Returns: undefined
+                           },
+"campaign_review_deliverable":
+{ Args: { "p_approve": boolean,"p_deliverable": string,"p_note"?: string }; Returns: undefined
+                           },
+"campaign_submission":
+{ Args: { "p_deliverable": string }; Returns: Json
+                           },
+"campaign_submit_deliverable":
+{ Args: { "p_artifact": string,"p_deliverable": string }; Returns: undefined
+                           },
+"campaign_withdraw_invite":
+{ Args: { "p_campaign": string,"p_creator": string }; Returns: undefined
+                           },
 "can_message_creator":
 { Args: { "p_other": string }; Returns: boolean
                            },

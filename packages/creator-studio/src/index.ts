@@ -7,3 +7,4 @@ export * from "./exports";
 export * from "./publishing";
 export * from "./collaboration";
 export * from "./derivatives";
+export * from "./analytics";

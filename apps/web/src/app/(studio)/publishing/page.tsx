@@ -1,4 +1,4 @@
-import { getPublishingPreferences, publishingOverview, UNCONNECTED_PLATFORMS } from "@wonder/creator-studio";
+import { formatOutcome, getPublishingPreferences, publicationOutcomes, publishingOverview, UNCONNECTED_PLATFORMS } from "@wonder/creator-studio";
 import { requireSession } from "@/lib/session";
 import { serviceConfigured } from "@/lib/supabase/service";
 import { PublishingHub } from "./publishing-hub";
@@ -9,6 +9,8 @@ export const metadata = { title: "Publishing" };
 export default async function PublishingPage() {
   const { db, creator } = await requireSession();
   const [o, preferences] = await Promise.all([publishingOverview(db), getPublishingPreferences(db, creator.id)]);
+  // Platform-reported outcomes for published work (P1-20): only what the destinations themselves sent.
+  const outcomes = new Map((await publicationOutcomes(db, { publicationIds: o.history.filter((p) => p.status === "published").map((p) => p.id) })).map((x) => [x.publicationId, x]));
   const slim = (p: (typeof o.queue)[number]) => ({
     id: p.id,
     artifact: p.artifacts ? { id: p.artifacts.id, title: p.artifacts.title } : null,
@@ -25,6 +27,7 @@ export default async function PublishingPage() {
     failureReason: p.failure_reason,
     attempts: p.attempts,
     updatedAt: p.updated_at,
+    outcome: outcomes.get(p.id) ? { text: formatOutcome(outcomes.get(p.id)!), reportedBy: outcomes.get(p.id)!.reportedBy, observedAt: outcomes.get(p.id)!.metrics[0]?.observedAt ?? null } : null,
   });
   return (
     <>

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TRACKS, type Track } from "@wonder/creator-soundtrack";
-import { mirrorSoundtrack, setFavorite, soundtrackLibrary, SOUNDTRACK_BUCKET } from "@wonder/creator-soundtrack/server";
+import { mirrorSoundtrack, setFavorite, soundtrackLibrary, SOUNDTRACK_BUCKET, trackAudioPath } from "@wonder/creator-soundtrack/server";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createTestCreator, expectOk, type TestCreator } from "./helpers";
 
@@ -26,7 +26,7 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await admin.from("soundtrack_files").delete().like("track_id", "test-%");
-  await admin.storage.from(SOUNDTRACK_BUCKET).remove(["test-ok.mp3", "test-evil.mp3", "test-wronghost.mp3"]);
+  await admin.storage.from(SOUNDTRACK_BUCKET).remove(["test-ok.mp3", "test-evil.mp3", "test-wronghost.mp3", "test-lazy.mp3"]);
   await cleanupTestCreators();
 });
 
@@ -44,14 +44,19 @@ describe("soundtrack", () => {
     expect(expectOk(await admin.from("soundtrack_files").select("track_id").like("track_id", "test-%")).map((r) => r.track_id)).toEqual(["test-ok"]);
     // Already mirrored files aren't fetched again.
     expect((await mirrorSoundtrack(admin, { tracks: [fake("test-ok")], fetchImpl: serve(new Uint8Array()), resolve })).mirrored).toEqual([]);
+    // First play mirrors a song on demand (same checks); a bad file never plays.
+    expect(await trackAudioPath(admin, "test-lazy", { tracks: [fake("test-lazy")], fetchImpl: serve(mp3), resolve })).toBe("test-lazy.mp3");
+    expect(await trackAudioPath(admin, "test-lazy", { tracks: [fake("test-lazy")], fetchImpl: serve(new Uint8Array()), resolve })).toBe("test-lazy.mp3");
+    await expect(trackAudioPath(admin, "test-bad", { tracks: [fake("test-bad", { sha256: "0".repeat(64) })], fetchImpl: serve(mp3), resolve })).rejects.toThrow(/can't play right now/);
+    await expect(trackAudioPath(admin, "nope", { tracks: [] })).rejects.toThrow(/isn't in the library/);
     // Clients can't write the mirror table.
     expect((await db(maya).from("soundtrack_files").insert({ track_id: "test-forged", storage_path: "x.mp3", sha256: sha, size_bytes: 1 })).error).not.toBeNull();
   });
 
-  it("serves the catalogue with licensed sources until mirrored; favourites are private", async () => {
+  it("streams only from our own storage or our own audio route; favourites are private", async () => {
     const lib = await soundtrackLibrary(db(maya), maya.creatorId, (p) => `https://cdn.test/${p}`);
     expect(lib.tracks).toHaveLength(TRACKS.length);
-    expect(lib.tracks.every((t) => t.audioUrl === t.sourceUrl || t.audioUrl.startsWith("https://cdn.test/"))).toBe(true);
+    expect(lib.tracks.every((t) => t.audioUrl === `/api/v1/soundtrack/${t.id}/audio` || t.audioUrl.startsWith("https://cdn.test/"))).toBe(true);
     await setFavorite(db(maya), maya.creatorId, TRACKS[1]!.id, true);
     expect((await soundtrackLibrary(db(maya), maya.creatorId, (p) => p)).favorites).toEqual([TRACKS[1]!.id]);
     expect((await soundtrackLibrary(db(other), other.creatorId, (p) => p)).favorites).toEqual([]);

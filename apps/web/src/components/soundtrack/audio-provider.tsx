@@ -84,6 +84,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const restored = useRef(false);
   const failures = useRef(0);
   const loadedLibrary = useRef(false);
+  /** The creator asked to play: honoured once the library and the track's source are in place. */
+  const wantPlay = useRef(false);
+  const playWhenReady = useRef(false);
 
   const byId = useCallback((id: string | null | undefined) => (id ? tracks.find((t) => t.id === id) : undefined), [tracks]);
   const current = byId(p.trackId);
@@ -131,6 +134,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p, Math.floor(time / 5)]);
 
+  useEffect(() => {
+    if (audio.current) audio.current.volume = p.volume;
+  }, [p.volume]);
+
+  const startPlayback = useCallback(() => {
+    const el = audio.current;
+    wantPlay.current = true;
+    if (!el || !el.src) return; // the source effect starts it
+    el.play().then(
+      () => setPlaying(true),
+      (e: unknown) => {
+        setPlaying(false);
+        // A browser that blocks playback outside a tap says so; never fail silently.
+        if (e instanceof DOMException && e.name === "NotAllowedError") {
+          wantPlay.current = false;
+          setNotice("Tap play to start the music.");
+          setTimeout(() => setNotice(null), 4000);
+        }
+      },
+    );
+  }, []);
+
   // Point the element at the current track.
   useEffect(() => {
     const el = audio.current;
@@ -139,21 +164,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       el.dataset.trackId = current.id;
       el.src = current.audioUrl;
       el.currentTime = 0;
+      // Play was asked for before this source was set (a new track): start it now.
+      if (wantPlay.current) startPlayback();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
-  useEffect(() => {
-    if (audio.current) audio.current.volume = p.volume;
-  }, [p.volume]);
-
-  const startPlayback = useCallback(() => {
-    const el = audio.current;
-    if (!el) return;
-    el.play().then(
-      () => setPlaying(true),
-      () => setPlaying(false),
-    );
-  }, []);
-
   const goTo = useCallback(
     (id: string, rest?: string[]) => {
       setP((s) => ({ ...s, trackId: id, queue: rest ?? s.queue.filter((q) => q !== id), history: s.trackId && s.trackId !== id ? [s.trackId, ...s.history].slice(0, 30) : s.history }));
@@ -178,6 +193,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setTime(0);
   }, [freshQueue, startPlayback]);
 
+  // Honour a play that was asked for while the library was loading.
+  const playRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    if (ready && playWhenReady.current) {
+      playWhenReady.current = false;
+      playRef.current();
+    }
+  }, [ready]);
+
   const api = useMemo<Soundtrack>(
     () => ({
       ready,
@@ -194,6 +218,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       closePanel: () => setPanel((x) => ({ ...x, open: false })),
       play: (id) => {
         if (id) return goTo(id);
+        if (!tracks.length) {
+          // First play before the library has loaded: load it, then start (see the effect below).
+          playWhenReady.current = true;
+          void ensureLibrary();
+          return;
+        }
         if (!p.trackId) {
           const q = freshQueue(p, p.mood, p.seed);
           if (q[0]) goTo(q[0], q.slice(1));
@@ -206,6 +236,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         if (!el || !current) return api.play();
         if (el.paused) startPlayback();
         else {
+          wantPlay.current = false;
           el.pause();
           setPlaying(false);
         }
@@ -260,6 +291,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }),
     [ready, error, tracks, byId, current, p, playing, time, duration, favorites, notice, panel, ensureLibrary, goTo, freshQueue, startPlayback, next],
   );
+
+  useEffect(() => {
+    playRef.current = () => api.play();
+  }, [api]);
 
   return (
     <Ctx.Provider value={api}>
