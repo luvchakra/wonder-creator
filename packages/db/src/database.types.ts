@@ -790,15 +790,46 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"crew_members": {
+                },"crew_invite_messages": {
                   Row: {
-                    "access": string,"creator_id": string,"crew_id": string,"ended_at": string | null,"invite_note": string | null,"invited_at": string | null,"invited_by": string | null,"joined_at": string | null,"role_title": string | null,"status": string
+                    "author_creator_id": string | null,"body": string,"created_at": string,"crew_id": string,"id": string,"invitee_creator_id": string
                   }
                   Insert: {
-                    "access"?: string,"creator_id": string,"crew_id": string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"role_title"?: string | null,"status": string
+                    "author_creator_id"?: string | null,"body": string,"created_at"?: string,"crew_id": string,"id"?: string,"invitee_creator_id": string
                   }
                   Update: {
-                    "access"?: string,"creator_id"?: string,"crew_id"?: string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"role_title"?: string | null,"status"?: string
+                    "author_creator_id"?: string | null,"body"?: string,"created_at"?: string,"crew_id"?: string,"id"?: string,"invitee_creator_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_invite_messages_author_creator_id_fkey"
+      columns: ["author_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_invite_messages_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_invite_messages_invitee_creator_id_fkey"
+      columns: ["invitee_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crew_members": {
+                  Row: {
+                    "access": string,"compensation_note": string | null,"creator_id": string,"crew_id": string,"decline_note": string | null,"ended_at": string | null,"expires_at": string | null,"invite_note": string | null,"invited_at": string | null,"invited_by": string | null,"joined_at": string | null,"rights_note": string | null,"role_title": string | null,"scope": string | null,"status": string
+                  }
+                  Insert: {
+                    "access"?: string,"compensation_note"?: string | null,"creator_id": string,"crew_id": string,"decline_note"?: string | null,"ended_at"?: string | null,"expires_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"rights_note"?: string | null,"role_title"?: string | null,"scope"?: string | null,"status": string
+                  }
+                  Update: {
+                    "access"?: string,"compensation_note"?: string | null,"creator_id"?: string,"crew_id"?: string,"decline_note"?: string | null,"ended_at"?: string | null,"expires_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"rights_note"?: string | null,"role_title"?: string | null,"scope"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
@@ -1977,10 +2008,19 @@ isOneToOne: false
         isSetofReturn: false
       } },
 "crew_invite":
-{ Args: { "p_access"?: string,"p_creator": string,"p_crew": string,"p_note"?: string,"p_role_title"?: string }; Returns: undefined
+{ Args: { "p_access"?: string,"p_compensation"?: string,"p_creator": string,"p_crew": string,"p_expires_in_days"?: number,"p_note"?: string,"p_rights"?: string,"p_role_title"?: string,"p_scope"?: string }; Returns: undefined
+                           },
+"crew_invite_answer":
+{ Args: { "p_body": string,"p_crew": string,"p_invitee": string }; Returns: undefined
+                           },
+"crew_invite_ask":
+{ Args: { "p_body": string,"p_crew": string }; Returns: undefined
                            },
 "crew_leave":
 { Args: { "p_crew": string }; Returns: undefined
+                           },
+"crew_my_invitation":
+{ Args: { "p_crew": string }; Returns: Json
                            },
 "crew_overview":
 { Args: { "p_crew": string }; Returns: Json
@@ -1989,7 +2029,7 @@ isOneToOne: false
 { Args: { "p_creator": string,"p_crew": string }; Returns: undefined
                            },
 "crew_respond":
-{ Args: { "p_accept": boolean,"p_crew": string }; Returns: undefined
+{ Args: { "p_accept": boolean,"p_crew": string,"p_note"?: string }; Returns: undefined
                            },
 "crew_set_role":
 { Args: { "p_access"?: string,"p_clear_title"?: boolean,"p_creator": string,"p_crew": string,"p_role_title"?: string }; Returns: undefined
