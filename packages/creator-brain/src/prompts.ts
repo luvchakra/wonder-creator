@@ -99,6 +99,8 @@ export const TASKS = {
     "Suggest the next practical steps for this creative project as short tasks (a verb first, under 12 words each), based on its brief, goals, milestones and the tasks it already has. Don't repeat existing tasks. Also list up to three things that seem to be missing. Never assign people, set dates or make commitments on anyone's behalf.",
   collaborator_query:
     "Turn the creator's request for collaborators into search filters: the disciplines or skills they're looking for (short role words such as 'cinematographer' or 'sound design'; infer from the project only when the request is vague), how many people they asked for, whether they want people they already know ('my network', 'people I've worked with'), and a location or interest only if they named one. Never rank people, judge quality or invent requirements.",
+  message_draft:
+    "Draft a short message in the creator's voice for them to review and send themselves, based on what they want to say and the recent conversation. Plain and warm; no promises, commitments, prices or dates the creator didn't state; never speak for other people. Output only the message.",
   memory:
     "From the creator's own words, extract at most three durable facts about their creative practice worth remembering (preferences, voice, recurring themes). Only include what they clearly expressed. Return an empty list if nothing is durable.",
 } as const;

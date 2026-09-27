@@ -723,3 +723,50 @@ export async function suggestCollaborators(deps: BrainDeps, input: { ask: string
     return { query, people: people.filter((p) => !p.signals.inProject).slice(0, query.count), offline: !deps.provider.live };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Message drafts (P1-11): CreatorBrain drafts, the creator reviews and sends. Nothing is ever sent from here.
+// ---------------------------------------------------------------------------
+export const messageDraftSchema = z.object({ body: z.string().trim().min(1).max(4000) });
+
+export async function draftMessage(
+  deps: BrainDeps,
+  input: { where: { kind: "crew"; crewId: string } | { kind: "direct"; threadId: string }; intent: string; about?: string | null },
+): Promise<{ draft: string; offline: boolean }> {
+  const intent = input.intent.trim().slice(0, 1000);
+  if (!intent) throw new DomainError("validation", "Say what you'd like the message to say.");
+  // Recent messages the creator can already read (RLS), as untrusted context.
+  const recent =
+    input.where.kind === "crew"
+      ? await deps.db.from("crew_messages").select("body, creator_id, creators(display_name)").eq("crew_id", input.where.crewId).order("created_at", { ascending: false }).limit(12)
+      : await deps.db.from("direct_messages").select("body, creator_id, creators(display_name)").eq("thread_id", input.where.threadId).order("created_at", { ascending: false }).limit(12);
+  if (recent.error) throw fromDbError(recent.error);
+  const history = (recent.data ?? [])
+    .reverse()
+    .map((m) => `${m.creator_id === deps.creatorId ? "Me" : ((m.creators as { display_name: string } | null)?.display_name ?? "Someone")}: ${m.body.slice(0, 500)}`)
+    .join("\n");
+  const run = await startRun(deps, "message_draft", { inputCategory: "text" });
+  return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "draft_message", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
+    const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Draft a message." });
+    const draft = await run.step("generate", async () => {
+      const r = await deps.provider.structured({
+        task: "message_draft",
+        system: systemPrompt(ctx, TASKS.message_draft),
+        schema: messageDraftSchema,
+        schemaName: "message_draft",
+        messages: [
+          {
+            role: "user",
+            content: `What I want to say: ${intent}\n${input.about ? `It's about: ${input.about.slice(0, 200)}\n` : ""}\n${fenceUntrusted("recent conversation", history || "(no messages yet)")}`,
+          },
+        ],
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value.body;
+    });
+    await run.finish({ outputCategory: "message_draft" });
+    return { draft, offline: !deps.provider.live };
+  });
+}

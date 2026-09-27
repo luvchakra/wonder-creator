@@ -1,5 +1,6 @@
 import { getCreatorByHandle } from "@wonder/creator-identity";
 import { liveCards } from "@wonder/creator-huddle";
+import { canMessage } from "@wonder/creator-projects";
 import { Avatar, Badge, EmptyState, BACKGROUNDS, BrandBackground, buttonClasses } from "@wonder/ui";
 import { MapPin, PenLine } from "lucide-react";
 import Link from "next/link";
@@ -32,12 +33,13 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   // Own profile shows everything you own; others see only public, final work.
   let q = db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, privacy, featured_on_profile").eq("creator_id", c.id).neq("status", "archived").order("featured_on_profile", { ascending: false }).order("updated_at", { ascending: false }).limit(12);
   if (!isMe) q = q.eq("privacy", "public").in("status", ["final", "published"]);
-  const [{ data: artifacts }, live, myLive, follow, avatars] = await Promise.all([
+  const [{ data: artifacts }, live, myLive, follow, avatars, messageable] = await Promise.all([
     q,
     liveCards(db, { creatorId: c.id, limit: 3 }),
     isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }),
     isMe ? Promise.resolve({ data: null }) : db.from("creator_follows").select("followed_creator_id").eq("follower_creator_id", me.id).eq("followed_creator_id", c.id).maybeSingle(),
     avatarUrls(db, [c.id]),
+    isMe ? Promise.resolve(false) : canMessage(db, c.id),
   ]);
   const [covers, scrapbook] = await Promise.all([coverUrls(db, artifacts ?? []), listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 3 })]);
 
@@ -57,7 +59,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 <PenLine className="size-4" aria-hidden /> Edit profile
               </Link>
             ) : (
-              <ProfileActions creatorId={c.id} following={!!follow.data} myLiveHuddleId={myLive[0]?.huddleId ?? null} />
+              <ProfileActions creatorId={c.id} following={!!follow.data} myLiveHuddleId={myLive[0]?.huddleId ?? null} canMessage={messageable} />
             )}
           </div>
           {profile.disciplines.length ? <p className="mt-2 text-ink-muted">{profile.disciplines.join(" · ")}</p> : null}

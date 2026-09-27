@@ -1,11 +1,11 @@
 "use client";
 import { Button, ConfirmDialog, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses } from "@wonder/ui";
-import { Ban, MoreHorizontal, Radio, UserPlus } from "lucide-react";
+import { Ban, MessageCircle, MoreHorizontal, Radio, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
-export function ProfileActions({ creatorId, following, myLiveHuddleId }: { creatorId: string; following: boolean; myLiveHuddleId: string | null }) {
+export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessage }: { creatorId: string; following: boolean; myLiveHuddleId: string | null; canMessage: boolean }) {
   const router = useRouter();
   const [f, setF] = useState(following);
   const [msg, setMsg] = useState<string | null>(null);
@@ -26,6 +26,21 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId }: { creat
         >
           <UserPlus className="size-4" aria-hidden /> {f ? "Following" : "Follow"}
         </Button>
+        {canMessage ? (
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const r = await api<{ threadId: string }>("/api/v1/messages", { method: "POST", json: { creatorId } });
+                router.push(`/messages/${r.threadId}`);
+              } catch (e) {
+                setMsg(errorMessage(e));
+              }
+            }}
+          >
+            <MessageCircle className="size-4" aria-hidden /> Message
+          </Button>
+        ) : null}
         {myLiveHuddleId ? (
           <Button
             variant="secondary"

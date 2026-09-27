@@ -83,6 +83,7 @@ export function ProjectView({
   tab,
   shared,
   chat,
+  chatContexts,
   tasks,
   contributions,
   rights,
@@ -99,6 +100,7 @@ export function ProjectView({
   /** Work shared with the crew (read-only for everyone but its owner). */
   shared: SharedSummary[];
   chat: { messages: ChatMessage[]; olderBefore: string | null } | null;
+  chatContexts: React.ComponentProps<typeof CrewChat>["contexts"];
   tasks: Omit<React.ComponentProps<typeof TasksPanel>, "projectId" | "viewerId"> | null;
   contributions: Omit<React.ComponentProps<typeof ContributionsPanel>, "projectId"> | null;
   rights: Omit<React.ComponentProps<typeof RightsPanel>, "projectId" | "viewerId" | "isOwner"> | null;
@@ -435,7 +437,7 @@ export function ProjectView({
       {tab === "rights" && rights ? <RightsPanel projectId={project.id} viewerId={viewerId} isOwner={canEdit} {...rights} /> : null}
       {tab === "tasks" && tasks ? <TasksPanel projectId={project.id} viewerId={viewerId} {...tasks} /> : null}
 
-      {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} /> : null}
+      {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} contexts={chatContexts} /> : null}
 
       {showOverview ? (
       <section aria-label="Rights">
