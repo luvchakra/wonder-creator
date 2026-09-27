@@ -1914,3 +1914,37 @@ not:
 The implementation rule is:
 
 > **Generate only when context is meaningful, cache aggressively, preserve creative continuity, and spend premium generation only after the creator shows intent.**
+
+---
+
+# Implementation notes (phases 10–11)
+
+## High quality version (phase 10, §53, §62)
+
+* Asked for, never automatic: the chosen image's More menu → **High quality version**
+  (`POST /api/v1/image-generations/:id/assets/:assetId/upgrade`, premium hourly budget).
+* It is an `upgrade` change (`image_asset_revisions.kind`) on the premium tier's model. The chosen image goes to the
+  model as the reference, with the instruction to keep its subject, composition, palette and mood. The new image takes
+  the old one's place, and the old one stays in history (`replaced_by`). The new image records `quality_intent = premium`.
+* An image that is already high quality is returned as it is, and the same idempotency key returns the same change.
+* A failure says "Couldn't create the high-quality version" and offers Try again. It never falls back to a lower tier.
+* Provider fallback (a secondary provider such as OpenAI) is not built. It needs an owner decision and a key, and
+  "no fake providers" rules out a placeholder. The provider interface already keeps provider quirks in adapters, so a
+  second adapter plugs into `selectImageProvider`.
+
+## Cost telemetry (phase 11, §49–50)
+
+* `image_generations.cache_hits` / `last_cache_hit_at` count each time a stored generation is served instead of
+  generated (`image_generation_cache_hit`, service role only).
+* Each change records the model and tier it actually ran on, plus its latency (`image_asset_revisions.model`,
+  `quality_intent`, `latency_ms`).
+* `app.image_generation_daily_costs` has one row per day × provider × model × tier × purpose × source, where source is
+  `generation` or `change:<kind>`. Its columns are requests, regenerations, images requested and made, failed, partial,
+  cache hits, average latency and distinct creators. It holds counts and timings only: no prompts, context,
+  instructions or creator ids. It lives in the `app` schema (not exposed by the API) and only the service role can read
+  it:
+
+```sql
+select day, quality_intent, purpose, source, requests, images_made, cache_hits, failed, avg_latency_ms, creators
+from app.image_generation_daily_costs where day > current_date - 30 order by day desc;
+```

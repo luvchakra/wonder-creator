@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, reorderGeneratedAssets, requestAssetRevision, runImageRevision, saveGeneratedAsset, saveTextOverlay, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
+import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, reorderGeneratedAssets, requestAssetRevision, requestAssetUpgrade, runImageRevision, saveGeneratedAsset, saveTextOverlay, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
 import { DomainError } from "@wonder/core";
 import { addCollaborator, createArtifact, saveCreatorVersion } from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
@@ -210,7 +210,7 @@ describe("arranging and changing slide visuals", () => {
     await selectGeneratedAsset(d(owner), gen.view.id, a);
     const asked = await requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "make it night, with rain on the water", idempotencyKey: "rev-key-0001" });
     if (asked.kind !== "revision") throw new Error(asked.kind);
-    expect(asked.view.revisions).toEqual([{ id: asked.revisionId, assetId: a, status: "queued" }]);
+    expect(asked.view.revisions).toEqual([{ id: asked.revisionId, assetId: a, kind: "replace", status: "queued" }]);
     // Same key → same revision; a second ask while it's running doesn't queue another.
     const again = await requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "make it night, with rain on the water", idempotencyKey: "rev-key-0001" });
     expect(again.kind === "revision" && again.revisionId).toBe(asked.revisionId);
@@ -244,6 +244,66 @@ describe("arranging and changing slide visuals", () => {
     await runImageRevision({ service: admin, provider: failing, derive }, bad.revisionId);
     const v = (await generationView(db(owner), admin, gen.view.id))!;
     expect(v.assets.map((x) => x.id)).toEqual([c, fresh.id, b]);
-    expect(v.revisions).toEqual([{ id: bad.revisionId, assetId: b, status: "failed" }]);
+    expect(v.revisions).toEqual([{ id: bad.revisionId, assetId: b, kind: "replace", status: "failed" }]);
+  });
+});
+
+describe("high-quality version and cost records", () => {
+  it("makes the chosen image again on the premium tier only when asked, keeps the old one, and never repeats it", async () => {
+    const provider = fakeProvider();
+    const models: string[] = [];
+    const tracking: ImageProvider = { name: "test", live: true, generate: async (r) => (models.push(r.model), provider.generate(r)) };
+    const piece3 = (await createArtifact(db(owner), owner.creatorId, { artifactType: "poem", title: "Lantern market", content: "Paper lanterns sway over the night stalls.", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const gen = await requestImageGeneration(deps(owner, tracking), { artifactId: piece3, purpose: "explore" });
+    if (gen.kind !== "generation") throw new Error(gen.kind);
+    await runImageGeneration({ service: admin, provider: tracking, derive }, gen.view.id);
+    const set = (await generationView(db(owner), admin, gen.view.id))!;
+    expect(set.assets.every((a) => a.qualityIntent === "preview")).toBe(true);
+    const chosen = set.assets[0]!;
+
+    // Only the creator; no provider → honest "unavailable".
+    await expect(requestAssetUpgrade(deps(out, tracking), gen.view.id, chosen.id)).rejects.toThrow(/isn't available/);
+    const offline = { name: "none", live: false, generate: async () => Promise.reject(new Error("never")) } as ImageProvider;
+    expect((await requestAssetUpgrade(deps(owner, offline), gen.view.id, chosen.id)).kind).toBe("unavailable");
+
+    const up = await requestAssetUpgrade(deps(owner, tracking), gen.view.id, chosen.id, { idempotencyKey: "upgrade-key-1" });
+    if (up.kind !== "revision" || !up.revisionId) throw new Error("not queued");
+    expect(up.queued).toBe(true);
+    expect(up.view.revisions).toEqual([{ id: up.revisionId, assetId: chosen.id, kind: "upgrade", status: "queued" }]);
+    const again = await requestAssetUpgrade(deps(owner, tracking), gen.view.id, chosen.id, { idempotencyKey: "upgrade-key-1" });
+    expect(again.kind === "revision" && again.revisionId).toBe(up.revisionId);
+
+    const before = models.length;
+    await runImageRevision({ service: admin, provider: tracking, derive }, up.revisionId);
+    expect(models.length).toBe(before + 1);
+    // The premium tier's model, from the chosen image, not the set's preview model.
+    const set2 = (await generationView(db(owner), admin, gen.view.id))!;
+    const fresh = set2.assets[0]!;
+    expect(fresh.id).not.toBe(chosen.id);
+    expect(fresh).toMatchObject({ qualityIntent: "premium", revised: true, directionLabel: chosen.directionLabel });
+    expect(models.at(-1)).not.toBe(models[0]);
+    expect(provider.prompts.at(-1)).toContain("high-quality version");
+    const rev = expectOk(await admin.from("image_asset_revisions").select("status, model, quality_intent, latency_ms").eq("id", up.revisionId).single());
+    expect(rev).toMatchObject({ status: "complete", quality_intent: "premium", model: models.at(-1) });
+    expect(rev.latency_ms).toBeGreaterThanOrEqual(0);
+    expect(expectOk(await admin.from("image_generation_assets").select("replaced_by").eq("id", chosen.id).single()).replaced_by).toBe(fresh.id);
+
+    // Already high quality: nothing new is made.
+    const same = await requestAssetUpgrade(deps(owner, tracking), gen.view.id, fresh.id);
+    expect(same.kind === "revision" && same.queued).toBe(false);
+    expect(models.length).toBe(before + 1);
+  });
+
+  it("counts cache hits on the generation and reports costs without creator content", async () => {
+    const provider = fakeProvider();
+    const piece4 = (await createArtifact(db(owner), owner.creatorId, { artifactType: "poem", title: "Salt road", content: "Camels cross the white flats at noon.", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const gen = await requestImageGeneration(deps(owner, provider), { artifactId: piece4, purpose: "explore" });
+    if (gen.kind !== "generation") throw new Error(gen.kind);
+    await runImageGeneration({ service: admin, provider, derive }, gen.view.id);
+    await requestImageGeneration(deps(owner, provider), { artifactId: piece4, purpose: "explore", lookupOnly: true });
+    await requestImageGeneration(deps(owner, provider), { artifactId: piece4, purpose: "explore" });
+    expect(expectOk(await admin.from("image_generations").select("cache_hits").eq("id", gen.view.id).single()).cache_hits).toBe(2);
+    // Creators can't bump the counter themselves.
+    expect((await owner.client.rpc("image_generation_cache_hit", { p_generation: gen.view.id })).error).not.toBeNull();
   });
 });

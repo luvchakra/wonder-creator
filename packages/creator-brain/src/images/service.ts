@@ -93,9 +93,9 @@ export interface GenerationView {
   requestedCount: number;
   createdAt: string;
   /** The set in the creator's order; images that were changed show their newest version only. */
-  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised: boolean }>;
+  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised: boolean; qualityIntent: ImageQualityIntent }>;
   /** Changes the viewer asked for that are in flight or just failed (only the creator sees their own). */
-  revisions: Array<{ id: string; assetId: string; status: "queued" | "processing" | "failed" }>;
+  revisions: Array<{ id: string; assetId: string; kind: string; status: "queued" | "processing" | "failed" }>;
 }
 
 /** A generation and its images, with short-lived signed URLs (§45). Null when the caller can't see it. */
@@ -104,7 +104,7 @@ export async function generationView(db: Db, service: Db, generationId: string, 
   if (!g) return null;
   const { data: all, error: assetsError } = await db
     .from("image_generation_assets")
-    .select("id, sequence, position, replaced_by, revision_of, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id")
+    .select("id, sequence, position, replaced_by, revision_of, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id, quality_intent")
     .eq("generation_id", generationId)
     .order("sequence");
   // A read failure must surface as an error, never as "no images" (which the UI would show as a failed generation).
@@ -112,7 +112,7 @@ export async function generationView(db: Db, service: Db, generationId: string, 
   const assets = orderedSet(all ?? []);
   const { data: revs } = await db
     .from("image_asset_revisions")
-    .select("id, asset_id, status, created_at")
+    .select("id, asset_id, kind, status, created_at")
     .eq("generation_id", generationId)
     .in("status", ["queued", "processing", "failed"])
     .gte("created_at", new Date(Date.now() - FAILED_TTL_MS).toISOString())
@@ -146,11 +146,12 @@ export async function generationView(db: Db, service: Db, generationId: string, 
       selected: a.selected,
       savedMaterialId: a.saved_material_id,
       revised: !!a.revision_of,
+      qualityIntent: (a.quality_intent ?? g.quality_intent) as ImageQualityIntent,
     })),
     // Latest per image; a failure only while that image hasn't been changed since.
     revisions: [...new Map([...(revs ?? [])].reverse().map((r) => [r.asset_id, r] as const)).values()]
       .filter((r) => !!r.asset_id && assets.some((a) => a.id === r.asset_id))
-      .map((r) => ({ id: r.id, assetId: r.asset_id!, status: r.status as "queued" | "processing" | "failed" })),
+      .map((r) => ({ id: r.id, assetId: r.asset_id!, kind: r.kind, status: r.status as "queued" | "processing" | "failed" })),
   };
 }
 
@@ -201,6 +202,8 @@ export async function requestImageGeneration(deps: ImageDeps, req: ImageGenerati
   if (latest && !opts.regenerate && (latest.status !== "failed" || recentFailure || req.lookupOnly)) {
     const reuse = latest.status === "complete" || latest.status === "partial";
     log("info", reuse ? "image_generation_cache_hit" : "image_generation_deduped", { purpose, qualityIntent });
+    // Cache savings (§50), best effort: a counter on the generation, never creator content.
+    if (reuse) await deps.service.rpc("image_generation_cache_hit", { p_generation: latest.id }).then(undefined, () => undefined);
     const view = await generationView(deps.db, deps.service, latest.id, reuse);
     if (view) return { kind: "generation", view };
   }
@@ -556,6 +559,43 @@ export async function requestAssetRevision(
 }
 
 /**
+ * "High quality version" (§62): the chosen image made again with the premium model, from the image itself — asked for,
+ * never automatic. It takes the old image's place when ready (the old one stays in history). Asking again for an image
+ * that already has a high-quality version returns that one (§12); a failure is shown, never swapped for a lower tier (§53).
+ */
+export async function requestAssetUpgrade(
+  deps: ImageDeps,
+  generationId: string,
+  assetId: string,
+  input: { idempotencyKey?: string } = {},
+): Promise<{ kind: "revision"; revisionId: string | null; view: GenerationView; queued: boolean } | { kind: "unavailable" }> {
+  const { data: g } = await deps.db.from("image_generations").select("id, creator_id, quality_intent").eq("id", generationId).maybeSingle();
+  if (!g || g.creator_id !== deps.creatorId) throw new DomainError("not_found", "That isn't available.");
+  const { data: a } = await deps.db.from("image_generation_assets").select("id, replaced_by, quality_intent").eq("id", assetId).eq("generation_id", generationId).maybeSingle();
+  if (!a) throw new DomainError("not_found", "That image isn't available.");
+  const view = async () => (await generationView(deps.db, deps.service, generationId))!;
+  if ((a.quality_intent ?? g.quality_intent) === "premium") return { kind: "revision", revisionId: null, view: await view(), queued: false };
+  if (a.replaced_by) throw new DomainError("conflict", "That image has already changed. Refresh to see the newest one.");
+  if (input.idempotencyKey) {
+    const { data: dup } = await deps.db.from("image_asset_revisions").select("id").eq("creator_id", deps.creatorId).eq("idempotency_key", input.idempotencyKey).maybeSingle();
+    if (dup) return { kind: "revision", revisionId: dup.id, view: await view(), queued: false };
+  }
+  const { data: busy } = await deps.db.from("image_asset_revisions").select("id").eq("asset_id", assetId).in("status", ["queued", "processing"]).maybeSingle();
+  if (busy) return { kind: "revision", revisionId: busy.id, view: await view(), queued: false };
+  if (!deps.provider.live) return { kind: "unavailable" };
+
+  const { data: rev, error } = await deps.service
+    .from("image_asset_revisions")
+    .insert({ creator_id: deps.creatorId, generation_id: generationId, asset_id: assetId, kind: "upgrade", quality_intent: "premium", model: resolveImageModel({ qualityIntent: "premium" }), idempotency_key: input.idempotencyKey ?? null })
+    .select("id")
+    .single();
+  if (error || !rev) throw new DomainError("internal", "Couldn't start the high-quality version.", { cause: error });
+  await deps.service.from("jobs").insert({ creator_id: deps.creatorId, kind: "image.revise", subject_id: rev.id, idempotency_key: `imagerev:${rev.id}` });
+  log("info", "image_asset_upgrade_requested", {});
+  return { kind: "revision", revisionId: rev.id, view: await view(), queued: true };
+}
+
+/**
  * The change job. `replace`: the new image takes the old one's place in the set (the old one is kept, `replaced_by`).
  * `variation`: the new image waits on its Carousel slide for "Use new" / "Keep current" (§27). `fill`: an image for a
  * slide that has none (a failed image, or a slide made by splitting). `add`: one more image
@@ -569,12 +609,14 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
   if (!rev) return;
   const { data: g } = await service.from("image_generations").select("id, creator_id, artifact_id, context, purpose, aspect_ratio, model").eq("id", rev.generation_id).single();
   const { data: old } = rev.asset_id ? await service.from("image_generation_assets").select("*").eq("id", rev.asset_id).single() : { data: null };
-  const fail = async (code: string) => {
-    await service.from("image_asset_revisions").update({ status: "failed", error_code: code, completed_at: new Date().toISOString() }).eq("id", rev.id);
-  };
-  const needsSource = rev.kind === "replace" || rev.kind === "variation";
-  if (!g || (needsSource && (!old || (rev.kind === "replace" && old.replaced_by)))) return fail("gone");
   const started = Date.now();
+  const fail = async (code: string) => {
+    await service.from("image_asset_revisions").update({ status: "failed", error_code: code, completed_at: new Date().toISOString(), latency_ms: Date.now() - started }).eq("id", rev.id);
+  };
+  // `upgrade` behaves like `replace`, on its own (premium) model.
+  const replaces = rev.kind === "replace" || rev.kind === "upgrade";
+  const needsSource = replaces || rev.kind === "variation";
+  if (!g || (needsSource && (!old || (replaces && old.replaced_by)))) return fail("gone");
   try {
     const references: ImageReference[] = [];
     if (old) {
@@ -590,11 +632,12 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
       ? { ...slideDirections({ ...context, slides: [slideText ?? ""] })[0]!, label: old?.direction_label ?? "Slide", slideText }
       : (directionsFor(context, 5).find((d) => d.label === old?.direction_label) ?? { label: old?.direction_label ?? "Direction", rationale: "", guidance: "keep the attached image's composition and spirit" });
     const lines = [buildImagePrompt(context, g.purpose as ImagePurpose, g.aspect_ratio as AspectRatio, direction), ""];
-    if (old) lines.push("The attached image is the current version of this image. Keep what works and keep the set's visual language.");
+    if (rev.kind === "upgrade") lines.push("The attached image is the chosen direction. Make the finished, high-quality version of it: the same subject, composition, palette and mood, with refined detail, lighting and finish. Don't change what it shows.");
+    else if (old) lines.push("The attached image is the current version of this image. Keep what works and keep the set's visual language.");
     else lines.push("This is one more image for an existing sequence. Match the set's visual language.");
     if (rev.instruction) lines.push("The creator asked for this change:", rev.instruction);
     lines.push("Still avoid any embedded text.");
-    const out = await deps.provider.generate({ model: g.model, system: IMAGE_SYSTEM, prompt: lines.join("\n"), aspectRatio: g.aspect_ratio as AspectRatio, references });
+    const out = await deps.provider.generate({ model: rev.model ?? g.model, system: IMAGE_SYSTEM, prompt: lines.join("\n"), aspectRatio: g.aspect_ratio as AspectRatio, references });
     const inspected = await inspectUpload(out.image.bytes);
     if (inspected.kind !== "image") throw new DomainError("provider_failed", "Not an image.");
     const derived = await deps.derive(out.image.bytes);
@@ -629,7 +672,8 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
         position: old ? (old.position ?? old.sequence) : null,
         direction_label: old?.direction_label ?? direction.label,
         rationale: old?.rationale ?? null,
-        selected: rev.kind === "replace" ? !!old?.selected : false,
+        selected: replaces ? !!old?.selected : false,
+        quality_intent: rev.quality_intent ?? old?.quality_intent ?? null,
         revision_of: old?.id ?? null,
         // A variation or an added slide isn't part of the generated set's own strip.
         replaced_by: null,
@@ -637,7 +681,7 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
       .select("id")
       .single();
     if (aErr || !fresh) throw new DomainError("internal", "Couldn't record the image.", { cause: aErr });
-    if (rev.kind === "replace" && old) {
+    if (replaces && old) {
       await service.from("image_generation_assets").update({ replaced_by: fresh.id, selected: false }).eq("id", old.id);
     } else if (rev.kind === "variation" && rev.slide_id) {
       await service.from("carousel_slides").update({ pending_asset_id: fresh.id }).eq("id", rev.slide_id);
@@ -654,7 +698,7 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
         display_text: rev.slide_text ?? "",
       });
     }
-    await service.from("image_asset_revisions").update({ status: "complete", result_asset_id: fresh.id, completed_at: new Date().toISOString() }).eq("id", rev.id);
+    await service.from("image_asset_revisions").update({ status: "complete", result_asset_id: fresh.id, completed_at: new Date().toISOString(), latency_ms: Date.now() - started }).eq("id", rev.id);
     log("info", "image_asset_revised", { kind: rev.kind, purpose: g.purpose, ms: Date.now() - started });
   } catch (e) {
     const code = e instanceof DomainError ? e.code : "internal";

@@ -1,12 +1,12 @@
 "use client";
 import { Button, Dialog, DialogContent, Field, Menu, MenuContent, MenuItem, MenuTrigger, Textarea, cn } from "@wonder/ui";
-import { ArrowLeft, ArrowRight, Check, ImageOff, MoreHorizontal, RefreshCw, Save, Type, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ImageOff, MoreHorizontal, RefreshCw, Save, Sparkles, Type, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { SlideTextDialog } from "./slide-text-dialog";
 
-type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised?: boolean };
-type Revision = { id: string; assetId: string; status: "queued" | "processing" | "failed" };
+type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised?: boolean; qualityIntent?: "preview" | "standard" | "premium" };
+type Revision = { id: string; assetId: string; kind?: string; status: "queued" | "processing" | "failed" };
 type Generation = { id: string; status: "queued" | "processing" | "complete" | "partial" | "failed" | "cancelled"; requestedCount: number; aspectRatio: string; assets: Asset[]; revisions?: Revision[] };
 type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; generation?: Generation; available: boolean };
 
@@ -159,6 +159,23 @@ export function VisualDirections({
     }
   }
 
+  // "High quality version" (§62): only when asked, for the chosen image; a failure says so rather than downgrading (§53).
+  const upKey = useRef<string | null>(null);
+  async function upgrade(a: Asset) {
+    if (!gen) return;
+    setError(null);
+    try {
+      upKey.current ??= crypto.randomUUID();
+      const r = await api<{ state: "generation" | "unavailable"; generation?: Generation }>(`/api/v1/image-generations/${gen.id}/assets/${a.id}/upgrade`, { method: "POST", json: { idempotencyKey: upKey.current } });
+      if (r.state === "unavailable" || !r.generation) setError("Image generation isn't connected.");
+      else setReply((prev) => (prev ? { ...prev, state: "generation", generation: r.generation } : prev));
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      upKey.current = null;
+    }
+  }
+
   const aspect = gen?.aspectRatio === "16:9" ? "aspect-video" : gen?.aspectRatio === "1:1" ? "aspect-square" : "aspect-[4/5]";
   const ready = gen && (gen.status === "complete" || gen.status === "partial") && gen.assets.length > 0;
 
@@ -251,7 +268,11 @@ export function VisualDirections({
                   <span className="mt-1 block text-[13px] font-medium text-ink">
                     {isCarousel ? <span className="sr-only">Slide {i + 1}: </span> : null}
                     {a.directionLabel ?? "Direction"}
-                    {a.revised ? <span className="font-normal text-ink-subtle"> · changed</span> : null}
+                    {a.qualityIntent === "premium" && gen!.assets.some((x) => x.qualityIntent !== "premium") ? (
+                      <span className="font-normal text-ink-subtle"> · high quality</span>
+                    ) : a.revised ? (
+                      <span className="font-normal text-ink-subtle"> · changed</span>
+                    ) : null}
                   </span>
                   {a.rationale ? <span className="block text-xs leading-snug text-ink-subtle">{a.rationale}</span> : null}
                 </button>
@@ -289,6 +310,11 @@ export function VisualDirections({
                       <MenuItem onSelect={() => setChangeFor(chosen)}>
                         <Wand2 className="size-4" aria-hidden /> Change this image…
                       </MenuItem>
+                      {chosen.qualityIntent !== "premium" && !changing.has(chosen.id) ? (
+                        <MenuItem onSelect={() => upgrade(chosen)}>
+                          <Sparkles className="size-4" aria-hidden /> High quality version
+                        </MenuItem>
+                      ) : null}
                       {isCarousel && at > 0 ? (
                         <MenuItem onSelect={() => move(chosen, -1)}>
                           <ArrowLeft className="size-4" aria-hidden /> Move earlier
@@ -315,7 +341,18 @@ export function VisualDirections({
                     </a>
                   </p>
                 ) : null}
-                {failed ? <p className="text-sm text-ink-muted">Couldn&apos;t change that image. Try saying it differently.</p> : null}
+                {failed ? (
+                  failed.kind === "upgrade" ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-ink-muted">Couldn&apos;t create the high-quality version.</p>
+                      <Button variant="ghost" size="sm" onClick={() => upgrade(chosen)}>
+                        Try again
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-ink-muted">Couldn&apos;t change that image. Try saying it differently.</p>
+                  )
+                ) : null}
               </>
             );
           })()}
