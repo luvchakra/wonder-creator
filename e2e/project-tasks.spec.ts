@@ -77,6 +77,7 @@ test.describe("Crew tasks & milestones", () => {
     await suggest.getByRole("checkbox").first().uncheck();
     await suggest.getByRole("button", { name: `Add ${count - 1}` }).click();
     await expect(a.getByText(`Added ${count - 1} tasks.`).first()).toBeVisible();
+    await a.getByRole("radiogroup", { name: "Tasks view" }).getByRole("radio", { name: /^In progress/ }).click();
     await expect(a.getByRole("region", { name: "To do" }).getByText("Nobody yet").first()).toBeVisible();
   });
 });
