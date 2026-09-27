@@ -5,6 +5,10 @@ import * as React from "react";
 import { cn } from "../cn";
 import { KIT } from "../brand/kit";
 
+/** How far (rem) the leaf beside the trigger sits from the corner, and how far it leans (deg). */
+const FAN_REACH = 4.5;
+const FAN_TILT = 4;
+
 export interface PaletteItem {
   key: string;
   label: string;
@@ -30,8 +34,8 @@ export interface PaletteGroup {
 
 /**
  * The Creative Palette: the corner control that replaces bottom navigation. A thumb-reachable trigger (the Vector Kit palette button) in the lower
- * right (safe-area aware) opens a fan of menu "leaves" — destinations, quick actions and whatever the current screen
- * offers. It traps focus, closes on Escape, outside tap or the trigger, and respects reduced motion.
+ * right (safe-area aware) opens a fan of menu "leaves" on an arc around it — destinations, quick actions and whatever
+ * the current screen offers. It traps focus, closes on Escape, outside tap or the trigger, and respects reduced motion.
  */
 export function Palette({ groups, open, onOpenChange, className, announce }: { groups: PaletteGroup[]; open: boolean; onOpenChange: (open: boolean) => void; className?: string; announce?: string }) {
   // Switching views (More…, Go to…, Create) keeps focus inside, on the first new action.
@@ -41,8 +45,12 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
   }, [open, announce]);
   let index = 0;
   const total = groups.reduce((n, g) => n + g.items.length, 0);
-  // Leaves arc away from the corner: the ones nearest the trigger sit furthest right.
-  const inset = (i: number) => (total > 1 ? Math.sin(((total - 1 - i) / (total - 1)) * (Math.PI / 2)) * 2.25 : 0);
+  // The fan (CLAUDE.md → Creative Palette): leaves sit on a quarter-arc around the trigger. The leaf nearest the trigger
+  // sits beside it, the furthest right above it. Labels stay horizontal enough to read.
+  const reach = (i: number) => (total > 1 ? (total - 1 - i) / (total - 1) : 0); // 0 = beside the trigger, 1 = above it
+  const inset = (i: number) => FAN_REACH * Math.cos(reach(i) * (Math.PI / 2));
+  // Leaves lean toward the trigger like fan slats: level beside it, gently tipped the higher they sit.
+  const tilt = (i: number) => FAN_TILT * Math.sin(reach(i) * (Math.PI / 2));
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Trigger
@@ -75,8 +83,9 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
             (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>("[data-palette-item]")?.focus();
           }}
           className={cn(
-            "fixed z-50 flex max-h-[calc(100dvh-8rem)] w-[min(19rem,calc(100vw-2rem))] flex-col items-end overflow-y-auto overscroll-contain focus:outline-none",
-            "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] pb-1",
+            "fixed z-50 flex max-h-[calc(100dvh-var(--nav-height)-2.5rem)] w-[min(20rem,calc(100vw-2rem))] flex-col items-end overflow-y-auto overscroll-contain focus:outline-none",
+            // The fan's lowest leaf lines up with the trigger's centre, beside it.
+            "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] pt-3",
           )}
         >
           <D.Title className="sr-only">Creative Palette</D.Title>
@@ -84,13 +93,17 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
             {announce ?? "Creative Palette opened"}
           </p>
           {groups.map((g, gi) => (
-            <nav key={g.key} aria-label={g.label ?? g.srLabel ?? "Destinations"} className={cn("flex w-full flex-col items-end", gi > 0 && "mt-1.5 border-t border-border-soft/80 pt-1.5")}>
-              {g.label ? <p className="mr-3 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-subtle">{g.label}</p> : null}
+            <nav key={g.key} aria-label={g.label ?? g.srLabel ?? "Destinations"} className={cn("flex w-full flex-col items-end", gi > 0 && "mt-1")}>
+              {g.label ? (
+                <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-subtle" style={{ marginRight: `${(inset(index) + 0.75).toFixed(2)}rem` }}>
+                  {g.label}
+                </p>
+              ) : null}
               <ul className="flex w-full flex-col items-end">
                 {g.items.map((item) => {
                   const i = index++;
                   return (
-                    <li key={item.key} className="w-full" style={{ paddingRight: `${inset(i).toFixed(2)}rem` }}>
+                    <li key={item.key} className="flex w-full origin-right justify-end" style={{ paddingRight: `${inset(i).toFixed(2)}rem`, transform: `rotate(${tilt(i).toFixed(2)}deg)` }}>
                       <button
                         type="button"
                         data-palette-item
@@ -103,13 +116,14 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
                         style={{ animationDelay: `${Math.min(i * 10, 80)}ms` }}
                         className={cn(
                           // Compact (density spec §15): a 36–40px leaf inside a 44px hit target.
-                          "group ml-auto flex min-h-11 w-full max-w-[16rem] items-center rounded-full text-left focus-visible:outline-none",
-                          "motion-safe:animate-[palette-leaf_200ms_cubic-bezier(0.2,0.8,0.3,1)_both]",
+                          "group flex min-h-11 max-w-[16rem] origin-bottom-right items-center rounded-full text-left focus-visible:outline-none",
+                          // Opens as a fan from the trigger (minimalism §6.3: 200–280ms, minimal stagger).
+                          "motion-safe:animate-[palette-leaf_220ms_cubic-bezier(0.2,0.8,0.3,1)_both]",
                         )}
                       >
                         <span
                           className={cn(
-                            "flex min-h-[38px] w-full items-center gap-2.5 rounded-full border px-3.5 py-1 shadow-[var(--shadow-card)] transition-colors",
+                            "flex min-h-[38px] items-center gap-2.5 rounded-full border py-1 pl-3 pr-4 shadow-[var(--shadow-card)] transition-colors",
                             item.current ? "border-accent/40 bg-accent-soft text-accent-ink" : item.quiet ? "border-transparent bg-surface/85 text-ink-muted group-hover:bg-accent-softer" : "border-border-soft bg-surface text-ink group-hover:bg-accent-softer",
                             "group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-accent",
                           )}
