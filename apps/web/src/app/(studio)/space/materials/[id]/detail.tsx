@@ -1,6 +1,6 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
-import { Badge, Button, ConfirmDialog, ErrorState, Field, Input, Select, Tab, TabList, TabPanel, Tabs, TagInput, Textarea, buttonClasses } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, CreativeMindInsight, ErrorState, Field, Input, Select, Tab, TabList, TabPanel, Tabs, TagInput, Textarea, buttonClasses } from "@wonder/ui";
 import { Archive, BookmarkPlus, Download, ExternalLink, FolderPlus, Lock, MessageCircle, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -143,8 +143,8 @@ export function MaterialDetail({
   return (
     <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.4fr_1fr]">
       <section className="space-y-4">
-        <Link href="/space?tab=ideas" className="text-sm text-accent-ink hover:underline">
-          ← Creative Space
+        <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+          ← Materials
         </Link>
         <div className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
           {(m.type === "image" || m.type === "sketch") && url ? (
@@ -201,6 +201,20 @@ export function MaterialDetail({
             </div>
           ) : null}
           <div className="space-y-4 p-5 sm:p-6">
+            {m.understanding?.summary ? (
+              <CreativeMindInsight kind="insight">
+                <span className="block">{m.understanding.summary}</span>
+                {[...(m.understanding.themes ?? []), ...(m.understanding.moods ?? [])].length ? (
+                  <span className="mt-2 flex flex-wrap gap-1.5">
+                    {[...(m.understanding.themes ?? []), ...(m.understanding.moods ?? [])].slice(0, 6).map((t) => (
+                      <Badge key={t} tone="accent">
+                        {t}
+                      </Badge>
+                    ))}
+                  </span>
+                ) : null}
+              </CreativeMindInsight>
+            ) : null}
             <Field label="Title" htmlFor="m-title">
               <Input id="m-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
             </Field>
@@ -211,7 +225,7 @@ export function MaterialDetail({
             ) : m.extracted ? (
               <details className="rounded-2xl bg-surface-muted p-4">
                 <summary className="cursor-pointer text-sm font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
-                {m.metadata.transcription ? <p className="mt-2 text-xs text-ink-muted">Transcribed automatically by CreatorBrain. It may contain mistakes.</p> : null}
+                {m.metadata.transcription ? <p className="mt-2 text-xs text-ink-muted">Transcribed automatically by CreativeMind. It may contain mistakes.</p> : null}
                 <p className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-sm text-ink-muted">{m.extracted}</p>
               </details>
             ) : null}
@@ -251,7 +265,7 @@ export function MaterialDetail({
                 <Sparkles className="size-4" aria-hidden /> Use in creation
               </Link>
               <Link href={`/create?material=${m.id}&prompt=${encodeURIComponent(askPrompt)}`} prefetch={false} className={buttonClasses({ variant: "secondary" })}>
-                <MessageCircle className="size-4" aria-hidden /> Ask CreatorBrain
+                <MessageCircle className="size-4" aria-hidden /> Ask CreativeMind
               </Link>
               {downloadable ? (
                 <a href={`/api/v1/materials/${m.id}/download`} className={buttonClasses({ variant: "ghost" })}>
@@ -352,7 +366,7 @@ export function MaterialDetail({
           </TabPanel>
           <TabPanel value="insights" className="mt-3 space-y-4">
             <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">What CreatorBrain understood</h2>
+              <h2 className="font-semibold text-ink">What CreativeMind understood</h2>
               {m.understanding?.summary ? (
                 <>
                   <p className="mt-2 text-[15px] text-ink-muted">{m.understanding.summary}</p>

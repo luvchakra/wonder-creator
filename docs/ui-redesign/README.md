@@ -20,7 +20,7 @@ Spec: [`spec.md`](spec.md) (owner-supplied, 27 Sep 2026). Boards: [`boards/`](bo
 |---|---|---|
 | UI-A | Canvas shell + Creative Palette (no bottom nav, slim top bar, contextual Creation / Creative Room / Material palettes) | Done |
 | UI-A | Home Canvas (greeting, one current Creation, one honest CreativeMind moment, recent Materials, one live Huddle) + meTalk sheet | Done |
-| UI-A | Materials wall · Material detail | Not started |
+| UI-A | Materials wall · Material detail | Done |
 | UI-A | Creation view · Creative Studio · Context view | Not started |
 | UI-A | Presentation terminology sweep | Not started |
 | UI-B | Transform · Quality · Versions · Rights · Share/Publish · Approval Center | Not started |

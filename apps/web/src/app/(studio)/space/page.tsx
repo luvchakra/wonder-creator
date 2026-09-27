@@ -3,7 +3,7 @@ import { listArtifacts } from "@wonder/creator-studio";
 import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn } from "@wonder/ui";
 import { Layers, Lock, Plus } from "lucide-react";
 import Link from "next/link";
-import { ArtifactCard, MaterialCard } from "@/components/cards";
+import { ArtifactCard, MaterialCard, MaterialWallCard } from "@/components/cards";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
 import { NewCollectionButton } from "./collections/new-collection";
@@ -21,7 +21,7 @@ const TABS = [
   { key: "collections", label: "Collections" },
 ] as const;
 
-const MATERIAL_LABEL: Record<MaterialFilter, string> = { all: "All", ideas: "Ideas", notes: "Notes", images: "Images", audio: "Audio", video: "Video", documents: "Documents", links: "Links", archived: "Archived" };
+const MATERIAL_LABEL: Record<MaterialFilter, string> = { all: "All", ideas: "Ideas", notes: "Notes", images: "Photos", audio: "Audio", video: "Video", documents: "Documents", links: "Links", archived: "Archived" };
 
 export default async function SpacePage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; type?: string; archived?: string }> }) {
   const { db, creator } = await requireSession();
@@ -61,6 +61,54 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
     return `/space${s ? `?${s}` : ""}`;
   };
 
+  // The Materials wall (UI redesign §9): the creator's visual memory, not a file list.
+  if (tab === "ideas") {
+    return (
+      <div>
+        <PageTitle title="Materials" subtitle="Your visual memory — photos, notes, sounds, links and ideas." action={<SpaceSearch initial={q} />} />
+        {counts ? (
+          <nav aria-label="Material type" className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+            {MATERIAL_FILTERS.map((f) => (
+              <Link
+                key={f}
+                href={href({ type: f === "all" ? undefined : f })}
+                aria-current={f === mFilter ? "true" : undefined}
+                className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm", f === mFilter ? "border-accent bg-accent text-white" : "border-border bg-surface text-ink-muted hover:border-[#cfd0ff]")}
+              >
+                {MATERIAL_LABEL[f]} <span className="text-xs opacity-75">{counts[f]}</span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+        {allMaterials.length ? (
+          <ul aria-label="Materials" className="columns-2 gap-3 sm:columns-3 lg:columns-4 [&>li]:mb-4 [&>li]:break-inside-avoid">
+            <li>
+              <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
+                <Plus className="size-6" aria-hidden /> Bring Material
+              </Link>
+            </li>
+            {allMaterials.map((m) => (
+              <li key={m.id}>
+                <MaterialWallCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            image={BACKGROUNDS.studioDesk}
+            title={q ? `Nothing matches “${q}”` : "No Materials yet"}
+            body={q ? "Try another word, or clear the search." : "Photographs, notes, voice memos, links — whatever inspires you. Bring something in and it will live here."}
+            action={
+              <Link href="/send" className={buttonClasses({})}>
+                Bring Material
+              </Link>
+            }
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageTitle
@@ -93,15 +141,6 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
         </nav>
         <SpaceSearch initial={q} />
       </div>
-      {tab === "ideas" && counts ? (
-        <nav aria-label="Material type" className="mb-5 flex flex-wrap gap-2">
-          {MATERIAL_FILTERS.map((f) => (
-            <Link key={f} href={href({ type: f === "all" ? undefined : f })} aria-current={f === mFilter ? "true" : undefined} className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm", f === mFilter ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink-muted hover:border-[#cfd0ff]")}>
-              {MATERIAL_LABEL[f]} <span className="text-xs opacity-70">{counts[f]}</span>
-            </Link>
-          ))}
-        </nav>
-      ) : null}
       {tab === "collections" ? (
         <section aria-label="Collections">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -150,7 +189,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
             <li key={i.key}>{i.node}</li>
           ))}
           <li>
-            <Link href="/" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
+            <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
               <Plus className="size-6" aria-hidden /> Add new material
             </Link>
           </li>
@@ -161,7 +200,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
           title={q ? `Nothing matches “${q}”` : "Nothing here yet"}
           body={q ? "Try another word, or clear the search." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
           action={
-            <Link href="/" className={buttonClasses({})}>
+            <Link href="/send" className={buttonClasses({})}>
               Bring something
             </Link>
           }
