@@ -4,7 +4,8 @@ import { Button, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger
 import {
   ArrowDown,
   ArrowUp,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clapperboard,
   CloudRain,
   Feather,
@@ -13,6 +14,7 @@ import {
   LayoutGrid,
   Leaf,
   ListMusic,
+  MoreHorizontal,
   MoreVertical,
   Music2,
   Palette as PaletteIcon,
@@ -25,11 +27,13 @@ import {
   SkipBack,
   SkipForward,
   Sparkles,
+  Square,
   Volume2,
   X,
   Zap,
 } from "lucide-react";
-import { useSoundtrack, type LibraryTrack, type Soundtrack } from "./audio-provider";
+import { useEffect, useRef } from "react";
+import { useSoundtrack, useSoundtrackTime, type LibraryTrack, type Soundtrack } from "./audio-provider";
 
 const MOOD_ICON: Record<MoodFilter, React.ComponentType<{ className?: string }>> = {
   calm: Feather,
@@ -63,16 +67,17 @@ function Art({ t, size = "size-10" }: { t?: LibraryTrack; size?: string }) {
 }
 
 function Progress({ s, className }: { s: Soundtrack; className?: string }) {
-  const total = s.state.duration || s.current?.duration || 0;
+  const { time, duration } = useSoundtrackTime();
+  const total = duration || s.current?.duration || 0;
   return (
     <input
       type="range"
       aria-label="Position"
-      aria-valuetext={`${formatDuration(s.state.time)} of ${formatDuration(total)}`}
+      aria-valuetext={`${formatDuration(time)} of ${formatDuration(total)}`}
       min={0}
       max={Math.max(1, Math.floor(total))}
       step={1}
-      value={Math.floor(s.state.time)}
+      value={Math.floor(time)}
       onChange={(e) => s.seek(Number(e.target.value))}
       className={cn("h-11 w-full cursor-pointer accent-[var(--color-accent)]", className)}
     />
@@ -85,74 +90,144 @@ const iconBtn = "inline-flex size-11 shrink-0 items-center justify-center rounde
  * The CreativeRadio mini player (§2): shown once music has started, in the shell (not a page), clear of the Palette.
  * On phones it keeps title, previous / play / next and the queue; the rest waits for wider screens.
  */
-/**
- * Show / hide CreativeRadio: a small button just above the Palette trigger, there once music has been chosen. Hiding
- * tucks the mini player away (music keeps playing; a dot says so); showing brings it back.
- */
-export function PlayerToggle() {
-  const s = useSoundtrack();
-  if (!s?.current) return null;
-  const hidden = s.playerHidden;
+/** A quiet equalizer while music plays; still (and motionless under reduced motion) when paused. */
+function Bars({ playing }: { playing: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={() => s.setPlayerHidden(!hidden)}
-      aria-expanded={!hidden}
-      aria-controls="creativeradio-player"
-      aria-label={hidden ? `Show CreativeRadio${s.state.playing ? ` — playing ${s.current.title}` : ""}` : "Hide CreativeRadio"}
-      title={hidden ? "Show CreativeRadio" : "Hide CreativeRadio"}
-      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-30 inline-flex size-11 items-center justify-center rounded-full border border-border-soft bg-surface/95 text-accent-ink shadow-[var(--shadow-card)] backdrop-blur hover:bg-accent-softer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
-      {hidden ? <Music2 className="size-[18px]" aria-hidden /> : <ChevronDown className="size-5" aria-hidden />}
-      {hidden && s.state.playing ? <span aria-hidden className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent ring-2 ring-surface" /> : null}
-    </button>
+    <span aria-hidden className="flex h-3.5 items-end gap-[2px]">
+      {[0.55, 1, 0.7, 0.85].map((h, i) => (
+        <span
+          key={i}
+          className={cn("w-[2.5px] origin-bottom rounded-full bg-accent", playing && "motion-safe:animate-[eq_900ms_ease-in-out_infinite_alternate]")}
+          style={{ height: `${h * 100}%`, animationDelay: `${i * 120}ms` }}
+        />
+      ))}
+    </span>
   );
 }
 
+/**
+ * The CreativeRadio mini player (docs/ui-redesign/mini-player.md): docked to the right edge around the vertical middle.
+ * Collapsed, it's a slim tab (art, a playing indicator, ‹) whose only job is awareness + expand. Expanded, a compact
+ * panel opens leftward from the same anchor with track info, progress and previous / play / next / More. Collapse (›,
+ * a swipe right, or Escape) tucks it back; collapsing never stops playback. It stays clear of the Palette trigger
+ * (>=72px), stays collapsed on immersive screens, and sits below sheets and dialogs.
+ */
 export function MiniPlayer() {
   const s = useSoundtrack();
-  if (!s?.current || s.playerHidden) return null;
+  const panel = useRef<HTMLDivElement>(null);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const expanded = s?.playerUi === "expanded" && !s.forceCollapsed;
+  useEffect(() => {
+    if (expanded) panel.current?.focus();
+  }, [expanded]);
+  if (!s?.current) return null;
   const t = s.current;
+  const collapse = () => s.setPlayerUi("collapsed");
+  // Centre on the viewport's middle, but never within 72px of the Palette trigger (60px, 1rem from the bottom).
+  const anchor = expanded ? "top-[min(50%,calc(100dvh-15rem))]" : "top-[min(50%,calc(100dvh-12.75rem))]";
+  const status = s.state.interruption ?? (s.state.playing ? null : "Paused");
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => s.setPlayerUi("expanded")}
+        aria-label={`Open audio player — ${s.state.playing ? "playing" : "paused"}: ${t.title}`}
+        aria-expanded={false}
+        className={cn(
+          "fixed right-0 z-30 flex h-[6.5rem] w-12 -translate-y-1/2 flex-col items-center justify-between rounded-l-2xl border border-r-0 border-border-soft bg-surface/95 py-2 pr-[env(safe-area-inset-right)] shadow-[var(--shadow-card)] backdrop-blur focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+          "motion-safe:transition-[transform,opacity] motion-safe:duration-200",
+          anchor,
+        )}
+      >
+        <Art t={t} size="size-8" />
+        {s.state.interruption ? <Pause className="size-3.5 text-ink-subtle" aria-hidden /> : <Bars playing={s.state.playing} />}
+        <ChevronLeft className="size-4 text-ink-muted" aria-hidden />
+      </button>
+    );
+  }
+
   const fav = s.state.favorites.includes(t.id);
   return (
     <div
+      ref={panel}
       id="creativeradio-player"
       role="region"
       aria-label="CreativeRadio"
-      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-3 right-[calc(1rem+4.25rem)] z-30 rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)] backdrop-blur sm:left-auto sm:w-[30rem]"
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") collapse();
+        if (e.key === " " && e.target === e.currentTarget) {
+          e.preventDefault();
+          s.toggle();
+        }
+      }}
+      onPointerDown={(e) => (swipe.current = { x: e.clientX, y: e.clientY })}
+      onPointerUp={(e) => {
+        const d = swipe.current;
+        swipe.current = null;
+        if (d && e.clientX - d.x > 60 && Math.abs(e.clientY - d.y) < 40) collapse();
+      }}
+      className={cn(
+        "fixed right-[calc(0.5rem+env(safe-area-inset-right))] z-30 w-[min(20rem,calc(100vw-1rem))] -translate-y-1/2 rounded-2xl border border-border-soft bg-surface/95 p-2.5 shadow-[var(--shadow-card)] backdrop-blur focus:outline-none",
+        "motion-safe:animate-[mini-in_220ms_ease-out] motion-reduce:animate-[fade-in_120ms_ease-out]",
+        anchor,
+      )}
     >
-      <div className="flex h-14 items-center gap-1 pl-1.5 pr-1">
-        <button type="button" onClick={() => s.openPanel("songs")} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 text-left focus-visible:outline-2 focus-visible:outline-accent" aria-label={`Open CreativeRadio — ${t.title}`}>
-          <Art t={t} size="size-9" />
+      <div className="flex items-center gap-2.5">
+        <button type="button" onClick={() => s.openPanel("details", t.id)} className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-accent" aria-label={`Song details for ${t.title}`}>
+          <Art t={t} size="size-11" />
           <span className="min-w-0">
-            <span className="block truncate text-[13px] font-medium text-ink">{t.title}</span>
-            <span className="block truncate text-xs text-ink-subtle">
-              {t.artist}
-              <span className="hidden sm:inline"> · {MOOD_LABEL[s.state.mood]}</span>
-            </span>
+            <span className="block truncate text-[13.5px] font-semibold text-ink">{t.title}</span>
+            <span className="block truncate text-xs text-ink-subtle">{status ? `${status} · ${t.artist}` : t.artist}</span>
           </span>
         </button>
-        <button type="button" className={cn(iconBtn, "hidden sm:inline-flex")} onClick={s.previous} aria-label="Previous">
-          <SkipBack className="size-4" aria-hidden />
-        </button>
-        <button type="button" className={cn(iconBtn, "bg-accent text-white hover:bg-accent-ink")} onClick={s.toggle} aria-label={s.state.playing ? `Pause ${t.title}` : `Play ${t.title}`}>
-          {s.state.playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
-        </button>
-        <button type="button" className={iconBtn} onClick={s.next} aria-label="Next">
-          <SkipForward className="size-4" aria-hidden />
-        </button>
-        <button type="button" className={cn(iconBtn, "hidden sm:inline-flex")} onClick={() => s.toggleFavorite(t.id)} aria-pressed={fav} aria-label={fav ? `Unfavourite ${t.title}` : `Favourite ${t.title}`}>
+        <button type="button" className={iconBtn} onClick={() => s.toggleFavorite(t.id)} aria-pressed={fav} aria-label={fav ? `Unfavourite ${t.title}` : `Favourite ${t.title}`}>
           <Heart className={cn("size-4", fav && "fill-accent text-accent")} aria-hidden />
         </button>
-        <button type="button" className={iconBtn} onClick={() => s.openPanel("queue")} aria-label="Up next">
-          <ListMusic className="size-4" aria-hidden />
+        <button type="button" className={iconBtn} onClick={collapse} aria-label="Collapse player">
+          <ChevronRight className="size-5" aria-hidden />
         </button>
       </div>
-      <div className="relative -mt-1 h-1 overflow-hidden rounded-b-2xl bg-border-soft/60" aria-hidden>
-        <div className="h-full bg-accent" style={{ width: `${Math.min(100, (s.state.time / (s.state.duration || t.duration || 1)) * 100)}%` }} />
+      <Progress s={s} className="-mb-2" />
+      <Times fallback={t.duration} className="px-0.5" />
+      <div className="flex items-center justify-center gap-1">
+        <button type="button" className={iconBtn} onClick={s.previous} aria-label="Previous">
+          <SkipBack className="size-5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="inline-flex size-12 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          onClick={s.state.interruption ? s.resume : s.toggle}
+          aria-label={s.state.playing ? `Pause ${t.title}` : s.state.interruption ? `Resume ${t.title}` : `Play ${t.title}`}
+        >
+          {s.state.playing ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
+        </button>
+        <button type="button" className={iconBtn} onClick={s.next} aria-label="Next">
+          <SkipForward className="size-5" aria-hidden />
+        </button>
+        <Menu>
+          <MenuTrigger className={iconBtn} aria-label="More">
+            <MoreHorizontal className="size-5" aria-hidden />
+          </MenuTrigger>
+          <MenuContent>
+            <MenuItem onSelect={() => s.openPanel("queue")}>
+              <ListMusic className="size-4" aria-hidden /> Up next
+            </MenuItem>
+            <MenuItem onSelect={() => s.openPanel("songs")}>
+              <Sparkles className="size-4" aria-hidden /> Change mood
+            </MenuItem>
+            <MenuItem onSelect={() => s.openPanel("details", t.id)}>
+              <Info className="size-4" aria-hidden /> Song details
+            </MenuItem>
+            <MenuItem onSelect={s.stop}>
+              <Square className="size-4" aria-hidden /> Stop playback
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
       {s.state.notice ? (
-        <p role="status" className="absolute -top-8 left-2 right-2 truncate rounded-lg bg-ink px-3 py-1 text-xs text-white">
+        <p role="status" className="mt-1 rounded-lg bg-ink px-3 py-1 text-xs text-white">
           {s.state.notice}
         </p>
       ) : null}
@@ -213,6 +288,16 @@ function TrackRow({ s, t, index }: { s: Soundtrack; t: LibraryTrack; index?: num
   );
 }
 
+function Times({ fallback, className }: { fallback: number; className?: string }) {
+  const { time, duration } = useSoundtrackTime();
+  return (
+    <div className={cn("flex justify-between text-[11px] tabular-nums text-ink-subtle", className)}>
+      <span>{formatDuration(time)}</span>
+      <span>{formatDuration(duration || fallback)}</span>
+    </div>
+  );
+}
+
 function NowPlaying({ s }: { s: Soundtrack }) {
   const t = s.current;
   if (!t) {
@@ -238,10 +323,7 @@ function NowPlaying({ s }: { s: Soundtrack }) {
         </div>
       </div>
       <Progress s={s} className="mt-1" />
-      <div className="-mt-2 flex justify-between text-[11px] tabular-nums text-ink-subtle">
-        <span>{formatDuration(s.state.time)}</span>
-        <span>{formatDuration(s.state.duration || t.duration)}</span>
-      </div>
+      <Times fallback={t.duration} className="-mt-2" />
       <div className="mt-1 flex items-center justify-center gap-1">
         <button type="button" className={cn(iconBtn, s.state.shuffle && "text-accent")} onClick={() => s.setShuffle(!s.state.shuffle)} aria-pressed={s.state.shuffle} aria-label="Shuffle">
           <Shuffle className="size-4" aria-hidden />

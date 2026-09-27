@@ -99,6 +99,34 @@ The Wonder Creator Carousel experience is a compact composition workflow, not a 
 
 * Contract: `docs/ui-redesign/carousel-composer.md`.
 
+## Persistent right-middle mini player (owner's standing instruction)
+
+Wonder Creator's mini audio/music player is a persistent app-shell component.
+
+* When audio is active, the player docks to the **right edge around the vertical middle of the viewport**.
+* Default compact state is a slim right-edge tab showing tiny artwork + subtle playing indicator + expand affordance.
+* Tapping the collapsed player expands a compact player **leftward from the same right-middle anchor**.
+* Expanded player shows only essential controls: track info, progress, previous, play/pause, next, and optional Queue/More.
+* Tapping collapse or swiping right returns it to the same right-edge tab. Collapsing never stops playback.
+* Do not place the mini player in bottom navigation or as a persistent bottom bar.
+* The player persists across routes and should be mounted once at app-shell level. Never create a new audio element/player instance per page.
+* Playback continues across Home, Materials, Creation, Creative Studio, Creative Room, Explore, Huddles, Me, Business, Analytics and Settings unless interrupted by another audio-focus experience.
+* In immersive/full-screen editing contexts, default to `forceCollapsed`; playback continues.
+* Live Huddle or foreground video/audio should pause or appropriately interrupt background mini-player audio.
+* Player must not cover the Palette, primary CTA, keyboard, live controls, text-overlay handles, or other high-priority UI. Shift vertically or force-collapse when collision occurs.
+* Maintain >=72px separation from the Palette trigger when both are visible.
+* Use only one restrained expand/collapse transition (roughly 180–260ms). No bounce, rotation, multi-stage choreography or decorative animation.
+* Respect `prefers-reduced-motion`.
+* Collapsed mode should not expose multiple tiny buttons. Its main purpose is awareness + expand.
+* Expanded player remains compact; secondary controls such as mood, queue, save, stop, repeat/shuffle live under Queue/More as relevant.
+* Minimum interactive hit target remains >=44×44 CSS px.
+* If no track/queue is active, do not show the mini player.
+* Persist current track, queue, playback time and play/pause state across route navigation.
+* Integrate OS Media Session controls where supported.
+* Keep playback state isolated so progress updates do not trigger app-wide re-renders.
+
+* Contract: `docs/ui-redesign/mini-player.md` (supersedes the bottom mini player in `music-player.md`). Implementation: `apps/web/src/components/soundtrack/` (`MiniPlayer`, `useMiniPlayerConstraint`, `useSoundtrackTime`).
+
 ## Interaction minimalism (owner's standing instruction)
 
 Wonder Creator must minimize UI transitions and visible controls. The detailed contract is `docs/ui-redesign/interaction-minimalism.md`.

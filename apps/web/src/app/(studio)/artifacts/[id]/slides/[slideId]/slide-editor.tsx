@@ -1,4 +1,5 @@
 "use client";
+import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import type { CarouselView, SlideView } from "@wonder/creator-brain";
 import { DEFAULT_TRANSFORM, OVERLAY_COLORS, OVERLAY_FONTS, SNAP_POINTS, snapPosition, type ImageTransform, type SlideOverlay } from "@wonder/creator-studio/carousel";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, Switch, Textarea, chipBase, cn } from "@wonder/ui";
@@ -22,6 +23,8 @@ type Tool = "text" | "style" | "image" | null;
 export function SlideEditor({ artifactId, slideId, initial }: { artifactId: string; slideId: string; initial: CarouselView }) {
   const router = useRouter();
   const strip = useStripSignal();
+  // Full-screen editing: the mini player stays a slim tab (music keeps playing; mini-player.md §32).
+  useMiniPlayerConstraint({ forceCollapsed: true });
   const [view, setView] = useState(initial);
   const index = Math.max(0, view.slides.findIndex((s) => s.id === slideId));
   const server = view.slides[index]!;
