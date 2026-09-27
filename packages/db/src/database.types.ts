@@ -852,6 +852,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"crew_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"creator_id": string | null,"crew_id": string,"id": string,"item_id": string | null
+                  }
+                  Insert: {
+                    "body": string,"created_at"?: string,"creator_id"?: string | null,"crew_id": string,"id"?: string,"item_id"?: string | null
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"creator_id"?: string | null,"crew_id"?: string,"id"?: string,"item_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_messages_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_messages_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_messages_item_id_fkey"
+      columns: ["item_id"]
+isOneToOne: false
+      referencedRelation: "project_items"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"crews": {
                   Row: {
                     "created_at": string,"creator_id": string,"id": string,"name": string,"project_id": string,"purpose": string,"status": string,"updated_at": string
@@ -1335,13 +1366,13 @@ isOneToOne: false
                   ]
                 },"project_items": {
                   Row: {
-                    "added_at": string,"artifact_id": string | null,"collection_id": string | null,"conversation_id": string | null,"creator_id": string,"huddle_id": string | null,"id": string,"kind": string,"label": string | null,"material_id": string | null,"note": string | null,"position": number | null,"project_id": string,"reference_id": string | null
+                    "added_at": string,"artifact_id": string | null,"collection_id": string | null,"conversation_id": string | null,"creator_id": string,"huddle_id": string | null,"id": string,"kind": string,"label": string | null,"material_id": string | null,"note": string | null,"position": number | null,"project_id": string,"reference_id": string | null,"shared": boolean,"shared_at": string | null
                   }
                   Insert: {
-                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id": string,"huddle_id"?: string | null,"id"?: string,"kind": string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id": string,"reference_id"?: string | null
+                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id": string,"huddle_id"?: string | null,"id"?: string,"kind": string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id": string,"reference_id"?: string | null,"shared"?: boolean,"shared_at"?: string | null
                   }
                   Update: {
-                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id"?: string,"huddle_id"?: string | null,"id"?: string,"kind"?: string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id"?: string,"reference_id"?: string | null
+                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id"?: string,"huddle_id"?: string | null,"id"?: string,"kind"?: string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id"?: string,"reference_id"?: string | null,"shared"?: boolean,"shared_at"?: string | null
                   }
                   Relationships: [
                     {
@@ -2110,6 +2141,14 @@ isOneToOne: false
                            },
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
+                           },
+"project_shared_item":
+{ Args: { "p_item": string }; Returns: Json
+                           },
+"project_shared_items":
+{ Args: { "p_project": string }; Returns: {
+              "detail": string,"item_id": string,"kind": string,"mine": boolean,"shared_at": string,"shared_by": string,"shared_by_name": string,"title": string
+            }[]
                            },
 "rate_limit_hit":
 { Args: { "p_key": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean

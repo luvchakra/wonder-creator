@@ -1,16 +1,18 @@
 import { listApprovals } from "@wonder/creator-brain";
 import { signedUrlsFor } from "@wonder/creator-library";
-import { crewForProject, getCrew, getProject, projectConversationIds, type ProjectStatus } from "@wonder/creator-projects";
+import { crewForProject, getCrew, getProject, listCrewMessages, listSharedItems, projectConversationIds, type ProjectStatus } from "@wonder/creator-projects";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
-import { ProjectView } from "./project-view";
+import { ProjectView, type ProjectTab } from "./project-view";
 
 export const metadata = { title: "Project" };
 
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
+  const requested = (await searchParams).tab;
+  const tab: ProjectTab = (["work", "chat"] as const).find((t) => t === requested) ?? "overview";
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const data = await getProject(db, id).catch(() => null);
@@ -28,6 +30,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const canEdit = p.creator_id === creator.id;
   const crewRow = await crewForProject(db, id);
   const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
+  const inCrew = !!crew && crew.me?.status === "active";
+  const [shared, chat] = await Promise.all([
+    crew ? listSharedItems(db, id) : Promise.resolve([]),
+    inCrew && tab === "chat" ? listCrewMessages(db, creator.id, crew!.crew.id) : Promise.resolve(null),
+  ]);
   const [avatars, owner] = await Promise.all([
     avatarUrls(db, (crew?.active ?? []).map((m) => m.creatorId)),
     canEdit ? Promise.resolve({ data: { display_name: creator.display_name } }) : db.from("creators").select("display_name").eq("id", p.creator_id).maybeSingle(),
@@ -60,7 +67,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         at: i.at,
         material: i.material ? { id: i.itemId, ...i.material, previewUrl: i.material.storage_object_id ? (previews[i.material.storage_object_id] ?? null) : null } : null,
         artifact: i.artifact ? { id: i.itemId, ...i.artifact, coverUrl: covers[i.itemId] ?? null } : null,
+        shared: i.shared,
+        linkedBy: i.linkedBy,
       }))}
+      viewerId={creator.id}
+      tab={inCrew ? tab : "overview"}
+      shared={shared}
+      chat={chat}
       canEdit={canEdit}
       ownerName={owner.data?.display_name ?? "A creator"}
       crew={

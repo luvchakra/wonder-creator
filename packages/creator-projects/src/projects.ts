@@ -45,6 +45,8 @@ export const updateProjectSchema = z.object({
 export const linkSchema = z.object({
   kind: z.enum(PROJECT_ITEM_KINDS),
   ids: z.array(z.string().uuid()).min(1, "Choose something to add.").max(50),
+  /** Share with the project's crew (only your own material, references and pieces). */
+  shared: z.boolean().default(false),
 });
 
 const COLUMN: Record<ProjectItemKind, "material_id" | "reference_id" | "artifact_id" | "collection_id" | "conversation_id" | "huddle_id"> = {
@@ -116,6 +118,9 @@ export interface ProjectItemView {
   available: boolean;
   note: string | null;
   addedAt: string;
+  /** Shared with the crew (read-only for them). */
+  shared: boolean;
+  linkedBy: string;
   at: string;
   material?: { type: string; title: string | null; text_content: string | null; storage_object_id: string | null; metadata: unknown; source_url: string | null; created_at: string; processing_state: string };
   artifact?: { artifact_type: string; status: string; updated_at: string; cover_material_id: string | null; title: string };
@@ -127,6 +132,8 @@ type Row = {
   note: string | null;
   label: string | null;
   added_at: string;
+  shared: boolean;
+  creator_id: string;
   material_id: string | null;
   reference_id: string | null;
   artifact_id: string | null;
@@ -145,7 +152,7 @@ export async function getProject(db: Db, id: string) {
   const { data, error } = await db
     .from("project_items")
     .select(
-      `id, kind, note, label, added_at, material_id, reference_id, artifact_id, collection_id, conversation_id, huddle_id,
+      `id, kind, note, label, added_at, shared, creator_id, material_id, reference_id, artifact_id, collection_id, conversation_id, huddle_id,
        creative_materials(id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state),
        artifacts(id, title, artifact_type, status, updated_at, cover_material_id),
        reference_items(id, material_id, creative_materials(type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state)),
@@ -165,7 +172,7 @@ export async function getProject(db: Db, id: string) {
   const hist = new Map(history.map((h) => [h.huddle_id, h]));
 
   const items: ProjectItemView[] = rows.map((r) => {
-    const base = { id: r.id, kind: r.kind as ProjectItemKind, note: r.note, addedAt: r.added_at, at: r.added_at };
+    const base = { id: r.id, kind: r.kind as ProjectItemKind, note: r.note, addedAt: r.added_at, at: r.added_at, shared: r.shared, linkedBy: r.creator_id };
     switch (r.kind) {
       case "material": {
         const m = r.creative_materials;
@@ -234,7 +241,8 @@ export async function deleteProject(db: Db, id: string) {
 
 /** Links work to a project. Already-linked items are skipped; returns how many were added. */
 export async function linkToProject(db: Db, creatorId: string, projectId: string, raw: unknown): Promise<number> {
-  const { kind, ids } = linkSchema.parse(raw);
+  const { kind, ids, shared } = linkSchema.parse(raw);
+  if (shared && !["material", "reference", "artifact"].includes(kind)) throw new DomainError("validation", "Only material, references and pieces can be shared with the crew.");
   const col = COLUMN[kind];
   const unique = [...new Set(ids)];
   const existing = await db.from("project_items").select(col).eq("project_id", projectId).eq("kind", kind).in(col, unique);
@@ -248,7 +256,7 @@ export async function linkToProject(db: Db, creatorId: string, projectId: string
     const { data } = await db.from("huddle_history").select("huddle_id, topic").in("huddle_id", fresh);
     for (const h of data ?? []) labels.set(h.huddle_id, h.topic);
   }
-  const rows = fresh.map((id) => ({ project_id: projectId, creator_id: creatorId, kind, [col]: id, label: labels.get(id) ?? null }) as TablesInsert<"project_items">);
+  const rows = fresh.map((id) => ({ project_id: projectId, creator_id: creatorId, kind, [col]: id, label: labels.get(id) ?? null, shared, shared_at: shared ? new Date().toISOString() : null }) as TablesInsert<"project_items">);
   const res = await db.from("project_items").insert(rows);
   if (res.error?.code === "42501") throw new DomainError("forbidden", "You can add only your own work (and Huddles you were part of) to your own projects.");
   if (res.error?.code === "23505") throw new DomainError("conflict", "That's already in this project.");
