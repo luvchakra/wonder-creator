@@ -413,6 +413,37 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"business_records": {
+                  Row: {
+                    "amount": number,"artifact_id": string | null,"counterparty": string | null,"created_at": string,"creator_id": string,"currency": string,"description": string | null,"direction": string,"id": string,"kind": string,"note": string | null,"occurred_on": string,"settled_at": string | null,"source_event_id": string | null,"source_id": string | null,"source_type": string,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "amount": number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id": string,"currency": string,"description"?: string | null,"direction": string,"id"?: string,"kind": string,"note"?: string | null,"occurred_on"?: string,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id"?: string,"currency"?: string,"description"?: string | null,"direction"?: string,"id"?: string,"kind"?: string,"note"?: string | null,"occurred_on"?: string,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "business_records_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "business_records_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "business_records_source_event_id_fkey"
+      columns: ["source_event_id"]
+isOneToOne: true
+      referencedRelation: "domain_events"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"campaign_deliverables": {
                   Row: {
                     "artifact_id": string | null,"campaign_id": string,"created_at": string,"creator_id": string,"description": string | null,"due_on": string | null,"format": string | null,"id": string,"proposed_by": string,"review_note": string | null,"status": string,"title": string,"updated_at": string
