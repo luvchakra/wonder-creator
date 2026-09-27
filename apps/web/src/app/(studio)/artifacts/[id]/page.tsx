@@ -1,6 +1,7 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
+import { PaletteActions, type ContextAction } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
@@ -32,28 +33,71 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   ]);
 
   const materialIds = graph.nodes.filter((n) => n.type === "material").map((n) => n.id);
-  const { data: mats } = materialIds.length ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", materialIds) : { data: [] };
-  const [matUrls, covers, avatars] = await Promise.all([signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)), coverUrls(db, [artifact]), avatarUrls(db, [artifact.creator_id])]);
+  const { data: mats } = materialIds.length
+    ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", materialIds)
+    : { data: [] };
+  const [matUrls, covers, avatars] = await Promise.all([
+    signedUrlsFor(
+      db,
+      (mats ?? []).map((m) => m.storage_object_id),
+    ),
+    coverUrls(db, [artifact]),
+    avatarUrls(db, [artifact.creator_id]),
+  ]);
   const refEdges = await db.from("lineage_edges").select("source_id, relationship").eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material");
   const referenceIds = new Set((refEdges.data ?? []).filter((e) => e.relationship === "references").map((e) => e.source_id));
 
+  const base = `/artifacts/${id}`;
+  const finished = artifact.status === "final" || artifact.status === "published";
+  const paletteActions: ContextAction[] = !isOwner
+    ? [
+        { key: "people", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
+        { key: "versions", label: "Versions", href: `${base}?tab=versions` },
+      ]
+    : finished
+      ? [
+          { key: "from", label: "Create from this", hint: "Trailer, carousel, post…", href: `${base}/derivatives`, icon: "spark" },
+          { key: "share", label: "Share", href: `${base}/share` },
+          { key: "publish", label: "Publish", href: `${base}/publish` },
+          { key: "license", label: "License", href: `${base}?tab=rights` },
+          { key: "collaborate", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
+          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
+          { key: "lineage", label: "Lineage", href: `${base}?tab=lineage` },
+        ]
+      : [
+          { key: "refine", label: "Refine", hint: "Open the Creative Studio", href: `${base}/studio`, icon: "pen" },
+          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/derivatives`, icon: "spark" },
+          { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
+          { key: "references", label: "References", href: `${base}?tab=references` },
+          { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
+          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
+          { key: "rights", label: "Rights", href: `${base}?tab=rights` },
+          { key: "publish", label: "Publish", href: `${base}/publish` },
+        ];
   return (
-    <ArtifactView
-      initialTab={tab}
-      artifact={artifact}
-      typeLabel={artifactType(artifact.artifact_type).label}
-      isOwner={isOwner}
-      canCollaborate={isOwner || (contributors.data ?? []).some((c) => c.contributor_creator_id === creator.id)}
-      owner={{ name: owner.data?.display_name ?? "Creator", handle: owner.data?.handle ?? null, avatarUrl: avatars[artifact.creator_id] ?? null }}
-      coverUrl={covers[artifact.id] ?? null}
-      versions={versions}
-      graph={graph}
-      materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? matUrls[m.storage_object_id] ?? null : null, isReference: referenceIds.has(m.id) }))}
-      rights={rights}
-      licenseRequests={await listLicenseRequests(db, id).catch(() => [])}
-      rightsDisclaimer={RIGHTS_DISCLAIMER}
-      contributors={(contributors.data ?? []).map((c) => ({ role: c.role, name: (c.creators as { display_name: string } | null)?.display_name ?? "Creator", handle: (c.creators as { handle: string | null } | null)?.handle ?? null }))}
-      quality={quality.data ? { checks: quality.data.checks as never, suggestions: quality.data.suggestions as never, createdAt: quality.data.created_at } : null}
-    />
+    <>
+      <PaletteActions title="This Creation" actions={paletteActions} />
+      <ArtifactView
+        initialTab={tab}
+        artifact={artifact}
+        typeLabel={artifactType(artifact.artifact_type).label}
+        isOwner={isOwner}
+        canCollaborate={isOwner || (contributors.data ?? []).some((c) => c.contributor_creator_id === creator.id)}
+        owner={{ name: owner.data?.display_name ?? "Creator", handle: owner.data?.handle ?? null, avatarUrl: avatars[artifact.creator_id] ?? null }}
+        coverUrl={covers[artifact.id] ?? null}
+        versions={versions}
+        graph={graph}
+        materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? (matUrls[m.storage_object_id] ?? null) : null, isReference: referenceIds.has(m.id) }))}
+        rights={rights}
+        licenseRequests={await listLicenseRequests(db, id).catch(() => [])}
+        rightsDisclaimer={RIGHTS_DISCLAIMER}
+        contributors={(contributors.data ?? []).map((c) => ({
+          role: c.role,
+          name: (c.creators as { display_name: string } | null)?.display_name ?? "Creator",
+          handle: (c.creators as { handle: string | null } | null)?.handle ?? null,
+        }))}
+        quality={quality.data ? { checks: quality.data.checks as never, suggestions: quality.data.suggestions as never, createdAt: quality.data.created_at } : null}
+      />
+    </>
   );
 }

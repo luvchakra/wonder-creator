@@ -146,14 +146,14 @@ export function AvatarStack({ people, size = 28, max = 4 }: { people: Array<{ na
 }
 
 /**
- * Task-completing actions: on phones they stay in thumb reach above the bottom navigation (guidelines §4, sticky
+ * Task-completing actions: on phones they stay in thumb reach above the corner Creative Palette (sticky
  * bottom CTA); from tablet up they sit inline.
  */
 export function StickyActions({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-border-soft bg-surface/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none",
+        "sticky bottom-[calc(var(--palette-clearance)+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-border-soft bg-surface/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none",
         className,
       )}
     >

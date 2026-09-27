@@ -182,7 +182,7 @@ export function CrewChat({
         draftTarget={{ crewId }}
         aboutLabel="Point to"
         about={[...shared.map((x) => ({ value: `item:${x.itemId}`, label: `Shared: ${x.title}` })), ...contexts.map((c) => ({ value: `${c.kind}:${c.id}`, label: c.label }))]}
-        className="sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] rounded-2xl border border-border-soft bg-surface p-3 shadow-[var(--shadow-card)] md:bottom-4"
+        className="sticky bottom-[calc(var(--palette-clearance)+0.5rem)] rounded-2xl border border-border-soft bg-surface p-3 shadow-[var(--shadow-card)]"
         onSend={async ({ body, about, draftedByAi }) => {
           const [kind, id] = about ? about.split(":") : [null, null];
           await api(`/api/v1/crews/${crewId}/messages`, {

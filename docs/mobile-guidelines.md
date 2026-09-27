@@ -1,3 +1,7 @@
+> **Superseded in part (27 Sep 2026):** the navigation model here (bottom navigation) is replaced by the owner's UI
+> redesign spec, `docs/ui-redesign/spec.md` — no bottom navigation; a corner Creative Palette. The per-story mobile
+> rules below still apply where they don't conflict.
+
 # Wonder Creator — Mobile Responsive Screen Guidelines for All Current Stories
 
 **Date:** 27 September 2026  
