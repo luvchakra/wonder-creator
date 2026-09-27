@@ -63,5 +63,17 @@ test.describe("CreativeRadio", () => {
     await panel.getByRole("tab", { name: /Songs for/ }).click();
     await panel.getByRole("button", { name: `Favourite ${title}` }).first().click();
     await expect.poll(async () => ((await (await page.request.get("/api/v1/soundtrack")).json()) as { favorites: string[] }).favorites.length).toBe(1);
+    await page.keyboard.press("Escape");
+
+    // The button above the Palette hides the player (music keeps playing) and brings it back; it's remembered.
+    await page.getByRole("button", { name: "Hide CreativeRadio" }).click();
+    await expect(mini).toHaveCount(0);
+    const show = page.getByRole("button", { name: `Show CreativeRadio — playing ${title}` });
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    await page.reload();
+    await expect(page.getByRole("button", { name: /^Show CreativeRadio/ })).toBeVisible();
+    await expect(mini).toHaveCount(0);
+    await page.getByRole("button", { name: /^Show CreativeRadio/ }).click();
+    await expect(mini).toContainText(title);
   });
 });

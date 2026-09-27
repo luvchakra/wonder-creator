@@ -4,6 +4,7 @@ import { Button, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   Clapperboard,
   CloudRain,
   Feather,
@@ -84,13 +85,38 @@ const iconBtn = "inline-flex size-11 shrink-0 items-center justify-center rounde
  * The CreativeRadio mini player (§2): shown once music has started, in the shell (not a page), clear of the Palette.
  * On phones it keeps title, previous / play / next and the queue; the rest waits for wider screens.
  */
-export function MiniPlayer() {
+/**
+ * Show / hide CreativeRadio: a small button just above the Palette trigger, there once music has been chosen. Hiding
+ * tucks the mini player away (music keeps playing; a dot says so); showing brings it back.
+ */
+export function PlayerToggle() {
   const s = useSoundtrack();
   if (!s?.current) return null;
+  const hidden = s.playerHidden;
+  return (
+    <button
+      type="button"
+      onClick={() => s.setPlayerHidden(!hidden)}
+      aria-expanded={!hidden}
+      aria-controls="creativeradio-player"
+      aria-label={hidden ? `Show CreativeRadio${s.state.playing ? ` — playing ${s.current.title}` : ""}` : "Hide CreativeRadio"}
+      title={hidden ? "Show CreativeRadio" : "Hide CreativeRadio"}
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-30 inline-flex size-11 items-center justify-center rounded-full border border-border-soft bg-surface/95 text-accent-ink shadow-[var(--shadow-card)] backdrop-blur hover:bg-accent-softer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      {hidden ? <Music2 className="size-[18px]" aria-hidden /> : <ChevronDown className="size-5" aria-hidden />}
+      {hidden && s.state.playing ? <span aria-hidden className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent ring-2 ring-surface" /> : null}
+    </button>
+  );
+}
+
+export function MiniPlayer() {
+  const s = useSoundtrack();
+  if (!s?.current || s.playerHidden) return null;
   const t = s.current;
   const fav = s.state.favorites.includes(t.id);
   return (
     <div
+      id="creativeradio-player"
       role="region"
       aria-label="CreativeRadio"
       className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-3 right-[calc(1rem+4.25rem)] z-30 rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)] backdrop-blur sm:left-auto sm:w-[30rem]"

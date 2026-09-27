@@ -1,7 +1,7 @@
 import { AppNav } from "@/components/app-nav";
 import { PaletteProvider } from "@/components/creative-palette";
 import { AudioProvider } from "@/components/soundtrack/audio-provider";
-import { MiniPlayer, SoundtrackPanel } from "@/components/soundtrack/soundtrack-ui";
+import { MiniPlayer, PlayerToggle, SoundtrackPanel } from "@/components/soundtrack/soundtrack-ui";
 import { avatarUrls } from "@/lib/avatars";
 import { preloadPaletteButton } from "@/lib/brand-preload";
 import { requireSession } from "@/lib/session";
@@ -19,6 +19,7 @@ export default async function StudioLayout({ children }: { children: React.React
           {children}
         </main>
         <MiniPlayer />
+        <PlayerToggle />
         <SoundtrackPanel />
       </PaletteProvider>
     </AudioProvider>

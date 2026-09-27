@@ -26,6 +26,7 @@ interface Persisted {
 }
 
 const KEY = "wc.soundtrack.v1";
+const HIDDEN_KEY = "wc.soundtrack.hidden";
 const DEFAULTS: Persisted = { trackId: null, mood: "calm", queue: [], history: [], volume: 0.7, position: 0, shuffle: false, repeat: "off", seed: 1 };
 
 function load(): Persisted {
@@ -46,6 +47,9 @@ export interface Soundtrack {
   state: Persisted & { playing: boolean; time: number; duration: number; favorites: string[]; notice: string | null };
   panel: { open: boolean; view: PanelView; detailsId: string | null };
   openPanel: (view?: PanelView, detailsId?: string | null) => void;
+  /** The creator tucked the mini player away (the button above the Palette brings it back); music keeps playing. */
+  playerHidden: boolean;
+  setPlayerHidden: (hidden: boolean) => void;
   closePanel: () => void;
   play: (id?: string) => void;
   toggle: () => void;
@@ -80,6 +84,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [playerHidden, setHidden] = useState(false);
+  useEffect(() => {
+    // Remembered per device (a convenience, not state that must persist); deferred so hydration matches the server.
+    const t = setTimeout(() => {
+      try {
+        setHidden(localStorage.getItem(HIDDEN_KEY) === "1");
+      } catch {
+        // Storage unavailable: the player simply starts visible.
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const setPlayerHidden = useCallback((hidden: boolean) => {
+    setHidden(hidden);
+    try {
+      localStorage.setItem(HIDDEN_KEY, hidden ? "1" : "0");
+    } catch {
+      // Private mode: it just won't be remembered.
+    }
+  }, []);
   const [panel, setPanel] = useState<{ open: boolean; view: PanelView; detailsId: string | null }>({ open: false, view: "songs", detailsId: null });
   const restored = useRef(false);
   const failures = useRef(0);
@@ -216,6 +240,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setPanel({ open: true, view, detailsId });
       },
       closePanel: () => setPanel((x) => ({ ...x, open: false })),
+      playerHidden,
+      setPlayerHidden,
       play: (id) => {
         if (id) return goTo(id);
         if (!tracks.length) {
@@ -289,7 +315,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setShuffle: (on) => setP((s) => ({ ...s, shuffle: on })),
       cycleRepeat: () => setP((s) => ({ ...s, repeat: s.repeat === "off" ? "all" : s.repeat === "all" ? "one" : "off" })),
     }),
-    [ready, error, tracks, byId, current, p, playing, time, duration, favorites, notice, panel, ensureLibrary, goTo, freshQueue, startPlayback, next],
+    [ready, error, tracks, byId, current, p, playing, time, duration, favorites, notice, panel, playerHidden, setPlayerHidden, ensureLibrary, goTo, freshQueue, startPlayback, next],
   );
 
   useEffect(() => {
