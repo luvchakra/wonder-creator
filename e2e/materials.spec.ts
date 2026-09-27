@@ -16,13 +16,13 @@ test.describe("CreatorSend & material", () => {
     await expect(item.getByText(/^image ·/)).toBeVisible();
     await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
 
-    // Space → Ideas & Material shows it as an image card.
-    await page.getByRole("link", { name: "Space", exact: true }).first().click();
-    await expect(page).toHaveURL(/\/space$/);
+    // Palette → Materials shows it as an image card.
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Materials" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=ideas$/);
     const card = page.getByRole("link").filter({ hasText: name });
     await expect(card).toBeVisible();
     await expect(card).toContainText("Image");
-    await page.getByRole("navigation", { name: "Filter" }).getByRole("link", { name: "Ideas & Material" }).click();
     await page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Images/ }).click();
     await expect(page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Images/ })).toContainText("1");
     await card.click();

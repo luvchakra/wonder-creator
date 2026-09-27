@@ -337,7 +337,7 @@ export function Talk({
           </ul>
         ) : null}
 
-        <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] mt-5 md:bottom-4">
+        <div className="sticky bottom-[calc(var(--palette-clearance)+0.5rem)] mt-5">
           {artifactCtx || attached.length || (collectionCtx && !conversationId) || projectCtx ? (
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
               {projectCtx && conversationId ? (

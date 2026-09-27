@@ -14,7 +14,15 @@ the logo or brand artwork.** Missing assets are documented, not invented.
   can make, credentials, or something destructive or irreversible).
 - Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
 - Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
-- Mobile: `docs/mobile-guidelines.md` (per-story mobile rules; bottom nav Home · Create · Huddles · Library · Profile) and the boards in `docs/mockups/`. Plan guardrails win over mockups (no like counts, platform-only analytics).
+- **UI direction: `docs/ui-redesign/spec.md`** (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`.
+  It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is **no bottom
+  navigation or module tab bar**, and destinations/actions live in the corner **Creative Palette**. CreativeMind
+  (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product. UI terms
+  (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette) change in the presentation layer only —
+  never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases
+  (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
+- Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI
+  redesign spec overrides them. Plan guardrails win over mockups (no like counts, platform-only analytics).
 
 ## Commands
 

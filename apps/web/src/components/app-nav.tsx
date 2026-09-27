@@ -1,29 +1,17 @@
 "use client";
-import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
-import { Brain, FolderKanban, Home, LibraryBig, LogOut, MessageCircle, PenLine, Search, Send, Settings, Sparkles, UserRound, Users } from "lucide-react";
+import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
+import { Brain, FolderKanban, LogOut, MessageCircle, Search, Send, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { NotificationsButton } from "./notifications";
 import { SearchDialog } from "./search-dialog";
 
-const NAV = [
-  { href: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
-  { href: "/create", label: "Create", icon: PenLine, match: (p: string) => p.startsWith("/create") || p.startsWith("/send") || p.startsWith("/artifacts") },
-  { href: "/projects", label: "Projects", icon: FolderKanban, match: (p: string) => p.startsWith("/projects") },
-  { href: "/space", label: "Space", icon: Sparkles, match: (p: string) => p.startsWith("/space") },
-  { href: "/huddles", label: "Huddles", icon: Users, match: (p: string) => p.startsWith("/huddles") },
-  { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") || p.startsWith("/creators") || p.startsWith("/settings") || p.startsWith("/memory") || p.startsWith("/scrapbook") },
-];
-
 /**
- * Mobile bottom navigation: five human destinations (guidelines §3): Home · Create · Huddles · Library · Profile.
- * Projects are reached from Home and the account menu, and sit under Library.
+ * The top bar (UI redesign §6): logo, search, notifications and your account — nothing else. There is no module tab
+ * bar and no bottom navigation: destinations and actions live in the corner Creative Palette.
  */
-const MOBILE_NAV = [NAV[0], NAV[1], NAV[4], { ...NAV[3], label: "Library", icon: LibraryBig, match: (p: string) => p.startsWith("/space") || p.startsWith("/projects") }, NAV[5]];
-
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
-  const pathname = usePathname();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -41,22 +29,6 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
             <Logo height={40} className="hidden sm:block" />
             <Logo variant="mark" height={32} className="sm:hidden" />
           </Link>
-          <nav aria-label="Primary" className="ml-2 hidden items-center gap-1 md:flex">
-            {NAV.map((n) => {
-              const active = n.match(pathname);
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn("inline-flex h-10 items-center gap-2 rounded-full px-4 text-[15px] transition-colors", active ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}
-                >
-                  <n.icon className="size-4" aria-hidden />
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
           <div className="ml-auto flex items-center gap-1.5">
             <button
               type="button"
@@ -104,22 +76,6 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
         </div>
       </header>
 
-      {/* Mobile: a few human concepts, not a module list. */}
-      <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <ul className="mx-auto grid h-[var(--bottom-nav-height)] max-w-lg grid-cols-5">
-          {MOBILE_NAV.map((n) => {
-            const active = n.match(pathname);
-            return (
-              <li key={n.href}>
-                <Link href={n.href} aria-current={active ? "page" : undefined} className={cn("flex h-full flex-col items-center justify-center gap-0.5 text-[11px]", active ? "font-medium text-accent-ink" : "text-ink-subtle")}>
-                  <n.icon className={cn("size-5", active && "fill-accent-soft")} aria-hidden />
-                  {n.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );

@@ -188,7 +188,7 @@ export function QualityPanel({
           ) : null}
           {blocked && open.some((f) => !f.locked) ? <p className="mt-2 text-xs text-ink-subtle">{blocked}</p> : null}
           {selected.length ? (
-            <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] mt-3 md:bottom-2">
+            <div className="sticky bottom-[calc(var(--palette-clearance)+0.5rem)] mt-3">
               <Button className="w-full" loading={busy === "preview"} disabled={stale || !!blocked} onClick={preview}>
                 Preview {selected.length} change{selected.length === 1 ? "" : "s"}
               </Button>

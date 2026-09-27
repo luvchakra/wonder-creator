@@ -5,20 +5,22 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(m.scrollWidth, `page is ${m.scrollWidth}px wide in a ${m.innerWidth}px viewport`).toBeLessThanOrEqual(m.innerWidth);
 }
 
-async function expectBottomNav(page: Page) {
-  const nav = page.getByRole("navigation", { name: "Primary" });
-  await expect(nav).toHaveCount(1); // the desktop top nav is hidden at this width
-  await expect(nav).toBeVisible();
-  for (const label of ["Home", "Create", "Huddles", "Library", "Profile"]) await expect(nav.getByRole("link", { name: label })).toBeVisible();
-  const box = await nav.boundingBox();
-  const vh = page.viewportSize()!.height;
-  expect(box && box.y + box.height).toBeCloseTo(vh, 0);
+/** No bottom navigation: the corner Creative Palette is in thumb reach (UI redesign §6–7). */
+async function expectPalette(page: Page) {
+  await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+  const trigger = page.getByRole("button", { name: "Open Creative Palette" });
+  await expect(trigger).toBeVisible();
+  const box = (await trigger.boundingBox())!;
+  const vp = page.viewportSize()!;
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(vp.width - (box.x + box.width)).toBeLessThanOrEqual(24);
+  expect(vp.height - (box.y + box.height)).toBeLessThanOrEqual(24);
 }
 
 test.describe("mobile layout @mobile", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("core screens fit a 360px viewport and show the bottom navigation", async ({ page }) => {
+  test("core screens fit a 360px viewport and keep the Creative Palette in reach", async ({ page }) => {
     // Something to open in the Studio.
     await page.goto("/space");
     await page.getByRole("button", { name: "New", exact: true }).click();
@@ -52,14 +54,23 @@ test.describe("mobile layout @mobile", () => {
         await page.goto(path);
         await ready(page);
         await expectNoHorizontalOverflow(page);
-        await expectBottomNav(page);
+        await expectPalette(page);
       });
     }
 
-    // The bottom nav navigates.
-    await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Library" }).click();
-    await expect(page).toHaveURL(/\/space$/);
-    await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page");
+    // The Palette navigates: it opens over the Canvas, focuses its first leaf, and closes on Escape or selection.
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    const palette = page.getByRole("dialog", { name: "Creative Palette" });
+    await expect(palette).toBeVisible();
+    await expect(palette.getByRole("button", { name: "Home" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(palette).toHaveCount(0);
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await palette.getByRole("button", { name: "Materials" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=ideas$/);
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await expect(palette.getByRole("button", { name: "Materials" })).toHaveAttribute("aria-current", "page");
+    await page.keyboard.press("Escape");
   });
 
   test("critical P0.1 flows fit 320–480 px and landscape, with sheets in reach", async ({ page }) => {
@@ -116,7 +127,7 @@ test.describe("mobile layout @mobile", () => {
           await page.goto(path);
           await ready(page);
           await expectNoHorizontalOverflow(page);
-          await expectBottomNav(page);
+          await expectPalette(page);
         });
       }
     }

@@ -1,5 +1,6 @@
 import { getMaterial, listCollections, listShelves, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { notFound } from "next/navigation";
+import { PaletteActions } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { MaterialDetail } from "./detail";
 
@@ -27,49 +28,61 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const artIds = (usedIn.data ?? []).map((e) => e.target_id);
   const { data: arts } = artIds.length ? await db.from("artifacts").select("id, title, artifact_type").in("id", artIds) : { data: [] };
   const obj = m.storage_object_id ? (await db.from("storage_objects").select("mime_type, size_bytes, original_filename, sha256").eq("id", m.storage_object_id).maybeSingle()).data : null;
+  const related = (m.title ?? "").trim().slice(0, 60);
   return (
-    <MaterialDetail
-      m={{
-        id: m.id,
-        type: m.type,
-        title: m.title,
-        description: m.description,
-        sourceNote: m.source_note,
-        text: m.text_content,
-        extracted: m.extracted_text,
-        sourceUrl: m.source_url,
-        metadata: m.metadata as Record<string, unknown>,
-        understanding: m.understanding as {
-          summary?: string;
-          themes?: string[];
-          moods?: string[];
-        } | null,
-        status: m.status,
-        processing: m.processing_state,
-        security: m.security_status,
-        createdAt: m.created_at,
-        tags: ((m.creative_material_tags as Array<{ tag: string }>) ?? []).map((t) => t.tag),
-        provenance: m.provenance_records as {
-          origin: string;
-          original_filename: string | null;
-          sha256: string | null;
-          received_at: string;
-          source_url: string | null;
-        } | null,
-      }}
-      url={url}
-      file={obj}
-      intake={intake.data}
-      shelves={shelves.map((s) => ({ id: s.id, name: s.name }))}
-      usedIn={arts ?? []}
-      collections={collections.map((c) => ({ id: c.id, name: c.name }))}
-      inCollections={(memberships.data ?? []).map((r) => r.collection_id)}
-      similar={similar.map((s) => ({
-        id: s.id,
-        title: s.title,
-        type: s.type,
-        thumb: s.storage_object_id ? (thumbs[s.storage_object_id] ?? null) : null,
-      }))}
-    />
+    <>
+      <PaletteActions
+        title="This Material"
+        actions={[
+          { key: "create", label: "Create with this", href: `/create?material=${id}`, icon: "spark" },
+          { key: "explore", label: "Explore possibilities", href: "/create/discover", icon: "compass" },
+          ...(related ? [{ key: "related", label: "Find related", href: `/search?q=${encodeURIComponent(related)}` }] : []),
+          { key: "collections", label: "Collections", href: "/space?tab=collections", icon: "images" as const },
+        ]}
+      />
+      <MaterialDetail
+        m={{
+          id: m.id,
+          type: m.type,
+          title: m.title,
+          description: m.description,
+          sourceNote: m.source_note,
+          text: m.text_content,
+          extracted: m.extracted_text,
+          sourceUrl: m.source_url,
+          metadata: m.metadata as Record<string, unknown>,
+          understanding: m.understanding as {
+            summary?: string;
+            themes?: string[];
+            moods?: string[];
+          } | null,
+          status: m.status,
+          processing: m.processing_state,
+          security: m.security_status,
+          createdAt: m.created_at,
+          tags: ((m.creative_material_tags as Array<{ tag: string }>) ?? []).map((t) => t.tag),
+          provenance: m.provenance_records as {
+            origin: string;
+            original_filename: string | null;
+            sha256: string | null;
+            received_at: string;
+            source_url: string | null;
+          } | null,
+        }}
+        url={url}
+        file={obj}
+        intake={intake.data}
+        shelves={shelves.map((s) => ({ id: s.id, name: s.name }))}
+        usedIn={arts ?? []}
+        collections={collections.map((c) => ({ id: c.id, name: c.name }))}
+        inCollections={(memberships.data ?? []).map((r) => r.collection_id)}
+        similar={similar.map((s) => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+          thumb: s.storage_object_id ? (thumbs[s.storage_object_id] ?? null) : null,
+        }))}
+      />
+    </>
   );
 }

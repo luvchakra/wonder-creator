@@ -28,6 +28,11 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* Creative Palette leaves fan up from the corner. */
+@keyframes palette-leaf {
+  from { opacity: 0; transform: translate(0.75rem, 0.75rem) rotate(-3deg) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }

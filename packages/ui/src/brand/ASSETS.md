@@ -33,3 +33,8 @@ White #FEFFFF). No other prominent colours are introduced.
    available (file names can stay the same).
 4. **Tagline lock-up** ("Ideas Become Real.") artwork — rendered as live text in Playfair Display
    until an approved asset is supplied.
+5. **Palette motif** (UI redesign §7, §46): the painter's-palette artwork shown on the reference boards is not in the
+   supplied asset set. The Creative Palette trigger uses a stock line icon (lucide `Palette`) until the approved motif
+   is supplied — the boards must not be cropped for it.
+6. **Composable botanical/watercolour pieces** (UI redesign §44): separate botanical corners and watercolour washes
+   aren't supplied; only the 11 full background tiles are. Decoration stays limited to those until they are.

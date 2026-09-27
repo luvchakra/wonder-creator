@@ -132,7 +132,7 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
           placeholder={`Message ${thread.other.name}`}
           draftTarget={{ threadId: thread.id }}
           about={about}
-          className="sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] rounded-2xl border border-border-soft bg-surface p-3 shadow-[var(--shadow-card)] md:bottom-4"
+          className="sticky bottom-[calc(var(--palette-clearance)+0.5rem)] rounded-2xl border border-border-soft bg-surface p-3 shadow-[var(--shadow-card)]"
           onSend={async ({ body, about: a, draftedByAi }) => {
             const [kind, id] = a ? a.split(":") : [null, null];
             await api(`/api/v1/messages/${thread.id}`, { method: "POST", json: { body, projectId: kind === "project" ? id : null, artifactId: kind === "artifact" ? id : null, draftedByAi } });
