@@ -2,7 +2,7 @@
 import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLevel } from "@wonder/creator-identity/autonomy";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { Brain, Download, KeyRound, Palette, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { Brain, Download, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +12,7 @@ const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
   { key: "identity", label: "Creative Identity", icon: Palette },
   { key: "preferences", label: "Creative Preferences", icon: SlidersHorizontal },
-  { key: "autonomy", label: "Creator Autonomy", icon: Sparkles },
+  { key: "autonomy", label: "AI & CreativeMind", icon: Sparkles },
   { key: "privacy", label: "Privacy & Security", icon: Shield },
 ];
 
@@ -52,6 +52,9 @@ export function SettingsView(props: Props) {
         </Link>
         <Link href="/settings/ai" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
           <KeyRound className="size-4" aria-hidden /> AI Providers
+        </Link>
+        <Link href="/publishing" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
+          <Plug className="size-4" aria-hidden /> Connected apps
         </Link>
       </nav>
       <div className="min-w-0 rounded-3xl border border-border-soft bg-surface p-5 sm:p-7">
@@ -321,7 +324,7 @@ function AutonomySection({ autonomy }: Props) {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Creator Autonomy</h2>
+          <h2 className="text-xl font-semibold text-ink">AI & CreativeMind</h2>
           <p className="mt-1 text-[15px] text-ink-muted">Choose how CreativeMind can work with you. Be bold with creativity; be conservative with consequences.</p>
           <Link href="/approvals" className="mt-1 inline-flex min-h-11 items-center text-[15px] font-medium text-accent-ink hover:underline">
             Review approvals
