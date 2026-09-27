@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
+import { PaletteActions } from "@/components/creative-palette";
 import { CrewView } from "./crew-view";
 
 export const metadata = { title: "Crew" };
@@ -42,8 +43,21 @@ export default async function CrewPage({ params }: { params: Promise<{ id: strin
   const avatars = await avatarUrls(db, people.map((m) => m.creatorId));
   const inviter = data.me?.invitedBy ? (people.find((m) => m.creatorId === data.me!.invitedBy)?.name ?? null) : null;
   const withAvatar = <T extends { creatorId: string }>(m: T) => ({ ...m, avatarUrl: avatars[m.creatorId] ?? null });
+  const inCrew = data.me?.status === "active";
   return (
-    <CrewView
+    <>
+      {inCrew ? (
+        <PaletteActions
+          title="This crew"
+          actions={[
+            { key: "room", label: "Creative Room", hint: data.project.title, href: `/projects/${data.project.id}`, icon: "room" },
+            { key: "chat", label: "Chat & Huddle", href: `/projects/${data.project.id}?tab=chat`, icon: "users" },
+            { key: "tasks", label: "Tasks", href: `/projects/${data.project.id}?tab=tasks` },
+            { key: "find", label: "Find collaborators", href: `/discover?project=${data.project.id}`, icon: "people" },
+          ]}
+        />
+      ) : null}
+      <CrewView
       viewerId={creator.id}
       crew={data.crew}
       project={data.project}
@@ -53,6 +67,7 @@ export default async function CrewPage({ params }: { params: Promise<{ id: strin
       former={data.former.map(withAvatar)}
       activity={data.activity}
       messages={data.messages}
-    />
+      />
+    </>
   );
 }

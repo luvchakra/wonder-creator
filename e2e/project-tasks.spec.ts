@@ -64,6 +64,8 @@ test.describe("Crew tasks & milestones", () => {
     await a.reload();
     await a.getByRole("button", { name: "Options for Record guide vocals" }).click();
     await a.getByRole("menuitem", { name: "Move to Done" }).click();
+    // Finished work is one tap away (the default view is what's in progress).
+    await a.getByRole("radiogroup", { name: "Tasks view" }).getByRole("radio", { name: /^Completed/ }).click();
     await expect(a.getByRole("region", { name: "Done" })).toContainText("Record guide vocals");
     await expect(a.getByRole("region", { name: "Milestones" })).toContainText("1 of 1 tasks done");
 

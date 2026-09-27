@@ -134,7 +134,9 @@ test.describe("Huddles", () => {
     await expect(a.getByRole("region", { name: "What you saved" }).getByRole("listitem")).toHaveCount(1);
     await a.goto("/huddles");
     await expect(liveCard(a, topic)).toHaveCount(0);
+    await a.getByRole("navigation", { name: "Huddle views" }).getByRole("link", { name: "My Huddles" }).click();
     await expect(a.getByRole("region", { name: "Your recent Huddles" })).toContainText(`Talking about ${topic}`);
+    await a.goto("/huddles");
     await b.reload();
     await expect(liveCard(b, topic)).toHaveCount(0);
 

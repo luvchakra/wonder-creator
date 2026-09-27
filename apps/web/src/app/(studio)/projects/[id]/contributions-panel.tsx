@@ -1,6 +1,6 @@
 "use client";
 import { ATTRIBUTION_LABEL, CONTRIBUTION_KINDS, CONTRIBUTION_KIND_LABEL, RIGHTS_RELATIONSHIP_LABEL, type ContributionKind } from "@wonder/creator-projects/options";
-import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { Download, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +52,9 @@ export function ContributionsPanel({ projectId, manages, entries, summary, peopl
   const [history, setHistory] = useState<Entry | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const shown = person ? entries.filter((e) => e.contributor.id === person) : entries;
+  // All activity · By version · By people (UI redesign §28): the same entries, grouped — never estimated.
+  const [mode, setMode] = useState<"all" | "version" | "people">("all");
+  const groups = mode === "all" ? [{ key: "all", title: null as string | null, list: shown }] : groupEntries(shown, mode);
 
   return (
     <div className="space-y-8">
@@ -112,8 +115,24 @@ export function ContributionsPanel({ projectId, manages, entries, summary, peopl
           }
         />
         {shown.length ? (
+          <div className="space-y-5">
+            {summary.people.length ? (
+              <Segmented
+                label="Show contributions"
+                value={mode}
+                onChange={setMode}
+                options={[
+                  { value: "all", label: "All activity" },
+                  { value: "version", label: "By version" },
+                  { value: "people", label: "By people" },
+                ]}
+              />
+            ) : null}
+            {groups.map((g) => (
+              <div key={g.key}>
+                {g.title ? <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.1em] text-ink-subtle">{g.title}</h3> : null}
           <ol className="space-y-2">
-            {shown.map((e) => (
+            {g.list.map((e) => (
               <li key={e.id} className={cn("flex items-start gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-3", e.retracted && "opacity-70")}>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
@@ -165,6 +184,9 @@ export function ContributionsPanel({ projectId, manages, entries, summary, peopl
               </li>
             ))}
           </ol>
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
             Contributions appear here as people write versions, share work and finish tasks{manages ? " — or record them yourself" : ""}.
@@ -363,4 +385,16 @@ function HistoryDialog({ entry, onOpenChange }: { entry: Entry; onOpenChange: (o
       </DialogContent>
     </Dialog>
   );
+}
+
+function groupEntries(list: Entry[], mode: "version" | "people"): Array<{ key: string; title: string | null; list: Entry[] }> {
+  const groups = new Map<string, { key: string; title: string | null; list: Entry[] }>();
+  for (const e of list) {
+    const key = mode === "people" ? e.contributor.id : e.related.artifact ? `${e.related.artifact.id}:${e.related.versionNumber ?? ""}` : "none";
+    const title = mode === "people" ? (e.mine ? "You" : e.contributor.name) : e.related.artifact ? `${e.related.artifact.title}${e.related.versionNumber ? ` · v${e.related.versionNumber}` : ""}` : "Not tied to a version";
+    const g = groups.get(key) ?? { key, title, list: [] };
+    g.list.push(e);
+    groups.set(key, g);
+  }
+  return [...groups.values()];
 }

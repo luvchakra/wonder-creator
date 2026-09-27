@@ -33,6 +33,11 @@ test.describe("Contribution ledger", () => {
     await rec.getByRole("button", { name: "Record" }).click();
     await expect(a.getByRole("region", { name: "Summary" })).toContainText("40% (agreed)");
     await expect(list).toContainText("Recorded by");
+    // The same record grouped by people (nothing estimated), then back to all activity.
+    const views = list.getByRole("radiogroup", { name: "Show contributions" });
+    await views.getByRole("radio", { name: "By people" }).click();
+    await expect(list.getByRole("heading", { name: lu.name })).toBeVisible();
+    await views.getByRole("radio", { name: "All activity" }).click();
 
     // Shares can't exceed 100%.
     const over = await a.request.post(`/api/v1/projects/${project.id}/contributions`, { data: { contributorId: luId, kind: "idea", description: "Too much", sharePercent: 70 } });

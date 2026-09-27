@@ -1,6 +1,6 @@
 "use client";
 import { TASK_GROUP_ORDER, TASK_STATUSES, TASK_STATUS_LABEL, type TaskStatus } from "@wonder/creator-projects/options";
-import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Switch, Textarea, cn } from "@wonder/ui";
 import { CalendarDays, Flag, MoreHorizontal, Plus, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -72,6 +72,8 @@ export function TasksPanel({
   const manages = role === "owner" || role === "admin";
   const [editing, setEditing] = useState<TaskRow | "new" | null>(null);
   const [suggesting, setSuggesting] = useState(false);
+  // Light by default (UI redesign §26): what's moving now; finished work is one tap away.
+  const [view, setView] = useState<"open" | "done">("open");
   const [milestoneFor, setMilestoneFor] = useState<MilestoneRow | "new" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +133,24 @@ export function TasksPanel({
         </p>
       ) : null}
 
+      {summary.total ? (
+        <Segmented
+          label="Tasks view"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "open", label: `In progress (${summary.total - summary.done})` },
+            { value: "done", label: `Completed (${summary.done})` },
+          ]}
+        />
+      ) : null}
+      {view === "done" && !summary.done ? <p className="text-[15px] text-ink-muted">Nothing finished yet.</p> : null}
+      {view === "open" && summary.total && summary.total === summary.done ? <p className="text-[15px] text-ink-muted">Everything&rsquo;s done. Add a task when there&rsquo;s a next step.</p> : null}
+
       {TASK_GROUP_ORDER.map((status) => {
         const list = tasks.filter((t) => t.status === status);
         if (!list.length) return null;
+        if ((view === "done") !== (status === "done")) return null;
         const body = (
           <ul className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface">
             {list.map((t) => {
@@ -196,19 +213,8 @@ export function TasksPanel({
         );
         return (
           <section key={status} aria-label={TASK_STATUS_LABEL[status]}>
-            {status === "done" ? (
-              <details>
-                <summary className="min-h-11 cursor-pointer py-2 text-lg font-semibold text-ink">
-                  {TASK_STATUS_LABEL[status]} ({list.length})
-                </summary>
-                {body}
-              </details>
-            ) : (
-              <>
-                <SectionHeader title={`${TASK_STATUS_LABEL[status]} (${list.length})`} />
-                {body}
-              </>
-            )}
+            <SectionHeader title={`${TASK_STATUS_LABEL[status]} (${list.length})`} />
+            {body}
           </section>
         );
       })}
