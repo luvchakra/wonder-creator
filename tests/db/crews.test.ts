@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  completeProject,
   createProject,
   deleteProject,
   getCrew,
@@ -159,12 +160,15 @@ describe("membership lifecycle", () => {
   });
 
   it("crew details change only by the owner or admins; a completed crew takes no new invites", async () => {
-    const { crew } = await projectWithCrew("Finishing");
+    const { p, crew } = await projectWithCrew("Finishing");
     await inviteToCrew(db(owner), crew.id, { creatorId: ben.creatorId });
     await respondToCrew(db(ben), crew.id, true);
     await expect(updateCrew(db(ben), crew.id, { name: "Ben's crew" })).rejects.toThrow(/owner or admins/);
-    await updateCrew(db(owner), crew.id, { status: "completed", purpose: "Wrapped." });
+    // A crew is dissolved only by completing its project (P1-09).
+    await expect(updateCrew(db(owner), crew.id, { status: "completed" })).rejects.toThrow(/completion checklist/);
+    await updateCrew(db(owner), crew.id, { purpose: "Wrapped." });
+    await completeProject(db(owner), p.id, { outcome: "completed", dissolveCrew: true, confirmTitle: "Finishing" });
     await expect(inviteToCrew(db(owner), crew.id, { creatorId: ana.creatorId })).rejects.toThrow(/completed its work/);
-    expect((await getCrew(db(ben), ben.creatorId, crew.id))!.activity[0]).toMatchObject({ kind: "crew_updated", detail: { status: "completed", purpose: true } });
+    expect((await getCrew(db(ben), ben.creatorId, crew.id))!.activity[0]).toMatchObject({ kind: "crew_updated", detail: { status: "completed" } });
   });
 });

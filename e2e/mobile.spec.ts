@@ -102,6 +102,7 @@ test.describe("mobile layout @mobile", () => {
       [`${project}?tab=tasks`, (p) => expect(p.getByRole("button", { name: "New task" })).toBeVisible()],
       [`${project}?tab=contributions`, (p) => expect(p.getByRole("region", { name: "Summary" })).toBeVisible()],
       [`${project}?tab=rights`, (p) => expect(p.getByRole("region", { name: "Project policy" })).toBeVisible()],
+      [`${project}/complete`, (p) => expect(p.getByRole("region", { name: "Unresolved tasks" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],

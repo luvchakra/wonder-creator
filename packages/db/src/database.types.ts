@@ -1555,6 +1555,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_completions": {
+                  Row: {
+                    "acknowledged_open": boolean,"completed_by": string | null,"created_at": string,"crew_dissolved": boolean,"id": string,"note": string | null,"open_items": NonNullable<Json>,"outcome": string,"project_id": string,"reopened_at": string | null,"reopened_by": string | null
+                  }
+                  Insert: {
+                    "acknowledged_open"?: boolean,"completed_by"?: string | null,"created_at"?: string,"crew_dissolved"?: boolean,"id"?: string,"note"?: string | null,"open_items"?: NonNullable<Json>,"outcome": string,"project_id": string,"reopened_at"?: string | null,"reopened_by"?: string | null
+                  }
+                  Update: {
+                    "acknowledged_open"?: boolean,"completed_by"?: string | null,"created_at"?: string,"crew_dissolved"?: boolean,"id"?: string,"note"?: string | null,"open_items"?: NonNullable<Json>,"outcome"?: string,"project_id"?: string,"reopened_at"?: string | null,"reopened_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_completions_completed_by_fkey"
+      columns: ["completed_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_completions_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_completions_reopened_by_fkey"
+      columns: ["reopened_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_items": {
                   Row: {
                     "added_at": string,"artifact_id": string | null,"collection_id": string | null,"conversation_id": string | null,"creator_id": string,"huddle_id": string | null,"id": string,"kind": string,"label": string | null,"material_id": string | null,"note": string | null,"position": number | null,"project_id": string,"reference_id": string | null,"shared": boolean,"shared_at": string | null
@@ -2470,6 +2501,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"complete_project":
+{ Args: { "p_acknowledge_open"?: boolean,"p_confirm_title": string,"p_dissolve_crew": boolean,"p_note"?: string,"p_outcome": string,"p_project": string }; Returns: string
+                           },
 "contribution_retract":
 { Args: { "p_id": string,"p_reason": string }; Returns: undefined
                            },
@@ -2613,6 +2647,9 @@ isOneToOne: false
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
                            },
+"project_open_items_of":
+{ Args: { "p_project": string }; Returns: Json
+                           },
 "project_rights_summary":
 { Args: { "p_project": string }; Returns: {
               "active_licenses": number,"artifact_id": string,"attribution_required": boolean,"co_owners": Json,"collaborators": Json,"copyright_holder": string,"derivatives_allowed": boolean,"exclusive_licenses": number,"owner_id": string,"owner_name": string,"ownership_kind": string,"signoffs": Json,"title": string
@@ -2642,6 +2679,9 @@ isOneToOne: false
                            },
 "record_domain_event":
 { Args: { "p_aggregate_id": string,"p_aggregate_type": string,"p_correlation_id"?: string,"p_event_type": string,"p_payload"?: Json }; Returns: string
+                           },
+"reopen_project":
+{ Args: { "p_project": string }; Returns: undefined
                            },
 "respond_license_request":
 { Args: { "p_counter"?: Json,"p_decision": string,"p_note"?: string,"p_request": string }; Returns: {

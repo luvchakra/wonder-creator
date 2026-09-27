@@ -50,6 +50,7 @@ function crewError(e: { code?: string; message?: string }) {
   if (msg.includes("already in this crew")) return new DomainError("validation", "You're already in this crew.");
   if (msg.includes("creator not found")) return new DomainError("not_found", "We couldn't find that creator.");
   if (msg.includes("completed its work")) return new DomainError("conflict", "This crew has completed its work.");
+  if (msg.includes("use the completion checklist")) return new DomainError("conflict", "A crew is dissolved by completing its project. Use the project's completion checklist.");
   if (msg.includes("already invited")) return new DomainError("conflict", "They're already invited or in the crew.");
   if (msg.includes("invitation not found")) return new DomainError("not_found", "That invitation isn't open anymore.");
   if (msg.includes("invitation expired")) return new DomainError("conflict", "This invitation has expired. Ask the crew to invite you again.");
@@ -213,7 +214,7 @@ export async function updateCrew(db: Db, crewId: string, raw: unknown) {
   const patch = { ...(u.name !== undefined ? { name: u.name } : {}), ...(u.purpose !== undefined ? { purpose: u.purpose } : {}), ...(u.status ? { status: u.status } : {}) };
   if (!Object.keys(patch).length) return;
   const res = await db.from("crews").update(patch).eq("id", crewId).select("id");
-  if (res.error) throw fromDbError(res.error);
+  if (res.error) throw crewError(res.error);
   if (!res.data?.length) throw new DomainError("forbidden", "Only the crew's owner or admins can change it.");
 }
 

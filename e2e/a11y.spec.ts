@@ -47,6 +47,7 @@ test.describe("accessibility", () => {
       `${project}?tab=tasks`,
       `${project}?tab=contributions`,
       `${project}?tab=rights`,
+      `${project}/complete`,
       crew,
       "/search?q=tide",
       "/settings",
