@@ -5,6 +5,7 @@ import { CONTEXT_LINE_PAGES, contextLineFor, type ContextLinePage } from "@/lib/
 /**
  * GET /api/v1/context-line?page=creation&id=… — the navbar's optional AI line for the creator's own object
  * (docs/ui-redesign/ai-context-line.md). Facts are read server-side under RLS; the browser only names the page.
+ * Without a session (e.g. a line requested just as the creator signs out) there's simply nothing to say.
  */
 export const GET = withApi(
   async ({ db, creatorId, req }) => {
@@ -13,7 +14,8 @@ export const GET = withApi(
     if (!(CONTEXT_LINE_PAGES as readonly string[]).includes(page)) throw new DomainError("validation", "Unknown page.");
     if (id && !/^[0-9a-f-]{36}$/i.test(id)) throw new DomainError("validation", "Unknown object.");
     if (page !== "home" && !id) throw new DomainError("validation", "Unknown object.");
+    if (!creatorId) return { text: null };
     return { text: await contextLineFor(db, creatorId, page as ContextLinePage, id) };
   },
-  { rateLimit: 30 },
+  { rateLimit: 30, public: true },
 );

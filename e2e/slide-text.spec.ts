@@ -1,15 +1,22 @@
-import { expect, seedSlideVisuals, test, uid } from "./fixtures";
+import { expect, seedSlideVisuals, test, uid, type Page } from "./fixtures";
+
+/** e2e has no image model: the seeded set stands in for this Creation's stored slide visuals (read fresh each time). */
+async function stubLookup(page: Page, genId: string) {
+  await page.route("**/api/v1/image-generations", async (route) => {
+    const { generation } = await (await page.request.get(`/api/v1/image-generations/${genId}`)).json();
+    await route.fulfill({ json: { state: "generation", generation, available: true } });
+  });
+}
 
 test.describe("words on slide visuals", () => {
+  // Stop the lookup stub before the page closes, so a late lookup can't outlive the test.
+  test.afterEach(({ page }) => page.unrouteAll({ behavior: "ignoreErrors" }));
+
   test("each slide starts with its line from the Carousel; the set is composed in the browser and kept with provenance", async ({ page, creator }) => {
     const content = "### Slide 1\n**Text:** बारिश की पहली बूँद\n**Visual:** rain on glass\n\n### Slide 2\n**Text:** Chai, again\n\n### Slide 3\n**Text:** Home";
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Monsoon ${uid()}`, content } })).json()).artifact as { id: string };
     const genId = await seedSlideVisuals(creator.id, art.id, 3);
-    // e2e has no image model: the seeded set stands in for this Creation's stored slide visuals.
-    await page.route("**/api/v1/image-generations", async (route) => {
-      const { generation } = await (await page.request.get(`/api/v1/image-generations/${genId}`)).json();
-      await route.fulfill({ json: { state: "generation", generation, available: true } });
-    });
+    await stubLookup(page, genId);
 
     await page.goto(`/artifacts/${art.id}`);
     const section = page.getByRole("region", { name: "Slide visuals" });
@@ -49,10 +56,7 @@ test.describe("words on slide visuals", () => {
     const content = "Slide 1: First light\nSlide 2: Second wind\nSlide 3: Third act";
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Order ${uid()}`, content } })).json()).artifact as { id: string };
     const genId = await seedSlideVisuals(creator.id, art.id, 3);
-    await page.route("**/api/v1/image-generations", async (route) => {
-      const { generation } = await (await page.request.get(`/api/v1/image-generations/${genId}`)).json();
-      await route.fulfill({ json: { state: "generation", generation, available: true } });
-    });
+    await stubLookup(page, genId);
     await page.goto(`/artifacts/${art.id}`);
     const section = page.getByRole("region", { name: "Slide visuals" });
     const list = section.getByRole("list", { name: "Visual directions" });
