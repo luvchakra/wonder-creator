@@ -13,7 +13,8 @@ test.describe("Collaborative editing", () => {
 
     // The owner adds Mo as a collaborator who can propose changes.
     await a.goto(`/artifacts/${art.id}`);
-    await a.getByRole("link", { name: "Collaborate" }).click();
+    await a.getByRole("button", { name: "More actions" }).click();
+    await a.getByRole("menuitem", { name: "Collaborate" }).click();
     await expect(a.getByRole("heading", { name: "Collaborate", level: 1 })).toBeVisible();
     await a.getByRole("button", { name: "Add a collaborator" }).click();
     const add = a.getByRole("dialog", { name: "Add a collaborator" });

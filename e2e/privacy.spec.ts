@@ -72,7 +72,7 @@ test.describe("privacy boundary", () => {
     await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
     await expect(b.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(b.getByRole("article")).toContainText("the harbour keeps its lamps.");
-    await expect(b.getByRole("link", { name: "Creative Studio" })).toHaveCount(0);
+    await expect(b.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
     await expect(b.getByRole("button", { name: "Share" })).toHaveCount(0);
     await expect(b.getByRole("button", { name: "More actions" })).toHaveCount(0);
     // The studio is owner-only: B is sent back to the read-only view.
