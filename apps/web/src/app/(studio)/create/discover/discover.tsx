@@ -8,6 +8,7 @@ import { useState } from "react";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { PENDING_TURN_KEY, type PendingTurn } from "@/lib/send";
+import { VisualDirections } from "@/components/visual-directions";
 
 interface Direction {
   title: string;
@@ -23,6 +24,7 @@ export function Discover({ materials }: { materials: MaterialCardData[] }) {
   const [selected, setSelected] = useState<string[]>(materials.slice(0, 4).map((m) => m.id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explored, setExplored] = useState<string[]>([]);
   const [result, setResult] = useState<{ intro: string; understanding: { summary: string; themes: string[] } | null; directions: Direction[] } | null>(null);
 
   if (!materials.length) {
@@ -45,6 +47,7 @@ export function Discover({ materials }: { materials: MaterialCardData[] }) {
     setError(null);
     try {
       setResult(await api("/api/v1/brain/discover", { method: "POST", json: { materialIds: selected, instruction: "I don't know what this should become. What could it be?" } }));
+      setExplored(selected.slice(0, 4));
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -95,6 +98,8 @@ export function Discover({ materials }: { materials: MaterialCardData[] }) {
         <section aria-label="Directions" className="space-y-4">
           {result.understanding ? <p className="max-w-3xl text-[15px] text-ink-muted">{result.understanding.summary}</p> : null}
           <p className="font-medium text-ink">{result.intro}</p>
+          {/* Ways it could look, from the same Materials (image-generation §29); made only when asked, kept until they change. */}
+          {explored.length ? <VisualDirections materialIds={explored} purpose="explore" title="Ways this could look" /> : null}
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.directions.map((d) => (
               <li key={d.title} className="flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">

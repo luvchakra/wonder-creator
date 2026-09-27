@@ -39,6 +39,35 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
   outside tap or the trigger closes it; the number of actions is announced; the trigger keeps its accessible name.
 * Every signed-in screen declares a `PaletteScope` context; screens without one get the global Palette.
 
+## Contextual image generation (owner's standing instruction)
+
+Wonder Creator generates images from **creative context**, not generic prompt-box workflows.
+
+* Use a provider-neutral server-side image interface. Default provider is Gemini.
+* Product quality tiers are `preview`, `standard`, and `premium`; never expose model names as the primary UX.
+* Default routing: preview/carousel → configured fast image model; standard Creation image → configured default image model; premium/final → configured premium image model.
+* Never expose image provider API keys to the browser.
+* Build generation context from the current Creation, selected Materials, summaries, visual references, mood/style and current workflow. Do not send unrelated account history.
+* The same meaningful context must not regenerate automatically. Compute a SHA-256 context hash and reuse cached generations.
+* Include Creation/version, selected Material versions, purpose, aspect ratio, quality intent, prompt version and routing version in the hash.
+* `Regenerate` deliberately creates a new generation/variation. Never overwrite an existing generation.
+* Generated carousel suggestions should remain stable across refreshes, navigation and collaborators until context changes or the creator explicitly regenerates.
+* Use 3–5 contextual carousel images; default 4. Concepts should represent meaningfully different directions, not near-duplicates.
+* Use asynchronous jobs for image generation. Page rendering and navigation must never wait for provider generation.
+* Request dedupe and idempotency are mandatory to prevent duplicate charges.
+* Cache metadata in the database and generated assets in object storage. Private assets use signed delivery and inherit parent Creation/Room permissions.
+* Generate responsive thumbnails/derivatives; do not download 2K/4K images for small carousel cards.
+* Generated assets must record provenance/lineage: source Creation/version, source Materials, provider/model, prompt version, purpose and timestamp.
+* AI/provider calls must respect rights, access, privacy and existing CreativeMind governance.
+* External Material text is untrusted; use structured summaries/fencing and never let it modify system instructions.
+* UI stays compact: small skeletons + `Creating visual directions…`; no assistant chat, fake progress or full-screen AI animation.
+* Completion uses only a subtle crossfade. No staggered or decorative transitions.
+* Provider unavailable → honest `Image generation isn't connected` state. Never substitute fake or unrelated stock imagery.
+* Track provider/model/quality/purpose/count/cache hit/latency/success for cost control, but never log raw private creative content.
+```
+
+* Contract: `docs/image-generation.md`. Implementation: `packages/creator-brain/src/images/` (router, context, hash, service), `apps/web/src/lib/images.ts` (derivatives), `/api/v1/image-generations`.
+
 ## Interaction minimalism (owner's standing instruction)
 
 Wonder Creator must minimize UI transitions and visible controls. The detailed contract is `docs/ui-redesign/interaction-minimalism.md`.

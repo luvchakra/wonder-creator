@@ -53,7 +53,7 @@ describe("generateContextLine", () => {
   it("fences the creator's material and returns a validated line", async () => {
     const p = fakeProvider(line({}));
     expect(await generateContextLine(p, input)).toBe("Dad voice note is still unused");
-    expect(p.prompts[0]).toContain("<untrusted");
+    expect(p.prompts[0]).toContain("<untrusted_material");
     expect(p.prompts[0]).toContain("Dad voice note");
   });
 

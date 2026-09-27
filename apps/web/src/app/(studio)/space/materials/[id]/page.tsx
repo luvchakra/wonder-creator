@@ -6,7 +6,7 @@ import { MaterialDetail } from "./detail";
 
 export const metadata = { title: "Material" };
 
-const KIND_LABEL: Record<string, string> = { image: "Photo", sketch: "Sketch", voice: "Voice", audio: "Audio", video: "Video", note: "Note", text: "Note", document: "Document", pdf: "Document", url: "Link" };
+const KIND_LABEL: Record<string, string> = { idea: "Idea", reference: "Reference", research: "Research", conversation: "Conversation", inspiration: "Inspiration", image: "Photo", sketch: "Sketch", voice: "Voice", audio: "Audio", video: "Video", note: "Note", text: "Note", document: "Document", pdf: "Document", url: "Link" };
 
 export default async function MaterialPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,6 +43,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
     <>
       <PaletteScope context={{ page: "material", entityType: m.type === "image" || m.type === "sketch" ? "photo" : m.type === "voice" || m.type === "audio" ? "audio" : m.type === "video" ? "video" : m.type === "url" ? "link" : m.type === "document" || m.type === "pdf" ? "document" : "note", permissions: m.creator_id === creator.id ? ["edit"] : [], ids: { materialId: id }, facts: { related: related || null }, strip }} />
       <MaterialDetail
+        canGenerate={m.creator_id === creator.id}
         m={{
           id: m.id,
           type: m.type,

@@ -21,6 +21,11 @@ let rateLimitDb: Db | null | undefined;
 /** Shared across instances via Postgres when the service key is configured; per-instance otherwise. */
 const limiter = createSharedRateLimiter(() => (rateLimitDb ??= serviceConfigured() ? serviceClient() : null));
 
+/** An extra, named budget inside a handler — e.g. cost-bearing image generation starts vs cheap lookups. */
+export async function checkBudget(key: string, limit: number, windowMs = 60 * 60_000) {
+  await limiter.check(key, limit, windowMs);
+}
+
 export interface ApiOptions {
   /** Requests per minute per user for this route (defaults: 120 reads, 60 writes). */
   rateLimit?: number;
