@@ -1,7 +1,7 @@
 "use client";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Button, ErrorState, Input, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, Save, Share2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -85,7 +85,7 @@ export function Studio({
 
   async function refine(a: { key: string; label: string } | null) {
     if (dirty) {
-      setError("Save your edits first — CreatorBrain works on your latest saved version.");
+      setError("Save your edits first — CreativeMind works on your latest saved version.");
       return;
     }
     const text = a ? `${a.label}${instruction.trim() ? `: ${instruction.trim()}` : ""}` : instruction.trim();
@@ -160,13 +160,14 @@ export function Studio({
     }
   }
 
-  const editorFont = artifact.format === "screenplay" ? "font-mono text-[14px] leading-7" : artifact.format === "verse" ? "font-display text-[18px] leading-8" : "text-[16px] leading-7";
+  const editorFont = artifact.format === "screenplay" ? "font-mono text-[14px] leading-7" : artifact.format === "verse" ? "font-display text-[19px] leading-8" : "font-display text-[18px] leading-8";
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <Link href={`/artifacts/${artifact.id}`} className={buttonClasses({ variant: "ghost", size: "sm" })} aria-label="Back to artifact">
-          <ArrowLeft className="size-4" aria-hidden /> Back
+    <div className="mx-auto max-w-3xl space-y-4">
+      {/* Title and status stay minimal (UI redesign §15.1): the writing surface is the screen. */}
+      <header className="flex items-start gap-2">
+        <Link href={`/artifacts/${artifact.id}`} className={buttonClasses({ variant: "ghost", className: "shrink-0 px-3" })} aria-label="Back to Creation">
+          <ArrowLeft className="size-5" aria-hidden />
         </Link>
         <div className="min-w-0 flex-1">
           <label htmlFor="title" className="sr-only">
@@ -178,17 +179,12 @@ export function Studio({
             {dirty ? " · unsaved changes" : savedAt ? ` · saved ${savedAt}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={save} loading={saving} disabled={!dirty && title === artifact.title}>
-            <Save className="size-4" aria-hidden /> Save
-          </Button>
-          <Link href={`/artifacts/${artifact.id}`} className={buttonClasses({ variant: "secondary" })}>
-            <Share2 className="size-4" aria-hidden /> Share
-          </Link>
-        </div>
+        <Button className="shrink-0" onClick={save} loading={saving} disabled={!dirty && title === artifact.title}>
+          <Save className="size-4" aria-hidden /> Save
+        </Button>
       </header>
 
-      {offline ? <p className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-2 text-sm text-warning-ink">Offline development model: CreatorBrain actions produce placeholder revisions.</p> : null}
+      {offline ? <p className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-2 text-sm text-warning-ink">Offline development model: CreativeMind actions produce placeholder revisions.</p> : null}
       {error ? <ErrorState title="That didn't work" body={error} /> : null}
       {kept ? (
         <p role="status" className="flex flex-wrap items-center gap-x-3 rounded-2xl bg-success-soft px-4 py-2 text-sm text-success-ink">
@@ -200,119 +196,118 @@ export function Studio({
         </p>
       ) : null}
 
-      <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1fr_320px]">
-        <section aria-label="Editor" className="rounded-3xl border border-border-soft bg-surface p-2 shadow-[var(--shadow-card)]">
-          {proposal ? (
-            <div className="p-3">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-accent-softer px-4 py-3">
-                <div className="min-w-0 text-[15px] text-ink">
-                  <p>
-                    <Sparkles className="mr-1.5 inline size-4 text-accent-ink" aria-hidden />
-                    {proposal.quality ? "Preview of the suggestions you chose." : "CreatorBrain suggested a revision."} Your current version stays in history either way.
-                  </p>
-                  {proposal.quality ? <p className="mt-1 text-sm text-ink-muted">Applying: {proposal.quality.titles.join("; ")}</p> : null}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" loading={working === "approve"} disabled={!!working} onClick={() => decide("approve")}>
-                    Keep revision
-                  </Button>
-                  {proposal.quality ? (
-                    <Button size="sm" variant="secondary" loading={working === "regenerate"} disabled={!!working} onClick={regenerate}>
-                      Try another version
-                    </Button>
-                  ) : null}
-                  <Button size="sm" variant="ghost" loading={working === "reject"} disabled={!!working} onClick={() => decide("reject")}>
-                    Discard
-                  </Button>
-                </div>
+      <section aria-label="Editor" className="rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
+        {proposal ? (
+          <div className="p-3 sm:p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-accent-softer px-4 py-3">
+              <div className="min-w-0 text-[15px] text-ink">
+                <p>
+                  <Sparkles className="mr-1.5 inline size-4 text-accent-ink" aria-hidden />
+                  {proposal.quality ? "Preview of the suggestions you chose." : "CreativeMind suggested a revision."} Your current version stays in history either way.
+                </p>
+                {proposal.quality ? <p className="mt-1 text-sm text-ink-muted">Applying: {proposal.quality.titles.join("; ")}</p> : null}
               </div>
-              <div className="max-h-[60vh] overflow-auto rounded-2xl bg-surface-muted p-4 font-mono text-[13px] leading-relaxed">
-                {diffLines(base?.content ?? "", proposal.preview).map((d, i) => (
-                  <div key={i} className={cn("whitespace-pre-wrap px-2", d.kind === "added" && "bg-success-soft text-success-ink", d.kind === "removed" && "bg-danger-soft text-danger line-through decoration-danger/40")}>
-                    <span className="sr-only">{d.kind === "added" ? "Added: " : d.kind === "removed" ? "Removed: " : ""}</span>
-                    {d.text || " "}
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" loading={working === "approve"} disabled={!!working} onClick={() => decide("approve")}>
+                  Keep revision
+                </Button>
+                {proposal.quality ? (
+                  <Button size="sm" variant="secondary" loading={working === "regenerate"} disabled={!!working} onClick={regenerate}>
+                    Try another version
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" loading={working === "reject"} disabled={!!working} onClick={() => decide("reject")}>
+                  Discard
+                </Button>
               </div>
             </div>
-          ) : (
-            <>
-              <label htmlFor="editor" className="sr-only">
-                {artifact.typeLabel} text
-              </label>
-              <textarea
-                id="editor"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-                    e.preventDefault();
-                    void save();
-                  }
-                }}
-                spellCheck
-                className={cn("block min-h-[60vh] w-full resize-y rounded-2xl bg-transparent p-4 text-ink focus:outline-none sm:p-6", editorFont)}
-                placeholder="Start writing…"
-              />
-            </>
-          )}
-        </section>
-
-        <aside aria-label="CreatorBrain" className="space-y-4">
-          <section className="rounded-3xl border border-border-soft bg-surface p-4">
-            <h2 className="flex items-center gap-2 font-semibold text-ink">
-              <span aria-hidden className="size-5 rounded-full" style={{ background: "var(--brand-gradient)" }} /> CreatorBrain
-            </h2>
-            <ul className="mt-3 space-y-1.5">
-              {actions.map((a) => (
-                <li key={a.key}>
-                  <button
-                    type="button"
-                    disabled={!!working || !!proposal}
-                    onClick={() => (a.kind === "transform" && a.targetType ? setTransformType(a.targetType) : refine(a))}
-                    className="flex w-full items-start gap-2.5 rounded-2xl border border-border-soft px-3 py-2.5 text-left hover:border-[#cfd0ff] hover:bg-accent-softer disabled:opacity-50"
-                  >
-                    {a.kind === "transform" ? <Wand2 className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden /> : <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden />}
-                    <span>
-                      <span className="block text-sm font-medium text-ink">{working === a.key ? "Working…" : a.label}</span>
-                      <span className="block text-xs text-ink-subtle">{a.hint}</span>
-                    </span>
-                  </button>
-                </li>
+            <div className="max-h-[65vh] overflow-auto rounded-2xl bg-surface-muted p-4 font-mono text-[13px] leading-relaxed">
+              {diffLines(base?.content ?? "", proposal.preview).map((d, i) => (
+                <div key={i} className={cn("whitespace-pre-wrap px-2", d.kind === "added" && "bg-success-soft text-success-ink", d.kind === "removed" && "bg-danger-soft text-danger line-through decoration-danger/40")}>
+                  <span className="sr-only">{d.kind === "added" ? "Added: " : d.kind === "removed" ? "Removed: " : ""}</span>
+                  {d.text || " "}
+                </div>
               ))}
-            </ul>
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void refine(null);
+            </div>
+          </div>
+        ) : (
+          <>
+            <label htmlFor="editor" className="sr-only">
+              {artifact.typeLabel} text
+            </label>
+            <textarea
+              id="editor"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+                  e.preventDefault();
+                  void save();
+                }
               }}
-            >
-              <label htmlFor="instruction" className="sr-only">
-                Describe what you want to change
-              </label>
-              <Input id="instruction" value={instruction} onChange={(e) => setInstruction(e.target.value)} placeholder="Describe what to change…" disabled={!!working || !!proposal} />
-              <Button type="submit" size="md" disabled={!instruction.trim() || !!working || !!proposal} loading={working === "custom"}>
-                Go
-              </Button>
-            </form>
-          </section>
+              spellCheck
+              className={cn("block min-h-[70dvh] w-full resize-y rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10", editorFont)}
+              placeholder="Start writing…"
+            />
+          </>
+        )}
+      </section>
 
-          <QualityPanel
-            artifactId={artifact.id}
-            report={q}
-            currentVersionId={base?.id ?? null}
-            blocked={dirty ? "Save your edits first to apply suggestions." : proposal ? "Keep or discard the current revision first." : null}
-            reviewing={working === "quality"}
-            onReview={review}
-            onPreview={(p) => setProposal(p)}
-            onChanged={() => router.refresh()}
-          />
-        </aside>
-      </div>
+      {/* CreativeMind is contextual, not a pane (§15.2): refine chips, one line to ask, and the quality review surface. */}
+      <section id="creativemind" aria-labelledby="creativemind-title" className="scroll-mt-20 space-y-3">
+        <h2 id="creativemind-title" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-ink-subtle">
+          <span aria-hidden className="size-3 rounded-full" style={{ background: "var(--brand-gradient)" }} /> Refine with CreativeMind
+        </h2>
+        <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Suggestions">
+          {actions.map((a) => (
+            <li key={a.key} className="shrink-0">
+              <button
+                type="button"
+                disabled={!!working || !!proposal}
+                title={a.hint}
+                onClick={() => (a.kind === "transform" && a.targetType ? setTransformType(a.targetType) : refine(a))}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border-soft bg-surface px-4 text-sm font-medium text-ink hover:border-[#cfd0ff] hover:bg-accent-softer disabled:opacity-50"
+              >
+                {a.kind === "transform" ? <Wand2 className="size-4 shrink-0 text-accent-ink" aria-hidden /> : <Sparkles className="size-4 shrink-0 text-accent-ink" aria-hidden />}
+                {working === a.key ? "Working…" : a.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void refine(null);
+          }}
+        >
+          <label htmlFor="instruction" className="sr-only">
+            Describe what you want to change
+          </label>
+          <Input id="instruction" value={instruction} onChange={(e) => setInstruction(e.target.value)} placeholder="Describe what to change…" disabled={!!working || !!proposal} />
+          <Button type="submit" size="md" disabled={!instruction.trim() || !!working || !!proposal} loading={working === "custom"}>
+            Go
+          </Button>
+        </form>
+        <QualityPanel
+          artifactId={artifact.id}
+          report={q}
+          currentVersionId={base?.id ?? null}
+          blocked={dirty ? "Save your edits first to apply suggestions." : proposal ? "Keep or discard the current revision first." : null}
+          reviewing={working === "quality"}
+          onReview={review}
+          onPreview={(p) => setProposal(p)}
+          onChanged={() => router.refresh()}
+        />
+      </section>
 
-      <section aria-label="Related material">
-        <h2 className="mb-2 text-sm font-semibold text-ink-muted">Related material</h2>
+      <section aria-label="Materials">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink-muted">Materials</h2>
+          <Link href={`/artifacts/${artifact.id}/context`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            Context
+          </Link>
+        </div>
         {materials.length ? (
           <ul className="flex gap-3 overflow-x-auto pb-2">
             {materials.map((m) => (
@@ -327,7 +322,7 @@ export function Studio({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-ink-subtle">No material linked. Bring material in CreatorTalk to ground this piece.</p>
+          <p className="text-sm text-ink-subtle">No Materials linked yet. Bring Material from the Palette to ground this Creation.</p>
         )}
       </section>
 

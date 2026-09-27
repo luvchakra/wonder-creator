@@ -472,7 +472,7 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
                 v{v.version_number} {v.label}
               </p>
               {v.id === currentId ? <Badge tone="accent">Current</Badge> : null}
-              <Badge>{v.author_kind === "ai" ? "CreatorBrain" : v.author_kind === "restore" ? "Restored" : "You"}</Badge>
+              <Badge>{v.author_kind === "ai" ? "CreativeMind" : v.author_kind === "restore" ? "Restored" : "You"}</Badge>
             </div>
             <p className="mt-0.5 text-xs text-ink-subtle"><RelativeTime iso={v.created_at} /></p>
             {v.change_summary ? <p className="mt-1.5 text-sm text-ink-muted">{v.change_summary}</p> : null}
