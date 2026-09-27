@@ -77,3 +77,29 @@ export const CONTRIBUTION_KIND_LABEL: Record<ContributionKind, string> = {
 };
 export const RIGHTS_RELATIONSHIP_LABEL = { contributor: "Contributor", co_owner: "Co-owner", licensed: "Licensed", work_for_hire: "Work for hire", none: "No rights" } as const;
 export const ATTRIBUTION_LABEL = { required: "Credit required", optional: "Credit optional", none: "No credit" } as const;
+
+export const DERIVATIVE_POLICIES = ["owner_approval", "crew_allowed", "not_allowed"] as const;
+export type DerivativePolicy = (typeof DERIVATIVE_POLICIES)[number];
+export const DERIVATIVE_POLICY_LABEL: Record<DerivativePolicy, { label: string; help: string }> = {
+  owner_approval: { label: "Owner decides", help: "Each piece's owner allows derivatives on its rights record or through a license." },
+  crew_allowed: { label: "Crew may adapt", help: "People in the project can make derivatives of pieces they can open. Lineage and credit are kept." },
+  not_allowed: { label: "No derivatives", help: "Only a piece's owner can make derivatives of it." },
+};
+export const ATTRIBUTION_POLICIES = ["credit_all", "as_agreed"] as const;
+export type AttributionPolicy = (typeof ATTRIBUTION_POLICIES)[number];
+export const ATTRIBUTION_POLICY_LABEL: Record<AttributionPolicy, { label: string; help: string }> = {
+  credit_all: { label: "Credit everyone", help: "Everyone who contributed is credited wherever the work appears." },
+  as_agreed: { label: "As agreed", help: "Credit follows each contribution's attribution setting and the agreement below." },
+};
+export const OWNERSHIP_CLAIMS = ["sole_owner", "co_owner", "contributor_only", "no_claim"] as const;
+export type OwnershipClaim = (typeof OWNERSHIP_CLAIMS)[number];
+export const OWNERSHIP_CLAIM_LABEL: Record<OwnershipClaim, string> = {
+  sole_owner: "Sole owner",
+  co_owner: "Co-owner",
+  contributor_only: "Contributor only",
+  no_claim: "No ownership claim",
+};
+export type AssertionStatus = "asserted" | "acknowledged" | "disputed" | "withdrawn";
+export const ASSERTION_STATUS_LABEL: Record<AssertionStatus, string> = { asserted: "Awaiting response", acknowledged: "Acknowledged", disputed: "Disputed", withdrawn: "Withdrawn" };
+export const PROJECT_RIGHTS_DISCLAIMER =
+  "These are platform records of what people in the project said and agreed — not legal determinations. Contributing to a piece doesn't by itself make anyone its owner.";

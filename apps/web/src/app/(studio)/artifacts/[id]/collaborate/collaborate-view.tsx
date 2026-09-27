@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { CreatorPicker, type PickedCreator } from "@/components/creator-picker";
+import { SignoffDialog } from "@/components/signoff-dialog";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 
@@ -35,9 +36,11 @@ interface Props {
   comments: Array<{ id: string; body: string; quote: string | null; versionNumber: number | null; author: { id: string | null; name: string }; mine: boolean; resolved: boolean; at: string }>;
   /** The piece's contribution ledger (live entries). */
   credits: Array<{ id: string; name: string; kind: string; description: string; versionNumber: number | null }>;
+  /** Who must approve the current version before it's published (only when a project requires it). */
+  signoffs: Array<{ creatorId: string; name: string; decision: "approve" | "object" | null; note: string | null; at: string | null }>;
 }
 
-export function CollaborateView({ viewerId, access, artifact, current, collaborators, versions, proposals, comments, credits }: Props) {
+export function CollaborateView({ viewerId, access, artifact, current, collaborators, versions, proposals, comments, credits, signoffs }: Props) {
   const router = useRouter();
   const owner = access === "owner";
   const [msg, setMsg] = useState<string | null>(null);
@@ -46,6 +49,8 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
   const [writing, setWriting] = useState(false);
   const [reviewing, setReviewing] = useState<Props["proposals"][number] | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [signing, setSigning] = useState<"approve" | "object" | null>(null);
+  const mySignoff = signoffs.find((s) => s.creatorId === viewerId);
   const open = proposals.filter((p) => p.status === "open");
   const decided = proposals.filter((p) => p.status !== "open");
 
@@ -94,6 +99,34 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
         <p role="alert" className="rounded-2xl bg-[#fdecec] px-4 py-3 text-[15px] text-danger">
           {error}
         </p>
+      ) : null}
+
+      {signoffs.length ? (
+        <section aria-label="Publishing sign-off" className="rounded-2xl border border-border-soft bg-surface px-5 py-4">
+          <SectionHeader title="Publishing sign-off" />
+          <p className="text-sm text-ink-muted">
+            This piece&rsquo;s project asks collaborators and co-owners to approve {current ? `version ${current.number}` : "the current version"} before it&rsquo;s published. A new version needs a new sign-off.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {signoffs.map((s) => (
+              <li key={s.creatorId} className="flex flex-wrap items-center gap-2 text-[15px] text-ink">
+                {s.creatorId === viewerId ? "You" : s.name}
+                <Badge tone={s.decision === "approve" ? "success" : s.decision === "object" ? "warning" : "neutral"}>{s.decision === "approve" ? "Approved" : s.decision === "object" ? "Objected" : "Not yet"}</Badge>
+                {s.note ? <span className="text-sm text-ink-muted">“{s.note}”</span> : null}
+              </li>
+            ))}
+          </ul>
+          {mySignoff ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant={mySignoff.decision === "approve" ? "secondary" : "primary"} onClick={() => setSigning("approve")}>
+                Approve publishing
+              </Button>
+              <Button variant="ghost" onClick={() => setSigning("object")}>
+                Object
+              </Button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       <section aria-label="Proposed changes">
@@ -236,6 +269,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
       {adding ? <AddCollaboratorDialog artifactId={artifact.id} exclude={[artifact.ownerId, ...collaborators.map((c) => c.creatorId)]} onOpenChange={setAdding} onAdded={(n) => (setMsg(`${n} is now a collaborator.`), router.refresh())} /> : null}
       {writing && current ? <WriteDialog artifactId={artifact.id} base={current} mode={access === "edit" ? "edit" : "propose"} onOpenChange={setWriting} onDone={(t) => (setWriting(false), setMsg(t), router.refresh())} /> : null}
       {reviewing && current ? <ReviewDialog proposal={reviewing} current={current} owner={owner} onOpenChange={(o) => !o && setReviewing(null)} onDone={(t) => (setReviewing(null), setMsg(t), router.refresh())} /> : null}
+      {signing ? <SignoffDialog piece={{ artifactId: artifact.id, title: artifact.title }} decision={signing} onOpenChange={(o) => !o && setSigning(null)} onSaved={(t) => (setSigning(null), setMsg(t), router.refresh())} /> : null}
       <ConfirmDialog
         open={leaving}
         onOpenChange={setLeaving}

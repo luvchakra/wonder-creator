@@ -1,4 +1,4 @@
-import { listContributions } from "@wonder/creator-projects";
+import { listContributions, publicationSignoffs } from "@wonder/creator-projects";
 import { getCollaboration } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
@@ -12,11 +12,12 @@ export default async function CollaboratePage({ params }: { params: Promise<{ id
   const { db, creator } = await requireSession();
   const data = await getCollaboration(db, creator.id, id).catch(() => null);
   if (!data) notFound();
-  const credits = await listContributions(db, creator.id, { artifactId: id }).catch(() => []);
+  const [credits, signoffs] = await Promise.all([listContributions(db, creator.id, { artifactId: id }).catch(() => []), publicationSignoffs(db, id).catch(() => [])]);
   return (
     <CollaborateView
       viewerId={creator.id}
       {...data}
+      signoffs={signoffs}
       credits={credits.filter((c) => !c.retracted).map((c) => ({ id: c.id, name: c.contributor.name, kind: c.kindLabel, description: c.description, versionNumber: c.related.versionNumber }))}
     />
   );
