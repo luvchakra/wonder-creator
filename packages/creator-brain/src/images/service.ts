@@ -89,16 +89,31 @@ export interface GenerationView {
   aspectRatio: string;
   requestedCount: number;
   createdAt: string;
-  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null }>;
+  /** The set in the creator's order; images that were changed show their newest version only. */
+  assets: Array<{ id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; width: number | null; height: number | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised: boolean }>;
+  /** Changes the viewer asked for that are in flight or just failed (only the creator sees their own). */
+  revisions: Array<{ id: string; assetId: string; status: "queued" | "processing" | "failed" }>;
 }
 
 /** A generation and its images, with short-lived signed URLs (§45). Null when the caller can't see it. */
 export async function generationView(db: Db, service: Db, generationId: string, cached = false): Promise<GenerationView | null> {
   const { data: g } = await db.from("image_generations").select("id, status, purpose, quality_intent, aspect_ratio, requested_count, created_at").eq("id", generationId).maybeSingle();
   if (!g) return null;
-  const { data: assets, error: assetsError } = await db.from("image_generation_assets").select("id, sequence, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id").eq("generation_id", generationId).order("sequence");
+  const { data: all, error: assetsError } = await db
+    .from("image_generation_assets")
+    .select("id, sequence, position, replaced_by, revision_of, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id")
+    .eq("generation_id", generationId)
+    .order("sequence");
   // A read failure must surface as an error, never as "no images" (which the UI would show as a failed generation).
   if (assetsError) throw new DomainError("internal", "Couldn't load these images. Please try again.", { cause: assetsError });
+  const assets = orderedSet(all ?? []);
+  const { data: revs } = await db
+    .from("image_asset_revisions")
+    .select("id, asset_id, status, created_at")
+    .eq("generation_id", generationId)
+    .in("status", ["queued", "processing", "failed"])
+    .gte("created_at", new Date(Date.now() - FAILED_TTL_MS).toISOString())
+    .order("created_at", { ascending: false });
   // Access was just checked under RLS; the objects belong to the generation's creator, so sign with the service client.
   const ids = (assets ?? []).flatMap((a) => [a.storage_object_id, a.thumbnail_object_id]).filter((x): x is string => !!x);
   const { data: objs } = ids.length ? await service.from("storage_objects").select("id, bucket, path").in("id", ids) : { data: [] };
@@ -127,8 +142,18 @@ export async function generationView(db: Db, service: Db, generationId: string, 
       rationale: a.rationale,
       selected: a.selected,
       savedMaterialId: a.saved_material_id,
+      revised: !!a.revision_of,
     })),
+    // Latest per image; a failure only while that image hasn't been changed since.
+    revisions: [...new Map([...(revs ?? [])].reverse().map((r) => [r.asset_id, r] as const)).values()]
+      .filter((r) => assets.some((a) => a.id === r.asset_id))
+      .map((r) => ({ id: r.id, assetId: r.asset_id, status: r.status as "queued" | "processing" | "failed" })),
   };
+}
+
+/** The visible set: current images only (a changed image is replaced by its newest version), in the creator's order. */
+export function orderedSet<T extends { sequence: number; position: number | null; replaced_by: string | null }>(rows: T[]): T[] {
+  return rows.filter((a) => !a.replaced_by).sort((a, b) => (a.position ?? a.sequence) - (b.position ?? b.sequence) || a.sequence - b.sequence);
 }
 
 export type RequestOutcome = { kind: "generation"; view: GenerationView } | { kind: "none" } | { kind: "unavailable" } | { kind: "no_context" };
@@ -436,12 +461,14 @@ export async function saveTextOverlay(
     .single();
   if (pErr || !prov) throw new DomainError("internal", "Couldn't save that image.", { cause: pErr });
   const firstLine = text.split("\n")[0]!.slice(0, 60);
+  const { data: set } = await deps.db.from("image_generation_assets").select("id, sequence, position, replaced_by").eq("generation_id", g.id);
+  const slide = orderedSet(set ?? []).findIndex((x) => x.id === a.id) + 1 || a.sequence + 1;
   const { data: m, error: mErr } = await deps.service
     .from("creative_materials")
     .insert({
       creator_id: deps.creatorId,
       type: "image",
-      title: g.purpose === "carousel" ? `Slide ${a.sequence + 1} · ${firstLine}` : firstLine,
+      title: g.purpose === "carousel" ? `Slide ${slide} · ${firstLine}` : firstLine,
       storage_object_id: master,
       source_type: "generated",
       security_status: "clean",
@@ -462,4 +489,144 @@ export async function saveTextOverlay(
   await audit(deps.db, { action: "generated_image.text_saved", objectType: "material", objectId: m.id, metadata: { generationId: g.id, purpose: g.purpose } });
   log("info", "image_text_overlay_saved", { purpose: g.purpose });
   return { materialId: m.id };
+}
+
+/** The creator's order for a set (§61): exactly the visible images, each once. Owner only. */
+export async function reorderGeneratedAssets(deps: Pick<ImageDeps, "db" | "service" | "creatorId">, generationId: string, assetIds: string[]): Promise<void> {
+  const { data: g } = await deps.db.from("image_generations").select("id, creator_id").eq("id", generationId).maybeSingle();
+  if (!g || g.creator_id !== deps.creatorId) throw new DomainError("not_found", "That isn't available.");
+  const { data: rows } = await deps.db.from("image_generation_assets").select("id, sequence, position, replaced_by").eq("generation_id", generationId);
+  const visible = orderedSet(rows ?? []).map((a) => a.id);
+  if (assetIds.length !== visible.length || new Set(assetIds).size !== assetIds.length || !assetIds.every((id) => visible.includes(id))) {
+    throw new DomainError("validation", "That order doesn't match these images. Refresh and try again.");
+  }
+  for (const [i, id] of assetIds.entries()) {
+    const { error } = await deps.service.from("image_generation_assets").update({ position: i }).eq("id", id).eq("generation_id", generationId);
+    if (error) throw new DomainError("internal", "Couldn't save the order.", { cause: error });
+  }
+  log("info", "image_generation_reordered", { count: assetIds.length });
+}
+
+/**
+ * Change one image with the creator's own instruction (§61). Queues a revision job and answers at once; the new image
+ * takes the old one's place when it's ready, and the old one is kept. Same idempotency key → same revision.
+ */
+export async function requestAssetRevision(
+  deps: ImageDeps,
+  generationId: string,
+  assetId: string,
+  input: { instruction: string; idempotencyKey?: string },
+): Promise<{ kind: "revision"; revisionId: string; view: GenerationView; queued: boolean } | { kind: "unavailable" }> {
+  const instruction = input.instruction.trim().slice(0, 300);
+  if (!instruction) throw new DomainError("validation", "Say what should change.");
+  const { data: g } = await deps.db.from("image_generations").select("id, creator_id").eq("id", generationId).maybeSingle();
+  if (!g || g.creator_id !== deps.creatorId) throw new DomainError("not_found", "That isn't available.");
+  const { data: a } = await deps.db.from("image_generation_assets").select("id, replaced_by").eq("id", assetId).eq("generation_id", generationId).maybeSingle();
+  if (!a) throw new DomainError("not_found", "That image isn't available.");
+  if (a.replaced_by) throw new DomainError("conflict", "That image has already changed. Refresh to see the newest one.");
+  if (input.idempotencyKey) {
+    const { data: dup } = await deps.db.from("image_asset_revisions").select("id").eq("creator_id", deps.creatorId).eq("idempotency_key", input.idempotencyKey).maybeSingle();
+    if (dup) return { kind: "revision", revisionId: dup.id, view: (await generationView(deps.db, deps.service, generationId))!, queued: false };
+  }
+  // One change at a time per image.
+  const { data: busy } = await deps.db.from("image_asset_revisions").select("id").eq("asset_id", assetId).in("status", ["queued", "processing"]).maybeSingle();
+  if (busy) return { kind: "revision", revisionId: busy.id, view: (await generationView(deps.db, deps.service, generationId))!, queued: false };
+  if (!deps.provider.live) return { kind: "unavailable" };
+
+  const { data: rev, error } = await deps.service
+    .from("image_asset_revisions")
+    .insert({ creator_id: deps.creatorId, generation_id: generationId, asset_id: assetId, instruction, idempotency_key: input.idempotencyKey ?? null })
+    .select("id")
+    .single();
+  if (error || !rev) throw new DomainError("internal", "Couldn't start changing that image.", { cause: error });
+  await deps.service.from("jobs").insert({ creator_id: deps.creatorId, kind: "image.revise", subject_id: rev.id, idempotency_key: `imagerev:${rev.id}` });
+  log("info", "image_asset_revision_requested", {});
+  return { kind: "revision", revisionId: rev.id, view: (await generationView(deps.db, deps.service, generationId))!, queued: true };
+}
+
+/**
+ * The revision job: the original image goes to the model as the visual reference, with the Creation's context, the
+ * image's direction and the creator's instruction. On success a new asset takes the old one's place and choice; the old
+ * asset is kept. A blocked or failed change stores nothing. Never logs the instruction.
+ */
+export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">, revisionId: string): Promise<void> {
+  const service = deps.service;
+  const { data: rev } = await service.from("image_asset_revisions").update({ status: "processing" }).eq("id", revisionId).in("status", ["queued", "processing"]).select("*").maybeSingle();
+  if (!rev) return;
+  const { data: g } = await service.from("image_generations").select("id, creator_id, context, purpose, aspect_ratio, model").eq("id", rev.generation_id).single();
+  const { data: old } = await service.from("image_generation_assets").select("*").eq("id", rev.asset_id).single();
+  const fail = async (code: string) => {
+    await service.from("image_asset_revisions").update({ status: "failed", error_code: code, completed_at: new Date().toISOString() }).eq("id", rev.id);
+  };
+  if (!g || !old || old.replaced_by) return fail("gone");
+  const started = Date.now();
+  try {
+    const references: ImageReference[] = [];
+    const { data: o } = await service.from("storage_objects").select("bucket, path, mime_type").eq("id", old.storage_object_id).single();
+    if (o) {
+      const dl = await service.storage.from(o.bucket).download(o.path);
+      if (dl.data) references.push({ mimeType: o.mime_type as ImageReference["mimeType"], dataBase64: Buffer.from(await dl.data.arrayBuffer()).toString("base64") });
+    }
+    const context = g.context as unknown as ImageGenerationContext;
+    const direction = directionsFor(context, 5).find((d) => d.label === old.direction_label) ?? { label: old.direction_label ?? "Direction", rationale: "", guidance: "keep the attached image's composition and spirit" };
+    const prompt = [
+      buildImagePrompt(context, g.purpose as ImagePurpose, g.aspect_ratio as AspectRatio, direction),
+      "",
+      "The attached image is the current version of this concept. Keep what works and make this change the creator asked for:",
+      rev.instruction,
+      "Still avoid any embedded text.",
+    ].join("\n");
+    const out = await deps.provider.generate({ model: g.model, system: IMAGE_SYSTEM, prompt, aspectRatio: g.aspect_ratio as AspectRatio, references });
+    const inspected = await inspectUpload(out.image.bytes);
+    if (inspected.kind !== "image") throw new DomainError("provider_failed", "Not an image.");
+    const derived = await deps.derive(out.image.bytes);
+    const { data: seqs } = await service.from("image_generation_assets").select("sequence").eq("generation_id", g.id).order("sequence", { ascending: false }).limit(1);
+    const seq = (seqs?.[0]?.sequence ?? 0) + 1;
+    const store = async (bytes: Uint8Array, suffix: string) => {
+      const path = `${g.creator_id}/generated/${g.id}/${seq}-${suffix}.webp`;
+      const up = await service.storage.from(GENERATED_BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: true });
+      if (up.error) throw new DomainError("provider_failed", "Couldn't store the image.", { cause: up.error });
+      const insp = await inspectUpload(bytes);
+      const { data: obj, error } = await service
+        .from("storage_objects")
+        .upsert({ creator_id: g.creator_id, bucket: GENERATED_BUCKET, path, mime_type: "image/webp", size_bytes: insp.size, sha256: insp.sha256, original_filename: `${direction.label}.webp`, security_status: "clean" }, { onConflict: "bucket,path" })
+        .select("id")
+        .single();
+      if (error || !obj) throw new DomainError("internal", "Couldn't record the image.", { cause: error });
+      return obj.id;
+    };
+    const master = await store(derived.master, "master");
+    const thumb = await store(derived.thumbnail, "480");
+    const { data: fresh, error: aErr } = await service
+      .from("image_generation_assets")
+      .insert({
+        generation_id: g.id,
+        creator_id: g.creator_id,
+        storage_object_id: master,
+        thumbnail_object_id: thumb,
+        width: derived.width,
+        height: derived.height,
+        sequence: seq,
+        position: old.position ?? old.sequence,
+        direction_label: old.direction_label,
+        rationale: old.rationale,
+        selected: old.selected,
+        revision_of: old.id,
+      })
+      .select("id")
+      .single();
+    if (aErr || !fresh) throw new DomainError("internal", "Couldn't record the image.", { cause: aErr });
+    await service.from("image_generation_assets").update({ replaced_by: fresh.id, selected: false }).eq("id", old.id);
+    await service.from("image_asset_revisions").update({ status: "complete", result_asset_id: fresh.id, completed_at: new Date().toISOString() }).eq("id", rev.id);
+    log("info", "image_asset_revised", { purpose: g.purpose, ms: Date.now() - started });
+  } catch (e) {
+    const code = e instanceof DomainError ? e.code : "internal";
+    log("warn", "image_asset_revision_failed", { code });
+    if (code === "provider_unavailable" || code === "rate_limited") {
+      // Let the job retry later.
+      await service.from("image_asset_revisions").update({ status: "queued" }).eq("id", rev.id);
+      throw e;
+    }
+    await fail("generation_failed");
+  }
 }

@@ -1574,15 +1574,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"image_generation_assets": {
+                },"image_asset_revisions": {
                   Row: {
-                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"rationale": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                    "asset_id": string,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string,"result_asset_id": string | null,"status": string
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "asset_id": string,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction": string,"result_asset_id"?: string | null,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "asset_id"?: string,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string,"result_asset_id"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "image_asset_revisions_asset_id_fkey"
+      columns: ["asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_generation_id_fkey"
+      columns: ["generation_id"]
+isOneToOne: false
+      referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_result_asset_id_fkey"
+      columns: ["result_asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"image_generation_assets": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"position": number | null,"rationale": string | null,"replaced_by": string | null,"revision_of": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Relationships: [
                     {
@@ -1596,6 +1633,18 @@ isOneToOne: false
       columns: ["generation_id"]
 isOneToOne: false
       referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_replaced_by_fkey"
+      columns: ["replaced_by"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_revision_of_fkey"
+      columns: ["revision_of"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "image_generation_assets_saved_material_id_fkey"

@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, saveGeneratedAsset, saveTextOverlay, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
+import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, reorderGeneratedAssets, requestAssetRevision, runImageRevision, saveGeneratedAsset, saveTextOverlay, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
 import { DomainError } from "@wonder/core";
 import { addCollaborator, createArtifact, saveCreatorVersion } from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
@@ -182,5 +182,68 @@ describe("words on a slide visual", () => {
       ]),
     );
     expect(expectOk(await db(out).from("creative_materials").select("id").eq("id", materialId))).toEqual([]);
+  });
+});
+
+describe("arranging and changing slide visuals", () => {
+  it("keeps the creator's order, and changes one image with their instruction without overwriting it", async () => {
+    const provider = fakeProvider();
+    const piece2 = (await createArtifact(db(owner), owner.creatorId, { artifactType: "carousel", title: "Harbour at dusk", content: "Slide 1: boats\nSlide 2: nets\nSlide 3: gulls", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const gen = await requestImageGeneration(deps(owner, provider), { artifactId: piece2, purpose: "carousel", count: 3 });
+    if (gen.kind !== "generation") throw new Error(gen.kind);
+    await runImageGeneration({ service: admin, provider, derive }, gen.view.id);
+    const first = (await generationView(db(owner), admin, gen.view.id))!;
+    const [a, b, c] = first.assets.map((x) => x.id) as [string, string, string];
+    const d = (x: TestCreator) => ({ db: db(x), service: admin, creatorId: x.creatorId });
+
+    // Order: only the owner, only the exact set.
+    await expect(reorderGeneratedAssets(d(pia), gen.view.id, [c, a, b])).rejects.toThrow(/isn't available/);
+    await expect(reorderGeneratedAssets(d(owner), gen.view.id, [c, a])).rejects.toThrow(/doesn't match/);
+    await expect(reorderGeneratedAssets(d(owner), gen.view.id, [c, a, a])).rejects.toThrow(/doesn't match/);
+    await reorderGeneratedAssets(d(owner), gen.view.id, [c, a, b]);
+    expect((await generationView(db(owner), admin, gen.view.id))!.assets.map((x) => x.id)).toEqual([c, a, b]);
+
+    // Change the middle image (a). Outsiders can't; no provider means an honest "unavailable".
+    await expect(requestAssetRevision(deps(out, provider), gen.view.id, a, { instruction: "night" })).rejects.toThrow(/isn't available/);
+    const offline = { name: "none", live: false, generate: async () => Promise.reject(new Error("never")) } as ImageProvider;
+    expect((await requestAssetRevision(deps(owner, offline), gen.view.id, a, { instruction: "make it night" })).kind).toBe("unavailable");
+    await selectGeneratedAsset(d(owner), gen.view.id, a);
+    const asked = await requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "make it night, with rain on the water", idempotencyKey: "rev-key-0001" });
+    if (asked.kind !== "revision") throw new Error(asked.kind);
+    expect(asked.view.revisions).toEqual([{ id: asked.revisionId, assetId: a, status: "queued" }]);
+    // Same key → same revision; a second ask while it's running doesn't queue another.
+    const again = await requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "make it night, with rain on the water", idempotencyKey: "rev-key-0001" });
+    expect(again.kind === "revision" && again.revisionId).toBe(asked.revisionId);
+    expect(((await requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "other" })) as { queued: boolean }).queued).toBe(false);
+    expect(expectOk(await admin.from("jobs").select("id").eq("subject_id", asked.revisionId))).toHaveLength(1);
+    // Collaborators never see the creator's words.
+    expect(expectOk(await db(pia).from("image_asset_revisions").select("id").eq("generation_id", gen.view.id))).toEqual([]);
+
+    const calls = provider.calls;
+    await runImageRevision({ service: admin, provider, derive }, asked.revisionId);
+    expect(provider.calls).toBe(calls + 1);
+    expect(provider.prompts.at(-1)).toContain("make it night, with rain on the water");
+    const after = (await generationView(db(owner), admin, gen.view.id))!;
+    const fresh = after.assets[1]!;
+    // Same place and choice in the set; the old image is kept, not overwritten.
+    expect(after.assets.map((x) => x.id)).toEqual([c, fresh.id, b]);
+    expect(fresh).toMatchObject({ revised: true, selected: true, directionLabel: first.assets.find((x) => x.id === a)!.directionLabel });
+    expect(fresh.id).not.toBe(a);
+    const old = expectOk(await admin.from("image_generation_assets").select("replaced_by, storage_object_id").eq("id", a).single());
+    expect(old.replaced_by).toBe(fresh.id);
+    expect(expectOk(await admin.from("storage_objects").select("id").eq("id", old.storage_object_id))).toHaveLength(1);
+    expect(after.revisions).toEqual([]);
+    // The replaced image can't be changed again or ordered.
+    await expect(requestAssetRevision(deps(owner, provider), gen.view.id, a, { instruction: "x" })).rejects.toThrow(/already changed/);
+    await expect(reorderGeneratedAssets(d(owner), gen.view.id, [a, b, c])).rejects.toThrow(/doesn't match/);
+
+    // A failed change stores nothing and says so.
+    const failing = fakeProvider([0]);
+    const bad = await requestAssetRevision(deps(owner, failing), gen.view.id, b, { instruction: "blocked" });
+    if (bad.kind !== "revision") throw new Error(bad.kind);
+    await runImageRevision({ service: admin, provider: failing, derive }, bad.revisionId);
+    const v = (await generationView(db(owner), admin, gen.view.id))!;
+    expect(v.assets.map((x) => x.id)).toEqual([c, fresh.id, b]);
+    expect(v.revisions).toEqual([{ id: bad.revisionId, assetId: b, status: "failed" }]);
   });
 });

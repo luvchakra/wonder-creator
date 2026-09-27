@@ -199,7 +199,7 @@ export function SlideTextDialog({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `slide-${asset.sequence + 1}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
+      link.download = `slide-${index + 1}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (e) {
@@ -215,7 +215,7 @@ export function SlideTextDialog({
     try {
       const blob = await finished();
       const form = new FormData();
-      form.set("file", blob, `slide-${asset.sequence + 1}`);
+      form.set("file", blob, `slide-${index + 1}`);
       form.set("assetId", asset.id);
       form.set("text", text.trim());
       if (creationId) form.set("useInCreation", "true");

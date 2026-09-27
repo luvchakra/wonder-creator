@@ -44,4 +44,44 @@ test.describe("words on slide visuals", () => {
     });
     expect(bad.status()).toBeGreaterThanOrEqual(400);
   });
+
+  test("reorder the set from More; each slide's words follow its new place; changing an image is honest when generation isn't connected", async ({ page, creator }) => {
+    const content = "Slide 1: First light\nSlide 2: Second wind\nSlide 3: Third act";
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Order ${uid()}`, content } })).json()).artifact as { id: string };
+    const genId = await seedSlideVisuals(creator.id, art.id, 3);
+    await page.route("**/api/v1/image-generations", async (route) => {
+      const { generation } = await (await page.request.get(`/api/v1/image-generations/${genId}`)).json();
+      await route.fulfill({ json: { state: "generation", generation, available: true } });
+    });
+    await page.goto(`/artifacts/${art.id}`);
+    const section = page.getByRole("region", { name: "Slide visuals" });
+    const list = section.getByRole("list", { name: "Visual directions" });
+    await expect(list.getByRole("listitem")).toHaveCount(3);
+    await section.getByRole("button", { name: /Quiet/ }).click();
+
+    await section.getByRole("button", { name: "More for this image" }).click();
+    await expect(page.getByRole("menuitem", { name: "Move earlier" })).toHaveCount(0);
+    await page.getByRole("menuitem", { name: "Move later" }).click();
+    await expect(list.getByRole("listitem").nth(1)).toContainText("Quiet");
+    await expect(list.getByRole("listitem").first()).toContainText("Bold");
+
+    // Kept on the server: a reload shows the same order.
+    await page.reload();
+    await expect(list.getByRole("listitem").nth(1)).toContainText("Quiet");
+
+    // Quiet is now slide 2: its words are slide 2's.
+    await section.getByRole("button", { name: /Quiet/ }).click();
+    await section.getByRole("button", { name: "Add text" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add text" });
+    await expect(dialog.getByText("Slide 2 of 3")).toBeVisible();
+    await expect(dialog.getByLabel("Words on this slide")).toHaveValue("Second wind");
+    await page.keyboard.press("Escape");
+
+    await section.getByRole("button", { name: "More for this image" }).click();
+    await page.getByRole("menuitem", { name: "Change this image…" }).click();
+    const change = page.getByRole("dialog", { name: "Change this image" });
+    await change.getByLabel("What should change?").fill("make it night, with rain on the window");
+    await change.getByRole("button", { name: "Change image" }).click();
+    await expect(change.getByRole("alert")).toHaveText("Image generation isn't connected.");
+  });
 });
