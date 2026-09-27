@@ -336,17 +336,21 @@ async function publishToWebhook(deps: AttemptDeps, p: Publication): Promise<Outc
   if (!p.destination_id) return { ok: false, reason: "This destination was removed. Prepare a new publication.", httpStatus: null };
   const dest = await deps.service.from("publishing_destinations").select("*").eq("id", p.destination_id).eq("creator_id", deps.creatorId).maybeSingle();
   if (!dest.data || dest.data.status !== "active") return { ok: false, reason: "This destination is no longer connected.", httpStatus: null };
-  const [artifact, version, creator] = await Promise.all([
-    deps.service.from("artifacts").select("id, title, artifact_type").eq("id", p.artifact_id).single(),
+  const [artifact, version, creator, source] = await Promise.all([
+    deps.service.from("artifacts").select("id, title, artifact_type, made_for").eq("id", p.artifact_id).single(),
     p.version_id ? deps.service.from("artifact_versions").select("version_number, content").eq("id", p.version_id).maybeSingle() : Promise.resolve({ data: null }),
     deps.service.from("creators").select("display_name, handle").eq("id", deps.creatorId).single(),
+    // A publication derivative says what it was adapted from (P1-13).
+    deps.service.from("lineage_edges").select("source_id").eq("target_type", "artifact").eq("target_id", p.artifact_id).eq("source_type", "artifact").eq("relationship", "adapted_from").limit(1).maybeSingle(),
   ]);
+  const sourceArtifact = source.data ? (await deps.service.from("artifacts").select("id, title").eq("id", source.data.source_id).eq("creator_id", deps.creatorId).maybeSingle()).data : null;
   if (!version.data) return { ok: false, reason: "The approved version is no longer available.", httpStatus: null };
   const body = JSON.stringify({
     event: "publication",
     publicationId: p.id,
     idempotencyKey: p.idempotency_key,
-    artifact: { id: p.artifact_id, type: artifact.data?.artifact_type, version: version.data.version_number },
+    artifact: { id: p.artifact_id, type: artifact.data?.artifact_type, version: version.data.version_number, madeFor: artifact.data?.made_for ?? null },
+    derivedFrom: sourceArtifact ? { id: sourceArtifact.id, title: sourceArtifact.title } : null,
     title: p.title,
     caption: p.caption,
     description: p.description,

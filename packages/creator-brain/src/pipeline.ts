@@ -444,7 +444,7 @@ export async function refine(
 // ---------------------------------------------------------------------------
 // Transform: always a new, derived artifact (lineage preserved; never passed off as original)
 // ---------------------------------------------------------------------------
-export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null }) {
+export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null; madeFor?: string | null }) {
   if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
   const source = await getArtifact(deps.db, input.artifactId);
   // Someone else's work can only be adapted when they allowed derivatives (or their project's rights policy does).
@@ -498,6 +498,11 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
       ],
       provenance: { origin: "derived", aiRunId: run.id, details: { sourceArtifactId: source.id, sourceVersionId: src.versionId, sourceVersionNumber: src.versionNumber } },
     });
+    // A publication derivative records the destination it was made for (P1-13).
+    if (input.madeFor) {
+      const up = await deps.db.from("artifacts").update({ made_for: input.madeFor.slice(0, 60) }).eq("id", artifact.id);
+      if (up.error) throw fromDbError(up.error);
+    }
     // Material, contributors and rights constraints follow the derivative.
     const inherited = await inheritFromSource(deps.db, deps.creatorId, artifact.id, source, src.versionId ? { id: src.versionId, number: src.versionNumber ?? 0 } : null);
     await saveQualityReport(deps, artifact.id, artifact.current_version_id!, run.id, checks);
