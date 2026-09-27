@@ -71,6 +71,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         ))}
       </nav>
 
+      {s.tab === "creators" ? (
+        <p className="mt-3 text-sm text-ink-muted">
+          Looking for someone to work with?{" "}
+          <Link href="/discover" className="font-medium text-accent-ink hover:underline">
+            Find collaborators by discipline, skills and who you know
+          </Link>
+        </p>
+      ) : null}
+
       <div className="mt-3 space-y-2">
         <nav aria-label="When" className="flex flex-wrap gap-2">
           {(Object.keys(SEARCH_WHEN) as SearchWhen[]).map((w) => (

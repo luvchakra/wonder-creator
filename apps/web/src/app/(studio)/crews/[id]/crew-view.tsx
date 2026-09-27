@@ -1,6 +1,6 @@
 "use client";
 import { CREW_ACCESS_HELP, CREW_ACCESS_LABEL, CREW_STATUS_LABEL, ROLE_SUGGESTIONS, type CrewAccess, type CrewStatus } from "@wonder/creator-projects/options";
-import { Avatar, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn } from "@wonder/ui";
+import { Avatar, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MoreHorizontal, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -164,6 +164,11 @@ export function CrewView({
               <Button onClick={() => setInviting(true)}>
                 <UserPlus className="size-4" aria-hidden /> Invite people
               </Button>
+            ) : null}
+            {manages && crew.status !== "completed" ? (
+              <Link href={`/discover?project=${crew.projectId}`} className={buttonClasses({ variant: "secondary" })}>
+                Find collaborators
+              </Link>
             ) : null}
             {active.length > 1 ? (
               <Button
