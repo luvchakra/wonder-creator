@@ -19,7 +19,7 @@ export default async function AuditPage() {
   const failedChecks = signIns.entries.filter((e) => e.outcome === "failed").length;
   return (
     <>
-      <PaletteScope context={{ page: "settings" }} />
+      <PaletteScope context={{ page: "settings", strip: { label: "Activity" } }} />
       <div className="mx-auto max-w-3xl">
         <Link href="/settings?section=privacy" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           ← Privacy & Security

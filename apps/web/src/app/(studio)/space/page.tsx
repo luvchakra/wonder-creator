@@ -22,6 +22,17 @@ const TABS = [
   { key: "collections", label: "Collections" },
 ] as const;
 
+const NOUN: Record<MaterialFilter, [string, string]> = {
+  all: ["material", "materials"],
+  ideas: ["idea", "ideas"],
+  notes: ["note", "notes"],
+  images: ["photo", "photos"],
+  audio: ["sound", "sounds"],
+  video: ["video", "videos"],
+  documents: ["document", "documents"],
+  links: ["link", "links"],
+  archived: ["archived", "archived"],
+};
 const MATERIAL_LABEL: Record<MaterialFilter, string> = { all: "All", ideas: "Ideas", notes: "Notes", images: "Photos", audio: "Audio", video: "Video", documents: "Documents", links: "Links", archived: "Archived" };
 
 export default async function SpacePage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; type?: string; archived?: string }> }) {
@@ -66,7 +77,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   if (tab === "ideas") {
     return (
       <div>
-        <PaletteScope context={{ page: "materials" }} />
+        <PaletteScope context={{ page: "materials", strip: counts && !q ? { count: [counts[mFilter], ...NOUN[mFilter]] } : undefined }} />
         <PageTitle title="Materials" subtitle="Your visual memory — photos, notes, sounds, links and ideas." action={<SpaceSearch initial={q} />} />
         {counts ? (
           <nav aria-label="Material type" className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">

@@ -3,7 +3,9 @@ import { KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, Ki
 import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { MeTalkSheet } from "./metalk-sheet";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { resolveContextStrip } from "@/lib/context-strip/resolve";
+import { PRIORITY, type StripItem, type StripModel } from "@/lib/context-strip/types";
 import { createPalette, globalPalette, resolvePalette } from "@/lib/palette/resolve";
 import type { PaletteContext, PaletteIcon, PaletteItem, PaletteModel } from "@/lib/palette/types";
 
@@ -32,7 +34,26 @@ const ICONS: Record<PaletteIcon, React.ComponentType<{ className?: string }>> = 
   back: ArrowLeft,
 };
 
-const Ctx = createContext<{ set: (c: PaletteContext | null) => void; openMeTalk: () => void } | null>(null);
+const Ctx = createContext<{ set: (c: PaletteContext | null) => void; openMeTalk: () => void; signal: (s: StripItem | null, id?: string) => void } | null>(null);
+const StripCtx = createContext<StripModel>({ primary: null, secondary: null });
+
+/** The navbar Context Strip for the current screen. */
+export function useContextStrip() {
+  return useContext(StripCtx);
+}
+
+/**
+ * Raise a transient Context Strip state from a screen (Saving…, Saved, Publish failed). Pass `ttl` for confirmations
+ * that should return to the stable context (§13); pass null to clear.
+ */
+export function useStripSignal() {
+  const ctx = useContext(Ctx);
+  return useCallback(
+    (id: string, s: Omit<StripItem, "id" | "priority" | "expiresAt"> & { priority?: number; ttl?: number } | null) =>
+      ctx?.signal(s ? { ...s, id, priority: s.priority ?? PRIORITY.save, expiresAt: s.ttl ? Date.now() + s.ttl : undefined } : null, id),
+    [ctx],
+  );
+}
 
 /** Open the meTalk sheet from anywhere on the Canvas (e.g. the Home empty state). */
 export function useMeTalk() {
@@ -42,10 +63,40 @@ export function useMeTalk() {
 export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<PaletteContext | null>(null);
   const [talk, setTalk] = useState(false);
-  const value = useMemo(() => ({ set: setContext, openMeTalk: () => setTalk(true) }), []);
+  const [signals, setSignals] = useState<StripItem[]>([]);
+  const [online, setOnline] = useState(true);
+  const value = useMemo(
+    () => ({
+      set: setContext,
+      openMeTalk: () => setTalk(true),
+      signal: (s: StripItem | null, id?: string) => setSignals((all) => [...all.filter((x) => x.id !== (s?.id ?? id)), ...(s ? [s] : [])]),
+    }),
+    [],
+  );
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  // Transient states expire back to the stable context (§13): re-resolve when the next one lapses.
+  useEffect(() => {
+    const next = Math.min(...signals.map((s) => s.expiresAt ?? Infinity));
+    if (!Number.isFinite(next)) return;
+    const t = setTimeout(() => {
+      setSignals((all) => all.filter((s) => !s.expiresAt || s.expiresAt > Date.now()));
+    }, Math.max(0, next - Date.now()) + 20);
+    return () => clearTimeout(t);
+  }, [signals]);
+  // Expired signals are pruned above, so the resolver sees only live ones. Screens clear their own signals on leave.
+  const strip = useMemo(() => resolveContextStrip({ page: context?.page ?? null, lifecycle: context?.lifecycle, facts: context?.strip, signals, online, now: 0 }), [context, signals, online]);
   return (
     <Ctx.Provider value={value}>
-      {children}
+      <StripCtx.Provider value={strip}>{children}</StripCtx.Provider>
       <CreativePalette context={context} onMeTalk={() => setTalk(true)} />
       <MeTalkSheet open={talk} onOpenChange={setTalk} />
     </Ctx.Provider>

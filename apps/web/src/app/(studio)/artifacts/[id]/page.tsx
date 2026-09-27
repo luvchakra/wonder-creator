@@ -57,7 +57,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const permissions: Array<"edit" | "publish" | "rights" | "collaborate" | "invite"> = isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : collaborator ? ["collaborate"] : [];
   return (
     <>
-      <PaletteScope context={{ page: "creation", entityType: "creation", lifecycle, permissions, ids: { artifactId: id } }} />
+      <PaletteScope context={{ page: "creation", entityType: "creation", lifecycle, permissions, ids: { artifactId: id }, strip: { version: current?.version_number, visibility: artifact.privacy as "private" | "shared" | "public" } }} />
       <ArtifactView
         initialTab={tab}
         artifact={artifact}

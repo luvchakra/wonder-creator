@@ -19,7 +19,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ id:
   const c = data.collection;
   return (
     <>
-      <PaletteScope context={{ page: "collection", entityType: "collection", ids: { collectionId: id }, facts: { name: c.name } }} />
+      <PaletteScope context={{ page: "collection", entityType: "collection", ids: { collectionId: id }, facts: { name: c.name }, strip: { count: [data.items.length, "material", "materials"] } }} />
       <CollectionDetail
         c={{ id: c.id, name: c.name, description: c.description, status: c.status, coverMaterialId: c.cover_material_id }}
         items={data.items.map((m) => ({ ...m, previewUrl: m.storage_object_id ? (previews[m.storage_object_id] ?? null) : null }))}

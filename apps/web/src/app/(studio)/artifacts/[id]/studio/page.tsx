@@ -35,7 +35,7 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
   return (
     <>
       {/* The Creation Palette during active work (palette-spec §9.16). */}
-      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id }, facts: { format: def.format } }} />
+      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status }}
         version={version ? { id: version.id, number: version.version_number, content: version.content } : null}

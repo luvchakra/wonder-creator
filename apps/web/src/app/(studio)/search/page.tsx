@@ -45,7 +45,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PaletteScope context={{ page: "search" }} />
+      <PaletteScope context={{ page: "search", strip: searchable ? { count: [total, "result", "results"] } : undefined }} />
       <div>
         <PageTitle title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
 
