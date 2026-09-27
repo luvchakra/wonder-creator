@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, ContextStrip, Logo, cn, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
-import { Brain, FolderKanban, LogOut, MessageCircle, NotebookPen, Send, Settings, UserRound } from "lucide-react";
+import { Brain, FolderKanban, LogOut, Megaphone, MessageCircle, NotebookPen, Send, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -53,7 +53,10 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                   <MenuItem onSelect={() => router.push("/projects")}>
                     <FolderKanban className="size-4" aria-hidden /> Creative Rooms
                   </MenuItem>
-                  <MenuItem onSelect={() => router.push("/publishing")}>
+                  <MenuItem onSelect={() => router.push("/campaigns")}>
+                  <Megaphone className="size-4" aria-hidden /> Campaigns
+                </MenuItem>
+                <MenuItem onSelect={() => router.push("/publishing")}>
                     <Send className="size-4" aria-hidden /> Publishing
                   </MenuItem>
                   <MenuItem onSelect={() => router.push("/messages")}>

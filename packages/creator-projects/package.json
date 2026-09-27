@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./options": "./src/options.ts"
+    "./options": "./src/options.ts",
+    "./campaign-labels": "./src/campaign-labels.ts"
   }
 }

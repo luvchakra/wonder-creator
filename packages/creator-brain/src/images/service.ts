@@ -96,7 +96,9 @@ export interface GenerationView {
 export async function generationView(db: Db, service: Db, generationId: string, cached = false): Promise<GenerationView | null> {
   const { data: g } = await db.from("image_generations").select("id, status, purpose, quality_intent, aspect_ratio, requested_count, created_at").eq("id", generationId).maybeSingle();
   if (!g) return null;
-  const { data: assets } = await db.from("image_generation_assets").select("id, sequence, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id").eq("generation_id", generationId).order("sequence");
+  const { data: assets, error: assetsError } = await db.from("image_generation_assets").select("id, sequence, storage_object_id, thumbnail_object_id, width, height, direction_label, rationale, selected, saved_material_id").eq("generation_id", generationId).order("sequence");
+  // A read failure must surface as an error, never as "no images" (which the UI would show as a failed generation).
+  if (assetsError) throw new DomainError("internal", "Couldn't load these images. Please try again.", { cause: assetsError });
   // Access was just checked under RLS; the objects belong to the generation's creator, so sign with the service client.
   const ids = (assets ?? []).flatMap((a) => [a.storage_object_id, a.thumbnail_object_id]).filter((x): x is string => !!x);
   const { data: objs } = ids.length ? await service.from("storage_objects").select("id, bucket, path").in("id", ids) : { data: [] };
