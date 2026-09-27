@@ -391,3 +391,26 @@ export async function seedSlideVisuals(userId: string, artifactId: string, count
   }
   return gen!.id;
 }
+
+/**
+ * Test-only: a Carousel with slides, as the Composer leaves it after its first set is ready (e2e has no image model).
+ * One seeded image per slide text, in order.
+ */
+export async function seedCarousel(userId: string, artifactId: string, texts: string[]): Promise<string[]> {
+  const genId = await seedSlideVisuals(userId, artifactId, texts.length, 400);
+  const h = { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json", prefer: "return=representation" };
+  const get = async <T>(q: string) => (await (await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: h })).json()) as T;
+  const post = async <T>(table: string, body: unknown): Promise<T> => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: h, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`seedCarousel ${table}: ${res.status} ${await res.text()}`);
+    return (await res.json()) as T;
+  };
+  const [creator] = await get<Array<{ id: string }>>(`creators?user_id=eq.${userId}&select=id`);
+  const assets = await get<Array<{ id: string; sequence: number }>>(`image_generation_assets?generation_id=eq.${genId}&select=id,sequence&order=sequence`);
+  await post("carousels", { artifact_id: artifactId, creator_id: creator!.id, requested_count: texts.length, aspect_ratio: "4:5", visual_style: "auto", generation_id: genId, seeded_at: new Date().toISOString() });
+  const slides = await post<Array<{ id: string; order_index: number }>>(
+    "carousel_slides",
+    texts.map((t, i) => ({ artifact_id: artifactId, creator_id: creator!.id, order_index: i, asset_id: assets[i]!.id, source_text: t, display_text: t })),
+  );
+  return slides.sort((a, b) => a.order_index - b.order_index).map((s) => s.id);
+}

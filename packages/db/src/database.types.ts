@@ -500,6 +500,74 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"carousel_slides": {
+                  Row: {
+                    "artifact_id": string,"asset_id": string | null,"created_at": string,"creator_id": string,"display_text": string,"id": string,"image_transform": NonNullable<Json>,"order_index": number,"overlay": NonNullable<Json>,"pending_asset_id": string | null,"source_text": string,"updated_at": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"asset_id"?: string | null,"created_at"?: string,"creator_id": string,"display_text"?: string,"id"?: string,"image_transform"?: NonNullable<Json>,"order_index": number,"overlay"?: NonNullable<Json>,"pending_asset_id"?: string | null,"source_text"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"asset_id"?: string | null,"created_at"?: string,"creator_id"?: string,"display_text"?: string,"id"?: string,"image_transform"?: NonNullable<Json>,"order_index"?: number,"overlay"?: NonNullable<Json>,"pending_asset_id"?: string | null,"source_text"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "carousel_slides_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "carousels"
+      referencedColumns: ["artifact_id"]
+    },{
+      foreignKeyName: "carousel_slides_asset_id_fkey"
+      columns: ["asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "carousel_slides_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "carousel_slides_pending_asset_id_fkey"
+      columns: ["pending_asset_id"]
+isOneToOne: false
+      referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"carousels": {
+                  Row: {
+                    "artifact_id": string,"aspect_ratio": string,"created_at": string,"creator_id": string,"generation_id": string | null,"requested_count": number,"seeded_at": string | null,"source_version": number | null,"updated_at": string,"visual_style": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"aspect_ratio"?: string,"created_at"?: string,"creator_id": string,"generation_id"?: string | null,"requested_count": number,"seeded_at"?: string | null,"source_version"?: number | null,"updated_at"?: string,"visual_style"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"aspect_ratio"?: string,"created_at"?: string,"creator_id"?: string,"generation_id"?: string | null,"requested_count"?: number,"seeded_at"?: string | null,"source_version"?: number | null,"updated_at"?: string,"visual_style"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "carousels_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: true
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "carousels_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "carousels_generation_id_fkey"
+      columns: ["generation_id"]
+isOneToOne: false
+      referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"collaboration_profiles": {
                   Row: {
                     "commercial_boundaries": string | null,"contact_preference": string,"creator_id": string,"exclusivity": string,"interests": (string)[],"project_types": (string)[],"rate_guidance": string | null,"rate_visibility": string,"region": string | null,"rights_preferences": string | null,"turnaround": string | null,"updated_at": string,"work_mode": string
@@ -1576,13 +1644,13 @@ isOneToOne: false
                   ]
                 },"image_asset_revisions": {
                   Row: {
-                    "asset_id": string,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string,"result_asset_id": string | null,"status": string
+                    "asset_id": string | null,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string | null,"kind": string,"result_asset_id": string | null,"slide_id": string | null,"slide_text": string | null,"status": string
                   }
                   Insert: {
-                    "asset_id": string,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction": string,"result_asset_id"?: string | null,"status"?: string
+                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
                   }
                   Update: {
-                    "asset_id"?: string,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string,"result_asset_id"?: string | null,"status"?: string
+                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
@@ -1608,6 +1676,12 @@ isOneToOne: false
       columns: ["result_asset_id"]
 isOneToOne: false
       referencedRelation: "image_generation_assets"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_asset_revisions_slide_id_fkey"
+      columns: ["slide_id"]
+isOneToOne: false
+      referencedRelation: "carousel_slides"
       referencedColumns: ["id"]
     }
                   ]
@@ -1786,13 +1860,13 @@ isOneToOne: false
                   ]
                 },"licenses": {
                   Row: {
-                    "attribution_required": boolean,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"edition_size": number | null,"ends_on": string | null,"exclusive": boolean,"fee_amount": number | null,"fee_currency": string | null,"id": string,"license_type": string,"licensee_creator_id": string | null,"licensee_name": string | null,"mode": string,"modification_allowed": boolean,"permitted_use": string | null,"resale_allowed": boolean,"rights_id": string,"starts_on": string | null,"status": string,"territory": string
+                    "attribution_required": boolean,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"edition_size": number | null,"ends_on": string | null,"exclusive": boolean,"fee_amount": number | null,"fee_currency": string | null,"id": string,"license_type": string,"licensee_creator_id": string | null,"licensee_name": string | null,"mode": string,"modification_allowed": boolean,"permitted_use": string | null,"resale_allowed": boolean,"rights_id": string,"starts_on": string | null,"status": string,"territory": string,"usage_channels": (string)[]
                   }
                   Insert: {
-                    "attribution_required"?: boolean,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type": string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id": string,"starts_on"?: string | null,"status"?: string,"territory"?: string
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type": string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id": string,"starts_on"?: string | null,"status"?: string,"territory"?: string,"usage_channels"?: (string)[]
                   }
                   Update: {
-                    "attribution_required"?: boolean,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type"?: string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id"?: string,"starts_on"?: string | null,"status"?: string,"territory"?: string
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"edition_size"?: number | null,"ends_on"?: string | null,"exclusive"?: boolean,"fee_amount"?: number | null,"fee_currency"?: string | null,"id"?: string,"license_type"?: string,"licensee_creator_id"?: string | null,"licensee_name"?: string | null,"mode"?: string,"modification_allowed"?: boolean,"permitted_use"?: string | null,"resale_allowed"?: boolean,"rights_id"?: string,"starts_on"?: string | null,"status"?: string,"territory"?: string,"usage_channels"?: (string)[]
                   }
                   Relationships: [
                     {
@@ -2588,13 +2662,13 @@ isOneToOne: false
                   ]
                 },"rights_records": {
                   Row: {
-                    "artifact_id": string,"attribution_required": boolean,"copyright_holder": string,"copyright_registration": string | null,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"id": string,"notes": string | null,"ownership_kind": string,"updated_at": string
+                    "artifact_id": string,"attribution_required": boolean,"commercial_channels": (string)[],"commercial_use": string,"copyright_holder": string,"copyright_registration": string | null,"created_at": string,"creator_id": string,"derivatives_allowed": boolean,"id": string,"notes": string | null,"ownership_kind": string,"updated_at": string
                   }
                   Insert: {
-                    "artifact_id": string,"attribution_required"?: boolean,"copyright_holder": string,"copyright_registration"?: string | null,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"id"?: string,"notes"?: string | null,"ownership_kind"?: string,"updated_at"?: string
+                    "artifact_id": string,"attribution_required"?: boolean,"commercial_channels"?: (string)[],"commercial_use"?: string,"copyright_holder": string,"copyright_registration"?: string | null,"created_at"?: string,"creator_id": string,"derivatives_allowed"?: boolean,"id"?: string,"notes"?: string | null,"ownership_kind"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "artifact_id"?: string,"attribution_required"?: boolean,"copyright_holder"?: string,"copyright_registration"?: string | null,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"id"?: string,"notes"?: string | null,"ownership_kind"?: string,"updated_at"?: string
+                    "artifact_id"?: string,"attribution_required"?: boolean,"commercial_channels"?: (string)[],"commercial_use"?: string,"copyright_holder"?: string,"copyright_registration"?: string | null,"created_at"?: string,"creator_id"?: string,"derivatives_allowed"?: boolean,"id"?: string,"notes"?: string | null,"ownership_kind"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2994,6 +3068,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"carousel_seed":
+{ Args: { "p_artifact": string,"p_rows": Json }; Returns: number
+                           },
 "collaboration_profile_of":
 { Args: { "p_creator": string }; Returns: Json
                            },
@@ -3021,6 +3098,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"commercial_stance":
+{ Args: { "p_artifact": string }; Returns: {
+              "commercial_channels": (string)[],"commercial_use": string
+            }[]
+                           },
 "complete_project":
 { Args: { "p_acknowledge_open"?: boolean,"p_confirm_title": string,"p_dissolve_crew": boolean,"p_note"?: string,"p_outcome": string,"p_project": string }; Returns: string
                            },

@@ -26,6 +26,12 @@ interface Persisted {
 }
 
 const KEY = "wc.soundtrack.v1";
+const UI_KEY = "wc.soundtrack.ui";
+export type PlayerUi = "collapsed" | "expanded";
+/** What a screen may ask of the mini player (mini-player.md §53). Playback always continues. */
+export interface MiniPlayerConstraint {
+  forceCollapsed?: boolean;
+}
 const DEFAULTS: Persisted = { trackId: null, mood: "calm", queue: [], history: [], volume: 0.7, position: 0, shuffle: false, repeat: "off", seed: 1 };
 
 function load(): Persisted {
@@ -43,9 +49,20 @@ export interface Soundtrack {
   tracks: LibraryTrack[];
   byId: (id: string | null | undefined) => LibraryTrack | undefined;
   current: LibraryTrack | undefined;
-  state: Persisted & { playing: boolean; time: number; duration: number; favorites: string[]; notice: string | null };
+  state: Persisted & { playing: boolean; favorites: string[]; notice: string | null; interruption: string | null };
   panel: { open: boolean; view: PanelView; detailsId: string | null };
   openPanel: (view?: PanelView, detailsId?: string | null) => void;
+  /** The right-middle mini player's state (mini-player.md §2). Collapsing never stops playback. */
+  playerUi: PlayerUi;
+  setPlayerUi: (ui: PlayerUi) => void;
+  /** A screen asked for the compact tab (immersive editing, §13). */
+  forceCollapsed: boolean;
+  constrain: (id: string, c: MiniPlayerConstraint | null) => void;
+  /** Pause because something else needs the sound (a Huddle, a video), saying why (§28–30). */
+  pauseFor: (reason: string) => void;
+  resume: () => void;
+  /** Stop: clear what's playing (the queue stays). Different from pause (§46). */
+  stop: () => void;
   closePanel: () => void;
   play: (id?: string) => void;
   toggle: () => void;
@@ -68,6 +85,22 @@ export interface Soundtrack {
 
 const Ctx = createContext<Soundtrack | null>(null);
 export const useSoundtrack = () => useContext(Ctx);
+/** Playback position, kept apart so progress updates re-render only the few places that show time (§39). */
+const TimeCtx = createContext<{ time: number; duration: number }>({ time: 0, duration: 0 });
+export const useSoundtrackTime = () => useContext(TimeCtx);
+
+/** Ask the mini player to stay compact while this screen is shown (e.g. a full-screen editor). */
+export function useMiniPlayerConstraint(c: MiniPlayerConstraint) {
+  const s = useContext(Ctx);
+  const constrain = s?.constrain;
+  const force = !!c.forceCollapsed;
+  useEffect(() => {
+    if (!constrain) return;
+    const id = Math.random().toString(36).slice(2);
+    constrain(id, { forceCollapsed: force });
+    return () => constrain(id, null);
+  }, [constrain, force]);
+}
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -80,6 +113,37 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [playerUi, setUi] = useState<PlayerUi>("collapsed");
+  useEffect(() => {
+    // Remembered per device (a convenience); deferred so hydration matches the server.
+    const t = setTimeout(() => {
+      try {
+        if (localStorage.getItem(UI_KEY) === "expanded") setUi("expanded");
+      } catch {
+        // Storage unavailable: start collapsed.
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const setPlayerUi = useCallback((ui: PlayerUi) => {
+    setUi(ui);
+    try {
+      localStorage.setItem(UI_KEY, ui);
+    } catch {
+      // Private mode: it just won't be remembered.
+    }
+  }, []);
+  const [constraints, setConstraints] = useState<Record<string, MiniPlayerConstraint>>({});
+  const constrain = useCallback((id: string, c: MiniPlayerConstraint | null) => {
+    setConstraints((all) => {
+      const next = { ...all };
+      if (c) next[id] = c;
+      else delete next[id];
+      return next;
+    });
+  }, []);
+  const forceCollapsed = Object.values(constraints).some((c) => c.forceCollapsed);
+  const [interruption, setInterruption] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ open: boolean; view: PanelView; detailsId: string | null }>({ open: false, view: "songs", detailsId: null });
   const restored = useRef(false);
   const failures = useRef(0);
@@ -209,14 +273,45 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       tracks,
       byId,
       current,
-      state: { ...p, playing, time, duration, favorites, notice },
+      state: { ...p, playing, favorites, notice, interruption },
       panel,
       openPanel: (view = "songs", detailsId = null) => {
         void ensureLibrary();
         setPanel({ open: true, view, detailsId });
       },
       closePanel: () => setPanel((x) => ({ ...x, open: false })),
+      playerUi,
+      setPlayerUi,
+      forceCollapsed,
+      constrain,
+      pauseFor: (reason) => {
+        const el = audio.current;
+        if (!el || el.paused) return;
+        wantPlay.current = false;
+        el.pause();
+        setPlaying(false);
+        setInterruption(reason);
+      },
+      resume: () => {
+        setInterruption(null);
+        startPlayback();
+      },
+      stop: () => {
+        const el = audio.current;
+        wantPlay.current = false;
+        if (el) {
+          el.pause();
+          el.removeAttribute("src");
+          delete el.dataset.trackId;
+          el.load();
+        }
+        setPlaying(false);
+        setInterruption(null);
+        setTime(0);
+        setP((s) => ({ ...s, trackId: null, position: 0 }));
+      },
       play: (id) => {
+        setInterruption(null);
         if (id) return goTo(id);
         if (!tracks.length) {
           // First play before the library has loaded: load it, then start (see the effect below).
@@ -234,8 +329,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       toggle: () => {
         const el = audio.current;
         if (!el || !current) return api.play();
-        if (el.paused) startPlayback();
-        else {
+        if (el.paused) {
+          setInterruption(null);
+          startPlayback();
+        } else {
           wantPlay.current = false;
           el.pause();
           setPlaying(false);
@@ -289,16 +386,60 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setShuffle: (on) => setP((s) => ({ ...s, shuffle: on })),
       cycleRepeat: () => setP((s) => ({ ...s, repeat: s.repeat === "off" ? "all" : s.repeat === "all" ? "one" : "off" })),
     }),
-    [ready, error, tracks, byId, current, p, playing, time, duration, favorites, notice, panel, ensureLibrary, goTo, freshQueue, startPlayback, next],
+    [ready, error, tracks, byId, current, p, playing, favorites, notice, interruption, panel, playerUi, setPlayerUi, forceCollapsed, constrain, ensureLibrary, goTo, freshQueue, startPlayback, next],
   );
 
   useEffect(() => {
     playRef.current = () => api.play();
   }, [api]);
 
+  // Another sound on the page (a video, a Material's audio) wins: pause, and say why (§29).
+  useEffect(() => {
+    const onPlay = (e: Event) => {
+      const el = audio.current;
+      const other = e.target as HTMLMediaElement | null;
+      if (!el || !other || other === el || other.muted || el.paused) return;
+      wantPlay.current = false;
+      el.pause();
+      setPlaying(false);
+      setInterruption("Paused for other audio");
+    };
+    document.addEventListener("play", onPlay, true);
+    return () => document.removeEventListener("play", onPlay, true);
+  }, []);
+
+  // OS media controls and lock screen where supported (§54–55).
+  const apiRef = useRef(api);
+  useEffect(() => {
+    apiRef.current = api;
+  }, [api]);
+  useEffect(() => {
+    const ms = typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
+    if (!ms) return;
+    ms.metadata = current && typeof MediaMetadata !== "undefined" ? new MediaMetadata({ title: current.title, artist: current.artist, album: "CreativeRadio" }) : null;
+    ms.playbackState = current ? (playing ? "playing" : "paused") : "none";
+  }, [current, playing]);
+  useEffect(() => {
+    const ms = typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
+    if (!ms) return;
+    const set = (a: MediaSessionAction, h: MediaSessionActionHandler | null) => {
+      try {
+        ms.setActionHandler(a, h);
+      } catch {
+        // Unsupported action on this platform.
+      }
+    };
+    set("play", () => apiRef.current.toggle());
+    set("pause", () => apiRef.current.toggle());
+    set("nexttrack", () => apiRef.current.next());
+    set("previoustrack", () => apiRef.current.previous());
+    return () => ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => set(a as MediaSessionAction, null));
+  }, []);
+  const timeValue = useMemo(() => ({ time, duration }), [time, duration]);
+
   return (
     <Ctx.Provider value={api}>
-      {children}
+      <TimeCtx.Provider value={timeValue}>{children}</TimeCtx.Provider>
       <audio
         ref={audio}
         preload="metadata"

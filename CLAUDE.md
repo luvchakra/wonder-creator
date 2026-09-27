@@ -68,6 +68,65 @@ Wonder Creator generates images from **creative context**, not generic prompt-bo
 
 * Contract: `docs/image-generation.md`. Implementation: `packages/creator-brain/src/images/` (router, context, hash, service), `apps/web/src/lib/images.ts` (derivatives), `/api/v1/image-generations`.
 
+## Carousel Composer UI (owner's standing instruction)
+
+The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.
+
+* Before initial generation, always allow the creator to choose the initial number of images/slides. Use compact options such as 3/4/5/6 + optional Custom; default 5 unless product context specifies otherwise.
+* Every initially generated slide receives a suggested source-text chunk by default. The creator must not manually add text to every image from scratch.
+* Slide text remains real selectable/editable text. Do not flatten the only copy of text into image pixels.
+* Each slide is an editable composition: image + source text chunk + display text + optional image-overlay text + overlay style/position + slide order.
+* After initial generation, provide `Generate one more` to create exactly one additional slide/image at a time without regenerating the rest of the Carousel.
+* `Generate one more` and `Show more styles` are different actions: one adds a slide; the other explores alternative visual treatments.
+* Each individual slide supports `Regenerate this image` with an optional natural-language instruction. Regeneration affects only that slide and preserves the rest of the Carousel.
+* Do not destructively replace the existing image immediately after regeneration. Prefer old/new variation selection (`Use new` / `Keep current`).
+* Provide an `Arrange`/`Reorder slides` mode using compact draggable thumbnail/text rows. Reordering must not trigger regeneration.
+* Tapping a slide opens a focused full-screen Slide Editor. Advanced editing does not live permanently on the Overview.
+* In Slide Editor, support placing text on image, dragging the overlay, resizing it, changing position, alignment, style, colour, shadow/background treatment, and editing/replacing the underlying text chunk.
+* Separate text Read/Selection mode from overlay Drag/Edit mode so mobile gestures do not conflict.
+* Support full-screen image viewing/editing and compact image crop/zoom/focal controls.
+* Overview screen: one prominent `Continue Creating` action; maximum two visible secondary actions (normally `Generate one more` and `Arrange`). Everything else is contextual.
+* Do not show permanent button walls such as Continue + Transform + Share + Context + Download + More above the Carousel.
+* Move Transform/Share/Context/Download/Rights/Versions/People and other less-frequent actions into the contextual Palette, `Details`, More, or slide overflow.
+* Replace persistent About/Materials/Versions/Rights/People tab rows on the working Carousel screen with a compact `Details ›` entry.
+* Use one high-emphasis action at a time. Normal mobile screens have max 1 primary + 2 secondary high-level actions.
+* Keep buttons visually compact while preserving >=44×44 CSS px hit targets.
+* Use minimal transitions: simple sheets/page transitions and 120–160ms content crossfades. No staggered card entrances, bounce, or elaborate AI-loading choreography.
+* Generation state uses compact skeletons/status only; no assistant chat, fake progress or full-screen AI animation.
+* All routine text/layout/order edits autosave. Do not require a Save button for every composition change.
+* Preserve source text, source Creation/version, Material lineage, generation ID, image asset, overlay configuration and order for every slide.
+* Ensure all slide edit and reorder operations are accessible without precision drag gestures alone.
+
+* Contract: `docs/ui-redesign/carousel-composer.md`.
+
+## Persistent right-middle mini player (owner's standing instruction)
+
+Wonder Creator's mini audio/music player is a persistent app-shell component.
+
+* When audio is active, the player docks to the **right edge around the vertical middle of the viewport**.
+* Default compact state is a slim right-edge tab showing tiny artwork + subtle playing indicator + expand affordance.
+* Tapping the collapsed player expands a compact player **leftward from the same right-middle anchor**.
+* Expanded player shows only essential controls: track info, progress, previous, play/pause, next, and optional Queue/More.
+* Tapping collapse or swiping right returns it to the same right-edge tab. Collapsing never stops playback.
+* Do not place the mini player in bottom navigation or as a persistent bottom bar.
+* The player persists across routes and should be mounted once at app-shell level. Never create a new audio element/player instance per page.
+* Playback continues across Home, Materials, Creation, Creative Studio, Creative Room, Explore, Huddles, Me, Business, Analytics and Settings unless interrupted by another audio-focus experience.
+* In immersive/full-screen editing contexts, default to `forceCollapsed`; playback continues.
+* Live Huddle or foreground video/audio should pause or appropriately interrupt background mini-player audio.
+* Player must not cover the Palette, primary CTA, keyboard, live controls, text-overlay handles, or other high-priority UI. Shift vertically or force-collapse when collision occurs.
+* Maintain >=72px separation from the Palette trigger when both are visible.
+* Use only one restrained expand/collapse transition (roughly 180–260ms). No bounce, rotation, multi-stage choreography or decorative animation.
+* Respect `prefers-reduced-motion`.
+* Collapsed mode should not expose multiple tiny buttons. Its main purpose is awareness + expand.
+* Expanded player remains compact; secondary controls such as mood, queue, save, stop, repeat/shuffle live under Queue/More as relevant.
+* Minimum interactive hit target remains >=44×44 CSS px.
+* If no track/queue is active, do not show the mini player.
+* Persist current track, queue, playback time and play/pause state across route navigation.
+* Integrate OS Media Session controls where supported.
+* Keep playback state isolated so progress updates do not trigger app-wide re-renders.
+
+* Contract: `docs/ui-redesign/mini-player.md` (supersedes the bottom mini player in `music-player.md`). Implementation: `apps/web/src/components/soundtrack/` (`MiniPlayer`, `useMiniPlayerConstraint`, `useSoundtrackTime`).
+
 ## Interaction minimalism (owner's standing instruction)
 
 Wonder Creator must minimize UI transitions and visible controls. The detailed contract is `docs/ui-redesign/interaction-minimalism.md`.

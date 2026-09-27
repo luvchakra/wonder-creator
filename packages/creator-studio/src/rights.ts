@@ -1,7 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db, Json, Tables } from "@wonder/db";
 import { z } from "zod";
-import { describeTerms, isConsequential, LICENSE_MODES, licenseTermsFields, licenseTermsSchema, termsFromRecord, termsToRecord, withTermsChecks, type LicenseTerms } from "./licensing";
+import { describeTerms, isConsequential, LICENSE_MODES, licenseTermsFields, licenseTermsSchema, termsFromRecord, termsToRecord, usageChannelsSchema, withTermsChecks, type LicenseTerms } from "./licensing";
 
 export const LICENSE_TYPES = [
   { value: "personal", label: "Personal Use", note: "For personal viewing" },
@@ -22,6 +22,9 @@ export const rightsSchema = z.object({
   attributionRequired: z.boolean(),
   derivativesAllowed: z.boolean(),
   notes: z.string().trim().max(2000).optional().nullable(),
+  /** P1-17: whether the creator offers commercial use, and the channels they're open to. Omitted = unchanged. */
+  commercialUse: z.enum(["not_offered", "on_request", "open"]).optional(),
+  commercialChannels: usageChannelsSchema.optional(),
   owners: z
     .array(z.object({ name: z.string().trim().min(1).max(200), creatorId: z.string().uuid().nullable().optional(), sharePercent: z.number().gt(0).lte(100) }))
     .min(1)
@@ -69,6 +72,8 @@ export async function saveRights(db: Db, creatorId: string, artifactId: string, 
       attribution_required: input.attributionRequired,
       derivatives_allowed: input.derivativesAllowed,
       notes: input.notes || null,
+      ...(input.commercialUse ? { commercial_use: input.commercialUse } : {}),
+      ...(input.commercialChannels ? { commercial_channels: input.commercialChannels } : {}),
     })
     .eq("id", rec.id);
   if (up.error) throw fromDbError(up.error);

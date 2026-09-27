@@ -1,4 +1,5 @@
 "use client";
+import { useMiniPlayerConstraint, useSoundtrack } from "@/components/soundtrack/audio-provider";
 import { formatElapsed, HEARTBEAT_MS, participantLine, viewState } from "@wonder/creator-huddle/lifecycle";
 import {
   Avatar,
@@ -81,6 +82,19 @@ export function HuddleRoom({
   const [savedMoment, setSavedMoment] = useState<string | null>(null);
   const [remoteTracks, setRemoteTracks] = useState<Record<string, Track>>({});
   const roomRef = useRef<LkRoom | null>(null);
+
+  // A live Huddle needs the sound: background music pauses (saying why) and the mini player stays compact; the
+  // creator resumes it themselves afterwards (mini-player.md §28, §34).
+  const sound = useSoundtrack();
+  const pauseFor = useRef(sound?.pauseFor);
+  useEffect(() => {
+    pauseFor.current = sound?.pauseFor;
+  });
+  const inRoom = state.me?.status === "joined";
+  useEffect(() => {
+    if (inRoom) pauseFor.current?.("Paused for Huddle");
+  }, [inRoom]);
+  useMiniPlayerConstraint({ forceCollapsed: inRoom });
 
   const status = viewState({
     status: (state.huddle?.status as "live" | "dissolving" | "dissolved" | undefined) ?? (publicCard ? "live" : null),

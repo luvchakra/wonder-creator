@@ -6,6 +6,9 @@ import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
 import { ArtifactView } from "./view";
+import { CarouselComposer } from "./carousel/composer";
+import { carouselView } from "@wonder/creator-brain";
+import { serviceClient } from "@/lib/supabase/service";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,9 +17,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: data?.title ?? "Creation" };
 }
 
-export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
+export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; details?: string }> }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, details } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   // Lineage and references moved to the Context view (UI redesign §16); old links keep working.
   if (tab === "lineage" || tab === "references") redirect(`/artifacts/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
@@ -24,6 +27,24 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const { data: artifact } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
   if (!artifact) notFound();
   const isOwner = artifact.creator_id === creator.id;
+
+  // A Carousel opens in the Composer (carousel-composer.md §9); About/Materials/Versions/Rights/People live in Details.
+  if (artifact.artifact_type === "carousel" && !tab && !details) {
+    const [view, versions, graph] = await Promise.all([carouselView({ db, service: serviceClient(), creatorId: creator.id }, id), listVersions(db, id), lineageGraph(db, id)]);
+    const current = versions.find((v) => v.id === artifact.current_version_id) ?? versions[0];
+    const status = artifact.status === "draft" ? "In progress" : artifact.status === "in_review" ? "In review" : artifact.status === "final" ? "Completed" : artifact.status === "published" ? "Published" : "Archived";
+    const privacy = artifact.privacy === "public" ? "Public" : artifact.privacy === "creator_private" ? "Private" : "Shared";
+    const source = graph.nodes.find((n) => n.depth < 0 && n.type === "artifact");
+    const lifecycle = artifact.status === "archived" ? "archived" : artifact.status === "published" ? "published" : artifact.status === "final" ? "finished" : "in-progress";
+    return (
+      <>
+        <PaletteScope
+          context={{ page: "creation", entityType: "creation", lifecycle, permissions: isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : view.canEdit ? ["collaborate"] : [], ids: { artifactId: id }, strip: { version: current?.version_number, count: view.slides.length ? [view.slides.length, "slide", "slides"] : undefined } }}
+        />
+        <CarouselComposer artifactId={id} title={artifact.title} meta={`Carousel · v${current?.version_number ?? 1} · ${status} · ${privacy}`} source={source?.title ?? null} initial={view} />
+      </>
+    );
+  }
 
   const [versions, graph, rights, contributors, quality, owner] = await Promise.all([
     listVersions(db, id),
@@ -71,6 +92,9 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
         materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? (matUrls[m.storage_object_id] ?? null) : null, isReference: referenceIds.has(m.id) }))}
         rights={rights}
         licenseRequests={await listLicenseRequests(db, id).catch(() => [])}
+        commercialStance={await db
+          .rpc("commercial_stance", { p_artifact: id })
+          .then(({ data }) => (data?.[0] ? { commercialUse: data[0].commercial_use, commercialChannels: data[0].commercial_channels } : null))}
         rightsDisclaimer={RIGHTS_DISCLAIMER}
         contributors={(contributors.data ?? []).map((c) => ({
           role: c.role,

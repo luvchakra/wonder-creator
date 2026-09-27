@@ -1,4 +1,5 @@
 "use client";
+import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Button, ErrorState, Input, Segmented, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, Save, Sparkles, Wand2 } from "lucide-react";
@@ -31,6 +32,8 @@ export function Studio({
   pendingProposal: QualityProposal | null;
   offline: boolean;
 }) {
+  // Immersive writing: the mini player stays a slim tab (music keeps playing; mini-player.md §33).
+  useMiniPlayerConstraint({ forceCollapsed: true });
   const router = useRouter();
   const [content, setContent] = useState(version?.content ?? "");
   const [base, setBase] = useState(version);
