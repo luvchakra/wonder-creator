@@ -1,6 +1,6 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType } from "@wonder/creator-studio/types";
-import { BACKGROUNDS, EmptyState, Input, LiveBadge, PageTitle, buttonClasses, cn, KIT } from "@wonder/ui";
+import { BACKGROUNDS, EmptyState, Input, LiveBadge, PageTitle, buttonClasses, cn, KIT, chipBase } from "@wonder/ui";
 import { BookMarked, Layers, MessageCircle, Search, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { MaterialCard } from "@/components/cards";
@@ -40,7 +40,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     return `/search${p.size ? `?${p}` : ""}`;
   };
   const chip = (active: boolean) =>
-    cn("inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-sm", active ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink-muted hover:border-[#cfd0ff]");
+    cn(chipBase, "gap-1.5 border", active ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink-muted hover:border-[#cfd0ff]");
   const askIds = res.materials.filter((m) => !m.related).slice(0, 12).map((m) => m.id);
 
   return (
@@ -67,7 +67,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               key={t}
               href={href({ type: t === "all" ? null : t })}
               aria-current={t === s.tab ? "page" : undefined}
-              className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm", t === s.tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
+              className={cn(chipBase, t === s.tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
             >
               {TAB_LABEL[t]}
             </Link>

@@ -62,17 +62,17 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] px-6 py-10 text-center", className)}>
+    <div className={cn("relative overflow-hidden rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] px-5 py-6 text-center", className)}>
       {image ? (
         // Supplied brand background, faint, decorative only.
         // eslint-disable-next-line @next/next/no-img-element
         <img src={image} alt="" aria-hidden className="pointer-events-none absolute inset-0 size-full object-cover opacity-[0.18]" />
       ) : null}
       <div className="relative mx-auto max-w-md">
-        {art && !image ? <KitArt art={art} sizes="5rem" className="mx-auto mb-3 h-16 w-auto" /> : null}
-        <h3 className="font-display text-xl text-ink">{title}</h3>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">{body}</p>
-        {action ? <div className="mt-5 flex justify-center gap-3">{action}</div> : null}
+        {art && !image ? <KitArt art={art} sizes="4rem" className="mx-auto mb-2 h-12 w-auto" /> : null}
+        <h3 className="font-display text-lg text-ink">{title}</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
+        {action ? <div className="mt-4 flex justify-center gap-3">{action}</div> : null}
       </div>
     </div>
   );

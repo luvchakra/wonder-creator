@@ -26,6 +26,7 @@ import {
   Textarea,
   buttonClasses,
   cn,
+  chipBase,
 } from "@wonder/ui";
 import { Check, ChevronRight, CircleAlert, Compass, Download, GitBranch, History, Layers, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Users, Wand2 } from "lucide-react";
 import Link from "next/link";
@@ -1082,7 +1083,7 @@ function RightsPanel({
                 type="button"
                 aria-pressed={historyFilter === k}
                 onClick={() => setHistoryFilter(k)}
-                className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm", historyFilter === k ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
+                className={cn(chipBase, historyFilter === k ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
               >
                 {label}
               </button>

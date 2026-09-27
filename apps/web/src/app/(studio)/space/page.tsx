@@ -1,6 +1,6 @@
 import { collectionCards, listMaterials, MATERIAL_FILTERS, materialCounts, signedUrlsFor, type MaterialFilter } from "@wonder/creator-library";
 import { listArtifacts } from "@wonder/creator-studio";
-import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn, KIT } from "@wonder/ui";
+import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn, KIT, chipBase } from "@wonder/ui";
 import { Layers, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { ArtifactCard, MaterialCard, MaterialWallCard } from "@/components/cards";
@@ -86,7 +86,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
                 key={f}
                 href={href({ type: f === "all" ? undefined : f })}
                 aria-current={f === mFilter ? "true" : undefined}
-                className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm", f === mFilter ? "border-accent bg-accent text-white" : "border-border bg-surface text-ink-muted hover:border-[#cfd0ff]")}
+                className={cn(chipBase, "gap-1.5 border", f === mFilter ? "border-accent bg-accent text-white" : "border-border bg-surface text-ink-muted hover:border-[#cfd0ff]")}
               >
                 {MATERIAL_LABEL[f]} <span className="text-xs opacity-75">{counts[f]}</span>
               </Link>
@@ -96,8 +96,8 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
         {allMaterials.length ? (
           <ul aria-label="Materials" className="columns-2 gap-3 sm:columns-3 lg:columns-4 [&>li]:mb-4 [&>li]:break-inside-avoid">
             <li>
-              <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
-                <Plus className="size-6" aria-hidden /> Bring Material
+              <Link href="/send" className="flex h-24 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-surface/60 text-[13px] text-ink-muted hover:border-accent hover:text-accent-ink">
+                <Plus className="size-5" aria-hidden /> Bring Material
               </Link>
             </li>
             {allMaterials.map((m) => (
@@ -204,7 +204,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
               <li key={i.key}>{i.node}</li>
             ))}
             <li>
-              <Link href="/send" className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/60 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
+              <Link href="/send" className="flex h-24 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-surface/60 text-[13px] text-ink-muted hover:border-accent hover:text-accent-ink">
                 <Plus className="size-6" aria-hidden /> Add new material
               </Link>
             </li>

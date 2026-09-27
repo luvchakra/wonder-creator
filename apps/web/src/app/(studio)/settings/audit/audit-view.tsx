@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, Dialog, DialogContent, EmptyState, Field, Input, buttonClasses, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, EmptyState, Field, Input, buttonClasses, cn, chipBase } from "@wonder/ui";
 import { Download, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -164,7 +164,7 @@ function FilterSheet({ open, onOpenChange, categories, value, onApply }: { open:
           <legend className="text-sm font-medium text-ink">Category</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {[{ key: "", label: "Everything" }, ...categories].map((c) => (
-              <label key={c.key || "all"} className={cn("inline-flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm", f.category === c.key ? "border-accent bg-accent-softer font-medium text-accent-ink" : "border-border-soft text-ink")}>
+              <label key={c.key || "all"} className={cn(chipBase, "cursor-pointer border", f.category === c.key ? "border-accent bg-accent-softer font-medium text-accent-ink" : "border-border-soft text-ink")}>
                 <input type="radio" name="audit-category" className="sr-only" checked={f.category === c.key} onChange={() => setF({ ...f, category: c.key })} />
                 {c.label}
               </label>
