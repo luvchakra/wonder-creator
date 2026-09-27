@@ -53,7 +53,40 @@ export const ARTIFACT_TYPES: ArtifactTypeDef[] = [
   { type: "media_kit", label: "Media Kit", category: "social", format: "prose", description: "Who you are, for partners" },
   { type: "proposal", label: "Proposal", category: "social", format: "prose", description: "A project proposal" },
   { type: "pitch_deck", label: "Pitch Deck", category: "social", format: "list", description: "A slide-by-slide pitch" },
+  // Publication derivatives (P1-13): platform adaptations kept as real pieces
+  { type: "visual_post", label: "Visual Post", category: "social", format: "concept", description: "An image-led post: the visual and its words" },
+  { type: "professional_post", label: "Professional Post", category: "social", format: "prose", description: "A post for a professional audience" },
+  { type: "video_description", label: "Video Description", category: "social", format: "prose", description: "A description for a video page" },
+  { type: "thumbnail_concept", label: "Thumbnail Concept", category: "visual", format: "concept", description: "A thumbnail idea: image, text and contrast" },
 ];
+
+/**
+ * Platform adaptations of a piece (P1-13). Each makes a new derivative piece — with lineage to the source version,
+ * inherited rights and its own approval before publishing — marked as made for that destination.
+ */
+export interface PublicationDerivativePreset {
+  key: string;
+  label: string;
+  madeFor: string;
+  targetType: string;
+  instruction: string;
+  /** Which source categories it suits. */
+  from: ArtifactCategory[];
+}
+
+export const PUBLICATION_DERIVATIVES: PublicationDerivativePreset[] = [
+  { key: "trailer", label: "Trailer", madeFor: "Trailer", targetType: "trailer", from: ["video", "writing"], instruction: "Cut a 60–90 second trailer from this: the hook, the turn, and a closing line. Don't reveal the ending." },
+  { key: "instagram_carousel", label: "Instagram carousel", madeFor: "Instagram", targetType: "carousel", from: ["video", "writing", "visual", "audio"], instruction: "Turn this into an Instagram carousel of 5 to 8 slides: one idea per slide, a strong first slide, and a short closing slide." },
+  { key: "visual_post", label: "Visual post", madeFor: "Instagram", targetType: "visual_post", from: ["writing", "audio"], instruction: "Make a visual post from this: the image to create and a short caption in the creator's voice." },
+  { key: "linkedin_post", label: "LinkedIn post", madeFor: "LinkedIn", targetType: "professional_post", from: ["writing", "video", "visual", "audio", "social"], instruction: "Adapt this into a LinkedIn post: a clear first line, what it is and why it matters, and no hashtag walls." },
+  { key: "youtube_description", label: "YouTube description", madeFor: "YouTube", targetType: "video_description", from: ["video", "audio", "writing"], instruction: "Write a YouTube description for this: a two-line summary first, then context and credits. No clickbait." },
+  { key: "thumbnail", label: "Thumbnail concept", madeFor: "YouTube", targetType: "thumbnail_concept", from: ["video", "audio", "writing"], instruction: "Propose a thumbnail concept for this: the image, at most five words of text, and why it reads at small sizes." },
+];
+
+export function publicationDerivativesFor(type: string): PublicationDerivativePreset[] {
+  const category = artifactType(type).category;
+  return PUBLICATION_DERIVATIVES.filter((p) => p.from.includes(category) && p.targetType !== type);
+}
 
 const BY_TYPE = new Map(ARTIFACT_TYPES.map((t) => [t.type, t]));
 

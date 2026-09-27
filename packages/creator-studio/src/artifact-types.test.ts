@@ -19,3 +19,15 @@ describe("artifact types", () => {
     expect(artifactType("zine").label).toBe("Zine");
   });
 });
+
+describe("publication derivatives", () => {
+  it("offer platform adaptations that suit the source, never the same type", async () => {
+    const { publicationDerivativesFor } = await import("./artifact-types");
+    const film = publicationDerivativesFor("short_film").map((p) => p.key);
+    expect(film).toEqual(expect.arrayContaining(["trailer", "instagram_carousel", "youtube_description", "thumbnail"]));
+    const poem = publicationDerivativesFor("poem").map((p) => p.key);
+    expect(poem).toContain("visual_post");
+    expect(publicationDerivativesFor("trailer").map((p) => p.targetType)).not.toContain("trailer");
+    expect(artifactType("video_description").label).toBe("Video Description");
+  });
+});
