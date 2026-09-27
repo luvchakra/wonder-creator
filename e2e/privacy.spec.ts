@@ -62,7 +62,7 @@ test.describe("privacy boundary", () => {
     await expect(share.getByRole("switch", { name: "Public" })).toHaveAttribute("aria-checked", "true");
     await share.getByRole("button", { name: "Save" }).click();
     await expect(share).toBeHidden();
-    await expect(a.getByText(/v\d Final/)).toBeVisible();
+    await expect(a.getByText(/v\d Completed/)).toBeVisible();
     await expect(a.getByText("Public", { exact: true }).first()).toBeVisible();
 
     // B now sees it on A's profile and can read it, without owner controls.
@@ -72,7 +72,7 @@ test.describe("privacy boundary", () => {
     await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
     await expect(b.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(b.getByRole("article")).toContainText("the harbour keeps its lamps.");
-    await expect(b.getByRole("link", { name: "Edit" })).toHaveCount(0);
+    await expect(b.getByRole("link", { name: "Creative Studio" })).toHaveCount(0);
     await expect(b.getByRole("button", { name: "Share" })).toHaveCount(0);
     await expect(b.getByRole("button", { name: "More actions" })).toHaveCount(0);
     // The studio is owner-only: B is sent back to the read-only view.

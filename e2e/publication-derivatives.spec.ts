@@ -9,7 +9,8 @@ test.describe("Publication derivatives", () => {
     await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "EXT. BEACH - DAWN\nA girl waits for the tide.", baseVersionId: art.current_version_id, label: "Written" } });
 
     await page.goto(`/artifacts/${art.id}`);
-    await page.getByRole("link", { name: "Derivatives" }).click();
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Create from this" }).click();
     await expect(page.getByRole("heading", { name: "Derivatives", level: 1 })).toBeVisible();
     await expect(page.getByRole("region", { name: "Source" })).toContainText("v2");
     await page.getByRole("button", { name: "Make youtube description" }).click();
@@ -22,7 +23,8 @@ test.describe("Publication derivatives", () => {
     await made.getByRole("link", { name: /^Review / }).click();
     await expect(page).not.toHaveURL(new RegExp(`/artifacts/${art.id}$`));
     // The derivative links back to its source.
-    await page.getByRole("tab", { name: "Lineage" }).click();
+    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     await expect(page.getByText(title).first()).toBeVisible();
   });
 });

@@ -38,7 +38,7 @@ test.describe("creating with CreatorBrain", () => {
     await expect(page.getByRole("complementary", { name: "Conversations" }).getByRole("link", { name: /Write a poem about the lighthouse/ })).toHaveAttribute("aria-current", "page");
     await card.getByRole("link", { name: /View/ }).click();
     await expect(page.getByRole("article")).not.toBeEmpty();
-    await expect(page.getByRole("tab", { name: "Material (1)" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Materials (1)" })).toBeVisible();
   });
 
   test("Creative Discovery: directions → Create this direction", async ({ page }) => {
@@ -78,9 +78,9 @@ test.describe("creating with CreatorBrain", () => {
 
     await card.getByRole("link", { name: /View/ }).click();
     await expect(page).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
-    await expect(page.getByText("v1 Draft")).toBeVisible();
+    await expect(page.getByText("v1 In Progress")).toBeVisible();
     await expect(page.getByRole("article")).not.toBeEmpty();
-    await page.getByRole("tab", { name: "Material (1)" }).click();
+    await page.getByRole("tab", { name: "Materials (1)" }).click();
     await expect(page.getByRole("tabpanel").getByRole("link", { name: noteTitle })).toBeVisible();
   });
 

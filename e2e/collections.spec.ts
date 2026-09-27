@@ -97,7 +97,8 @@ test.describe("Material collections", () => {
     expect(artifactId).toBeTruthy();
 
     await page.goto(`/artifacts/${artifactId}`);
-    await page.getByRole("tab", { name: "Lineage" }).click();
+    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     const lineage = page.getByRole("list", { name: "Creative lineage, from sources to derivatives" });
     const source = lineage.getByRole("link", { name: new RegExp(name) });
     await expect(source).toHaveAttribute("href", `/space/collections/${col.id}`);
