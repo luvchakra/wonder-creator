@@ -18,6 +18,7 @@
     "@wonder/creator-huddle": "^0.1.0",
     "@wonder/creator-identity": "^0.1.0",
     "@wonder/creator-library": "^0.1.0",
+    "@wonder/creator-projects": "^0.1.0",
     "@wonder/creator-send": "^0.1.0",
     "@wonder/creator-studio": "^0.1.0",
     "@wonder/creator-talk": "^0.1.0",

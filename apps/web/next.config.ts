@@ -35,6 +35,7 @@ const nextConfig: NextConfig = {
     "@wonder/creator-brain",
     "@wonder/creator-studio",
     "@wonder/creator-huddle",
+    "@wonder/creator-projects",
   ],
   serverExternalPackages: ["unpdf", "livekit-server-sdk"],
   poweredByHeader: false,

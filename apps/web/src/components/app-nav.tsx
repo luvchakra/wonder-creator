@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
-import { Brain, Home, LibraryBig, LogOut, PenLine, Search, Settings, Sparkles, UserRound, Users } from "lucide-react";
+import { Brain, FolderKanban, Home, LibraryBig, LogOut, PenLine, Search, Settings, Sparkles, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,13 +10,17 @@ import { SearchDialog } from "./search-dialog";
 const NAV = [
   { href: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
   { href: "/create", label: "Create", icon: PenLine, match: (p: string) => p.startsWith("/create") || p.startsWith("/send") || p.startsWith("/artifacts") },
+  { href: "/projects", label: "Projects", icon: FolderKanban, match: (p: string) => p.startsWith("/projects") },
   { href: "/space", label: "Space", icon: Sparkles, match: (p: string) => p.startsWith("/space") },
   { href: "/huddles", label: "Huddles", icon: Users, match: (p: string) => p.startsWith("/huddles") },
   { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") || p.startsWith("/creators") || p.startsWith("/settings") || p.startsWith("/memory") || p.startsWith("/scrapbook") },
 ];
 
-/** Mobile bottom navigation: five human destinations (guidelines §3): Home · Create · Huddles · Library · Profile. */
-const MOBILE_NAV = [NAV[0], NAV[1], NAV[3], { ...NAV[2], label: "Library", icon: LibraryBig }, NAV[4]];
+/**
+ * Mobile bottom navigation: five human destinations (guidelines §3): Home · Create · Huddles · Library · Profile.
+ * Projects are reached from Home and the account menu, and sit under Library.
+ */
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[4], { ...NAV[3], label: "Library", icon: LibraryBig, match: (p: string) => p.startsWith("/space") || p.startsWith("/projects") }, NAV[5]];
 
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
   const pathname = usePathname();
@@ -75,6 +79,9 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                 </div>
                 <MenuItem onSelect={() => router.push("/profile")}>
                   <UserRound className="size-4" aria-hidden /> Profile
+                </MenuItem>
+                <MenuItem onSelect={() => router.push("/projects")}>
+                  <FolderKanban className="size-4" aria-hidden /> Projects
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/memory")}>
                   <Brain className="size-4" aria-hidden /> Creative Memory

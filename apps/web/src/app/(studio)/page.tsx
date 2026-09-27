@@ -1,11 +1,13 @@
 import { greetingFor } from "@wonder/core";
 import { liveCards } from "@wonder/creator-huddle";
 import { listMaterials, signedUrlsFor } from "@wonder/creator-library";
+import { listProjects } from "@wonder/creator-projects";
 import { BACKGROUNDS, BrandBackground, SectionHeader } from "@wonder/ui";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { ArtifactCard, MaterialCard } from "@/components/cards";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
+import { ProjectCard } from "@/components/project-card";
 import { coverUrls } from "@/lib/covers";
 import { after } from "next/server";
 import { sweepStalePresence } from "@/lib/presence";
@@ -26,14 +28,15 @@ const POSSIBILITIES = [
 export default async function HomePage() {
   const { db, creator } = await requireSession();
   after(sweepStalePresence);
-  const [artifactsRes, materials, live, proposals] = await Promise.all([
+  const [artifactsRes, materials, live, proposals, projects] = await Promise.all([
     db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(6),
     listMaterials(db, { limit: 6 }),
     liveCards(db, { limit: 6 }),
     db.from("ai_proposals").select("id", { count: "exact", head: true }).eq("status", "pending").gt("expires_at", new Date().toISOString()),
+    listProjects(db, { status: "open" }),
   ]);
   const artifacts = artifactsRes.data ?? [];
-  const [covers, previews] = await Promise.all([coverUrls(db, artifacts), signedUrlsFor(db, materials.map((m) => m.storage_object_id))]);
+  const [covers, previews] = await Promise.all([coverUrls(db, artifacts), signedUrlsFor(db, [...materials.map((m) => m.storage_object_id), ...projects.slice(0, 3).map((p) => p.coverObjectId)])]);
   const first = (creator.display_name || "Creator").split(" ")[0];
   const journey = [
     ...artifacts.map((a) => ({ kind: "artifact" as const, at: a.updated_at, a })),
@@ -86,6 +89,23 @@ export default async function HomePage() {
         ) : (
           <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-8 text-center text-ink-muted">
             Nothing here yet. Bring an idea, photograph, note or voice memo — it will appear here.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <SectionHeader title="Your projects" action={<Link href="/projects" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">{projects.length ? "All projects" : "Start a project"}</Link>} />
+        {projects.length ? (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.slice(0, 3).map((p) => (
+              <li key={p.id}>
+                <ProjectCard p={{ ...p, coverUrl: p.coverObjectId ? (previews[p.coverObjectId] ?? null) : null }} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+            Working on something bigger? A project brings its material, pieces, conversations and Huddles together.
           </p>
         )}
       </section>

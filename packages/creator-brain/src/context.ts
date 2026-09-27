@@ -32,6 +32,15 @@ export interface MemoryContext {
   statement: string;
 }
 
+/** The project a conversation belongs to: its brief and goals frame the work (never its budget). */
+export interface ProjectContext {
+  id: string;
+  title: string;
+  status: string;
+  brief: string;
+  goals: string[];
+}
+
 export interface CreativeContext {
   creator: { id: string; displayName: string; disciplines: string[]; languages: string[] };
   creativeIdentity: {
@@ -52,6 +61,7 @@ export interface CreativeContext {
   selectedArtifacts: ArtifactContext[];
   references: MaterialContext[];
   memories: MemoryContext[];
+  project?: ProjectContext | null;
 }
 
 /** Which context blocks each intent needs. Minimization: nothing else is loaded. */
@@ -176,6 +186,8 @@ export async function assembleContext(db: Db, creatorId: string, opts: AssembleO
     needs.memories && purpose === "own_creation" ? loadMemories(db, opts.instruction, opts.intent) : Promise.resolve([]),
   ]);
 
+  const project = opts.conversationId ? await loadProject(db, opts.conversationId) : null;
+
   let conversation: CreativeContext["conversation"] = [];
   if (opts.conversationId && needs.conversation > 0) {
     const { data } = await db
@@ -215,7 +227,14 @@ export async function assembleContext(db: Db, creatorId: string, opts: AssembleO
     selectedArtifacts,
     references,
     memories,
+    project,
   };
+}
+
+async function loadProject(db: Db, conversationId: string): Promise<ProjectContext | null> {
+  const { data } = await db.from("conversations").select("projects(id, title, status, brief, goals)").eq("id", conversationId).maybeSingle();
+  const p = data?.projects as { id: string; title: string; status: string; brief: string; goals: string[] } | null | undefined;
+  return p ? { id: p.id, title: p.title, status: p.status, brief: p.brief.slice(0, 3000), goals: p.goals.slice(0, 12) } : null;
 }
 
 export { keywords as extractKeywords };

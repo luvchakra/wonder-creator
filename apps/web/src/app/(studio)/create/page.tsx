@@ -6,7 +6,7 @@ import { Talk } from "./talk";
 
 export const metadata = { title: "Create" };
 
-export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string; materials?: string; collection?: string }> }) {
+export default async function CreatePage({ searchParams }: { searchParams: Promise<{ c?: string; prompt?: string; artifact?: string; material?: string; materials?: string; collection?: string; project?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const conversations = await listConversations(db, 40);
@@ -25,6 +25,9 @@ export default async function CreatePage({ searchParams }: { searchParams: Promi
     ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state").in("id", materialIds)
     : { data: [] };
   const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id));
+  // A conversation keeps its project; a new one can start in a project (the creator's own, checked again on send).
+  const projectId = convo ? convo.conversation.project_id : sp.project && /^[0-9a-f-]{36}$/i.test(sp.project) ? sp.project : null;
+  const project = projectId ? (await db.from("projects").select("id, title").eq("id", projectId).maybeSingle()).data : null;
   const artifactId = sp.artifact && /^[0-9a-f-]{36}$/i.test(sp.artifact) ? sp.artifact : null;
   const focusArtifact = artifactId ? (await db.from("artifacts").select("id, title, artifact_type").eq("id", artifactId).maybeSingle()).data : null;
 
@@ -46,6 +49,7 @@ export default async function CreatePage({ searchParams }: { searchParams: Promi
       preselectedMaterialIds={preselected}
       focusArtifact={focusArtifact}
       focusCollection={fromCollection ? { id: fromCollection.collection.id, name: fromCollection.collection.name } : null}
+      project={project}
       prompt={sp.prompt?.slice(0, 500)}
       creatorName={creator.display_name}
       offline={!providerReadiness().live}

@@ -1,4 +1,4 @@
-import { DomainError, fromDbError, must, publishEvent } from "@wonder/core";
+import { DomainError, fromDbError, log, must, publishEvent } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
 
 export type Conversation = Tables<"conversations">;
@@ -28,9 +28,16 @@ export function titleFrom(message: string): string {
   return (first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first).replace(/[.!?]$/, "");
 }
 
-/** `collectionId` links the conversation to the collection it started from (RLS: owner's own collections only). */
-export async function startConversation(db: Db, creatorId: string, firstMessage: string, collectionId: string | null = null): Promise<Conversation> {
-  const c = must(await db.from("conversations").insert({ creator_id: creatorId, title: titleFrom(firstMessage), collection_id: collectionId }).select("*").single());
+/**
+ * `collectionId` links the conversation to the collection it started from; `projectId` puts it in a project (and
+ * lists it there). RLS allows only the creator's own collections and projects.
+ */
+export async function startConversation(db: Db, creatorId: string, firstMessage: string, collectionId: string | null = null, projectId: string | null = null): Promise<Conversation> {
+  const c = must(await db.from("conversations").insert({ creator_id: creatorId, title: titleFrom(firstMessage), collection_id: collectionId, project_id: projectId }).select("*").single());
+  if (projectId) {
+    const link = await db.from("project_items").insert({ project_id: projectId, creator_id: creatorId, kind: "conversation", conversation_id: c.id });
+    if (link.error) log("warn", "project_link_failed", { conversationId: c.id, code: link.error.code });
+  }
   await publishEvent(db, { type: "ConversationStarted", aggregate: "conversation", aggregateId: c.id });
   return c;
 }

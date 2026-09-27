@@ -40,6 +40,7 @@ export function Talk({
   preselectedMaterialIds,
   focusArtifact,
   focusCollection,
+  project,
   prompt,
   creatorName,
   offline,
@@ -51,6 +52,8 @@ export function Talk({
   preselectedMaterialIds: string[];
   focusArtifact: { id: string; title: string; artifact_type: string } | null;
   focusCollection: { id: string; name: string } | null;
+  /** The project this conversation is (or, when new, will be) part of. */
+  project: { id: string; title: string } | null;
   prompt?: string;
   creatorName: string;
   offline: boolean;
@@ -72,6 +75,7 @@ export function Talk({
   const [artifactCtx, setArtifactCtx] = useState(focusArtifact);
   // Only a new conversation can start from a collection; once started, the link lives on the conversation.
   const [collectionCtx, setCollectionCtx] = useState(focusCollection);
+  const [projectCtx, setProjectCtx] = useState(project);
   const bottomRef = useRef<HTMLDivElement>(null);
   const ran = useRef(false);
 
@@ -187,7 +191,7 @@ export function Talk({
     await refreshMaterials(ids);
     setAttached([]);
     await runTurn(
-      { message: p.message, materialIds: ids, inputMode: p.inputMode, artifactId: artifactCtx?.id ?? null, collectionId: conversationId ? null : (collectionCtx?.id ?? null) },
+      { message: p.message, materialIds: ids, inputMode: p.inputMode, artifactId: artifactCtx?.id ?? null, collectionId: conversationId ? null : (collectionCtx?.id ?? null), projectId: conversationId ? null : (projectCtx?.id ?? null) },
       { content: p.message || `Shared ${ids.length} piece${ids.length === 1 ? "" : "s"} of material`, materialIds: ids },
     );
   }
@@ -334,8 +338,20 @@ export function Talk({
         ) : null}
 
         <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] mt-5 md:bottom-4">
-          {artifactCtx || attached.length || (collectionCtx && !conversationId) ? (
+          {artifactCtx || attached.length || (collectionCtx && !conversationId) || projectCtx ? (
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+              {projectCtx && conversationId ? (
+                <Link href={`/projects/${projectCtx.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-accent-ink hover:underline">
+                  Project: {projectCtx.title}
+                </Link>
+              ) : projectCtx ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
+                  In project: {projectCtx.title}
+                  <button type="button" onClick={() => setProjectCtx(null)} aria-label="Don't add this conversation to the project" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                    <X className="size-3.5" aria-hidden />
+                  </button>
+                </span>
+              ) : null}
               {artifactCtx ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
                   Working on: {artifactCtx.title}
