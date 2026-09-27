@@ -1,7 +1,7 @@
 import { audit, DomainError, log } from "@wonder/core";
 import { inspectUpload } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
-import { buildImagePrompt, contextHash, directionsFor, hasMeaningfulContext, IMAGE_SYSTEM, PROMPT_VERSION, type ImageGenerationContext } from "./context";
+import { buildImagePrompt, contextHash, directionsFor, hasMeaningfulContext, IMAGE_SYSTEM, PROMPT_VERSION, slideDirections, type ImageDirection, type ImageGenerationContext } from "./context";
 import { defaultQualityFor, resolveImageModel, ROUTING_VERSION } from "./router";
 import type { AspectRatio, ImageProvider, ImagePurpose, ImageQualityIntent, ImageReference } from "./types";
 
@@ -36,6 +36,9 @@ export interface ImageGenerationRequest {
   idempotencyKey?: string | null;
   /** Return a stored generation for this context if there is one; never start a new one. */
   lookupOnly?: boolean;
+  /** Carousel Composer: one image per slide, each from its own words (count = number of slides). */
+  slideTexts?: string[];
+  visualStyle?: string;
 }
 
 type GenerationRow = { id: string; status: string; context_hash: string; variation: number; created_at: string; creator_id: string; artifact_id: string | null; material_id: string | null };
@@ -146,8 +149,8 @@ export async function generationView(db: Db, service: Db, generationId: string, 
     })),
     // Latest per image; a failure only while that image hasn't been changed since.
     revisions: [...new Map([...(revs ?? [])].reverse().map((r) => [r.asset_id, r] as const)).values()]
-      .filter((r) => assets.some((a) => a.id === r.asset_id))
-      .map((r) => ({ id: r.id, assetId: r.asset_id, status: r.status as "queued" | "processing" | "failed" })),
+      .filter((r) => !!r.asset_id && assets.some((a) => a.id === r.asset_id))
+      .map((r) => ({ id: r.id, assetId: r.asset_id!, status: r.status as "queued" | "processing" | "failed" })),
   };
 }
 
@@ -166,7 +169,11 @@ export async function requestImageGeneration(deps: ImageDeps, req: ImageGenerati
   const purpose = req.purpose;
   const qualityIntent = req.qualityIntent ?? defaultQualityFor(purpose);
   const aspectRatio = req.aspectRatio ?? (purpose === "hero" ? "16:9" : purpose === "carousel" || purpose === "explore" ? "4:5" : "1:1");
-  const count = purpose === "carousel" || purpose === "explore" || purpose === "moodboard" || purpose === "transform-preview" ? Math.min(Math.max(req.count ?? 4, 3), 5) : 1;
+  const count = req.slideTexts?.length
+    ? Math.min(req.slideTexts.length, 12)
+    : purpose === "carousel" || purpose === "explore" || purpose === "moodboard" || purpose === "transform-preview"
+      ? Math.min(Math.max(req.count ?? 4, 3), 5)
+      : 1;
 
   if (req.idempotencyKey) {
     const { data: dup } = await deps.db.from("image_generations").select("id").eq("creator_id", deps.creatorId).eq("idempotency_key", req.idempotencyKey).maybeSingle();
@@ -176,6 +183,10 @@ export async function requestImageGeneration(deps: ImageDeps, req: ImageGenerati
     }
   }
   const built = await buildImageGenerationContext(deps.db, deps.creatorId, req);
+  if (req.slideTexts?.length) {
+    built.context.slides = req.slideTexts.slice(0, 12).map((t) => t.slice(0, 600));
+    built.context.visualStyle = req.visualStyle ?? "auto";
+  }
   if (!hasMeaningfulContext(built.context)) return { kind: "no_context" };
   const hash = contextHash({ creatorId: deps.creatorId, purpose, context: built.context, aspectRatio, qualityIntent, count });
   const { data: latest } = await deps.db
@@ -545,43 +556,51 @@ export async function requestAssetRevision(
 }
 
 /**
- * The revision job: the original image goes to the model as the visual reference, with the Creation's context, the
- * image's direction and the creator's instruction. On success a new asset takes the old one's place and choice; the old
- * asset is kept. A blocked or failed change stores nothing. Never logs the instruction.
+ * The change job. `replace`: the new image takes the old one's place in the set (the old one is kept, `replaced_by`).
+ * `variation`: the new image waits on its Carousel slide for "Use new" / "Keep current" (§27). `fill`: an image for a
+ * slide that has none (a failed image, or a slide made by splitting). `add`: one more image
+ * for a Carousel, appended as a new slide with its words (§11). The current image (if any) goes to the model as the
+ * visual reference, with the Creation's context and the creator's instruction. A blocked or failed change stores
+ * nothing. Never logs the instruction or the words.
  */
 export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">, revisionId: string): Promise<void> {
   const service = deps.service;
   const { data: rev } = await service.from("image_asset_revisions").update({ status: "processing" }).eq("id", revisionId).in("status", ["queued", "processing"]).select("*").maybeSingle();
   if (!rev) return;
-  const { data: g } = await service.from("image_generations").select("id, creator_id, context, purpose, aspect_ratio, model").eq("id", rev.generation_id).single();
-  const { data: old } = await service.from("image_generation_assets").select("*").eq("id", rev.asset_id).single();
+  const { data: g } = await service.from("image_generations").select("id, creator_id, artifact_id, context, purpose, aspect_ratio, model").eq("id", rev.generation_id).single();
+  const { data: old } = rev.asset_id ? await service.from("image_generation_assets").select("*").eq("id", rev.asset_id).single() : { data: null };
   const fail = async (code: string) => {
     await service.from("image_asset_revisions").update({ status: "failed", error_code: code, completed_at: new Date().toISOString() }).eq("id", rev.id);
   };
-  if (!g || !old || old.replaced_by) return fail("gone");
+  const needsSource = rev.kind === "replace" || rev.kind === "variation";
+  if (!g || (needsSource && (!old || (rev.kind === "replace" && old.replaced_by)))) return fail("gone");
   const started = Date.now();
   try {
     const references: ImageReference[] = [];
-    const { data: o } = await service.from("storage_objects").select("bucket, path, mime_type").eq("id", old.storage_object_id).single();
-    if (o) {
-      const dl = await service.storage.from(o.bucket).download(o.path);
-      if (dl.data) references.push({ mimeType: o.mime_type as ImageReference["mimeType"], dataBase64: Buffer.from(await dl.data.arrayBuffer()).toString("base64") });
+    if (old) {
+      const { data: o } = await service.from("storage_objects").select("bucket, path, mime_type").eq("id", old.storage_object_id).single();
+      if (o) {
+        const dl = await service.storage.from(o.bucket).download(o.path);
+        if (dl.data) references.push({ mimeType: o.mime_type as ImageReference["mimeType"], dataBase64: Buffer.from(await dl.data.arrayBuffer()).toString("base64") });
+      }
     }
     const context = g.context as unknown as ImageGenerationContext;
-    const direction = directionsFor(context, 5).find((d) => d.label === old.direction_label) ?? { label: old.direction_label ?? "Direction", rationale: "", guidance: "keep the attached image's composition and spirit" };
-    const prompt = [
-      buildImagePrompt(context, g.purpose as ImagePurpose, g.aspect_ratio as AspectRatio, direction),
-      "",
-      "The attached image is the current version of this concept. Keep what works and make this change the creator asked for:",
-      rev.instruction,
-      "Still avoid any embedded text.",
-    ].join("\n");
-    const out = await deps.provider.generate({ model: g.model, system: IMAGE_SYSTEM, prompt, aspectRatio: g.aspect_ratio as AspectRatio, references });
+    const slideText = rev.slide_text ?? undefined;
+    const direction: ImageDirection = context.slides?.length || rev.slide_id || rev.kind === "add"
+      ? { ...slideDirections({ ...context, slides: [slideText ?? ""] })[0]!, label: old?.direction_label ?? "Slide", slideText }
+      : (directionsFor(context, 5).find((d) => d.label === old?.direction_label) ?? { label: old?.direction_label ?? "Direction", rationale: "", guidance: "keep the attached image's composition and spirit" });
+    const lines = [buildImagePrompt(context, g.purpose as ImagePurpose, g.aspect_ratio as AspectRatio, direction), ""];
+    if (old) lines.push("The attached image is the current version of this image. Keep what works and keep the set's visual language.");
+    else lines.push("This is one more image for an existing sequence. Match the set's visual language.");
+    if (rev.instruction) lines.push("The creator asked for this change:", rev.instruction);
+    lines.push("Still avoid any embedded text.");
+    const out = await deps.provider.generate({ model: g.model, system: IMAGE_SYSTEM, prompt: lines.join("\n"), aspectRatio: g.aspect_ratio as AspectRatio, references });
     const inspected = await inspectUpload(out.image.bytes);
     if (inspected.kind !== "image") throw new DomainError("provider_failed", "Not an image.");
     const derived = await deps.derive(out.image.bytes);
     const { data: seqs } = await service.from("image_generation_assets").select("sequence").eq("generation_id", g.id).order("sequence", { ascending: false }).limit(1);
-    const seq = (seqs?.[0]?.sequence ?? 0) + 1;
+    const seq = (seqs?.[0]?.sequence ?? -1) + 1;
+    if (seq > 99) throw new DomainError("validation", "This set is full.");
     const store = async (bytes: Uint8Array, suffix: string) => {
       const path = `${g.creator_id}/generated/${g.id}/${seq}-${suffix}.webp`;
       const up = await service.storage.from(GENERATED_BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: true });
@@ -607,18 +626,36 @@ export async function runImageRevision(deps: Omit<ImageDeps, "db" | "creatorId">
         width: derived.width,
         height: derived.height,
         sequence: seq,
-        position: old.position ?? old.sequence,
-        direction_label: old.direction_label,
-        rationale: old.rationale,
-        selected: old.selected,
-        revision_of: old.id,
+        position: old ? (old.position ?? old.sequence) : null,
+        direction_label: old?.direction_label ?? direction.label,
+        rationale: old?.rationale ?? null,
+        selected: rev.kind === "replace" ? !!old?.selected : false,
+        revision_of: old?.id ?? null,
+        // A variation or an added slide isn't part of the generated set's own strip.
+        replaced_by: null,
       })
       .select("id")
       .single();
     if (aErr || !fresh) throw new DomainError("internal", "Couldn't record the image.", { cause: aErr });
-    await service.from("image_generation_assets").update({ replaced_by: fresh.id, selected: false }).eq("id", old.id);
+    if (rev.kind === "replace" && old) {
+      await service.from("image_generation_assets").update({ replaced_by: fresh.id, selected: false }).eq("id", old.id);
+    } else if (rev.kind === "variation" && rev.slide_id) {
+      await service.from("carousel_slides").update({ pending_asset_id: fresh.id }).eq("id", rev.slide_id);
+    } else if (rev.kind === "fill" && rev.slide_id) {
+      await service.from("carousel_slides").update({ asset_id: fresh.id }).eq("id", rev.slide_id).is("asset_id", null);
+    } else if (rev.kind === "add" && g.artifact_id) {
+      const { data: last } = await service.from("carousel_slides").select("order_index").eq("artifact_id", g.artifact_id).order("order_index", { ascending: false }).limit(1);
+      await service.from("carousel_slides").insert({
+        artifact_id: g.artifact_id,
+        creator_id: g.creator_id,
+        order_index: Math.min(99, (last?.[0]?.order_index ?? -1) + 1),
+        asset_id: fresh.id,
+        source_text: rev.slide_text ?? "",
+        display_text: rev.slide_text ?? "",
+      });
+    }
     await service.from("image_asset_revisions").update({ status: "complete", result_asset_id: fresh.id, completed_at: new Date().toISOString() }).eq("id", rev.id);
-    log("info", "image_asset_revised", { purpose: g.purpose, ms: Date.now() - started });
+    log("info", "image_asset_revised", { kind: rev.kind, purpose: g.purpose, ms: Date.now() - started });
   } catch (e) {
     const code = e instanceof DomainError ? e.code : "internal";
     log("warn", "image_asset_revision_failed", { code });

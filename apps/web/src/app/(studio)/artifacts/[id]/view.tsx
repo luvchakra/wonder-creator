@@ -1,7 +1,9 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
 import { stepUpErrorMessage, useStepUp } from "@/components/step-up";
+import { COMMERCIAL_USE, commercialReadiness, commercialUseLabel, READINESS_NOTE } from "@wonder/creator-studio/commercial";
 import { EXPORT_FORMATS, exportFormatsFor } from "@wonder/creator-studio/exports";
+import { channelLabels } from "@wonder/creator-studio/licensing";
 import { ARTIFACT_TYPES, actionsFor } from "@wonder/creator-studio/types";
 import {
   Avatar,
@@ -36,9 +38,8 @@ import { type MaterialCardData } from "@/components/cards";
 import { VisualDirections } from "@/components/visual-directions";
 import { MaterialGrid, type GraphNode } from "./context-parts";
 import { api, errorMessage } from "@/lib/client";
-import { slideTexts } from "@/lib/carousel-slides";
 import { diffLines } from "@/lib/diff";
-import { CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
+import { ChannelChips, CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
 
 interface Version {
   id: string;
@@ -57,8 +58,10 @@ interface Rights {
   attribution_required: boolean;
   derivatives_allowed: boolean;
   notes: string | null;
+  commercial_use: string;
+  commercial_channels: string[];
   rights_owners: Array<{ id: string; owner_name: string; share_percent: number; owner_creator_id: string | null }>;
-  licenses: Array<{ id: string; license_type: string; licensee_name: string | null; status: string; territory: string; exclusive: boolean; starts_on: string | null; ends_on: string | null }>;
+  licenses: Array<{ id: string; license_type: string; licensee_name: string | null; status: string; territory: string; exclusive: boolean; starts_on: string | null; ends_on: string | null; usage_channels: string[] }>;
   events: Array<{ id: string; event: string; created_at: string; title: string; kind: "rights" | "license" | "publication" | "derivative"; derivativeId?: string }>;
 }
 
@@ -96,11 +99,11 @@ export function ArtifactView(props: {
   quality: { checks: Array<{ key: string; label: string; status: string; note: string }>; suggestions: Array<{ title: string; detail: string }>; createdAt: string } | null;
   initialTab?: string;
   licenseRequests: LicenseRequestView[];
+  commercialStance: { commercialUse: string; commercialChannels: string[] } | null;
 }) {
   const { artifact: a, isOwner } = props;
   const router = useRouter();
   const current = props.versions.find((v) => v.id === a.current_version_id) ?? props.versions[0];
-  const slides = useMemo(() => slideTexts(current?.content ?? ""), [current?.content]);
   const [tab, setTab] = useState(["details", "material", "versions", "rights"].includes(props.initialTab ?? "") ? props.initialTab! : "details");
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -284,7 +287,15 @@ export function ArtifactView(props: {
         </span>
       </div>
       {/* Visual directions from this Creation (image-generation §31): stored ones show at once; new ones only when asked. */}
-      {isOwner && a.status !== "archived" ? <VisualDirections creationId={a.id} slideTexts={slides} purpose={/carousel/i.test(props.typeLabel) ? "carousel" : "explore"} title={/carousel/i.test(props.typeLabel) ? "Slide visuals" : "Visual directions"} /> : null}
+      {/* A Carousel's images live in the Composer (carousel-composer.md §9); other Creations get visual directions. */}
+      {a.artifact_type === "carousel" ? (
+        <Link href={`/artifacts/${a.id}`} className="flex min-h-11 items-center justify-between rounded-xl border border-border-soft bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-muted">
+          Slides
+          <ChevronRight className="size-4 text-ink-subtle" aria-hidden />
+        </Link>
+      ) : isOwner && a.status !== "archived" ? (
+        <VisualDirections creationId={a.id} purpose="explore" title="Visual directions" />
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
@@ -417,6 +428,8 @@ export function ArtifactView(props: {
             contributors={props.contributors}
             provenance={{ derivedFrom: derivedFrom[0] ? { id: derivedFrom[0].id, title: derivedFrom[0].title } : null, materials: createdFrom.length, references: references.length }}
             licenseRequests={props.licenseRequests}
+            outsideMaterials={props.materials.filter((m) => !!m.source_url).length}
+            stance={props.commercialStance}
             title={a.privacy === "public" && (a.status === "final" || a.status === "published") ? a.title : null}
           />
         </TabPanel>
@@ -799,8 +812,12 @@ function RightsPanel({
   provenance,
   licenseRequests,
   title,
+  outsideMaterials,
+  stance,
 }: {
   artifactId: string;
+  outsideMaterials: number;
+  stance: { commercialUse: string; commercialChannels: string[] } | null;
   licenseRequests: LicenseRequestView[];
   title: string | null;
   rights: Rights | null;
@@ -822,9 +839,17 @@ function RightsPanel({
     attributionRequired: rights?.attribution_required ?? true,
     derivativesAllowed: rights?.derivatives_allowed ?? false,
     notes: rights?.notes ?? "",
+    commercialUse: rights?.commercial_use ?? "on_request",
+    commercialChannels: rights?.commercial_channels ?? [],
     owners: (rights?.rights_owners ?? []).map((o) => ({ name: o.owner_name, sharePercent: Number(o.share_percent), creatorId: o.owner_creator_id })),
   }));
-  if (!rights) return <p className="text-ink-muted">Rights details are only visible to the creator.</p>;
+  if (!rights)
+    return (
+      <div className="space-y-3">
+        <p className="text-ink-muted">Rights details are only visible to the creator.</p>
+        {title ? <RequesterLicensing artifactId={artifactId} title={title} requests={licenseRequests} stance={stance} /> : null}
+      </div>
+    );
   const history = historyFilter === "all" ? rights.events : rights.events.filter((e) => e.kind === historyFilter);
   const total = form.owners.reduce((s, o) => s + (Number(o.sharePercent) || 0), 0);
 
@@ -855,7 +880,13 @@ function RightsPanel({
             <span className="text-ink-muted">{isOwner ? "Included" : "—"}</span>
           </li>
           <li className="flex min-h-12 items-center justify-between gap-3">
-            <span className="text-ink">Commercial use</span>
+            <span className="text-ink">
+              Commercial use
+              <span className="block text-xs text-ink-subtle">
+                {commercialUseLabel(rights.commercial_use)}
+                {rights.commercial_channels.length ? ` · ${channelLabels(rights.commercial_channels).join(", ")}` : ""}
+              </span>
+            </span>
             {rights.licenses.some((l) => l.license_type === "commercial" && l.status === "active") ? (
               <span className="text-ink-muted">
                 Licensed ({rights.licenses.filter((l) => l.license_type === "commercial" && l.status === "active").length})
@@ -974,6 +1005,18 @@ function RightsPanel({
               <span className="text-sm text-ink">Allow derivative works by others</span>
               <Switch checked={form.derivativesAllowed} onCheckedChange={(v) => setForm({ ...form, derivativesAllowed: v })} label="Allow derivative works" />
             </label>
+            <Field label="Commercial use" htmlFor="commercial-use" hint={COMMERCIAL_USE.find((c) => c.value === form.commercialUse)?.note}>
+              <Select id="commercial-use" value={form.commercialUse} onChange={(e) => setForm({ ...form, commercialUse: e.target.value })}>
+                {COMMERCIAL_USE.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {form.commercialUse !== "not_offered" ? (
+              <ChannelChips label="Channels you're open to (optional)" value={form.commercialChannels} onChange={(commercialChannels) => setForm({ ...form, commercialChannels })} />
+            ) : null}
             {error ? (
               <p role="alert" className="text-sm text-danger">
                 {error}
@@ -1017,6 +1060,40 @@ function RightsPanel({
         ) : null}
       </section>
 
+      {isOwner ? (
+        <details className="group rounded-2xl border border-border-soft bg-surface px-5 py-1 lg:col-span-full">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            Before licensing commercially
+            <ChevronRight className="size-4 text-ink-subtle transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
+          </summary>
+          <ul className="divide-y divide-border-soft pb-2" aria-label="Commercial readiness">
+            {commercialReadiness({
+              ownershipKind: rights.ownership_kind,
+              owners: rights.rights_owners.map((o) => ({ name: o.owner_name, sharePercent: Number(o.share_percent) })),
+              copyrightHolder: rights.copyright_holder,
+              commercialUse: rights.commercial_use,
+              commercialChannels: rights.commercial_channels,
+              contributors: contributors.length,
+              outsideMaterials,
+              derivedFrom: provenance.derivedFrom?.title ?? null,
+              licenses: rights.licenses,
+            }).map((item) => (
+              <li key={item.key} className="flex gap-2.5 py-2">
+                {item.state === "recorded" ? <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-hidden />}
+                <span className="min-w-0 text-sm">
+                  <span className="text-ink">
+                    <span className="sr-only">{item.state === "recorded" ? "Recorded: " : "Worth checking: "}</span>
+                    {item.label}
+                  </span>
+                  <span className="block text-[13px] text-ink-muted">{item.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="pb-3 text-xs text-ink-subtle">{READINESS_NOTE}</p>
+        </details>
+      ) : null}
+
       <section className="rounded-2xl border border-border-soft bg-surface p-5">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-ink">Licenses</h2>
@@ -1035,6 +1112,7 @@ function RightsPanel({
                   <span className="block text-xs text-ink-subtle">
                     {l.licensee_name || "Any licensee"} · {l.territory}
                     {l.exclusive ? " · Exclusive" : ""}
+                    {l.usage_channels?.length ? ` · ${channelLabels(l.usage_channels).join(", ")}` : ""}
                     {l.ends_on ? ` · until ${l.ends_on}` : ""}
                   </span>
                 </span>
@@ -1119,7 +1197,7 @@ function RightsPanel({
           <p className="mt-3 text-sm text-ink-muted">Nothing recorded here yet.</p>
         )}
       </section>
-      {isOwner ? <OwnerLicenseRequests requests={licenseRequests} /> : title ? <RequesterLicensing artifactId={artifactId} title={title} requests={licenseRequests} /> : null}
+      {isOwner ? <OwnerLicenseRequests requests={licenseRequests} /> : title ? <RequesterLicensing artifactId={artifactId} title={title} requests={licenseRequests} stance={stance} /> : null}
       {isOwner && licenseOpen ? <CreateLicenseDialog open onOpenChange={setLicenseOpen} artifactId={artifactId} /> : null}
     </div>
   );

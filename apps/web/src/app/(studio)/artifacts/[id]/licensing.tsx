@@ -1,6 +1,6 @@
 "use client";
-import { describeTerms, isConsequential, LICENSE_MODES, LICENSE_USES, licenseTermsSchema, type LicenseTerms } from "@wonder/creator-studio/licensing";
-import { Badge, Button, Dialog, DialogContent, Field, Input, Switch, Textarea, cn } from "@wonder/ui";
+import { channelLabels, describeTerms, isConsequential, LICENSE_MODES, LICENSE_USES, licenseTermsSchema, USAGE_CHANNELS, type LicenseTerms } from "@wonder/creator-studio/licensing";
+import { Badge, Button, Dialog, DialogContent, Field, Input, Switch, Textarea, chipBase, cn } from "@wonder/ui";
 import { ArrowLeft, Scale } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -35,7 +35,33 @@ const DEFAULT_TERMS: LicenseTerms = {
   feeAmount: null,
   feeCurrency: null,
   editionSize: null,
+  usageChannels: [],
 };
+
+/** Channel toggles (P1-17): compact chips in one scrolling row. */
+export function ChannelChips({ value, onChange, label }: { value: readonly string[]; onChange: (v: LicenseTerms["usageChannels"]) => void; label: string }) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-sm font-medium text-ink">{label}</legend>
+      <div className="-mx-1 flex flex-wrap gap-1.5 px-1">
+        {USAGE_CHANNELS.map((c) => {
+          const on = value.includes(c.value);
+          return (
+            <button
+              key={c.value}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange((on ? value.filter((v) => v !== c.value) : [...value, c.value]) as LicenseTerms["usageChannels"])}
+              className={cn(chipBase, on ? "bg-navy text-white" : "bg-surface-muted text-ink-muted hover:text-ink")}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
 
 const STEPS = ["Use", "What's allowed", "Where & when", "Review"] as const;
 
@@ -60,7 +86,9 @@ function TermsSteps({
   canContinue = true,
   review,
   children,
+  commercialOffered = true,
 }: {
+  commercialOffered?: boolean;
   initial?: LicenseTerms;
   before?: React.ReactNode;
   canContinue?: boolean;
@@ -90,7 +118,7 @@ function TermsSteps({
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-ink">Permitted use</legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {LICENSE_USES.map((u) => (
+              {LICENSE_USES.filter((u) => commercialOffered || u.value !== "commercial").map((u) => (
                 <button key={u.value} type="button" aria-pressed={t.licenseType === u.value} onClick={() => set({ licenseType: u.value })} className={cn("min-h-14 rounded-2xl border px-3 py-2 text-left text-sm", t.licenseType === u.value ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink")}>
                   <span className="block font-medium">{u.label}</span>
                   <span className="block text-xs text-ink-subtle">{u.note}</span>
@@ -138,6 +166,9 @@ function TermsSteps({
           <Field label="Territory" htmlFor="terr" className="sm:col-span-2">
             <Input id="terr" value={t.territory} onChange={(e) => set({ territory: e.target.value })} maxLength={120} />
           </Field>
+          <div className="sm:col-span-2">
+            <ChannelChips label="Channels (optional)" value={t.usageChannels} onChange={(usageChannels) => set({ usageChannels })} />
+          </div>
           <Field label="Starts (optional)" htmlFor="starts">
             <Input id="starts" type="date" value={t.startsOn ?? ""} onChange={(e) => set({ startsOn: e.target.value || null })} />
           </Field>
@@ -261,7 +292,7 @@ export function CreateLicenseDialog({ open, onOpenChange, artifactId }: { open: 
 }
 
 /** Another creator asks for a license: proposed use + terms, reviewed before sending. */
-export function RequestLicenseDialog({ open, onOpenChange, artifactId, title }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string; title: string }) {
+export function RequestLicenseDialog({ open, onOpenChange, artifactId, title, commercialOffered = true }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string; title: string; commercialOffered?: boolean }) {
   const router = useRouter();
   const [use, setUse] = useState("");
   const [busy, setBusy] = useState(false);
@@ -270,6 +301,7 @@ export function RequestLicenseDialog({ open, onOpenChange, artifactId, title }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Request a license" description={`Ask the creator of “${title}” for permission. They'll approve, decline or suggest different terms.`}>
         <TermsSteps
+          commercialOffered={commercialOffered}
           canContinue={use.trim().length > 0}
           before={
             <Field label="How would you like to use it?" htmlFor="proposed-use">
@@ -465,7 +497,7 @@ function CounterDialog({ request, onOpenChange }: { request: LicenseRequestView;
 }
 
 /** Requester: ask for a license, and follow your requests (accept a counter, withdraw). */
-export function RequesterLicensing({ artifactId, title, requests }: { artifactId: string; title: string; requests: LicenseRequestView[] }) {
+export function RequesterLicensing({ artifactId, title, requests, stance }: { artifactId: string; title: string; requests: LicenseRequestView[]; stance?: { commercialUse: string; commercialChannels: string[] } | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -529,12 +561,21 @@ export function RequesterLicensing({ artifactId, title, requests }: { artifactId
       ) : (
         <p className="mt-2 text-sm text-ink-muted">Want to use this Creation? Ask its creator for a license — they decide the terms.</p>
       )}
+      {stance ? (
+        <p className="mt-2 text-[13px] text-ink-subtle">
+          {stance.commercialUse === "not_offered"
+            ? "The creator doesn't offer commercial use of this Creation."
+            : stance.commercialUse === "open"
+              ? `Open to commercial licensing${stance.commercialChannels.length ? ` · ${channelLabels(stance.commercialChannels).join(", ")}` : ""}.`
+              : "Commercial use: on request."}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="mt-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
-      {open ? <RequestLicenseDialog open onOpenChange={setOpen} artifactId={artifactId} title={title} /> : null}
+      {open ? <RequestLicenseDialog open onOpenChange={setOpen} artifactId={artifactId} title={title} commercialOffered={stance?.commercialUse !== "not_offered"} /> : null}
     </section>
   );
 }

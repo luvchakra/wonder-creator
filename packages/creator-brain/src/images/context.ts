@@ -15,6 +15,10 @@ export interface ImageGenerationContext {
   materials?: Array<{ id: string; type: string; title?: string | null; summary?: string | null; updatedAt?: string | null; hasReference?: boolean }>;
   creativeIntent?: { mood?: string[]; themes?: string[]; style?: string[]; medium?: string | null };
   currentPage?: string;
+  /** Carousel Composer: each slide's words, in order — one image per slide, matched to its words. */
+  slides?: string[];
+  /** Carousel Composer: the chosen visual treatment for the whole set. */
+  visualStyle?: string;
 }
 
 export interface ContextHashInput {
@@ -48,6 +52,9 @@ export function contextHash(input: ContextHashInput): string {
     creationVersion: c.creation?.version ?? null,
     materials: material,
     intent: c.creativeIntent ?? null,
+    // Present only for Carousel Composer sets (undefined keys don't change other hashes).
+    slides: c.slides,
+    visualStyle: c.visualStyle,
     aspectRatio: input.aspectRatio,
     qualityIntent: input.qualityIntent,
     count: input.count,
@@ -67,6 +74,21 @@ export interface ImageDirection {
   label: string;
   guidance: string;
   rationale: string;
+  /** Carousel Composer: the words this image illustrates. */
+  slideText?: string;
+}
+
+const STYLE_GUIDANCE: Record<string, string> = {
+  auto: "a treatment that suits the words, consistent across the whole set",
+  editorial: "considered editorial photography, composed frames, generous negative space",
+  atmospheric: "atmospheric and cinematic, motivated light, mood first",
+  minimal: "minimal and calm, simple shapes, restrained palette, lots of negative space",
+};
+
+/** One direction per slide for a Carousel set: the same visual treatment, each image drawn from its own words. */
+export function slideDirections(c: ImageGenerationContext, extra?: string): ImageDirection[] {
+  const style = STYLE_GUIDANCE[c.visualStyle ?? "auto"] ?? STYLE_GUIDANCE.auto!;
+  return (c.slides ?? []).map((t, i) => ({ label: `Slide ${i + 1}`, guidance: `${style}${extra ? `; ${extra}` : ""}`, rationale: "", slideText: t }));
 }
 
 const POOLS: Record<string, ImageDirection[]> = {
@@ -102,6 +124,7 @@ const POOLS: Record<string, ImageDirection[]> = {
 
 /** Meaningfully different directions for this context (§10) — chosen from what the work is, not one fixed set. */
 export function directionsFor(c: ImageGenerationContext, count: number): ImageDirection[] {
+  if (c.slides?.length) return slideDirections(c).slice(0, count);
   const type = (c.creation?.type ?? "").toLowerCase();
   const kinds = new Set((c.materials ?? []).map((m) => m.type));
   const themes = [...(c.creativeIntent?.themes ?? []), ...(c.creativeIntent?.mood ?? [])].join(" ").toLowerCase();
@@ -143,6 +166,11 @@ export function buildImagePrompt(c: ImageGenerationContext, purpose: ImagePurpos
   if (intent?.mood?.length) lines.push(`- Mood: ${intent.mood.slice(0, 5).join(", ")}.`);
   if (intent?.themes?.length) lines.push(`- Themes: ${intent.themes.slice(0, 5).join(", ")}.`);
   if (intent?.style?.length) lines.push(`- Style: ${intent.style.slice(0, 5).join(", ")}.`);
+  if (direction.slideText?.trim()) {
+    lines.push("- This image belongs to one slide of a sequence. Depict the moment, feeling or image in this slide's words (never write the words):");
+    lines.push(fenceUntrusted("slide words", direction.slideText.trim(), 600));
+    lines.push("- Keep one consistent visual language across all slides of the sequence.");
+  }
   lines.push("", `ImageDirection: ${direction.guidance}.`, "Avoid embedded text.", `Aspect ratio: ${aspectRatio}.`);
   return lines.join("\n");
 }

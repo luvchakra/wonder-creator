@@ -7,6 +7,8 @@
     ".": "./src/index.ts",
     "./types": "./src/artifact-types.ts",
     "./licensing": "./src/licensing.ts",
-    "./exports": "./src/exports.ts"
+    "./exports": "./src/exports.ts",
+    "./commercial": "./src/commercial.ts",
+    "./carousel": "./src/carousel.ts"
   }
 }

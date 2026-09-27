@@ -68,6 +68,37 @@ Wonder Creator generates images from **creative context**, not generic prompt-bo
 
 * Contract: `docs/image-generation.md`. Implementation: `packages/creator-brain/src/images/` (router, context, hash, service), `apps/web/src/lib/images.ts` (derivatives), `/api/v1/image-generations`.
 
+## Carousel Composer UI (owner's standing instruction)
+
+The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.
+
+* Before initial generation, always allow the creator to choose the initial number of images/slides. Use compact options such as 3/4/5/6 + optional Custom; default 5 unless product context specifies otherwise.
+* Every initially generated slide receives a suggested source-text chunk by default. The creator must not manually add text to every image from scratch.
+* Slide text remains real selectable/editable text. Do not flatten the only copy of text into image pixels.
+* Each slide is an editable composition: image + source text chunk + display text + optional image-overlay text + overlay style/position + slide order.
+* After initial generation, provide `Generate one more` to create exactly one additional slide/image at a time without regenerating the rest of the Carousel.
+* `Generate one more` and `Show more styles` are different actions: one adds a slide; the other explores alternative visual treatments.
+* Each individual slide supports `Regenerate this image` with an optional natural-language instruction. Regeneration affects only that slide and preserves the rest of the Carousel.
+* Do not destructively replace the existing image immediately after regeneration. Prefer old/new variation selection (`Use new` / `Keep current`).
+* Provide an `Arrange`/`Reorder slides` mode using compact draggable thumbnail/text rows. Reordering must not trigger regeneration.
+* Tapping a slide opens a focused full-screen Slide Editor. Advanced editing does not live permanently on the Overview.
+* In Slide Editor, support placing text on image, dragging the overlay, resizing it, changing position, alignment, style, colour, shadow/background treatment, and editing/replacing the underlying text chunk.
+* Separate text Read/Selection mode from overlay Drag/Edit mode so mobile gestures do not conflict.
+* Support full-screen image viewing/editing and compact image crop/zoom/focal controls.
+* Overview screen: one prominent `Continue Creating` action; maximum two visible secondary actions (normally `Generate one more` and `Arrange`). Everything else is contextual.
+* Do not show permanent button walls such as Continue + Transform + Share + Context + Download + More above the Carousel.
+* Move Transform/Share/Context/Download/Rights/Versions/People and other less-frequent actions into the contextual Palette, `Details`, More, or slide overflow.
+* Replace persistent About/Materials/Versions/Rights/People tab rows on the working Carousel screen with a compact `Details ›` entry.
+* Use one high-emphasis action at a time. Normal mobile screens have max 1 primary + 2 secondary high-level actions.
+* Keep buttons visually compact while preserving >=44×44 CSS px hit targets.
+* Use minimal transitions: simple sheets/page transitions and 120–160ms content crossfades. No staggered card entrances, bounce, or elaborate AI-loading choreography.
+* Generation state uses compact skeletons/status only; no assistant chat, fake progress or full-screen AI animation.
+* All routine text/layout/order edits autosave. Do not require a Save button for every composition change.
+* Preserve source text, source Creation/version, Material lineage, generation ID, image asset, overlay configuration and order for every slide.
+* Ensure all slide edit and reorder operations are accessible without precision drag gestures alone.
+
+* Contract: `docs/ui-redesign/carousel-composer.md`.
+
 ## Interaction minimalism (owner's standing instruction)
 
 Wonder Creator must minimize UI transitions and visible controls. The detailed contract is `docs/ui-redesign/interaction-minimalism.md`.
