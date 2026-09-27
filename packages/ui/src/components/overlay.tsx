@@ -31,7 +31,7 @@ export function DialogContent({ title, description, children, className, wide }:
             <X className="size-5" aria-hidden />
           </D.Close>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">{children}</div>
       </D.Content>
     </D.Portal>
   );
