@@ -13,3 +13,4 @@ export { artifactBrief, systemPrompt, TASKS } from "./prompts";
 export * from "./material-understanding";
 export * from "./semantic";
 export * from "./context-line";
+export * from "./images";

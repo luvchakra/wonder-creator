@@ -1,9 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { isDomainError, log } from "@wonder/core";
-import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
+import { indexStaleSubjects, runImageGeneration, selectProvider } from "@wonder/creator-brain";
 import { processIntake } from "@wonder/creator-send";
 import { attemptPublication, duePublications } from "@wonder/creator-studio";
 import { NextResponse, type NextRequest } from "next/server";
+import { imageWorkerDeps } from "@/lib/images";
 import { serviceClient } from "@/lib/supabase/service";
 
 export const maxDuration = 300;
@@ -18,7 +19,7 @@ function authorized(req: NextRequest): boolean {
 /**
  * Durable background worker (Vercel Cron): retries pending intake jobs, cleans up stale Huddle
  * presence (dissolving empty Huddles), backfills search embeddings and sends scheduled publications
- * that are due. Protected by CRON_SECRET.
+ * that are due, and retries image generations. Protected by CRON_SECRET.
  */
 async function run(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
@@ -42,6 +43,9 @@ async function run(req: NextRequest) {
         // Worker context has no creator session: pipeline writes use the service client scoped by
         // job.creator_id, and no creator-profile context is ever assembled here.
         await processIntake({ db: service, service, creatorId: job.creator_id, provider: selectProvider() }, job.subject_id);
+      }
+      if (job.kind === "image.generate" && job.subject_id) {
+        await runImageGeneration(imageWorkerDeps(), job.subject_id);
       }
       await service.from("jobs").update({ status: "succeeded", last_error: null }).eq("id", job.id);
       results.push({ id: job.id, ok: true });

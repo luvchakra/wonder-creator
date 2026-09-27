@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { VisualDirections } from "@/components/visual-directions";
 
 const ORIGIN: Record<string, string> = {
   upload: "Uploaded",
@@ -52,7 +53,10 @@ export function MaterialDetail({
   collections,
   inCollections,
   similar,
+  canGenerate = false,
 }: {
+  /** The creator's own Material: offer visual directions made from it. */
+  canGenerate?: boolean;
   m: {
     id: string;
     type: string;
@@ -279,6 +283,8 @@ export function MaterialDetail({
               </p>
             ) : null}
             {error ? <ErrorState title="That didn't work" body={error} /> : null}
+            {/* Secondary to the Material itself: below its details, generated only when asked (image-generation §30). */}
+            {canGenerate ? <VisualDirections materialIds={[m.id]} purpose="explore" title="Ways this could look" className="border-t border-border-soft pt-3" /> : null}
           </div>
         </div>
       </section>

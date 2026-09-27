@@ -1487,6 +1487,74 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"image_generation_assets": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"rationale": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"rationale"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "image_generation_assets_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_generation_id_fkey"
+      columns: ["generation_id"]
+isOneToOne: false
+      referencedRelation: "image_generations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_storage_object_id_fkey"
+      columns: ["storage_object_id"]
+isOneToOne: false
+      referencedRelation: "storage_objects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generation_assets_thumbnail_object_id_fkey"
+      columns: ["thumbnail_object_id"]
+isOneToOne: false
+      referencedRelation: "storage_objects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"image_generations": {
+                  Row: {
+                    "artifact_id": string | null,"aspect_ratio": string,"completed_at": string | null,"context": NonNullable<Json>,"context_hash": string,"created_at": string,"creator_id": string,"error_code": string | null,"id": string,"idempotency_key": string | null,"latency_ms": number | null,"material_id": string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids": (string)[],"source_version": number | null,"status": string,"variation": number
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"aspect_ratio": string,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash": string,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"aspect_ratio"?: string,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash"?: string,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model"?: string,"prompt_version"?: string,"provider"?: string,"purpose"?: string,"quality_intent"?: string,"requested_count"?: number,"routing_version"?: string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "image_generations_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generations_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "image_generations_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"intake_items": {
                   Row: {
                     "attempts": number,"batch_id": string,"created_at": string,"creator_id": string,"error_code": string | null,"error_message": string | null,"id": string,"input_kind": string,"instruction": string | null,"material_id": string | null,"source_url": string | null,"state": Database["public"]['Enums']["intake_state"],"storage_object_id": string | null,"updated_at": string
