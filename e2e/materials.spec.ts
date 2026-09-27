@@ -23,8 +23,8 @@ test.describe("CreatorSend & material", () => {
     const card = page.getByRole("link").filter({ hasText: name });
     await expect(card).toBeVisible();
     await expect(card).toContainText("Image");
-    await page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Images/ }).click();
-    await expect(page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Images/ })).toContainText("1");
+    await page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Photos/ }).click();
+    await expect(page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Photos/ })).toContainText("1");
     await card.click();
 
     // Material page: the image, status & provenance.

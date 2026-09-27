@@ -106,6 +106,45 @@ export function MaterialCard({ m, href }: { m: MaterialCardData; href?: string }
   );
 }
 
+/**
+ * A Materials-wall card (UI redesign §9): photos keep their own shape, notes read like paper, sound and links stay
+ * compact. Lazy-loaded; no counts or social signals.
+ */
+export function MaterialWallCard({ m }: { m: MaterialCardData }) {
+  const Icon = m.type === "idea" ? Lightbulb : m.type === "voice" ? Mic : m.type === "audio" ? AudioLines : null;
+  const processing = m.processing_state && !["ready", "understood", "failed", "quarantined"].includes(m.processing_state);
+  const isPhoto = (m.type === "image" || m.type === "sketch") && m.previewUrl;
+  const isPaper = ["idea", "note", "text"].includes(m.type);
+  return (
+    <Link href={`/space/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
+      <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
+        {isPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={m.previewUrl!} alt="" loading="lazy" decoding="async" className="block h-auto min-h-24 w-full object-cover" />
+        ) : isPaper ? (
+          <div className="bg-[#f8f1e7] p-4">
+            <p className="line-clamp-[9] whitespace-pre-line font-display text-[15px] italic leading-snug text-ink-muted">{m.text_content || m.title || "A thought"}</p>
+          </div>
+        ) : (
+          <div className={m.type === "voice" || m.type === "audio" ? "aspect-[3/2]" : "aspect-[4/3]"}>
+            <MaterialVisual m={m} />
+          </div>
+        )}
+      </div>
+      <div className="mt-1.5 px-0.5">
+        {/* A note's words are its card; repeating them as a caption adds nothing. */}
+        {isPaper && m.text_content ? <span className="sr-only">{m.title || "Note"}</span> : <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{m.title || TYPE_LABEL[m.type] || "Untitled"}</p>}
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-subtle">
+          {Icon ? <Icon className="size-3.5" aria-hidden /> : null}
+          {TYPE_LABEL[m.type] ?? m.type} · {relativeTime(m.created_at)}
+          {processing ? <Badge tone="accent">Processing</Badge> : null}
+          {m.processing_state === "failed" ? <Badge tone="warning">Needs attention</Badge> : null}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 export interface ArtifactCardData {
   id: string;
   title: string;
