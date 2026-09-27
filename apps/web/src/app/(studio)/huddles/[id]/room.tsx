@@ -392,9 +392,9 @@ export function HuddleRoom({
         <div className={cn("grid gap-0 lg:grid-cols-[1fr_320px]", !chatOpen && "lg:grid-cols-1")}>
           <section aria-label="Participants" className="p-3 sm:p-4">
             {!state.media.configured ? (
-              <p className="mb-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/85">Voice and video aren&apos;t connected in this environment yet. Text chat is live.</p>
+              <p className="mb-2 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] text-white/85">Voice and video aren&apos;t connected in this environment yet. Text chat is live.</p>
             ) : mediaNote ? (
-              <p className="mb-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/85" role="status">
+              <p className="mb-2 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] text-white/85" role="status">
                 {mediaNote}
               </p>
             ) : null}
@@ -403,8 +403,8 @@ export function HuddleRoom({
                 const name = p.creators?.display_name ?? "Creator";
                 const track = remoteTracks[p.creator_id];
                 return (
-                  <li key={p.creator_id} className="relative aspect-video overflow-hidden rounded-2xl bg-white/5">
-                    {track ? <VideoTile track={track} /> : <div className="flex size-full items-center justify-center"><Avatar name={name} src={avatars[p.creator_id]} size={72} /></div>}
+                  <li key={p.creator_id} className={cn("relative overflow-hidden rounded-2xl bg-white/5", joined.length <= 1 && !track ? "aspect-[2/1] sm:aspect-video" : "aspect-video")}>
+                    {track ? <VideoTile track={track} /> : <div className={cn("flex size-full items-center justify-center", joined.length <= 1 && "pb-9 sm:pb-0")}><Avatar name={name} src={avatars[p.creator_id]} size={joined.length <= 1 ? 56 : 72} /></div>}
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6">
                       <span>
                         <span className="block text-sm font-medium">
@@ -525,7 +525,7 @@ export function HuddleRoom({
           {error}
         </p>
       ) : null}
-      <p className="mt-3 px-4 text-sm text-ink-muted sm:px-0">
+      <p className="mt-2 px-4 text-[13px] text-ink-muted sm:px-0">
         This Huddle is temporary. When the last person leaves, the chat disappears. Save anything worth keeping — it becomes your Creative Material.
       </p>
 

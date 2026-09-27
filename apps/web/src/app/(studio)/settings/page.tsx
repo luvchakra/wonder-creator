@@ -27,7 +27,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <>
       <PaletteScope context={{ page: "settings" }} />
       <div>
-        <PageTitle title="Settings" subtitle="Your platform, your control." />
+        <PageTitle title="Settings" />
         <SettingsView
           section={sp.section ?? "profile"}
           email={user.user?.email ?? ""}
