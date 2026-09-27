@@ -31,11 +31,7 @@ export const assertionSchema = z
   .object({
     artifactId: z.string().uuid(),
     claim: z.enum(OWNERSHIP_CLAIMS),
-    statement: z
-      .string()
-      .trim()
-      .min(1, "Say what your claim is based on.")
-      .max(2000),
+    statement: z.string().trim().min(1, "Say what your claim is based on.").max(2000),
     sharePercent: z.number().gt(0).max(100).nullish(),
   })
   .refine((a) => a.sharePercent == null || a.claim === "co_owner", {
@@ -54,42 +50,15 @@ export const signoffSchema = z.object({
 
 function rightsError(e: { code?: string; message?: string }) {
   const msg = e.message ?? "";
-  if (msg.includes("not in project"))
-    return new DomainError(
-      "forbidden",
-      "Only people in the project can do that.",
-    );
-  if (msg.includes("piece not in project"))
-    return new DomainError(
-      "validation",
-      "That piece isn't part of this project.",
-    );
-  if (msg.includes("not involved"))
-    return new DomainError(
-      "forbidden",
-      "Only people who worked on a piece can make a claim about it.",
-    );
-  if (msg.includes("share only"))
-    return new DomainError(
-      "validation",
-      "A share only applies to a co-ownership claim.",
-    );
-  if (msg.includes("already asserted"))
-    return new DomainError(
-      "conflict",
-      "You already have an open claim on this piece. Withdraw it to make a new one.",
-    );
-  if (msg.includes("assertion withdrawn"))
-    return new DomainError("conflict", "That claim was withdrawn.");
-  if (msg.includes("assertion not found"))
-    return new DomainError("not_found", "We couldn't find that claim.");
-  if (msg.includes("no sign-off needed"))
-    return new DomainError(
-      "forbidden",
-      "Your sign-off isn't needed for this piece.",
-    );
-  if (msg.includes("not allowed") || e.code === "42501")
-    return new DomainError("forbidden", "You can't do that.");
+  if (msg.includes("not in project")) return new DomainError("forbidden", "Only people in the project can do that.");
+  if (msg.includes("piece not in project")) return new DomainError("validation", "That piece isn't part of this project.");
+  if (msg.includes("not involved")) return new DomainError("forbidden", "Only people who worked on a piece can make a claim about it.");
+  if (msg.includes("share only")) return new DomainError("validation", "A share only applies to a co-ownership claim.");
+  if (msg.includes("already asserted")) return new DomainError("conflict", "You already have an open claim on this piece. Withdraw it to make a new one.");
+  if (msg.includes("assertion withdrawn")) return new DomainError("conflict", "That claim was withdrawn.");
+  if (msg.includes("assertion not found")) return new DomainError("not_found", "We couldn't find that claim.");
+  if (msg.includes("no sign-off needed")) return new DomainError("forbidden", "Your sign-off isn't needed for this piece.");
+  if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "You can't do that.");
   return fromDbError(e);
 }
 
@@ -111,15 +80,8 @@ const DEFAULT_POLICY: RightsPolicy = {
   updatedBy: null,
 };
 
-export async function getRightsPolicy(
-  db: Db,
-  projectId: string,
-): Promise<RightsPolicy> {
-  const { data, error } = await db
-    .from("project_rights_policies")
-    .select("*, creators(display_name)")
-    .eq("project_id", projectId)
-    .maybeSingle();
+export async function getRightsPolicy(db: Db, projectId: string): Promise<RightsPolicy> {
+  const { data, error } = await db.from("project_rights_policies").select("*, creators(display_name)").eq("project_id", projectId).maybeSingle();
   if (error) throw fromDbError(error);
   if (!data) return DEFAULT_POLICY;
   return {
@@ -128,37 +90,25 @@ export async function getRightsPolicy(
     attribution: data.attribution as AttributionPolicy,
     agreement: data.agreement,
     updatedAt: data.updated_at,
-    updatedBy:
-      (data.creators as { display_name: string } | null)?.display_name ?? null,
+    updatedBy: (data.creators as { display_name: string } | null)?.display_name ?? null,
   };
 }
 
-export async function saveRightsPolicy(
-  db: Db,
-  creatorId: string,
-  projectId: string,
-  raw: unknown,
-) {
+export async function saveRightsPolicy(db: Db, creatorId: string, projectId: string, raw: unknown) {
   const p = rightsPolicySchema.parse(raw);
-  const { error } = await db
-    .from("project_rights_policies")
-    .upsert(
-      {
-        project_id: projectId,
-        derivatives: p.derivatives,
-        publication_signoff: p.publicationSignoff,
-        attribution: p.attribution,
-        agreement: p.agreement || null,
-        updated_by: creatorId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "project_id" },
-    );
-  if (error?.code === "42501")
-    throw new DomainError(
-      "forbidden",
-      "Only the project's owner can set its rights policy.",
-    );
+  const { error } = await db.from("project_rights_policies").upsert(
+    {
+      project_id: projectId,
+      derivatives: p.derivatives,
+      publication_signoff: p.publicationSignoff,
+      attribution: p.attribution,
+      agreement: p.agreement || null,
+      updated_by: creatorId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "project_id" },
+  );
+  if (error?.code === "42501") throw new DomainError("forbidden", "Only the project's owner can set its rights policy.");
   if (error) throw rightsError(error);
 }
 
@@ -189,10 +139,7 @@ export interface PieceRights {
   exclusiveLicenses: number;
 }
 
-export async function projectRightsSummary(
-  db: Db,
-  projectId: string,
-): Promise<PieceRights[]> {
+export async function projectRightsSummary(db: Db, projectId: string): Promise<PieceRights[]> {
   const { data, error } = await db.rpc("project_rights_summary", {
     p_project: projectId,
   });
@@ -235,16 +182,10 @@ export interface AssertionView {
   mine: boolean;
 }
 
-export async function listAssertions(
-  db: Db,
-  viewerId: string,
-  projectId: string,
-): Promise<AssertionView[]> {
+export async function listAssertions(db: Db, viewerId: string, projectId: string): Promise<AssertionView[]> {
   const { data, error } = await db
     .from("ownership_assertions")
-    .select(
-      "*, artifacts(id, title), creator:creators!ownership_assertions_creator_id_fkey(display_name), responder:creators!ownership_assertions_responded_by_fkey(display_name)",
-    )
+    .select("*, artifacts(id, title), creator:creators!ownership_assertions_creator_id_fkey(display_name), responder:creators!ownership_assertions_responded_by_fkey(display_name)")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(500);
@@ -257,9 +198,7 @@ export async function listAssertions(
     },
     creator: {
       id: a.creator_id,
-      name:
-        (a.creator as { display_name: string } | null)?.display_name ??
-        "Someone",
+      name: (a.creator as { display_name: string } | null)?.display_name ?? "Someone",
     },
     claim: a.claim as OwnershipClaim,
     claimLabel: OWNERSHIP_CLAIM_LABEL[a.claim as OwnershipClaim],
@@ -269,9 +208,7 @@ export async function listAssertions(
     statusLabel: ASSERTION_STATUS_LABEL[a.status as AssertionStatus],
     response: a.responded_at
       ? {
-          by:
-            (a.responder as { display_name: string } | null)?.display_name ??
-            null,
+          by: (a.responder as { display_name: string } | null)?.display_name ?? null,
           note: a.response_note,
           at: a.responded_at,
         }
@@ -281,11 +218,7 @@ export async function listAssertions(
   }));
 }
 
-export async function assertOwnership(
-  db: Db,
-  projectId: string,
-  raw: unknown,
-): Promise<string> {
+export async function assertOwnership(db: Db, projectId: string, raw: unknown): Promise<string> {
   const a = assertionSchema.parse(raw);
   const { data, error } = await db.rpc("assert_ownership", {
     p_project: projectId,
@@ -298,11 +231,7 @@ export async function assertOwnership(
   return data as string;
 }
 
-export async function respondToAssertion(
-  db: Db,
-  assertionId: string,
-  raw: unknown,
-) {
+export async function respondToAssertion(db: Db, assertionId: string, raw: unknown) {
   const r = assertionResponseSchema.parse(raw);
   const { error } = await db.rpc("respond_ownership_assertion", {
     p_assertion: assertionId,
@@ -321,10 +250,7 @@ export type SignoffStatus = Array<{
 }>;
 
 /** Who must sign off on the piece's current version before it can be published (empty when no project requires it). */
-export async function publicationSignoffs(
-  db: Db,
-  artifactId: string,
-): Promise<SignoffStatus> {
+export async function publicationSignoffs(db: Db, artifactId: string): Promise<SignoffStatus> {
   const { data, error } = await db.rpc("publication_signoff_status", {
     p_artifact: artifactId,
   });
@@ -338,11 +264,7 @@ export async function publicationSignoffs(
   }));
 }
 
-export async function signOffPublication(
-  db: Db,
-  artifactId: string,
-  raw: unknown,
-) {
+export async function signOffPublication(db: Db, artifactId: string, raw: unknown) {
   const s = signoffSchema.parse(raw);
   const { error } = await db.rpc("sign_off_publication", {
     p_artifact: artifactId,
@@ -359,22 +281,13 @@ export interface RightsEventView {
   at: string;
 }
 
-function describe(
-  event: string,
-  d: Record<string, unknown>,
-  titles: Map<string, string>,
-): string {
-  const piece =
-    typeof d.artifact === "string"
-      ? `“${titles.get(d.artifact) ?? "a piece"}”`
-      : "a piece";
+function describe(event: string, d: Record<string, unknown>, titles: Map<string, string>): string {
+  const piece = typeof d.artifact === "string" ? `“${titles.get(d.artifact) ?? "a piece"}”` : "a piece";
   switch (event) {
     case "policy_updated": {
       const parts = [
         `derivatives: ${DERIVATIVE_POLICY_LABEL[d.derivatives as DerivativePolicy]?.label ?? d.derivatives}`,
-        d.publication_signoff
-          ? "sign-off required to publish"
-          : "no sign-off required",
+        d.publication_signoff ? "sign-off required to publish" : "no sign-off required",
       ];
       if (d.agreement_changed) parts.push("agreement updated");
       return `Rights policy set (${parts.join("; ")})`;
@@ -396,11 +309,7 @@ function describe(
   }
 }
 
-export async function listRightsEvents(
-  db: Db,
-  projectId: string,
-  titles: Map<string, string>,
-): Promise<RightsEventView[]> {
+export async function listRightsEvents(db: Db, projectId: string, titles: Map<string, string>): Promise<RightsEventView[]> {
   const { data, error } = await db
     .from("project_rights_events")
     .select("id, event, details, created_at, creators(display_name)")
@@ -410,28 +319,15 @@ export async function listRightsEvents(
   if (error) throw fromDbError(error);
   return (data ?? []).map((e) => ({
     id: e.id,
-    title: describe(
-      e.event,
-      (e.details ?? {}) as Record<string, unknown>,
-      titles,
-    ),
-    actor:
-      (e.creators as { display_name: string } | null)?.display_name ?? null,
+    title: describe(e.event, (e.details ?? {}) as Record<string, unknown>, titles),
+    actor: (e.creators as { display_name: string } | null)?.display_name ?? null,
     at: e.created_at,
   }));
 }
 
 /** Everything the project's Rights tab shows. */
-export async function getProjectRights(
-  db: Db,
-  viewerId: string,
-  projectId: string,
-) {
-  const [policy, pieces, assertions] = await Promise.all([
-    getRightsPolicy(db, projectId),
-    projectRightsSummary(db, projectId),
-    listAssertions(db, viewerId, projectId),
-  ]);
+export async function getProjectRights(db: Db, viewerId: string, projectId: string) {
+  const [policy, pieces, assertions] = await Promise.all([getRightsPolicy(db, projectId), projectRightsSummary(db, projectId), listAssertions(db, viewerId, projectId)]);
   const titles = new Map(pieces.map((p) => [p.artifactId, p.title]));
   const history = await listRightsEvents(db, projectId, titles);
   return { policy, pieces, assertions, history };

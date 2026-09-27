@@ -12,18 +12,7 @@ import {
   type DerivativePolicy,
   type OwnershipClaim,
 } from "@wonder/creator-projects/options";
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogContent,
-  Field,
-  Input,
-  SectionHeader,
-  Select,
-  Textarea,
-  cn,
-} from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, SectionHeader, Select, Textarea, cn } from "@wonder/ui";
 import { Scale } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,10 +32,7 @@ const OWNERSHIP_LABEL = {
   joint: "Joint ownership",
   transferred: "Transferred",
 } as const;
-const STATUS_TONE: Record<
-  AssertionStatus,
-  "neutral" | "accent" | "success" | "warning"
-> = {
+const STATUS_TONE: Record<AssertionStatus, "neutral" | "accent" | "success" | "warning"> = {
   asserted: "accent",
   acknowledged: "success",
   disputed: "warning",
@@ -145,15 +131,8 @@ export function RightsPanel({
   } | null>(null);
   const done = (text: string) => (setMsg(text), router.refresh());
   // Claims can be made on pieces the viewer works on (the server checks contributions too).
-  const claimable = pieces.filter(
-    (p) =>
-      p.owner.id !== viewerId &&
-      p.collaborators.some((c) => c.creatorId === viewerId),
-  );
-  const pendingSignoffs = pieces.filter(
-    (p) =>
-      p.signoffs.length && p.signoffs.some((s) => s.decision !== "approve"),
-  );
+  const claimable = pieces.filter((p) => p.owner.id !== viewerId && p.collaborators.some((c) => c.creatorId === viewerId));
+  const pendingSignoffs = pieces.filter((p) => p.signoffs.length && p.signoffs.some((s) => s.decision !== "approve"));
 
   return (
     <div className="space-y-8">
@@ -165,21 +144,14 @@ export function RightsPanel({
       <div aria-live="polite" className="sr-only">
         {msg}
       </div>
-      {msg ? (
-        <p className="rounded-2xl bg-accent-softer px-4 py-3 text-[15px] text-ink">
-          {msg}
-        </p>
-      ) : null}
+      {msg ? <p className="rounded-2xl bg-accent-softer px-4 py-3 text-[15px] text-ink">{msg}</p> : null}
 
       <section aria-label="Project policy">
         <SectionHeader
           title="Project policy"
           action={
             isOwner ? (
-              <Button
-                variant="secondary"
-                onClick={() => setEditingPolicy(true)}
-              >
+              <Button variant="secondary" onClick={() => setEditingPolicy(true)}>
                 Edit policy
               </Button>
             ) : undefined
@@ -188,41 +160,25 @@ export function RightsPanel({
         <dl className="grid gap-3 rounded-2xl border border-border-soft bg-surface px-5 py-4 sm:grid-cols-3">
           <div>
             <dt className="text-sm text-ink-subtle">Derivatives</dt>
-            <dd className="text-[15px] font-medium text-ink">
-              {DERIVATIVE_POLICY_LABEL[policy.derivatives].label}
-            </dd>
-            <dd className="text-sm text-ink-muted">
-              {DERIVATIVE_POLICY_LABEL[policy.derivatives].help}
-            </dd>
+            <dd className="text-[15px] font-medium text-ink">{DERIVATIVE_POLICY_LABEL[policy.derivatives].label}</dd>
+            <dd className="text-sm text-ink-muted">{DERIVATIVE_POLICY_LABEL[policy.derivatives].help}</dd>
           </div>
           <div>
             <dt className="text-sm text-ink-subtle">Publishing</dt>
-            <dd className="text-[15px] font-medium text-ink">
-              {policy.publicationSignoff
-                ? "Collaborators sign off first"
-                : "Owner decides"}
-            </dd>
+            <dd className="text-[15px] font-medium text-ink">{policy.publicationSignoff ? "Collaborators sign off first" : "Owner decides"}</dd>
             <dd className="text-sm text-ink-muted">
-              {policy.publicationSignoff
-                ? "A piece can't be published until its collaborators and co-owners approve the current version."
-                : "Each piece's owner publishes on their own approval."}
+              {policy.publicationSignoff ? "A piece can't be published until its collaborators and co-owners approve the current version." : "Each piece's owner publishes on their own approval."}
             </dd>
           </div>
           <div>
             <dt className="text-sm text-ink-subtle">Attribution</dt>
-            <dd className="text-[15px] font-medium text-ink">
-              {ATTRIBUTION_POLICY_LABEL[policy.attribution].label}
-            </dd>
-            <dd className="text-sm text-ink-muted">
-              {ATTRIBUTION_POLICY_LABEL[policy.attribution].help}
-            </dd>
+            <dd className="text-[15px] font-medium text-ink">{ATTRIBUTION_POLICY_LABEL[policy.attribution].label}</dd>
+            <dd className="text-sm text-ink-muted">{ATTRIBUTION_POLICY_LABEL[policy.attribution].help}</dd>
           </div>
           {policy.agreement ? (
             <div className="sm:col-span-3">
               <dt className="text-sm text-ink-subtle">Agreement</dt>
-              <dd className="whitespace-pre-wrap text-[15px] text-ink">
-                {policy.agreement}
-              </dd>
+              <dd className="whitespace-pre-wrap text-[15px] text-ink">{policy.agreement}</dd>
             </div>
           ) : null}
           <div className="sm:col-span-3">
@@ -230,11 +186,7 @@ export function RightsPanel({
             <dd className="text-sm text-ink-subtle">
               {policy.updatedAt ? (
                 <>
-                  Set by {policy.updatedBy ?? "the owner"} ·{" "}
-                  <LocalTime
-                    iso={policy.updatedAt}
-                    options={{ dateStyle: "medium" }}
-                  />
+                  Set by {policy.updatedBy ?? "the owner"} · <LocalTime iso={policy.updatedAt} options={{ dateStyle: "medium" }} />
                 </>
               ) : (
                 "Default policy — the owner hasn't set one yet."
@@ -249,26 +201,11 @@ export function RightsPanel({
           <SectionHeader title="Waiting for sign-off" />
           <ul className="space-y-2">
             {pendingSignoffs.map((p) => {
-              const missing = p.signoffs.filter(
-                (s) => s.decision !== "approve",
-              );
+              const missing = p.signoffs.filter((s) => s.decision !== "approve");
               return (
-                <li
-                  key={p.artifactId}
-                  className="rounded-2xl border border-border-soft bg-surface px-4 py-3 text-[15px] text-ink"
-                >
+                <li key={p.artifactId} className="rounded-2xl border border-border-soft bg-surface px-4 py-3 text-[15px] text-ink">
                   <span className="font-medium">{p.title}</span>
-                  <span className="text-ink-muted">
-                    {" "}
-                    · waiting on{" "}
-                    {missing
-                      .map(
-                        (s) =>
-                          (s.creatorId === viewerId ? "you" : s.name) +
-                          (s.decision === "object" ? " (objected)" : ""),
-                      )
-                      .join(", ")}
-                  </span>
+                  <span className="text-ink-muted"> · waiting on {missing.map((s) => (s.creatorId === viewerId ? "you" : s.name) + (s.decision === "object" ? " (objected)" : "")).join(", ")}</span>
                 </li>
               );
             })}
@@ -282,63 +219,31 @@ export function RightsPanel({
           <ul className="space-y-2">
             {pieces.map((p) => {
               const ownsPiece = p.owner.id === viewerId;
-              const mySignoff = p.signoffs.find(
-                (s) => s.creatorId === viewerId,
-              );
-              const claims = assertions.filter(
-                (a) =>
-                  a.artifact.id === p.artifactId && a.status !== "withdrawn",
-              );
+              const mySignoff = p.signoffs.find((s) => s.creatorId === viewerId);
+              const claims = assertions.filter((a) => a.artifact.id === p.artifactId && a.status !== "withdrawn");
               return (
-                <li
-                  key={p.artifactId}
-                  className="rounded-2xl border border-border-soft bg-surface"
-                >
+                <li key={p.artifactId} className="rounded-2xl border border-border-soft bg-surface">
                   <details>
                     <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2 px-4 py-3">
                       <span className="font-medium text-ink">{p.title}</span>
-                      <span className="text-sm text-ink-muted">
-                        · {ownsPiece ? "Yours" : p.owner.name}
-                      </span>
-                      {p.recorded && p.ownershipKind ? (
-                        <Badge tone="neutral">
-                          {OWNERSHIP_LABEL[p.ownershipKind]}
-                        </Badge>
-                      ) : (
-                        <Badge tone="warning">No rights record</Badge>
-                      )}
-                      {p.exclusiveLicenses ? (
-                        <Badge tone="warning">Exclusive licence</Badge>
-                      ) : null}
-                      {claims.some((a) => a.status === "disputed") ? (
-                        <Badge tone="warning">Disputed claim</Badge>
-                      ) : null}
+                      <span className="text-sm text-ink-muted">· {ownsPiece ? "Yours" : p.owner.name}</span>
+                      {p.recorded && p.ownershipKind ? <Badge tone="neutral">{OWNERSHIP_LABEL[p.ownershipKind]}</Badge> : <Badge tone="warning">No rights record</Badge>}
+                      {p.exclusiveLicenses ? <Badge tone="warning">Exclusive licence</Badge> : null}
+                      {claims.some((a) => a.status === "disputed") ? <Badge tone="warning">Disputed claim</Badge> : null}
                     </summary>
                     <div className="space-y-4 border-t border-border-soft px-4 py-3">
                       <dl className="grid gap-2 text-sm sm:grid-cols-2">
                         <div>
                           <dt className="text-ink-subtle">Copyright holder</dt>
-                          <dd className="text-ink">
-                            {p.copyrightHolder ?? "Not recorded"}
-                          </dd>
+                          <dd className="text-ink">{p.copyrightHolder ?? "Not recorded"}</dd>
                         </div>
                         <div>
                           <dt className="text-ink-subtle">Owners on record</dt>
-                          <dd className="text-ink">
-                            {p.coOwners.length
-                              ? p.coOwners
-                                  .map((o) => `${o.name} (${o.share}%)`)
-                                  .join(", ")
-                              : "Not recorded"}
-                          </dd>
+                          <dd className="text-ink">{p.coOwners.length ? p.coOwners.map((o) => `${o.name} (${o.share}%)`).join(", ") : "Not recorded"}</dd>
                         </div>
                         <div>
                           <dt className="text-ink-subtle">Attribution</dt>
-                          <dd className="text-ink">
-                            {p.attributionRequired
-                              ? "Credit required"
-                              : "Credit optional"}
-                          </dd>
+                          <dd className="text-ink">{p.attributionRequired ? "Credit required" : "Credit optional"}</dd>
                         </div>
                         <div>
                           <dt className="text-ink-subtle">Derivatives</dt>
@@ -354,48 +259,28 @@ export function RightsPanel({
                         </div>
                         <div>
                           <dt className="text-ink-subtle">Licences</dt>
-                          <dd className="text-ink">
-                            {p.activeLicenses
-                              ? `${p.activeLicenses} active${p.exclusiveLicenses ? `, ${p.exclusiveLicenses} exclusive` : ""}`
-                              : "None active"}
-                          </dd>
+                          <dd className="text-ink">{p.activeLicenses ? `${p.activeLicenses} active${p.exclusiveLicenses ? `, ${p.exclusiveLicenses} exclusive` : ""}` : "None active"}</dd>
                         </div>
                       </dl>
                       {ownsPiece ? (
-                        <Link
-                          href={`/artifacts/${p.artifactId}?tab=rights`}
-                          className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline"
-                        >
+                        <Link href={`/artifacts/${p.artifactId}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
                           Edit this piece&rsquo;s rights record
                         </Link>
                       ) : null}
 
                       <div>
-                        <h4 className="text-sm font-semibold text-ink">
-                          Permissions
-                        </h4>
+                        <h4 className="text-sm font-semibold text-ink">Permissions</h4>
                         {p.collaborators.length ? (
                           <ul className="mt-1 divide-y divide-border-soft">
                             {p.collaborators.map((c) => (
-                              <li
-                                key={c.creatorId}
-                                className="flex flex-wrap items-center gap-2 py-2"
-                              >
+                              <li key={c.creatorId} className="flex flex-wrap items-center gap-2 py-2">
                                 <span className="min-w-0 flex-1 text-[15px] text-ink">
                                   {c.creatorId === viewerId ? "You" : c.name}
-                                  {c.role ? (
-                                    <span className="text-ink-muted">
-                                      {" "}
-                                      · {c.role}
-                                    </span>
-                                  ) : null}
+                                  {c.role ? <span className="text-ink-muted"> · {c.role}</span> : null}
                                 </span>
                                 {ownsPiece ? (
                                   <>
-                                    <label
-                                      htmlFor={`access-${p.artifactId}-${c.creatorId}`}
-                                      className="sr-only"
-                                    >
+                                    <label htmlFor={`access-${p.artifactId}-${c.creatorId}`} className="sr-only">
                                       Access for {c.name}
                                     </label>
                                     <Select
@@ -404,27 +289,20 @@ export function RightsPanel({
                                       className="w-auto"
                                       onChange={async (e) => {
                                         try {
-                                          await api(
-                                            `/api/v1/artifacts/${p.artifactId}/collaborators`,
-                                            {
-                                              method: "PATCH",
-                                              json: {
-                                                creatorId: c.creatorId,
-                                                access: e.target.value,
-                                              },
+                                          await api(`/api/v1/artifacts/${p.artifactId}/collaborators`, {
+                                            method: "PATCH",
+                                            json: {
+                                              creatorId: c.creatorId,
+                                              access: e.target.value,
                                             },
-                                          );
-                                          done(
-                                            `${c.name} now: ${ACCESS_LABEL[e.target.value as Access].toLowerCase()}.`,
-                                          );
+                                          });
+                                          done(`${c.name} now: ${ACCESS_LABEL[e.target.value as Access].toLowerCase()}.`);
                                         } catch (err) {
                                           setMsg(errorMessage(err));
                                         }
                                       }}
                                     >
-                                      {(
-                                        Object.keys(ACCESS_LABEL) as Access[]
-                                      ).map((a) => (
+                                      {(Object.keys(ACCESS_LABEL) as Access[]).map((a) => (
                                         <option key={a} value={a}>
                                           {ACCESS_LABEL[a]}
                                         </option>
@@ -444,75 +322,36 @@ export function RightsPanel({
                                     </Button>
                                   </>
                                 ) : (
-                                  <Badge tone="neutral">
-                                    {ACCESS_LABEL[c.access]}
-                                  </Badge>
+                                  <Badge tone="neutral">{ACCESS_LABEL[c.access]}</Badge>
                                 )}
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-sm text-ink-muted">
-                            Only the owner works on this piece.
-                          </p>
+                          <p className="text-sm text-ink-muted">Only the owner works on this piece.</p>
                         )}
                       </div>
 
                       {p.signoffs.length ? (
                         <div>
-                          <h4 className="text-sm font-semibold text-ink">
-                            Publication sign-off (current version)
-                          </h4>
+                          <h4 className="text-sm font-semibold text-ink">Publication sign-off (current version)</h4>
                           <ul className="mt-1 space-y-1">
                             {p.signoffs.map((s) => (
-                              <li
-                                key={s.creatorId}
-                                className="flex flex-wrap items-center gap-2 text-[15px] text-ink"
-                              >
+                              <li key={s.creatorId} className="flex flex-wrap items-center gap-2 text-[15px] text-ink">
                                 {s.creatorId === viewerId ? "You" : s.name}
-                                <Badge
-                                  tone={
-                                    s.decision === "approve"
-                                      ? "success"
-                                      : s.decision === "object"
-                                        ? "warning"
-                                        : "neutral"
-                                  }
-                                >
-                                  {s.decision === "approve"
-                                    ? "Approved"
-                                    : s.decision === "object"
-                                      ? "Objected"
-                                      : "Not yet"}
+                                <Badge tone={s.decision === "approve" ? "success" : s.decision === "object" ? "warning" : "neutral"}>
+                                  {s.decision === "approve" ? "Approved" : s.decision === "object" ? "Objected" : "Not yet"}
                                 </Badge>
-                                {s.note ? (
-                                  <span className="text-sm text-ink-muted">
-                                    “{s.note}”
-                                  </span>
-                                ) : null}
+                                {s.note ? <span className="text-sm text-ink-muted">“{s.note}”</span> : null}
                               </li>
                             ))}
                           </ul>
                           {mySignoff ? (
                             <div className="mt-2 flex flex-wrap gap-2">
-                              <Button
-                                variant={
-                                  mySignoff.decision === "approve"
-                                    ? "secondary"
-                                    : "primary"
-                                }
-                                onClick={() =>
-                                  setSigning({ piece: p, decision: "approve" })
-                                }
-                              >
+                              <Button variant={mySignoff.decision === "approve" ? "secondary" : "primary"} onClick={() => setSigning({ piece: p, decision: "approve" })}>
                                 Approve publishing
                               </Button>
-                              <Button
-                                variant="ghost"
-                                onClick={() =>
-                                  setSigning({ piece: p, decision: "object" })
-                                }
-                              >
+                              <Button variant="ghost" onClick={() => setSigning({ piece: p, decision: "object" })}>
                                 Object
                               </Button>
                             </div>
@@ -522,9 +361,7 @@ export function RightsPanel({
 
                       {claims.length ? (
                         <p className="text-sm text-ink-muted">
-                          {claims.length} ownership{" "}
-                          {claims.length === 1 ? "claim" : "claims"} — see
-                          Claims below.
+                          {claims.length} ownership {claims.length === 1 ? "claim" : "claims"} — see Claims below.
                         </p>
                       ) : null}
                     </div>
@@ -535,8 +372,7 @@ export function RightsPanel({
           </ul>
         ) : (
           <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
-            No pieces are linked to this project yet. Rights appear here once
-            pieces are added.
+            No pieces are linked to this project yet. Rights appear here once pieces are added.
           </p>
         )}
       </section>
@@ -546,50 +382,32 @@ export function RightsPanel({
           title="Ownership claims"
           action={
             claimable.length ? (
-              <Button
-                variant="secondary"
-                onClick={() => setClaiming(claimable[0]!.artifactId)}
-              >
+              <Button variant="secondary" onClick={() => setClaiming(claimable[0]!.artifactId)}>
                 Make a claim
               </Button>
             ) : undefined
           }
         />
         <p className="mb-3 text-sm text-ink-muted">
-          People who worked on a piece can record what they believe their
-          ownership is. The piece&rsquo;s owner acknowledges or disputes it. A
-          claim never changes a piece&rsquo;s rights record by itself.
+          People who worked on a piece can record what they believe their ownership is. The piece&rsquo;s owner acknowledges or disputes it. A claim never changes a piece&rsquo;s rights record by
+          itself.
         </p>
         {assertions.length ? (
           <ol className="space-y-2">
             {assertions.map((a) => {
-              const ownsPiece =
-                pieces.find((p) => p.artifactId === a.artifact.id)?.owner.id ===
-                viewerId;
+              const ownsPiece = pieces.find((p) => p.artifactId === a.artifact.id)?.owner.id === viewerId;
               return (
-                <li
-                  key={a.id}
-                  className={cn(
-                    "rounded-2xl border border-border-soft bg-surface px-4 py-3",
-                    a.status === "withdrawn" && "opacity-70",
-                  )}
-                >
+                <li key={a.id} className={cn("rounded-2xl border border-border-soft bg-surface px-4 py-3", a.status === "withdrawn" && "opacity-70")}>
                   <p className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-ink">
-                      {a.mine ? "You" : a.creator.name}
-                    </span>
-                    <span className="text-ink-muted">
-                      on {a.artifact.title}:
-                    </span>
+                    <span className="font-medium text-ink">{a.mine ? "You" : a.creator.name}</span>
+                    <span className="text-ink-muted">on {a.artifact.title}:</span>
                     <Badge tone="accent">
                       {a.claimLabel}
                       {a.sharePercent !== null ? ` · ${a.sharePercent}%` : ""}
                     </Badge>
                     <Badge tone={STATUS_TONE[a.status]}>{a.statusLabel}</Badge>
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-[15px] text-ink">
-                    {a.statement}
-                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-[15px] text-ink">{a.statement}</p>
                   <p className="text-sm text-ink-muted">
                     <LocalTime iso={a.at} options={{ dateStyle: "medium" }} />
                     {a.response && a.status !== "withdrawn" ? (
@@ -603,32 +421,17 @@ export function RightsPanel({
                   {a.status !== "withdrawn" ? (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {ownsPiece && a.status !== "acknowledged" ? (
-                        <Button
-                          variant="secondary"
-                          onClick={() =>
-                            setResponding({ a, response: "acknowledge" })
-                          }
-                        >
+                        <Button variant="secondary" onClick={() => setResponding({ a, response: "acknowledge" })}>
                           Acknowledge
                         </Button>
                       ) : null}
                       {ownsPiece && a.status !== "disputed" ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            setResponding({ a, response: "dispute" })
-                          }
-                        >
+                        <Button variant="ghost" onClick={() => setResponding({ a, response: "dispute" })}>
                           Dispute
                         </Button>
                       ) : null}
                       {a.mine ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            setResponding({ a, response: "withdraw" })
-                          }
-                        >
+                        <Button variant="ghost" onClick={() => setResponding({ a, response: "withdraw" })}>
                           Withdraw
                         </Button>
                       ) : null}
@@ -639,9 +442,7 @@ export function RightsPanel({
             })}
           </ol>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
-            No ownership claims recorded.
-          </p>
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">No ownership claims recorded.</p>
         )}
       </section>
 
@@ -654,60 +455,28 @@ export function RightsPanel({
                 {h.title}
                 <span className="text-sm text-ink-muted">
                   {" · "}
-                  {h.actor ?? "Someone"} ·{" "}
-                  <LocalTime
-                    iso={h.at}
-                    options={{ dateStyle: "medium", timeStyle: "short" }}
-                  />
+                  {h.actor ?? "Someone"} · <LocalTime iso={h.at} options={{ dateStyle: "medium", timeStyle: "short" }} />
                 </span>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="text-sm text-ink-muted">
-            Nothing yet. Policy changes, claims and sign-offs are recorded here
-            and can&rsquo;t be edited.
-          </p>
+          <p className="text-sm text-ink-muted">Nothing yet. Policy changes, claims and sign-offs are recorded here and can&rsquo;t be edited.</p>
         )}
       </section>
 
-      {editingPolicy ? (
-        <PolicyDialog
-          projectId={projectId}
-          policy={policy}
-          onOpenChange={setEditingPolicy}
-          onSaved={() => (
-            setEditingPolicy(false),
-            done("Rights policy saved.")
-          )}
-        />
-      ) : null}
+      {editingPolicy ? <PolicyDialog projectId={projectId} policy={policy} onOpenChange={setEditingPolicy} onSaved={() => (setEditingPolicy(false), done("Rights policy saved."))} /> : null}
       {claiming ? (
         <ClaimDialog
           projectId={projectId}
           pieces={claimable}
           initial={claiming}
           onOpenChange={(o) => !o && setClaiming(null)}
-          onSaved={() => (
-            setClaiming(null),
-            done("Claim recorded. The piece's owner will be asked to respond.")
-          )}
+          onSaved={() => (setClaiming(null), done("Claim recorded. The piece's owner will be asked to respond."))}
         />
       ) : null}
-      {responding ? (
-        <RespondDialog
-          {...responding}
-          onOpenChange={(o) => !o && setResponding(null)}
-          onSaved={(t) => (setResponding(null), done(t))}
-        />
-      ) : null}
-      {signing ? (
-        <SignoffDialog
-          {...signing}
-          onOpenChange={(o) => !o && setSigning(null)}
-          onSaved={(t) => (setSigning(null), done(t))}
-        />
-      ) : null}
+      {responding ? <RespondDialog {...responding} onOpenChange={(o) => !o && setResponding(null)} onSaved={(t) => (setResponding(null), done(t))} /> : null}
+      {signing ? <SignoffDialog {...signing} onOpenChange={(o) => !o && setSigning(null)} onSaved={(t) => (setSigning(null), done(t))} /> : null}
       {revoking ? (
         <Dialog open onOpenChange={(o) => !o && setRevoking(null)}>
           <DialogContent
@@ -722,17 +491,12 @@ export function RightsPanel({
                 variant="danger"
                 onClick={async () => {
                   try {
-                    await api(
-                      `/api/v1/artifacts/${revoking.piece.artifactId}/collaborators`,
-                      {
-                        method: "DELETE",
-                        json: { creatorId: revoking.creatorId },
-                      },
-                    );
+                    await api(`/api/v1/artifacts/${revoking.piece.artifactId}/collaborators`, {
+                      method: "DELETE",
+                      json: { creatorId: revoking.creatorId },
+                    });
                     setRevoking(null);
-                    done(
-                      `${revoking.name}'s access was revoked. Their credit stays.`,
-                    );
+                    done(`${revoking.name}'s access was revoked. Their credit stays.`);
                   } catch (err) {
                     setRevoking(null);
                     setMsg(errorMessage(err));
@@ -749,34 +513,16 @@ export function RightsPanel({
   );
 }
 
-function PolicyDialog({
-  projectId,
-  policy,
-  onOpenChange,
-  onSaved,
-}: {
-  projectId: string;
-  policy: RightsPolicyView;
-  onOpenChange: (o: boolean) => void;
-  onSaved: () => void;
-}) {
-  const [derivatives, setDerivatives] = useState<DerivativePolicy>(
-    policy.derivatives,
-  );
+function PolicyDialog({ projectId, policy, onOpenChange, onSaved }: { projectId: string; policy: RightsPolicyView; onOpenChange: (o: boolean) => void; onSaved: () => void }) {
+  const [derivatives, setDerivatives] = useState<DerivativePolicy>(policy.derivatives);
   const [signoff, setSignoff] = useState(policy.publicationSignoff);
-  const [attribution, setAttribution] = useState<AttributionPolicy>(
-    policy.attribution,
-  );
+  const [attribution, setAttribution] = useState<AttributionPolicy>(policy.attribution);
   const [agreement, setAgreement] = useState(policy.agreement ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        title="Project rights policy"
-        description="Applies to pieces linked to this project. Every change is kept in the rights history."
-        wide
-      >
+      <DialogContent title="Project rights policy" description="Applies to pieces linked to this project. Every change is kept in the rights history." wide>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -800,18 +546,8 @@ function PolicyDialog({
             }
           }}
         >
-          <Field
-            label="Derivatives"
-            htmlFor="policy-derivatives"
-            hint={DERIVATIVE_POLICY_LABEL[derivatives].help}
-          >
-            <Select
-              id="policy-derivatives"
-              value={derivatives}
-              onChange={(e) =>
-                setDerivatives(e.target.value as DerivativePolicy)
-              }
-            >
+          <Field label="Derivatives" htmlFor="policy-derivatives" hint={DERIVATIVE_POLICY_LABEL[derivatives].help}>
+            <Select id="policy-derivatives" value={derivatives} onChange={(e) => setDerivatives(e.target.value as DerivativePolicy)}>
               {DERIVATIVE_POLICIES.map((d) => (
                 <option key={d} value={d}>
                   {DERIVATIVE_POLICY_LABEL[d].label}
@@ -820,32 +556,14 @@ function PolicyDialog({
             </Select>
           </Field>
           <label className="flex min-h-11 items-start gap-3 text-[15px] text-ink">
-            <input
-              type="checkbox"
-              className="mt-1 size-5 accent-[var(--color-accent)]"
-              checked={signoff}
-              onChange={(e) => setSignoff(e.target.checked)}
-            />
+            <input type="checkbox" className="mt-1 size-5 accent-[var(--color-accent)]" checked={signoff} onChange={(e) => setSignoff(e.target.checked)} />
             <span>
               Require sign-off before publishing
-              <span className="block text-sm text-ink-muted">
-                Collaborators who can propose or edit, and co-owners on the
-                rights record, approve the current version first.
-              </span>
+              <span className="block text-sm text-ink-muted">Collaborators who can propose or edit, and co-owners on the rights record, approve the current version first.</span>
             </span>
           </label>
-          <Field
-            label="Attribution"
-            htmlFor="policy-attribution"
-            hint={ATTRIBUTION_POLICY_LABEL[attribution].help}
-          >
-            <Select
-              id="policy-attribution"
-              value={attribution}
-              onChange={(e) =>
-                setAttribution(e.target.value as AttributionPolicy)
-              }
-            >
+          <Field label="Attribution" htmlFor="policy-attribution" hint={ATTRIBUTION_POLICY_LABEL[attribution].help}>
+            <Select id="policy-attribution" value={attribution} onChange={(e) => setAttribution(e.target.value as AttributionPolicy)}>
               {ATTRIBUTION_POLICIES.map((a) => (
                 <option key={a} value={a}>
                   {ATTRIBUTION_POLICY_LABEL[a].label}
@@ -853,18 +571,8 @@ function PolicyDialog({
               ))}
             </Select>
           </Field>
-          <Field
-            label="Agreement"
-            htmlFor="policy-agreement"
-            hint="Optional. What the crew agreed about ownership, credit or revenue, in your own words."
-          >
-            <Textarea
-              id="policy-agreement"
-              value={agreement}
-              onChange={(e) => setAgreement(e.target.value)}
-              maxLength={5000}
-              className="min-h-24"
-            />
+          <Field label="Agreement" htmlFor="policy-agreement" hint="Optional. What the crew agreed about ownership, credit or revenue, in your own words.">
+            <Textarea id="policy-agreement" value={agreement} onChange={(e) => setAgreement(e.target.value)} maxLength={5000} className="min-h-24" />
           </Field>
           {error ? (
             <p role="alert" className="text-sm text-danger">
@@ -872,11 +580,7 @@ function PolicyDialog({
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" loading={busy}>
@@ -910,10 +614,7 @@ function ClaimDialog({
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        title="Make an ownership claim"
-        description="Say what you believe your ownership is and why. It's a record for the crew, not a legal determination."
-      >
+      <DialogContent title="Make an ownership claim" description="Say what you believe your ownership is and why. It's a record for the crew, not a legal determination.">
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -927,8 +628,7 @@ function ClaimDialog({
                   artifactId,
                   claim,
                   statement,
-                  sharePercent:
-                    claim === "co_owner" && share.trim() ? Number(share) : null,
+                  sharePercent: claim === "co_owner" && share.trim() ? Number(share) : null,
                 },
               });
               onSaved();
@@ -939,11 +639,7 @@ function ClaimDialog({
           }}
         >
           <Field label="Piece" htmlFor="claim-piece">
-            <Select
-              id="claim-piece"
-              value={artifactId}
-              onChange={(e) => setArtifactId(e.target.value)}
-            >
+            <Select id="claim-piece" value={artifactId} onChange={(e) => setArtifactId(e.target.value)}>
               {pieces.map((p) => (
                 <option key={p.artifactId} value={p.artifactId}>
                   {p.title}
@@ -952,11 +648,7 @@ function ClaimDialog({
             </Select>
           </Field>
           <Field label="Your claim" htmlFor="claim-kind">
-            <Select
-              id="claim-kind"
-              value={claim}
-              onChange={(e) => setClaim(e.target.value as OwnershipClaim)}
-            >
+            <Select id="claim-kind" value={claim} onChange={(e) => setClaim(e.target.value as OwnershipClaim)}>
               {OWNERSHIP_CLAIMS.map((c) => (
                 <option key={c} value={c}>
                   {OWNERSHIP_CLAIM_LABEL[c]}
@@ -965,34 +657,12 @@ function ClaimDialog({
             </Select>
           </Field>
           {claim === "co_owner" ? (
-            <Field
-              label="Share (%)"
-              htmlFor="claim-share"
-              hint="Optional. Only if one was agreed."
-            >
-              <Input
-                id="claim-share"
-                inputMode="decimal"
-                value={share}
-                onChange={(e) =>
-                  setShare(e.target.value.replace(/[^0-9.]/g, ""))
-                }
-              />
+            <Field label="Share (%)" htmlFor="claim-share" hint="Optional. Only if one was agreed.">
+              <Input id="claim-share" inputMode="decimal" value={share} onChange={(e) => setShare(e.target.value.replace(/[^0-9.]/g, ""))} />
             </Field>
           ) : null}
-          <Field
-            label="Why"
-            htmlFor="claim-statement"
-            hint="What you contributed and anything that was agreed."
-          >
-            <Textarea
-              id="claim-statement"
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              maxLength={2000}
-              required
-              className="min-h-24"
-            />
+          <Field label="Why" htmlFor="claim-statement" hint="What you contributed and anything that was agreed.">
+            <Textarea id="claim-statement" value={statement} onChange={(e) => setStatement(e.target.value)} maxLength={2000} required className="min-h-24" />
           </Field>
           {error ? (
             <p role="alert" className="text-sm text-danger">
@@ -1000,11 +670,7 @@ function ClaimDialog({
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" loading={busy} disabled={!statement.trim()}>
@@ -1055,10 +721,7 @@ function RespondDialog({
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        title={copy.title}
-        description={`${a.mine ? "Your" : `${a.creator.name}'s`} claim on “${a.artifact.title}”: ${a.claimLabel}. ${copy.body}`}
-      >
+      <DialogContent title={copy.title} description={`${a.mine ? "Your" : `${a.creator.name}'s`} claim on “${a.artifact.title}”: ${a.claimLabel}. ${copy.body}`}>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -1078,12 +741,7 @@ function RespondDialog({
         >
           {response !== "withdraw" ? (
             <Field label="Note (optional)" htmlFor="respond-note" error={error}>
-              <Input
-                id="respond-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={1000}
-              />
+              <Input id="respond-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} />
             </Field>
           ) : error ? (
             <p role="alert" className="text-sm text-danger">
@@ -1091,18 +749,10 @@ function RespondDialog({
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant={response === "acknowledge" ? "primary" : "danger"}
-              loading={busy}
-            >
+            <Button type="submit" variant={response === "acknowledge" ? "primary" : "danger"} loading={busy}>
               {copy.button}
             </Button>
           </div>

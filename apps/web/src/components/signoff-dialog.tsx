@@ -21,11 +21,7 @@ export function SignoffDialog({
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent
-        title={
-          decision === "approve"
-            ? "Approve publishing?"
-            : "Object to publishing?"
-        }
+        title={decision === "approve" ? "Approve publishing?" : "Object to publishing?"}
         description={
           decision === "approve"
             ? `You're approving the current version of “${piece.title}” for publishing. If it changes, you'll be asked again.`
@@ -42,48 +38,21 @@ export function SignoffDialog({
                 method: "POST",
                 json: { decision, note: note.trim() || null },
               });
-              onSaved(
-                decision === "approve"
-                  ? "You approved publishing this version."
-                  : "Your objection was recorded.",
-              );
+              onSaved(decision === "approve" ? "You approved publishing this version." : "Your objection was recorded.");
             } catch (err) {
               setError(errorMessage(err));
               setBusy(false);
             }
           }}
         >
-          <Field
-            label={
-              decision === "approve"
-                ? "Note (optional)"
-                : "What needs to change"
-            }
-            htmlFor="signoff-note"
-            error={error}
-          >
-            <Input
-              id="signoff-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={1000}
-              required={decision === "object"}
-            />
+          <Field label={decision === "approve" ? "Note (optional)" : "What needs to change"} htmlFor="signoff-note" error={error}>
+            <Input id="signoff-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} required={decision === "object"} />
           </Field>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant={decision === "approve" ? "primary" : "danger"}
-              loading={busy}
-              disabled={decision === "object" && !note.trim()}
-            >
+            <Button type="submit" variant={decision === "approve" ? "primary" : "danger"} loading={busy} disabled={decision === "object" && !note.trim()}>
               {decision === "approve" ? "Approve" : "Object"}
             </Button>
           </div>
