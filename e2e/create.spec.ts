@@ -99,7 +99,7 @@ test.describe("creating with CreativeMind", () => {
     const artifactUrl = page.url().replace(/\/studio$/, "");
 
     await page.getByRole("button", { name: "Search your creativity" }).click();
-    const search = page.getByRole("dialog", { name: "Search" });
+    const search = page.getByRole("search", { name: "Search" });
     await search.getByRole("textbox", { name: "Search" }).fill(word);
     await expect(search.getByRole("link", { name: `Song of ${word}` })).toBeVisible();
     await expect(search.getByRole("link", { name: `${word} in the rigging` })).toBeVisible();
@@ -109,7 +109,7 @@ test.describe("creating with CreativeMind", () => {
     await expect(page.getByRole("heading", { level: 1, name: `Song of ${word}` })).toBeVisible();
 
     await page.getByRole("button", { name: "Search your creativity" }).click();
-    await page.getByRole("dialog", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(`nothing${uid()}`);
-    await expect(page.getByRole("dialog", { name: "Search" }).getByText(/Nothing found for/)).toBeVisible();
+    await page.getByRole("search", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(`nothing${uid()}`);
+    await expect(page.getByRole("search", { name: "Search" }).getByText(/Nothing found for/)).toBeVisible();
   });
 });

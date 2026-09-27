@@ -173,8 +173,8 @@ test.describe("Huddles", () => {
 
     // Search doesn't reveal it either.
     await c.getByRole("button", { name: "Search your creativity" }).click();
-    await c.getByRole("dialog", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(topic.split(" ")[0]);
-    await expect(c.getByRole("dialog", { name: "Search" }).getByText(topic)).toHaveCount(0);
+    await c.getByRole("search", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(topic.split(" ")[0]);
+    await expect(c.getByRole("search", { name: "Search" }).getByText(topic)).toHaveCount(0);
     await c.keyboard.press("Escape");
 
     // The host still sees it as theirs.
