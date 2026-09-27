@@ -1675,13 +1675,13 @@ isOneToOne: false
                   ]
                 },"image_asset_revisions": {
                   Row: {
-                    "asset_id": string | null,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string | null,"kind": string,"result_asset_id": string | null,"slide_id": string | null,"slide_text": string | null,"status": string
+                    "asset_id": string | null,"completed_at": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"generation_id": string,"id": string,"idempotency_key": string | null,"instruction": string | null,"kind": string,"latency_ms": number | null,"model": string | null,"quality_intent": string | null,"result_asset_id": string | null,"slide_id": string | null,"slide_text": string | null,"status": string
                   }
                   Insert: {
-                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
+                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"generation_id": string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"latency_ms"?: number | null,"model"?: string | null,"quality_intent"?: string | null,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
                   }
                   Update: {
-                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
+                    "asset_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"generation_id"?: string,"id"?: string,"idempotency_key"?: string | null,"instruction"?: string | null,"kind"?: string,"latency_ms"?: number | null,"model"?: string | null,"quality_intent"?: string | null,"result_asset_id"?: string | null,"slide_id"?: string | null,"slide_text"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
@@ -1718,13 +1718,13 @@ isOneToOne: false
                   ]
                 },"image_generation_assets": {
                   Row: {
-                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"position": number | null,"rationale": string | null,"replaced_by": string | null,"revision_of": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
+                    "created_at": string,"creator_id": string,"direction_label": string | null,"generation_id": string,"height": number | null,"id": string,"position": number | null,"quality_intent": string | null,"rationale": string | null,"replaced_by": string | null,"revision_of": string | null,"saved_material_id": string | null,"selected": boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id": string | null,"width": number | null
                   }
                   Insert: {
-                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "created_at"?: string,"creator_id": string,"direction_label"?: string | null,"generation_id": string,"height"?: number | null,"id"?: string,"position"?: number | null,"quality_intent"?: string | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence": number,"storage_object_id": string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Update: {
-                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"position"?: number | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
+                    "created_at"?: string,"creator_id"?: string,"direction_label"?: string | null,"generation_id"?: string,"height"?: number | null,"id"?: string,"position"?: number | null,"quality_intent"?: string | null,"rationale"?: string | null,"replaced_by"?: string | null,"revision_of"?: string | null,"saved_material_id"?: string | null,"selected"?: boolean,"sequence"?: number,"storage_object_id"?: string,"thumbnail_object_id"?: string | null,"width"?: number | null
                   }
                   Relationships: [
                     {
@@ -1773,13 +1773,13 @@ isOneToOne: false
                   ]
                 },"image_generations": {
                   Row: {
-                    "artifact_id": string | null,"aspect_ratio": string,"completed_at": string | null,"context": NonNullable<Json>,"context_hash": string,"created_at": string,"creator_id": string,"error_code": string | null,"id": string,"idempotency_key": string | null,"latency_ms": number | null,"material_id": string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids": (string)[],"source_version": number | null,"status": string,"variation": number
+                    "artifact_id": string | null,"aspect_ratio": string,"cache_hits": number,"completed_at": string | null,"context": NonNullable<Json>,"context_hash": string,"created_at": string,"creator_id": string,"error_code": string | null,"id": string,"idempotency_key": string | null,"last_cache_hit_at": string | null,"latency_ms": number | null,"material_id": string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids": (string)[],"source_version": number | null,"status": string,"variation": number
                   }
                   Insert: {
-                    "artifact_id"?: string | null,"aspect_ratio": string,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash": string,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
+                    "artifact_id"?: string | null,"aspect_ratio": string,"cache_hits"?: number,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash": string,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"last_cache_hit_at"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model": string,"prompt_version": string,"provider": string,"purpose": string,"quality_intent": string,"requested_count": number,"routing_version": string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
                   }
                   Update: {
-                    "artifact_id"?: string | null,"aspect_ratio"?: string,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash"?: string,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model"?: string,"prompt_version"?: string,"provider"?: string,"purpose"?: string,"quality_intent"?: string,"requested_count"?: number,"routing_version"?: string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
+                    "artifact_id"?: string | null,"aspect_ratio"?: string,"cache_hits"?: number,"completed_at"?: string | null,"context"?: NonNullable<Json>,"context_hash"?: string,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"id"?: string,"idempotency_key"?: string | null,"last_cache_hit_at"?: string | null,"latency_ms"?: number | null,"material_id"?: string | null,"model"?: string,"prompt_version"?: string,"provider"?: string,"purpose"?: string,"quality_intent"?: string,"requested_count"?: number,"routing_version"?: string,"source_material_ids"?: (string)[],"source_version"?: number | null,"status"?: string,"variation"?: number
                   }
                   Relationships: [
                     {
@@ -3298,6 +3298,9 @@ isOneToOne: false
                            },
 "huddle_start":
 { Args: { "p_discoverability"?: string,"p_topic": string }; Returns: string
+                           },
+"image_generation_cache_hit":
+{ Args: { "p_generation": string }; Returns: undefined
                            },
 "live_huddle_cards":
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
