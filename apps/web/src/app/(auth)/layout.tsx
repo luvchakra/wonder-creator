@@ -1,4 +1,4 @@
-import { BACKGROUNDS, BrandBackground, Logo } from "@wonder/ui";
+import { BACKGROUNDS, BrandBackground, KIT, KitArt, Logo } from "@wonder/ui";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +11,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <p className="mt-4 max-w-md text-lg text-ink-muted">A place to think, create and bring your creative ideas to life.</p>
         </div>
       </BrandBackground>
-      <div className="flex flex-col items-center justify-center bg-surface px-5 py-10">
+      <div className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-[image:var(--gradient-card)] px-5 py-10">
+        {/* Vector Kit botanicals, one per corner, behind the form and never over a control. */}
+        <KitArt art={KIT.botanical.botanicalSprig2} sizes="(min-width: 640px) 12rem, 8rem" priority className="pointer-events-none absolute -right-6 -top-4 -z-10 h-auto w-32 opacity-90 sm:w-48" />
+        <KitArt art={KIT.botanical.botanicalSprig3} sizes="(min-width: 640px) 10rem, 7rem" className="pointer-events-none absolute -bottom-6 -left-6 -z-10 hidden h-auto w-28 -scale-x-100 rotate-180 opacity-80 sm:block sm:w-40" />
         <div className="w-full max-w-sm">
           <Logo height={64} className="mb-8" />
           {children}

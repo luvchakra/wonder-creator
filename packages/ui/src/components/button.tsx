@@ -11,9 +11,10 @@ const base =
   "motion-safe:active:scale-[0.98] motion-safe:transition-transform";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-ink shadow-sm",
-  secondary: "bg-surface text-accent-ink border border-[#cfd0ff] hover:bg-accent-softer",
-  soft: "bg-accent-soft text-accent-ink hover:bg-[#e4e4ff]",
+  // Vector Kit: a violet gradient pill with a soft glow; secondary is a white pill with a lilac edge.
+  primary: "bg-[image:var(--gradient-primary)] bg-[length:200%_100%] bg-left text-white shadow-[var(--shadow-glow)] hover:bg-right motion-safe:transition-[background-position,transform] motion-safe:duration-300",
+  secondary: "bg-surface text-accent-ink border border-border-soft shadow-[0_3px_12px_-4px_rgb(107_91_149/0.14)] hover:bg-accent-softer",
+  soft: "bg-accent-soft text-accent-ink hover:bg-[#e6e0ff]",
   ghost: "text-ink-muted hover:bg-black/[0.04]",
   danger: "bg-danger text-white hover:bg-[#b91c1c]",
 };
@@ -58,8 +59,8 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
 ) {
   const v = {
     ghost: "text-ink-muted hover:bg-black/[0.05]",
-    soft: "bg-accent-soft text-accent-ink hover:bg-[#e4e4ff]",
-    surface: "bg-surface border border-border text-ink-muted hover:bg-surface-muted",
+    soft: "bg-accent-soft text-accent-ink hover:bg-[#e6e0ff]",
+    surface: "bg-surface text-accent-ink shadow-[0_4px_14px_-4px_rgb(107_91_149/0.18)] hover:bg-accent-softer",
     stage: "bg-white/10 text-white hover:bg-white/20",
   }[variant];
   return (

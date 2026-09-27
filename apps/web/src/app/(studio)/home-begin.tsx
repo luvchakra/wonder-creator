@@ -1,6 +1,5 @@
 "use client";
-import { BACKGROUNDS, buttonClasses } from "@wonder/ui";
-import { Camera, ImagePlus, Mic, Sparkles } from "lucide-react";
+import { KIT, KitArt, KitCameraIcon, KitMicIcon, KitPlusIcon, KitSparklesIcon, buttonClasses } from "@wonder/ui";
 import Link from "next/link";
 import { useMeTalk } from "@/components/creative-palette";
 
@@ -8,9 +7,12 @@ import { useMeTalk } from "@/components/creative-palette";
 export function HomeBegin({ hasMaterials }: { hasMaterials: boolean }) {
   const openMeTalk = useMeTalk();
   return (
-    <section aria-labelledby="begin" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={BACKGROUNDS.botanicalLeaves} alt="" className="h-40 w-full object-cover sm:h-52" />
+    <section aria-labelledby="begin" className="overflow-hidden rounded-3xl border border-border-soft bg-[image:var(--gradient-card)] shadow-[var(--shadow-card)]">
+      {/* Vector Kit: a painted coastal vignette on a soft wash — calm, not a photo wall. */}
+      <div aria-hidden className="relative flex h-40 items-end justify-center overflow-hidden bg-[linear-gradient(180deg,#fdf2e6_0%,#fbf5ee_100%)] sm:h-52">
+        <KitArt art={KIT.wash.washLilacSky} className="pointer-events-none absolute -left-16 -top-24 h-56 w-auto opacity-25" />
+        <KitArt art={KIT.painted.coastalVignette} sizes="(min-width: 640px) 36rem, 90vw" priority className="relative h-auto w-[92%] max-w-xl" />
+      </div>
       <div className="space-y-4 p-5 sm:p-6">
         <h2 id="begin" className="font-display text-2xl text-ink">
           What would you like to begin with?
@@ -20,16 +22,16 @@ export function HomeBegin({ hasMaterials }: { hasMaterials: boolean }) {
         </p>
         <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&>*]:whitespace-nowrap">
           <Link href="/create" className={buttonClasses({ variant: "primary" })}>
-            <Sparkles className="size-4" aria-hidden /> New Creation
+            <KitSparklesIcon size={18} /> New Creation
           </Link>
           <Link href="/send" className={buttonClasses({ variant: "secondary" })}>
-            <ImagePlus className="size-4" aria-hidden /> Bring Material
+            <KitPlusIcon size={18} /> Bring Material
           </Link>
           <Link href="/send" className={buttonClasses({ variant: "secondary" })}>
-            <Camera className="size-4" aria-hidden /> Capture
+            <KitCameraIcon size={18} /> Capture
           </Link>
           <button type="button" onClick={openMeTalk} className={buttonClasses({ variant: "secondary" })}>
-            <Mic className="size-4" aria-hidden /> meTalk
+            <KitMicIcon size={18} /> meTalk
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
-import { Palette, type PaletteGroup } from "@wonder/ui";
-import { Camera, Compass, FolderKanban, Home, ImagePlus, Images, Mic, PenLine, Sparkles, UserRound, Users, UsersRound } from "lucide-react";
+import { KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, KitPencilIcon, KitPlusIcon, KitSearchIcon, KitSparklesIcon, KitUsersIcon, Palette, type PaletteGroup } from "@wonder/ui";
+import { Compass, UserRound } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MeTalkSheet } from "./metalk-sheet";
 import { createContext, Suspense, useContext, useEffect, useMemo, useState } from "react";
@@ -18,7 +18,8 @@ export interface ContextAction {
   icon?: keyof typeof ICONS;
 }
 
-const ICONS = { home: Home, pen: PenLine, images: Images, users: Users, user: UserRound, spark: Sparkles, add: ImagePlus, camera: Camera, mic: Mic, compass: Compass, people: UsersRound, room: FolderKanban } as const;
+// Vector Kit line icons where the kit has one; lucide fills the gaps (Me, Context).
+const ICONS = { home: KitHomeIcon, pen: KitPencilIcon, images: KitImageIcon, users: KitUsersIcon, user: UserRound, spark: KitSparklesIcon, add: KitPlusIcon, camera: KitCameraIcon, mic: KitMicIcon, compass: Compass, people: KitUsersIcon, room: KitLayersIcon, search: KitSearchIcon } as const;
 
 type Context = { title: string; actions: ContextAction[] } | null;
 const Ctx = createContext<{ set: (c: Context) => void; openMeTalk: () => void } | null>(null);
@@ -88,7 +89,7 @@ function CreativePalette({ context, onMeTalk }: { context: Context; onMeTalk: ()
         { key: "bring", label: "Bring Material", icon: icon("add"), onSelect: go("/send") },
         { key: "capture", label: "Capture", hint: "Photo, voice or a note", icon: icon("camera"), onSelect: go("/send") },
         { key: "metalk", label: "meTalk", hint: "Say what you want to make", icon: icon("mic"), onSelect: onMeTalk },
-        { key: "explore", label: "Explore", icon: icon("compass"), current: pathname.startsWith("/search"), onSelect: go("/search") },
+        { key: "explore", label: "Explore", icon: icon("search"), current: pathname.startsWith("/search"), onSelect: go("/search") },
         { key: "people", label: "People", icon: icon("people"), current: pathname.startsWith("/discover"), onSelect: go("/discover") },
       ],
     },

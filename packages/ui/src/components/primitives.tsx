@@ -1,9 +1,11 @@
 import { AlertCircle, RotateCcw } from "lucide-react";
 import * as React from "react";
+import { KIT, type KitAsset } from "../brand/kit";
 import { cn } from "../cn";
+import { KitArt } from "./brand";
 
 export function Card({ className, as: As = "div", ...props }: React.HTMLAttributes<HTMLElement> & { as?: "div" | "section" | "article" | "li" }) {
-  return <As className={cn("rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)]", className)} {...props} />;
+  return <As className={cn("rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] shadow-[var(--shadow-card)]", className)} {...props} />;
 }
 
 export function Badge({ tone = "neutral", className, ...props }: React.HTMLAttributes<HTMLSpanElement> & { tone?: "neutral" | "accent" | "success" | "warning" | "danger" | "live" }) {
@@ -48,22 +50,26 @@ export function EmptyState({
   body,
   action,
   image,
+  art = KIT.painted.blossomSprig,
   className,
 }: {
   title: string;
   body: string;
   action?: React.ReactNode;
   image?: string;
+  /** A small Vector Kit painting above the title (a blossom sprig by default); `null` for none. */
+  art?: KitAsset | null;
   className?: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border border-border-soft bg-surface px-6 py-10 text-center", className)}>
+    <div className={cn("relative overflow-hidden rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] px-6 py-10 text-center", className)}>
       {image ? (
         // Supplied brand background, faint, decorative only.
         // eslint-disable-next-line @next/next/no-img-element
         <img src={image} alt="" aria-hidden className="pointer-events-none absolute inset-0 size-full object-cover opacity-[0.18]" />
       ) : null}
       <div className="relative mx-auto max-w-md">
+        {art && !image ? <KitArt art={art} sizes="5rem" className="mx-auto mb-3 h-16 w-auto" /> : null}
         <h3 className="font-display text-xl text-ink">{title}</h3>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">{body}</p>
         {action ? <div className="mt-5 flex justify-center gap-3">{action}</div> : null}

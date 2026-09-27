@@ -1,3 +1,4 @@
+import { KIT } from "@wonder/ui";
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
@@ -9,7 +10,14 @@ const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["lati
 export const metadata: Metadata = {
   title: { default: "Wonder Creator", template: "%s · Wonder Creator" },
   description: "Bring what you have. Discover what it can become. Ideas become real.",
-  icons: { icon: "/brand/app-icon.png", apple: "/brand/app-icon.png" },
+  // Vector Kit app icon: vector for modern tabs, PNG fallbacks and the home-screen icon.
+  icons: {
+    icon: [
+      { url: KIT.appIcon.appIconPrimary.svg, type: "image/svg+xml" },
+      { url: KIT.appIconPng.s192.src, sizes: "192x192", type: "image/png" },
+    ],
+    apple: { url: KIT.appIconPng.s180.src, sizes: "180x180" },
+  },
   manifest: "/manifest.webmanifest",
 };
 

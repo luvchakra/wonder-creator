@@ -1,6 +1,7 @@
 /*
  * Wonder Creator design tokens — the single controlled source of brand values in code.
- * Palette mirrors the supplied brand board 1:1. "Ink" tones are darker tones of the same
+ * Palette mirrors the supplied brand board; semantic ink, accent, border, radius and shadow values follow the
+ * owner-supplied Vector Kit (27 Sep 2026: ink #1E1B4B, violet accent, lilac borders, violet-tinted shadows). "Ink" tones are darker tones of the same
  * brand hues, used only where small text needs WCAG AA contrast (documented in ASSETS.md).
  */
 @theme {
@@ -24,16 +25,16 @@
   /* Semantic tokens */
   --color-background: #fef7f0;
   --color-surface: #ffffff;
-  --color-surface-muted: #fdfaf6;
-  --color-ink: #0f172a;
-  --color-ink-muted: #334155;
-  --color-ink-subtle: #475569;
-  --color-border: #e2e8f0;
-  --color-border-soft: #efe7de;
-  --color-accent: #5b5cff;
-  --color-accent-ink: #4b4ce6;
-  --color-accent-soft: #eeeeff;
-  --color-accent-softer: #f5f5ff;
+  --color-surface-muted: #fbf6f0;
+  --color-ink: #1e1b4b;
+  --color-ink-muted: #3f3a66;
+  --color-ink-subtle: #5f5a80;
+  --color-border: #e7e1f2;
+  --color-border-soft: #ede7f7;
+  --color-accent: #6d5bf5;
+  --color-accent-ink: #5b47e0;
+  --color-accent-soft: #efebff;
+  --color-accent-softer: #f7f4ff;
   --color-success: #10b881;
   --color-success-ink: #047857;
   --color-success-soft: #e7f8f1;
@@ -54,13 +55,18 @@
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
-  --radius-2xl: 1.75rem;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12);
-  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 40px -16px rgb(91 92 255 / 0.25);
+  --radius-2xl: 1.5rem;
+  --shadow-card: 0 1px 2px rgb(107 91 149 / 0.05), 0 6px 20px -8px rgb(107 91 149 / 0.16);
+  --shadow-lift: 0 3px 8px rgb(107 91 149 / 0.08), 0 16px 36px -12px rgb(107 91 149 / 0.22);
+  --shadow-glow: 0 10px 28px -10px rgb(123 97 255 / 0.55);
 }
 
 :root {
   --brand-gradient: linear-gradient(100deg, #5b5cff 0%, #8b5cf6 45%, #f472b6 75%, #f59e0b 100%);
+  /* Vector Kit primary button, run slightly deeper so white labels meet WCAG AA (kit #8C7BFF is 3.3:1). */
+  --gradient-primary: linear-gradient(90deg, #6d5bf5 0%, #5b47e0 55%, #6d5bf5 100%);
+  /* Vector Kit warm card fill. */
+  --gradient-card: linear-gradient(180deg, #fffdfa 0%, #fbf5ee 100%);
   --nav-height: 4.5rem;
   /* Room kept clear at the bottom for the corner Creative Palette trigger (there is no bottom navigation). */
   --palette-clearance: 5.5rem;
