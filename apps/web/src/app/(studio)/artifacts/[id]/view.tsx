@@ -495,6 +495,11 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
         {error ? <li className="text-sm text-danger">{error}</li> : null}
       </ol>
       <section aria-label="Compare versions" className="rounded-2xl border border-border-soft bg-surface p-4">
+        {left && right && left !== right ? (
+          <Link href={`/artifacts/${artifactId}/compare?a=${left}&b=${right}`} className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            Open the compare view — before / after, or swipe
+          </Link>
+        ) : null}
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Compare" htmlFor="left" className="min-w-36 flex-1">
             <Select id="left" value={left} onChange={(e) => setLeft(e.target.value)}>
@@ -799,6 +804,49 @@ function RightsPanel({
   return (
     <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-[1.2fr_1fr]">
       {stepUp.dialog}
+      {/* At a glance (UI redesign §20): reassuring, plain, and only what the stored record says. */}
+      <section aria-labelledby="rights-glance" className="rounded-2xl border border-border-soft bg-surface p-5 lg:col-span-full">
+        <h2 id="rights-glance" className="font-display text-2xl text-ink">
+          {rights.ownership_kind === "transferred"
+            ? "Ownership of this Creation was transferred"
+            : isOwner
+              ? rights.ownership_kind === "joint"
+                ? "You share ownership of this Creation"
+                : "You own this Creation"
+              : `${rights.rights_owners.map((o) => o.owner_name).join(" & ") || "Its creator"} ${rights.rights_owners.length > 1 ? "own" : "owns"} this Creation`}
+        </h2>
+        <ul className="mt-3 divide-y divide-border-soft text-[15px]" aria-label="What this record allows">
+          <li className="flex min-h-12 items-center justify-between gap-3">
+            <span className="text-ink">Personal use</span>
+            <span className="text-ink-muted">{isOwner ? "Included" : "Ask the owner"}</span>
+          </li>
+          <li className="flex min-h-12 items-center justify-between gap-3">
+            <span className="text-ink">
+              Sharing as the creator
+              <span className="block text-xs text-ink-subtle">Posting and showing your own work</span>
+            </span>
+            <span className="text-ink-muted">{isOwner ? "Included" : "—"}</span>
+          </li>
+          <li className="flex min-h-12 items-center justify-between gap-3">
+            <span className="text-ink">Commercial use</span>
+            {rights.licenses.some((l) => l.license_type === "commercial" && l.status === "active") ? (
+              <span className="text-ink-muted">
+                Licensed ({rights.licenses.filter((l) => l.license_type === "commercial" && l.status === "active").length})
+              </span>
+            ) : isOwner ? (
+              <Button size="sm" variant="secondary" onClick={() => setLicenseOpen(true)}>
+                Add a commercial license
+              </Button>
+            ) : (
+              <span className="text-ink-muted">Not licensed</span>
+            )}
+          </li>
+          <li className="flex min-h-12 items-center justify-between gap-3">
+            <span className="text-ink">Credit</span>
+            <span className="text-ink-muted">{rights.attribution_required ? "Attribution required" : "Not required"}</span>
+          </li>
+        </ul>
+      </section>
       <p role="note" className="rounded-2xl border border-[#f6dfb6] bg-warning-soft px-4 py-3 text-sm text-warning-ink lg:col-span-full">
         {disclaimer}
       </p>
