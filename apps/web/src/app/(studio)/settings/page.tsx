@@ -1,5 +1,5 @@
 import { providerReadiness } from "@wonder/creator-brain";
-import { getAutonomy, getBoundaries, getIdentity, getVoice } from "@wonder/creator-identity";
+import { getAutonomy, getBoundaries, getCollaborationProfile, getIdentity, getVoice } from "@wonder/creator-identity";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { PageTitle } from "@wonder/ui";
 import { avatarUrls } from "@/lib/avatars";
@@ -11,7 +11,7 @@ export const metadata = { title: "Settings" };
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
-  const [identity, voice, boundaries, autonomy, blocks, avatars, { data: user }] = await Promise.all([
+  const [identity, voice, boundaries, autonomy, blocks, avatars, { data: user }, collaboration] = await Promise.all([
     getIdentity(db, creator.id),
     getVoice(db, creator.id),
     getBoundaries(db, creator.id),
@@ -19,6 +19,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     db.from("creator_blocks").select("blocked_creator_id, creators!creator_blocks_blocked_creator_id_fkey(display_name, handle)").eq("blocker_creator_id", creator.id),
     avatarUrls(db, [creator.id]),
     db.auth.getUser(),
+    getCollaborationProfile(db, creator.id),
   ]);
   return (
     <div>
@@ -51,6 +52,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         }}
         boundaries={boundaries}
         autonomy={autonomy}
+        collaboration={collaboration}
         blocked={(blocks.data ?? []).map((b) => ({ id: b.blocked_creator_id, name: (b.creators as { display_name: string } | null)?.display_name ?? "Creator", handle: (b.creators as { handle: string | null } | null)?.handle ?? null }))}
         readiness={{ ai: providerReadiness(), mediaConfigured: selectMediaProvider().configured }}
       />

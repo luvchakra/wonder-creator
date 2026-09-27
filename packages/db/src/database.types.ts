@@ -394,6 +394,25 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"collaboration_profiles": {
+                  Row: {
+                    "commercial_boundaries": string | null,"contact_preference": string,"creator_id": string,"exclusivity": string,"interests": (string)[],"project_types": (string)[],"rate_guidance": string | null,"rate_visibility": string,"region": string | null,"rights_preferences": string | null,"turnaround": string | null,"updated_at": string,"work_mode": string
+                  }
+                  Insert: {
+                    "commercial_boundaries"?: string | null,"contact_preference"?: string,"creator_id": string,"exclusivity"?: string,"interests"?: (string)[],"project_types"?: (string)[],"rate_guidance"?: string | null,"rate_visibility"?: string,"region"?: string | null,"rights_preferences"?: string | null,"turnaround"?: string | null,"updated_at"?: string,"work_mode"?: string
+                  }
+                  Update: {
+                    "commercial_boundaries"?: string | null,"contact_preference"?: string,"creator_id"?: string,"exclusivity"?: string,"interests"?: (string)[],"project_types"?: (string)[],"rate_guidance"?: string | null,"rate_visibility"?: string,"region"?: string | null,"rights_preferences"?: string | null,"turnaround"?: string | null,"updated_at"?: string,"work_mode"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "collaboration_profiles_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"collaborator_shortlist": {
                   Row: {
                     "candidate_creator_id": string,"created_at": string,"creator_id": string,"id": string,"note": string | null,"project_id": string | null
@@ -2650,6 +2669,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"collaboration_profile_of":
+{ Args: { "p_creator": string }; Returns: Json
+                           },
 "collaborator_save_version":
 { Args: { "p_artifact": string,"p_base_version": string,"p_content": string,"p_summary"?: string }; Returns: {
               "artifact_id": string,

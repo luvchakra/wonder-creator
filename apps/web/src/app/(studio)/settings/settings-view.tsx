@@ -1,8 +1,9 @@
 "use client";
 import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLevel } from "@wonder/creator-identity/autonomy";
+import { CONTACT_PREFERENCES, EXCLUSIVITY, RATE_VISIBILITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { Brain, Download, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,6 +13,7 @@ const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
   { key: "identity", label: "Creative Identity", icon: Palette },
   { key: "preferences", label: "Creative Preferences", icon: SlidersHorizontal },
+  { key: "collaboration", label: "Collaboration", icon: Handshake },
   { key: "autonomy", label: "AI & CreativeMind", icon: Sparkles },
   { key: "privacy", label: "Privacy & Security", icon: Shield },
 ];
@@ -27,6 +29,19 @@ type Props = {
   voice: { tones: string[]; writingStyle: string | null; formality: string | null; visualStyles: string[]; recurringThemes: string[]; narrativeStyle: string; vocabulary: string; codeSwitching: boolean; experimentation: "stay_close" | "balanced" | "experiment" };
   boundaries: { preserve: string[]; avoid: string[]; sensitive: string[] };
   autonomy: Record<AutonomyDomain, AutonomyLevel>;
+  collaboration: {
+    projectTypes: string[];
+    interests: string[];
+    workMode: "either" | "remote" | "local";
+    region: string | null;
+    turnaround: string | null;
+    contactPreference: "anyone" | "network";
+    commercialBoundaries: string | null;
+    rateGuidance: string | null;
+    rateVisibility: "private" | "collaborators" | "public";
+    rightsPreferences: string | null;
+    exclusivity: "open" | "case_by_case" | "non_exclusive_only";
+  };
   blocked: Array<{ id: string; name: string; handle: string | null }>;
   readiness: { ai: { provider: string; live: boolean; note: string }; mediaConfigured: boolean };
 };
@@ -61,6 +76,7 @@ export function SettingsView(props: Props) {
         {section === "profile" ? <ProfileSection {...props} /> : null}
         {section === "identity" ? <IdentitySection {...props} /> : null}
         {section === "preferences" ? <PreferencesSection {...props} /> : null}
+        {section === "collaboration" ? <CollaborationSection {...props} /> : null}
         {section === "autonomy" ? <AutonomySection {...props} /> : null}
         {section === "privacy" ? <PrivacySection {...props} /> : null}
       </div>
@@ -565,5 +581,96 @@ function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** How you want to collaborate (P1-14). Rates stay private unless you choose otherwise. */
+function CollaborationSection({ collaboration, profile }: Props) {
+  const [c, setC] = useState(collaboration);
+  const { busy, save, status } = useSaver();
+  const availability = profile.collaborationAvailability === "open" ? "Open to collaborations" : profile.collaborationAvailability === "selective" ? "Selective" : "Not taking collaborations";
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(() => api("/api/v1/creators/collaboration", { method: "PUT", json: c }), "Collaboration profile saved.");
+      }}
+    >
+      <div>
+        <h2 className="text-xl font-semibold text-ink">Collaboration</h2>
+        <p className="mt-1 text-[15px] text-ink-muted">
+          How you like to work with others. Availability is <span className="font-medium text-ink">{availability}</span> — change it under Account &amp; Profile. Your disciplines and languages come from your profile too.
+        </p>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Project types you'd like" htmlFor="co-types" hint="e.g. short film, podcast, photo essay">
+          <TagInput id="co-types" value={c.projectTypes} onChange={(v) => setC({ ...c, projectTypes: v })} max={12} />
+        </Field>
+        <Field label="Collaboration interests" htmlFor="co-interests" hint="What you'd love to make with someone">
+          <TagInput id="co-interests" value={c.interests} onChange={(v) => setC({ ...c, interests: v })} max={12} />
+        </Field>
+        <Field label="Where you work" htmlFor="co-mode">
+          <Select id="co-mode" value={c.workMode} onChange={(e) => setC({ ...c, workMode: e.target.value as typeof c.workMode })}>
+            {WORK_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Region (optional)" htmlFor="co-region" hint="Only what you're happy to share">
+          <Input id="co-region" value={c.region ?? ""} maxLength={120} onChange={(e) => setC({ ...c, region: e.target.value })} />
+        </Field>
+        <Field label="Typical turnaround (optional)" htmlFor="co-turn" hint="e.g. about two weeks for a short">
+          <Input id="co-turn" value={c.turnaround ?? ""} maxLength={120} onChange={(e) => setC({ ...c, turnaround: e.target.value })} />
+        </Field>
+        <Field label="Exclusivity" htmlFor="co-excl">
+          <Select id="co-excl" value={c.exclusivity} onChange={(e) => setC({ ...c, exclusivity: e.target.value as typeof c.exclusivity })}>
+            {EXCLUSIVITY.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium text-ink">Who can message or invite you</legend>
+        <div className="flex flex-wrap gap-2">
+          {CONTACT_PREFERENCES.map((m) => (
+            <ChoiceChip key={m.value} selected={c.contactPreference === m.value} onToggle={() => setC({ ...c, contactPreference: m.value })}>
+              {m.label}
+            </ChoiceChip>
+          ))}
+        </div>
+      </fieldset>
+      <Field label="Commercial boundaries (optional)" htmlFor="co-comm" hint="Brands, uses or kinds of work you won't take on">
+        <Textarea id="co-comm" value={c.commercialBoundaries ?? ""} maxLength={1000} onChange={(e) => setC({ ...c, commercialBoundaries: e.target.value })} />
+      </Field>
+      <Field label="Rights preferences (optional)" htmlFor="co-rights" hint="e.g. keeping authorship credit, how you like usage licensed">
+        <Textarea id="co-rights" value={c.rightsPreferences ?? ""} maxLength={1000} onChange={(e) => setC({ ...c, rightsPreferences: e.target.value })} />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Rate guidance (optional)" htmlFor="co-rate" hint="A range or a starting point — never required">
+          <Input id="co-rate" value={c.rateGuidance ?? ""} maxLength={300} onChange={(e) => setC({ ...c, rateGuidance: e.target.value })} />
+        </Field>
+        <Field label="Who sees your rate guidance" htmlFor="co-rate-vis" hint={c.rateGuidance ? undefined : "Add rate guidance first — until then nobody sees one."}>
+          <Select id="co-rate-vis" value={c.rateGuidance ? c.rateVisibility : "private"} disabled={!c.rateGuidance} onChange={(e) => setC({ ...c, rateVisibility: e.target.value as typeof c.rateVisibility })}>
+            {RATE_VISIBILITY.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={busy}>
+          Save collaboration profile
+        </Button>
+        {status}
+      </div>
+    </form>
   );
 }
