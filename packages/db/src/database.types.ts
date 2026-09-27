@@ -378,13 +378,13 @@ isOneToOne: false
                   ]
                 },"conversations": {
                   Row: {
-                    "collection_id": string | null,"created_at": string,"creator_id": string,"id": string,"status": string,"title": string,"updated_at": string
+                    "collection_id": string | null,"created_at": string,"creator_id": string,"id": string,"project_id": string | null,"status": string,"title": string,"updated_at": string
                   }
                   Insert: {
-                    "collection_id"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                    "collection_id"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"project_id"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "collection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                    "collection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"project_id"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -398,6 +398,12 @@ isOneToOne: false
       columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "conversations_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
       referencedColumns: ["id"]
     }
                   ]
@@ -1204,6 +1210,86 @@ isOneToOne: false
     },{
       foreignKeyName: "moderation_reports_reporter_creator_id_fkey"
       columns: ["reporter_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_items": {
+                  Row: {
+                    "added_at": string,"artifact_id": string | null,"collection_id": string | null,"conversation_id": string | null,"creator_id": string,"huddle_id": string | null,"id": string,"kind": string,"label": string | null,"material_id": string | null,"note": string | null,"position": number | null,"project_id": string,"reference_id": string | null
+                  }
+                  Insert: {
+                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id": string,"huddle_id"?: string | null,"id"?: string,"kind": string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id": string,"reference_id"?: string | null
+                  }
+                  Update: {
+                    "added_at"?: string,"artifact_id"?: string | null,"collection_id"?: string | null,"conversation_id"?: string | null,"creator_id"?: string,"huddle_id"?: string | null,"id"?: string,"kind"?: string,"label"?: string | null,"material_id"?: string | null,"note"?: string | null,"position"?: number | null,"project_id"?: string,"reference_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_items_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_collection_id_fkey"
+      columns: ["collection_id"]
+isOneToOne: false
+      referencedRelation: "material_collections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_items_reference_id_fkey"
+      columns: ["reference_id"]
+isOneToOne: false
+      referencedRelation: "reference_items"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"projects": {
+                  Row: {
+                    "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "projects_cover_material_id_fkey"
+      columns: ["cover_material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "projects_creator_id_fkey"
+      columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]

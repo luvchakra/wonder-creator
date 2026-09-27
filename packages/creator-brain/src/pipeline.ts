@@ -293,9 +293,8 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     const quality = await qualityChecks(deps, ctx, run, def.type, draft, [...ctx.selectedMaterials, ...ctx.references].map((m) => m.id));
 
     progress(deps, "render");
-    const collectionId = input.conversationId
-      ? ((await deps.db.from("conversations").select("collection_id").eq("id", input.conversationId).maybeSingle()).data?.collection_id ?? null)
-      : null;
+    const home = input.conversationId ? (await deps.db.from("conversations").select("collection_id, project_id").eq("id", input.conversationId).maybeSingle()).data : null;
+    const collectionId = home?.collection_id ?? null;
     const sources: LineageSource[] = [
       ...(collectionId ? [{ type: "collection" as const, id: collectionId, relationship: "references" as const }] : []),
       ...ctx.selectedMaterials.map((m) => ({ type: "material" as const, id: m.id, relationship: "created_from" as const })),
@@ -318,6 +317,11 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
       }),
     );
     await saveQualityReport(deps, artifact.id, artifact.current_version_id!, run.id, quality);
+    // Made in a project's conversation: the piece joins the project (a link; the piece stays the creator's own).
+    if (home?.project_id) {
+      const link = await deps.db.from("project_items").insert({ project_id: home.project_id, creator_id: deps.creatorId, kind: "artifact", artifact_id: artifact.id });
+      if (link.error) log("warn", "project_link_failed", { artifactId: artifact.id, code: link.error.code });
+    }
     await run.finish({ outputCategory: "artifact", artifactId: artifact.id });
     return { kind: "artifact" as const, artifact, runId: run.id, quality, offline: !deps.provider.live };
   });

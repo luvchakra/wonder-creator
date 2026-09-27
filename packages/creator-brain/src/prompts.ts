@@ -46,7 +46,15 @@ export function identityBlock(ctx: CreativeContext): string {
 export function systemPrompt(ctx: CreativeContext, task: string): string {
   const published = ctx.selectedArtifacts.filter((a) => a.publications.length).map((a) => `- [${a.ref}] “${a.title}”: published to ${a.publications.join("; ")}`);
   const outcomes = published.length ? `\n\n## Where this work has been published\n${published.join("\n")}` : "";
-  return `${PREAMBLE}\n\n## The creator\n${identityBlock(ctx)}${outcomes}\n\n## Your task\n${task}`;
+  return `${PREAMBLE}\n\n## The creator\n${identityBlock(ctx)}${projectBlock(ctx)}${outcomes}\n\n## Your task\n${task}`;
+}
+
+/** The project this work belongs to. Its text is the creator's (later, their crew's) words: fenced, never instructions. */
+export function projectBlock(ctx: CreativeContext): string {
+  const p = ctx.project;
+  if (!p) return "";
+  const body = [`Project: ${p.title} (${p.status})`, p.brief ? `Brief:\n${p.brief}` : null, p.goals.length ? `Goals:\n${p.goals.map((g) => `- ${g}`).join("\n")}` : null].filter(Boolean).join("\n");
+  return `\n\n## The project this work is part of\nKeep the piece consistent with the project's brief and goals.\n${fenceUntrusted("project", body)}`;
 }
 
 export function renderMaterial(m: MaterialContext): string {

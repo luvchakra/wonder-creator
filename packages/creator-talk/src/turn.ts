@@ -32,6 +32,8 @@ export const turnSchema = z.object({
   artifactId: z.string().uuid().nullable().optional(),
   /** Starting a conversation from a collection: what's made there records the collection in its lineage. */
   collectionId: z.string().uuid().nullable().optional(),
+  /** Starting a conversation from a project: CreatorBrain works with its brief and goals, and pieces made there join it. */
+  projectId: z.string().uuid().nullable().optional(),
   /** Answer an intent-clarification question: the confirmed brief, and the consequential assumptions acknowledged. */
   clarified: z
     .object({ messageId: z.string().uuid(), brief: briefSchema, acknowledged: z.array(z.enum(["publish", "commercial", "imitation"])).max(3).default([]) })
@@ -69,6 +71,12 @@ async function ownedMaterialIds(deps: BrainDeps, ids: string[]): Promise<string[
 async function ownedCollectionId(deps: BrainDeps, id: string | null | undefined): Promise<string | null> {
   if (!id) return null;
   const { data } = await deps.db.from("material_collections").select("id").eq("id", id).eq("creator_id", deps.creatorId).maybeSingle();
+  return data?.id ?? null;
+}
+
+async function ownedProjectId(deps: BrainDeps, id: string | null | undefined): Promise<string | null> {
+  if (!id) return null;
+  const { data } = await deps.db.from("projects").select("id").eq("id", id).eq("creator_id", deps.creatorId).maybeSingle();
   return data?.id ?? null;
 }
 
@@ -115,7 +123,7 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
 
   const conversation = input.conversationId
     ? must(await db.from("conversations").select("*").eq("id", input.conversationId).maybeSingle(), "We couldn't find that conversation.")
-    : await startConversation(db, creatorId, input.message || directionChoice?.title || "New idea", await ownedCollectionId(deps, input.collectionId));
+    : await startConversation(db, creatorId, input.message || directionChoice?.title || "New idea", await ownedCollectionId(deps, input.collectionId), await ownedProjectId(deps, input.projectId));
 
   const out: Message[] = [];
   const creatorText = directionChoice

@@ -181,8 +181,10 @@ function parametersOf(p: Proposal): Array<{ label: string; value: string }> {
   return out;
 }
 
-export async function listApprovals(db: Db, opts: { state?: "open" | "closed"; limit?: number } = {}): Promise<ApprovalView[]> {
+export async function listApprovals(db: Db, opts: { state?: "open" | "closed"; limit?: number; conversationIds?: string[] } = {}): Promise<ApprovalView[]> {
+  if (opts.conversationIds && !opts.conversationIds.length) return [];
   let q = db.from("ai_proposals").select("*").order("created_at", { ascending: false }).limit(Math.min(opts.limit ?? 50, 100));
+  if (opts.conversationIds) q = q.in("conversation_id", opts.conversationIds.slice(0, 200));
   if (opts.state === "open") q = q.eq("status", "pending");
   if (opts.state === "closed") q = q.neq("status", "pending");
   const { data, error } = await q;

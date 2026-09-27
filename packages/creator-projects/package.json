@@ -1,0 +1,10 @@
+{
+  "name": "@wonder/creator-projects",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./options": "./src/options.ts"
+  }
+}
