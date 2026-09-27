@@ -28,6 +28,7 @@ Spec: [`spec.md`](spec.md) (owner-supplied, 27 Sep 2026). Boards: [`boards/`](bo
 | UI-B | Transform Creation (`/artifacts/:id/transform`): format cards filtered by the source (forms that suit it first, every other form by category), each with a shape preview, format, one sentence and output shape; tap → focused configuration (version, notes, what carries over) → Create a new Creation with lineage | Done |
 | UI-B | Creative Quality: Original / Proposed / Changes switch on a revision preview (shared `Segmented` control); per-check results, never one score | Done |
 | UI-B | Versions: dedicated compare view (`/artifacts/:id/compare`) — Single view · Before / After (stacked on phones) · Swipe; restore still adds a new version | Done |
+| UI-B | Rights: an at-a-glance summary ("You own this Creation", personal use, sharing as the creator, commercial use → add a license, credit) from the stored record only, above the disclaimer and the detailed sections | Done |
 | UI-B | Transform · Quality · Versions · Rights · Share/Publish · Approval Center | Not started |
 | UI-C | Creative Room · Crew · Invitations · Tasks · Collaborative editing · Contributions · Find collaborators · Huddles | Not started |
 | UI-D | Autonomy · Privacy · CreatorPublish · Brand · Campaign · Commercial rights · Market · Business · Analytics | Not started |

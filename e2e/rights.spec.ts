@@ -31,6 +31,11 @@ test.describe("rights step-up", () => {
     // UI: saving a transfer opens the password prompt; the correct password completes it.
     await page.goto(`/artifacts/${artifactId}`);
     await page.getByRole("tab", { name: "Rights" }).click();
+    // At a glance: plain and reassuring, from the stored record only.
+    await expect(page.getByRole("heading", { name: "You own this Creation" })).toBeVisible();
+    const glance = page.getByRole("list", { name: "What this record allows" });
+    await expect(glance).toContainText("Personal use");
+    await expect(glance.getByRole("button", { name: "Add a commercial license" })).toBeVisible();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.getByLabel("Ownership").selectOption("transferred");
     await page.getByLabel("Owner 1 name").fill("Harbour Press");
@@ -45,6 +50,7 @@ test.describe("rights step-up", () => {
     await prompt.getByRole("button", { name: "Confirm" }).click();
     await expect(prompt).toBeHidden();
     await expect(page.getByText("Transferred", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ownership of this Creation was transferred" })).toBeVisible();
 
     // Still signed in as the same creator (the check didn't replace the session).
     expect((await page.request.get(`/api/v1/artifacts/${artifactId}`)).status()).toBe(200);
