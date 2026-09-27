@@ -10,7 +10,7 @@ test.describe("Publication derivatives", () => {
 
     await page.goto(`/artifacts/${art.id}`);
     await page.getByRole("button", { name: "More actions" }).click();
-    await page.getByRole("menuitem", { name: "Create from this" }).click();
+    await page.getByRole("menuitem", { name: "For a destination" }).click();
     await expect(page.getByRole("heading", { name: "Derivatives", level: 1 })).toBeVisible();
     await expect(page.getByRole("region", { name: "Source" })).toContainText("v2");
     await page.getByRole("button", { name: "Make youtube description" }).click();

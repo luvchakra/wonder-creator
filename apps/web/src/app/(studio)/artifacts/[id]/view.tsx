@@ -121,32 +121,34 @@ export function ArtifactView(props: {
   const statusLabel = a.status === "draft" ? "In Progress" : a.status === "in_review" ? "In Review" : a.status === "final" ? "Completed" : a.status === "published" ? "Published" : a.status === "archived" ? "Archived" : a.status;
   const suggestion = props.quality?.suggestions.find((x) => x.title || x.detail);
   const isScript = /Film|Script|Screenplay|Trailer|Dialogue/.test(props.typeLabel);
+  // Finished work leads with sharing; work in progress leads with continuing (interaction-minimalism §24).
+  const finished = a.status === "final" || a.status === "published";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      {/* 1–2. Hero preview and title (UI redesign §14). */}
+    <div className="mx-auto max-w-3xl space-y-4">
+      {/* 1–2. Hero preview and title (UI redesign §14), compact: a 208px hero on phones (density §35). */}
       <section aria-label="Preview" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
         {props.coverUrl ? (
-          <div className="relative aspect-[4/5] sm:aspect-[16/9]">
+          <div className="relative h-52 sm:h-auto sm:aspect-[16/9]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={props.coverUrl} alt="" className="size-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-navy/75 via-navy/10 to-transparent" />
-            <h1 className="absolute bottom-5 left-5 right-5 break-words font-display text-3xl italic text-white sm:left-7 sm:text-4xl">{a.title}</h1>
+            <h1 className="absolute bottom-4 left-4 right-4 break-words font-display text-[22px] italic leading-tight text-white sm:left-6 sm:text-3xl">{a.title}</h1>
           </div>
         ) : (
-          <h1 className="break-words px-5 pt-6 font-display text-3xl text-ink sm:px-7 sm:text-4xl">{a.title}</h1>
+          <h1 className="break-words px-4 pt-4 font-display text-[22px] leading-tight text-ink sm:px-6 sm:pt-5 sm:text-3xl">{a.title}</h1>
         )}
         <article
           aria-label="Current version"
-          className={cn("m-4 max-h-[26rem] overflow-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-5 leading-relaxed text-ink sm:m-6", isScript ? "font-mono text-[13.5px]" : "font-display text-[17px]")}
+          className={cn("m-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-surface-muted p-4 leading-relaxed text-ink sm:m-5", isScript ? "font-mono text-[13px]" : "font-display text-base")}
         >
           {current?.content || "This Creation is empty. Open the Creative Studio to begin."}
         </article>
       </section>
 
       {/* 3–5. Type and status, a short description, key metadata. */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Badge>{props.typeLabel}</Badge>
           <Badge tone={a.status === "final" || a.status === "published" ? "success" : "neutral"}>
             {current ? `v${current.version_number} ` : ""}
@@ -154,109 +156,128 @@ export function ArtifactView(props: {
           </Badge>
           <Badge tone={a.privacy === "public" ? "accent" : "neutral"}>{a.privacy === "public" ? "Public" : a.privacy === "shared" ? "Shared" : "Private"}</Badge>
         </div>
-        {a.description ? <p className="text-[15px] text-ink-muted">{a.description}</p> : null}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-ink-subtle">By</dt>
-            <dd className="flex items-center gap-1.5 text-ink">
-              <Avatar name={props.owner.name} src={props.owner.avatarUrl} size={20} />
-              <span className="truncate">{props.owner.name}</span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-subtle">Created from</dt>
-            <dd className="text-ink">
-              {derivedFrom.length ? (
-                <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
-                  “{derivedFrom[0].title}”
-                </Link>
-              ) : createdFrom.length ? (
-                `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}`
-              ) : (
-                "A blank page"
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-subtle">Version</dt>
-            <dd className="text-ink">
-              v{current?.version_number ?? 1} · {props.versions.length} total
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-subtle">Rights</dt>
-            <dd className="text-ink">{props.rights ? (props.rights.ownership_kind === "joint" ? "Joint ownership" : "All rights reserved") : "—"}</dd>
-          </div>
-        </dl>
+        {a.description ? <p className="text-sm text-ink-muted">{a.description}</p> : null}
+        {/* Grouped metadata, not a tile per fact (density §38). */}
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-ink-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <Avatar name={props.owner.name} src={props.owner.avatarUrl} size={18} />
+            <span className="sr-only">By</span>
+            <span className="max-w-[10rem] truncate text-ink">{props.owner.name}</span>
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            Created from{" "}
+            {derivedFrom.length ? (
+              <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
+                “{derivedFrom[0].title}”
+              </Link>
+            ) : createdFrom.length ? (
+              `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}`
+            ) : (
+              "a blank page"
+            )}
+          </span>
+          <span aria-hidden>·</span>
+          <span>{props.versions.length} {props.versions.length === 1 ? "version" : "versions"}</span>
+          {props.rights ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{props.rights.ownership_kind === "joint" ? "Joint ownership" : "All rights reserved"}</span>
+            </>
+          ) : null}
+        </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {isOwner ? (
+      {/* One primary action for where this Creation is, at most two secondary ones; the rest under More and in the
+          Palette (interaction-minimalism §11, §24). */}
+      <div className="flex flex-wrap items-center gap-2">
+        {isOwner && !finished ? (
           <>
-            <Link href={`/artifacts/${a.id}/studio`} className={buttonClasses({})}>
-              <PenLine className="size-4" aria-hidden /> Creative Studio
+            <Link href={`/artifacts/${a.id}/studio`} className={buttonClasses({ size: "sm" })}>
+              <PenLine className="size-4" aria-hidden /> Continue Creating
             </Link>
-            <Button variant="secondary" onClick={() => setShareOpen(true)}>
+            <Link href={`/artifacts/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+              <Wand2 className="size-4" aria-hidden /> Transform
+            </Link>
+            <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
               <Share2 className="size-4" aria-hidden /> Share
             </Button>
-            <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary" })}>
+          </>
+        ) : isOwner ? (
+          <>
+            <Button size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 className="size-4" aria-hidden /> Share
+            </Button>
+            <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
               <Send className="size-4" aria-hidden /> Publish
+            </Link>
+            <Link href={`/artifacts/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+              <Wand2 className="size-4" aria-hidden /> Create from this
             </Link>
           </>
         ) : null}
-        <Menu>
-          <MenuTrigger className={buttonClasses({ variant: "secondary" })}>
-            <Download className="size-4" aria-hidden /> Download
-          </MenuTrigger>
-          <MenuContent align="start">
-            {exportFormatsFor(a.artifact_type).map((f) => (
-              <MenuItem key={f} onSelect={() => downloadFile(`/api/v1/artifacts/${a.id}/export?format=${f}`)}>
-                {EXPORT_FORMATS[f].label} (.{EXPORT_FORMATS[f].ext})
-              </MenuItem>
-            ))}
-          </MenuContent>
-        </Menu>
-        {props.canCollaborate ? (
-          <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "secondary" })}>
-            <Users className="size-4" aria-hidden /> Collaborate
+        <span className="ml-auto flex items-center gap-1">
+          <Link href={`/artifacts/${a.id}/context`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+            <Compass className="size-4" aria-hidden /> Context
           </Link>
-        ) : null}
-        <Link href={`/artifacts/${a.id}/context`} className={buttonClasses({ variant: "ghost" })}>
-          <Compass className="size-4" aria-hidden /> Context
-        </Link>
-        {isOwner ? (
           <Menu>
-            <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More actions">
-              <MoreHorizontal className="size-5" aria-hidden />
+            <MenuTrigger className={buttonClasses({ variant: "ghost", size: "sm", className: "px-2.5" })} aria-label="Download">
+              <Download className="size-4" aria-hidden />
             </MenuTrigger>
-            <MenuContent>
-              <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/derivatives`)}>
-                <Layers className="size-4" aria-hidden /> Create from this
-              </MenuItem>
-              <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/transform`)}>
-                <Wand2 className="size-4" aria-hidden /> Transform / create derivative
-              </MenuItem>
-              <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
-                <Sparkles className="size-4" aria-hidden /> meTalk about this
-              </MenuItem>
-              <MenuItem onSelect={() => router.push(`/huddles?artifact=${a.id}`)}>
-                <Radio className="size-4" aria-hidden /> Start a Huddle about this
-              </MenuItem>
-              {a.status !== "archived" ? (
-                <MenuItem onSelect={() => patch({ status: "archived" })}>
-                  <History className="size-4" aria-hidden /> Archive
+            <MenuContent align="end">
+              {exportFormatsFor(a.artifact_type).map((f) => (
+                <MenuItem key={f} onSelect={() => downloadFile(`/api/v1/artifacts/${a.id}/export?format=${f}`)}>
+                  {EXPORT_FORMATS[f].label} (.{EXPORT_FORMATS[f].ext})
                 </MenuItem>
-              ) : (
-                <MenuItem onSelect={() => patch({ status: "draft" })}>
-                  <History className="size-4" aria-hidden /> Restore from archive
-                </MenuItem>
-              )}
-              <MenuItem destructive onSelect={() => setDeleteOpen(true)}>
-                <Trash2 className="size-4" aria-hidden /> Delete permanently
-              </MenuItem>
+              ))}
             </MenuContent>
           </Menu>
-        ) : null}
+          {props.canCollaborate && !isOwner ? (
+            <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+              <Users className="size-4" aria-hidden /> Collaborate
+            </Link>
+          ) : null}
+          {isOwner ? (
+            <Menu>
+              <MenuTrigger className={buttonClasses({ variant: "ghost", size: "sm", className: "px-2.5" })} aria-label="More actions">
+                <MoreHorizontal className="size-5" aria-hidden />
+              </MenuTrigger>
+              <MenuContent align="end">
+                {!finished ? (
+                  <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/publish`)}>
+                    <Send className="size-4" aria-hidden /> Publish
+                  </MenuItem>
+                ) : null}
+                {props.canCollaborate ? (
+                  <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/collaborate`)}>
+                    <Users className="size-4" aria-hidden /> Collaborate
+                  </MenuItem>
+                ) : null}
+                <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/derivatives`)}>
+                  <Layers className="size-4" aria-hidden /> For a destination
+                </MenuItem>
+                <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
+                  <Sparkles className="size-4" aria-hidden /> meTalk about this
+                </MenuItem>
+                <MenuItem onSelect={() => router.push(`/huddles?artifact=${a.id}`)}>
+                  <Radio className="size-4" aria-hidden /> Start a Huddle about this
+                </MenuItem>
+                {a.status !== "archived" ? (
+                  <MenuItem onSelect={() => patch({ status: "archived" })}>
+                    <History className="size-4" aria-hidden /> Archive
+                  </MenuItem>
+                ) : (
+                  <MenuItem onSelect={() => patch({ status: "draft" })}>
+                    <History className="size-4" aria-hidden /> Restore from archive
+                  </MenuItem>
+                )}
+                <MenuItem destructive onSelect={() => setDeleteOpen(true)}>
+                  <Trash2 className="size-4" aria-hidden /> Delete permanently
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          ) : null}
+        </span>
       </div>
       {error ? (
         <p role="alert" className="text-sm text-danger">

@@ -13,9 +13,9 @@ test.describe("Unified search", () => {
     expect((await page.request.patch(`/api/v1/materials/${taggedId}`, { data: { tags: [tag] } })).ok()).toBe(true);
     expect((await page.request.post("/api/v1/collections", { data: { name: `${word} moodboard` } })).ok()).toBe(true);
 
-    // The quick search dialog leads to the full results page.
+    // Inline navbar search leads to the full results page.
     await page.getByRole("button", { name: "Search your creativity" }).click();
-    await page.getByRole("dialog", { name: "Search" }).getByLabel("Search").fill(word);
+    await page.getByRole("search", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(word);
     await page.getByRole("link", { name: "See all results and filters" }).click();
     await expect(page).toHaveURL(new RegExp(`/search\\?q=${word}`));
 
@@ -62,5 +62,28 @@ test.describe("Unified search", () => {
     await expect(page.getByRole("heading", { name: /Nothing found for/ })).toBeVisible();
     await page.getByRole("link", { name: "Clear filters" }).click();
     await expect(page).toHaveURL(/\/search\?q=/);
+  });
+});
+
+test.describe("inline navbar search", () => {
+  test.beforeEach(({ creator }) => void creator);
+
+  test("opens in the navbar, not a dialog; Escape closes it and returns focus; Enter goes to full search", async ({ page }) => {
+    await page.goto("/");
+    const trigger = page.getByRole("button", { name: "Search your creativity" });
+    await trigger.click();
+    const search = page.getByRole("banner").getByRole("search", { name: "Search" });
+    await expect(search.getByRole("textbox", { name: "Search" })).toBeFocused();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await search.getByRole("textbox", { name: "Search" }).fill("lanterns");
+    await expect(search.getByRole("region", { name: "Search results" })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/search\?q=lanterns$/);
+    await expect(search).toHaveCount(0);
   });
 });

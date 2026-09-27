@@ -1,5 +1,5 @@
 "use client";
-import { KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, KitPencilIcon, KitPlusIcon, KitSearchIcon, KitSparklesIcon, KitUsersIcon, Palette, type PaletteGroup, type PaletteItem as LeafItem } from "@wonder/ui";
+import { CanvasAtmosphere, type AtmosphereMood, KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, KitPencilIcon, KitPlusIcon, KitSearchIcon, KitSparklesIcon, KitUsersIcon, Palette, type PaletteGroup, type PaletteItem as LeafItem } from "@wonder/ui";
 import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { MeTalkSheet } from "./metalk-sheet";
@@ -60,6 +60,42 @@ export function useMeTalk() {
   return useContext(Ctx)?.openMeTalk ?? (() => undefined);
 }
 
+/** The Canvas atmosphere follows where the creator is; utility screens stay quiet. */
+function moodFor(page: PaletteContext["page"] | undefined): AtmosphereMood {
+  switch (page) {
+    case "home":
+      return "dawn";
+    case "creation":
+    case "studio":
+    case "context":
+    case "transform":
+    case "compare":
+    case "derivatives":
+    case "share":
+    case "publish":
+      return "studio";
+    case "materials":
+    case "material":
+    case "collection":
+    case "spaces":
+    case "search":
+    case "explore":
+      return "materials";
+    case "huddles":
+    case "huddle":
+    case "huddle-summary":
+    case "discover":
+    case "me":
+    case "creator":
+      return "together";
+    case "room":
+    case "crew":
+      return "room";
+    default:
+      return "quiet";
+  }
+}
+
 export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<PaletteContext | null>(null);
   const [talk, setTalk] = useState(false);
@@ -96,6 +132,7 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const strip = useMemo(() => resolveContextStrip({ page: context?.page ?? null, lifecycle: context?.lifecycle, facts: context?.strip, signals, online, now: 0 }), [context, signals, online]);
   return (
     <Ctx.Provider value={value}>
+      <CanvasAtmosphere mood={moodFor(context?.page)} />
       <StripCtx.Provider value={strip}>{children}</StripCtx.Provider>
       <CreativePalette context={context} onMeTalk={() => setTalk(true)} />
       <MeTalkSheet open={talk} onOpenChange={setTalk} />

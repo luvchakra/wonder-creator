@@ -3,6 +3,7 @@ export * from "./components/button";
 export * from "./components/primitives";
 export * from "./components/form";
 export * from "./components/overlay";
+export * from "./components/atmosphere";
 export * from "./components/brand";
 export { KIT, type KitAsset, type KitVector, type KitRaster } from "./brand/kit";
 export * from "./brand/kit-icons";

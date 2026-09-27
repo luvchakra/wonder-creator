@@ -20,7 +20,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-3.5 text-sm min-w-9",
+  // Compact visual (36px) inside a 44px hit area (compact-density §6).
+  sm: "relative h-9 px-3.5 text-sm min-w-9 before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']",
   md: "h-11 px-5 text-[15px] min-w-11",
   lg: "h-12 px-6 text-base min-w-12",
 };

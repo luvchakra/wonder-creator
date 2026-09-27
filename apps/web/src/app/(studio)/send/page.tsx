@@ -1,5 +1,5 @@
 import { listIntake } from "@wonder/creator-send";
-import { PageTitle } from "@wonder/ui";
+import { PageTitle, KIT } from "@wonder/ui";
 import { requireSession } from "@/lib/session";
 import { SendInbox } from "./inbox";
 
@@ -10,7 +10,7 @@ export default async function SendPage() {
   const items = await listIntake(db, { limit: 40 });
   return (
     <div>
-      <PageTitle title="CreatorSend" subtitle="Drop, upload, paste or record anything. We'll help you turn it into creative material." />
+      <PageTitle art={KIT.painted.lavenderSprig} title="CreatorSend" subtitle="Drop, upload, paste or record anything. We'll help you turn it into creative material." />
       <SendInbox
         initial={items.map((i) => ({
           id: i.id,

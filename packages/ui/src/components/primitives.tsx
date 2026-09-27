@@ -104,12 +104,23 @@ export function SectionHeader({ title, action, className, as: As = "h2" }: { tit
   );
 }
 
-export function PageTitle({ title, subtitle, action, className }: { title: string; subtitle?: string; action?: React.ReactNode; className?: string }) {
+/**
+ * A page title. Compact (density spec §4: 24px on mobile), with an optional painted sprig from the Vector Kit beside
+ * the title text — decoration in space the title row already has, never a layout region of its own.
+ */
+export function PageTitle({ title, subtitle, action, className, art }: { title: string; subtitle?: string; action?: React.ReactNode; className?: string; art?: KitAsset }) {
   return (
-    <header className={cn("mb-6 flex flex-wrap items-end justify-between gap-4", className)}>
+    <header className={cn("mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5", className)}>
       <div className="min-w-0">
-        <h1 className="font-display text-[28px] leading-tight text-ink sm:text-4xl">{title}</h1>
-        {subtitle ? <p className="mt-1.5 text-[15px] text-ink-muted">{subtitle}</p> : null}
+        <div className="flex items-end gap-1">
+          <h1 className="min-w-0 font-display text-2xl leading-tight text-ink sm:text-[32px]">{title}</h1>
+          {art ? (
+            <span aria-hidden className="pointer-events-none -mb-1 -mt-8 shrink-0 self-end opacity-80">
+              <KitArt art={art} sizes="4rem" className="h-14 w-auto sm:h-16" />
+            </span>
+          ) : null}
+        </div>
+        {subtitle ? <p className="mt-1 text-sm text-ink-muted">{subtitle}</p> : null}
       </div>
       {action}
     </header>

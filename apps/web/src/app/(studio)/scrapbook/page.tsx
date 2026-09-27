@@ -1,5 +1,5 @@
 import { listPosts } from "@wonder/creator-library";
-import { PageTitle } from "@wonder/ui";
+import { PageTitle, KIT } from "@wonder/ui";
 import { requireSession } from "@/lib/session";
 import { ScrapbookFeed } from "./feed";
 
@@ -15,7 +15,7 @@ export default async function ScrapbookPage({ searchParams }: { searchParams: Pr
   ]);
   return (
     <div className="mx-auto max-w-2xl">
-      <PageTitle title="Scrapbook" subtitle="Thoughts, reflections, sketches and fragments — in the order they were shared. No likes, no rankings." />
+      <PageTitle art={KIT.painted.blossomSprig} title="Scrapbook" subtitle="Thoughts, reflections, sketches and fragments — in the order they were shared. No likes, no rankings." />
       <ScrapbookFeed
         tab={tab}
         initial={feed}
