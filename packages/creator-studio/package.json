@@ -9,6 +9,7 @@
     "./licensing": "./src/licensing.ts",
     "./exports": "./src/exports.ts",
     "./commercial": "./src/commercial.ts",
-    "./carousel": "./src/carousel.ts"
+    "./carousel": "./src/carousel.ts",
+    "./business": "./src/business.ts"
   }
 }
