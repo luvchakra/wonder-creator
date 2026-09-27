@@ -3,6 +3,7 @@ import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJ
 import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
+import { TasksPanel } from "./tasks-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -49,7 +50,7 @@ export interface SharedSummary {
   mine: boolean;
 }
 
-export type ProjectTab = "overview" | "work" | "chat";
+export type ProjectTab = "overview" | "work" | "tasks" | "chat";
 const SHAREABLE: ProjectItemKind[] = ["material", "reference", "artifact"];
 
 /** Sections in the order the work matters: what's being made, what it's made from, then how it's being made. */
@@ -80,6 +81,7 @@ export function ProjectView({
   tab,
   shared,
   chat,
+  tasks,
 }: {
   project: Project;
   items: Item[];
@@ -93,12 +95,14 @@ export function ProjectView({
   /** Work shared with the crew (read-only for everyone but its owner). */
   shared: SharedSummary[];
   chat: { messages: ChatMessage[]; olderBefore: string | null } | null;
+  tasks: Omit<React.ComponentProps<typeof TasksPanel>, "projectId" | "viewerId"> | null;
 }) {
   // Your own links here; work others shared with the crew is listed separately (and opened read-only).
   const items = allItems.filter((i) => i.linkedBy === viewerId && (canEdit || i.available));
   const fromCrew = shared.filter((x) => !x.mine);
-  const showOverview = !crew || tab === "overview";
-  const showWork = !crew || tab === "work";
+  const showOverview = tab === "overview";
+  // Without a crew, a project's work sits on its overview.
+  const showWork = crew ? tab === "work" : tab === "overview";
   const [sharing, setSharing] = useState(false);
   const router = useRouter();
   const [status, setStatus] = useState(project.status);
@@ -250,14 +254,15 @@ export function ProjectView({
         </div>
       </section>
 
-      {crew ? (
+      {crew || canEdit ? (
         <nav aria-label="Project sections" className="-mx-4 overflow-x-auto px-4">
           <ul className="flex gap-2">
             {(
               [
                 ["overview", "Overview", `/projects/${project.id}`],
-                ["work", "Work", `/projects/${project.id}?tab=work`],
-                ["chat", "Chat", `/projects/${project.id}?tab=chat`],
+                ...(crew ? ([["work", "Work", `/projects/${project.id}?tab=work`]] as const) : []),
+                ["tasks", "Tasks", `/projects/${project.id}?tab=tasks`],
+                ...(crew ? ([["chat", "Chat", `/projects/${project.id}?tab=chat`]] as const) : []),
               ] as const
             ).map(([key, label, href]) => (
               <li key={key}>
@@ -270,11 +275,13 @@ export function ProjectView({
                 </Link>
               </li>
             ))}
+            {crew ? (
             <li>
               <Link href={`/crews/${crew.id}`} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full border border-border bg-surface px-4 text-sm text-ink-muted hover:border-accent">
                 People
               </Link>
             </li>
+            ) : null}
           </ul>
         </nav>
       ) : null}
@@ -407,6 +414,8 @@ export function ProjectView({
           </section>
         );
       })}
+
+      {tab === "tasks" && tasks ? <TasksPanel projectId={project.id} viewerId={viewerId} {...tasks} /> : null}
 
       {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} /> : null}
 

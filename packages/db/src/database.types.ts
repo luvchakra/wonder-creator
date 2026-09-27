@@ -1419,6 +1419,136 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_milestones": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"description": string | null,"done_at": string | null,"due_on": string | null,"id": string,"project_id": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"done_at"?: string | null,"due_on"?: string | null,"id"?: string,"project_id": string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"done_at"?: string | null,"due_on"?: string | null,"id"?: string,"project_id"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_milestones_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_milestones_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_task_assignees": {
+                  Row: {
+                    "assigned_at": string,"assigned_by": string | null,"creator_id": string,"task_id": string
+                  }
+                  Insert: {
+                    "assigned_at"?: string,"assigned_by"?: string | null,"creator_id": string,"task_id": string
+                  }
+                  Update: {
+                    "assigned_at"?: string,"assigned_by"?: string | null,"creator_id"?: string,"task_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_task_assignees_assigned_by_fkey"
+      columns: ["assigned_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_task_assignees_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_task_assignees_task_id_fkey"
+      columns: ["task_id"]
+isOneToOne: false
+      referencedRelation: "project_tasks"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_task_comments": {
+                  Row: {
+                    "body": string,"created_at": string,"creator_id": string | null,"id": string,"task_id": string
+                  }
+                  Insert: {
+                    "body": string,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"task_id": string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"task_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_task_comments_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_task_comments_task_id_fkey"
+      columns: ["task_id"]
+isOneToOne: false
+      referencedRelation: "project_tasks"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_tasks": {
+                  Row: {
+                    "approved_by": string | null,"completed_at": string | null,"created_at": string,"created_by": string | null,"depends_on": string | null,"description": string | null,"due_on": string | null,"id": string,"item_id": string | null,"milestone_id": string | null,"needs_approval": boolean,"project_id": string,"status": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "approved_by"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"depends_on"?: string | null,"description"?: string | null,"due_on"?: string | null,"id"?: string,"item_id"?: string | null,"milestone_id"?: string | null,"needs_approval"?: boolean,"project_id": string,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "approved_by"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"depends_on"?: string | null,"description"?: string | null,"due_on"?: string | null,"id"?: string,"item_id"?: string | null,"milestone_id"?: string | null,"needs_approval"?: boolean,"project_id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_tasks_approved_by_fkey"
+      columns: ["approved_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_tasks_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_tasks_depends_on_fkey"
+      columns: ["depends_on"]
+isOneToOne: false
+      referencedRelation: "project_tasks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_tasks_item_id_fkey"
+      columns: ["item_id"]
+isOneToOne: false
+      referencedRelation: "project_items"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_tasks_milestone_id_fkey"
+      columns: ["milestone_id"]
+isOneToOne: false
+      referencedRelation: "project_milestones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_tasks_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"projects": {
                   Row: {
                     "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string
@@ -2141,6 +2271,9 @@ isOneToOne: false
                            },
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
+                           },
+"project_role_of":
+{ Args: { "p_project": string }; Returns: string
                            },
 "project_shared_item":
 { Args: { "p_item": string }; Returns: Json

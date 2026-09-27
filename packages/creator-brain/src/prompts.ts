@@ -95,6 +95,8 @@ export const TASKS = {
     "Adapt the source piece into a new artifact type. Keep its heart, voice and key images; the result is a derivative of the source. Output only the new piece.",
   publish_copy:
     "Draft publishing copy for this piece: a title, a short caption (at most 2 sentences, no hashtag walls, no engagement bait) and a one-paragraph description, in the creator's voice. Describe only the piece; never mention private source material.",
+  task_plan:
+    "Suggest the next practical steps for this creative project as short tasks (a verb first, under 12 words each), based on its brief, goals, milestones and the tasks it already has. Don't repeat existing tasks. Also list up to three things that seem to be missing. Never assign people, set dates or make commitments on anyone's behalf.",
   memory:
     "From the creator's own words, extract at most three durable facts about their creative practice worth remembering (preferences, voice, recurring themes). Only include what they clearly expressed. Return an empty list if nothing is durable.",
 } as const;

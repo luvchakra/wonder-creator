@@ -1,6 +1,6 @@
 import { listApprovals } from "@wonder/creator-brain";
 import { signedUrlsFor } from "@wonder/creator-library";
-import { crewForProject, getCrew, getProject, listCrewMessages, listSharedItems, projectConversationIds, type ProjectStatus } from "@wonder/creator-projects";
+import { crewForProject, getCrew, getProject, listCrewMessages, listSharedItems, listTasks, progressSummary, projectConversationIds, projectPeople, type ProjectStatus } from "@wonder/creator-projects";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -12,7 +12,7 @@ export const metadata = { title: "Project" };
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
   const requested = (await searchParams).tab;
-  const tab: ProjectTab = (["work", "chat"] as const).find((t) => t === requested) ?? "overview";
+  const asked: ProjectTab = (["work", "tasks", "chat"] as const).find((t) => t === requested) ?? "overview";
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const data = await getProject(db, id).catch(() => null);
@@ -31,9 +31,14 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const crewRow = await crewForProject(db, id);
   const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
   const inCrew = !!crew && crew.me?.status === "active";
-  const [shared, chat] = await Promise.all([
+  // Work and Chat need a crew; Tasks works for any project.
+  const tab: ProjectTab = asked === "tasks" || (inCrew && asked !== "overview") ? asked : "overview";
+  const [shared, chat, taskData, people, role] = await Promise.all([
     crew ? listSharedItems(db, id) : Promise.resolve([]),
     inCrew && tab === "chat" ? listCrewMessages(db, creator.id, crew!.crew.id) : Promise.resolve(null),
+    tab === "tasks" ? listTasks(db, id) : Promise.resolve(null),
+    tab === "tasks" ? projectPeople(db, id) : Promise.resolve([]),
+    tab === "tasks" ? db.rpc("project_role_of", { p_project: id }).then((r) => r.data as "owner" | "admin" | "member" | null) : Promise.resolve(null),
   ]);
   const [avatars, owner] = await Promise.all([
     avatarUrls(db, (crew?.active ?? []).map((m) => m.creatorId)),
@@ -71,9 +76,24 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         linkedBy: i.linkedBy,
       }))}
       viewerId={creator.id}
-      tab={inCrew ? tab : "overview"}
+      tab={tab}
       shared={shared}
       chat={chat}
+      tasks={
+        taskData && role
+          ? {
+              role,
+              tasks: taskData.tasks,
+              milestones: taskData.milestones,
+              summary: progressSummary(taskData.tasks, taskData.milestones),
+              people,
+              items: [
+                ...items.filter((i) => i.linkedBy === creator.id && (canEdit || i.available)).map((i) => ({ id: i.id, title: i.title })),
+                ...shared.filter((x) => !x.mine).map((x) => ({ id: x.itemId, title: `${x.title} (shared)` })),
+              ],
+            }
+          : null
+      }
       canEdit={canEdit}
       ownerName={owner.data?.display_name ?? "A creator"}
       crew={

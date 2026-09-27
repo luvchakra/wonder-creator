@@ -7,6 +7,7 @@ import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenance
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
 import { authorizeTool, claimProposal, createProposal, getPendingProposal, resolveProposal, type Proposal } from "./governance";
 import { artifactBrief, renderMaterials, systemPrompt, TASKS } from "./prompts";
+import { fenceUntrusted } from "@wonder/core/server";
 import type { ContentPart, CreativeModelProvider, GenerateInput } from "./providers/types";
 import { heuristicChecks, mergeChecks, type QualityCheck } from "./quality";
 import { RunTracker, type StepName } from "./runs";
@@ -605,5 +606,47 @@ export async function draftPublicationCopy(deps: BrainDeps, artifactId: string):
     });
     await run.finish({ outputCategory: "publication_copy", artifactId });
     return { ...copy, offline: !deps.provider.live };
+  });
+}
+
+export const taskPlanSchema = z.object({
+  tasks: z.array(z.object({ title: z.string().min(1).max(200), why: z.string().max(300).optional() })).max(8),
+  missing: z.array(z.string().min(1).max(200)).max(3).default([]),
+});
+export type TaskPlan = z.infer<typeof taskPlanSchema>;
+
+/**
+ * Suggest next tasks for a project (P1-05). Suggestions only: nothing is saved, nobody is assigned and no dates are
+ * set — the creator picks what to add. Governed by the Organization autonomy setting.
+ */
+export async function suggestProjectTasks(deps: BrainDeps, projectId: string): Promise<TaskPlan & { offline: boolean }> {
+  const project = must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", projectId).maybeSingle(), "We couldn't find that project.");
+  const [tasks, milestones] = await Promise.all([
+    deps.db.from("project_tasks").select("title, status").eq("project_id", projectId).limit(100),
+    deps.db.from("project_milestones").select("title, due_on, done_at").eq("project_id", projectId).limit(30),
+  ]);
+  const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Suggest next steps for this project." });
+  ctx.project = { id: project.id, title: project.title, status: project.status, brief: project.brief.slice(0, 3000), goals: project.goals.slice(0, 12) };
+  const run = await startRun(deps, "task_plan", { inputCategory: "text" });
+  return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "suggest_tasks", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
+    const existing = (tasks.data ?? []).map((t) => `- [${t.status}] ${t.title}`).join("\n") || "(none yet)";
+    const ms = (milestones.data ?? []).map((m) => `- ${m.title}${m.due_on ? ` (due ${m.due_on})` : ""}${m.done_at ? " — done" : ""}`).join("\n") || "(none yet)";
+    const plan = await run.step("plan", async () => {
+      const r = await deps.provider.structured({
+        task: "task_plan",
+        system: systemPrompt(ctx, TASKS.task_plan),
+        schema: taskPlanSchema,
+        schemaName: "task_plan",
+        messages: [{ role: "user", content: fenceUntrusted("project tasks", `Existing tasks:\n${existing}\n\nMilestones:\n${ms}`) }],
+        hints: { title: project.title },
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value;
+    });
+    await run.finish({ outputCategory: "task_plan" });
+    const have = new Set((tasks.data ?? []).map((t) => t.title.trim().toLowerCase()));
+    return { tasks: plan.tasks.filter((t) => !have.has(t.title.trim().toLowerCase())), missing: plan.missing, offline: !deps.provider.live };
   });
 }
