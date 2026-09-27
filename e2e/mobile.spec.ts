@@ -79,6 +79,7 @@ test.describe("mobile layout @mobile", () => {
     await page.request.patch("/api/v1/creators/autonomy", { data: { reset: true } });
     const project = `/projects/${((await (await page.request.post("/api/v1/projects", { data: { title: `Pocket project ${uid()}`, brief: "A small film." } })).json()) as { project: { id: string } }).project.id}`;
 
+    const crew = `/crews/${((await (await page.request.post(`/api/v1${project}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
     const routes: Array<[string, (p: Page) => Promise<unknown>]> = [
       ["/", (p) => expect(p.getByLabel("What are you thinking about?")).toBeVisible()],
       [`/create?c=${conversation}`, (p) => expect(p.getByRole("region", { name: "CreatorTalk" })).toBeVisible()],
@@ -94,6 +95,7 @@ test.describe("mobile layout @mobile", () => {
       ["/scrapbook", (p) => expect(p.getByRole("form", { name: "Share to your Scrapbook" })).toBeVisible()],
       ["/projects", (p) => expect(p.getByRole("button", { name: "New project" }).first()).toBeVisible()],
       [project, (p) => expect(p.getByRole("link", { name: "Create in this project" })).toBeVisible()],
+      [crew, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],

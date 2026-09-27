@@ -1,5 +1,5 @@
 import { signedUrlsFor } from "@wonder/creator-library";
-import { listProjects, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
+import { listProjects, myCrewInvites, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
 import { BACKGROUNDS, EmptyState, PageTitle, cn } from "@wonder/ui";
 import Link from "next/link";
 import { ProjectCard } from "@/components/project-card";
@@ -11,15 +11,28 @@ export const metadata = { title: "Projects" };
 const FILTERS = [{ key: "open", label: "All" }, ...PROJECT_STATUSES.map((s) => ({ key: s, label: PROJECT_STATUS_LABEL[s] }))] as const;
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const { db } = await requireSession();
+  const { db, creator } = await requireSession();
   const sp = await searchParams;
   const status = (FILTERS.find((f) => f.key === sp.status)?.key ?? "open") as ProjectStatus | "open";
-  const projects = await listProjects(db, { status });
+  const [projects, invites] = await Promise.all([listProjects(db, { status, viewerId: creator.id }), myCrewInvites(db, creator.id)]);
   const covers = await signedUrlsFor(db, projects.map((p) => p.coverObjectId));
 
   return (
     <div>
       <PageTitle title="My Projects" subtitle="Bring material, pieces, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
+      {invites.length ? (
+        <section aria-label="Crew invitations" className="mb-6 space-y-2">
+          {invites.map((i) => (
+            <Link key={i.crewId} href={`/crews/${i.crewId}`} className="flex min-h-11 items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{i.invitedBy}</span> invited you to join <span className="font-medium">{i.crewName}</span>
+                {i.roleTitle ? ` as ${i.roleTitle}` : ""} <span className="text-ink-muted">· {i.projectTitle}</span>
+              </span>
+              <span className="shrink-0 text-sm font-medium text-accent-ink">View invitation</span>
+            </Link>
+          ))}
+        </section>
+      ) : null}
       <nav aria-label="Filter projects" className="-mx-4 mb-6 overflow-x-auto px-4">
         <ul className="flex gap-2">
           {FILTERS.map((f) => (

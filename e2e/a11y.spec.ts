@@ -26,6 +26,7 @@ test.describe("accessibility", () => {
     const art = (await res.json()).artifact as { id: string };
     const material = `/space/materials/${await saveNote(page, `A note ${uid()}`)}`;
     const project = `/projects/${((await (await page.request.post("/api/v1/projects", { data: { title: `Accessible project ${uid()}`, brief: "Tides." } })).json()) as { project: { id: string } }).project.id}`;
+    const crew = `/crews/${((await (await page.request.post(`/api/v1${project}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
     const routes = [
       "/",
       "/create",
@@ -40,6 +41,7 @@ test.describe("accessibility", () => {
       "/scrapbook",
       "/projects",
       project,
+      crew,
       "/search?q=tide",
       "/settings",
       "/settings/ai",

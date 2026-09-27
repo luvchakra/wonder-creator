@@ -1,6 +1,6 @@
 "use client";
-import { MAX_GOALS, PROJECT_ITEM_LABEL, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
-import { BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
+import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,7 +45,32 @@ const SECTIONS: Array<{ kind: ProjectItemKind[]; title: string; add: ProjectItem
   { kind: ["collection"], title: "Collections", add: "collection", empty: "Add collections that belong with this project." },
 ];
 
-export function ProjectView({ project, items, approvals }: { project: Project; items: Item[]; approvals: Array<{ id: string; actionLabel: string; understood: string; urgent: boolean }> }) {
+export interface CrewSummary {
+  id: string;
+  name: string;
+  status: CrewStatus;
+  members: Array<{ creatorId: string; name: string; avatarUrl: string | null; roleTitle: string | null }>;
+  invited: number;
+}
+
+export function ProjectView({
+  project,
+  items: allItems,
+  approvals,
+  canEdit,
+  ownerName,
+  crew,
+}: {
+  project: Project;
+  items: Item[];
+  approvals: Array<{ id: string; actionLabel: string; understood: string; urgent: boolean }>;
+  /** The project's owner edits it; crew members read it. */
+  canEdit: boolean;
+  ownerName: string;
+  crew: CrewSummary | null;
+}) {
+  // Crew members see what's linked only where they can open it themselves.
+  const items = canEdit ? allItems : allItems.filter((i) => i.available);
   const router = useRouter();
   const [status, setStatus] = useState(project.status);
   const [adding, setAdding] = useState<ProjectItemKind | null>(null);
@@ -112,9 +137,11 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
                 {project.title}
               </h1>
               <p className="mt-1 text-sm text-ink-subtle">
+                {canEdit ? null : <>{ownerName}&rsquo;s project · You&rsquo;re in the crew · </>}
                 Updated <RelativeTime iso={project.updatedAt} />
               </p>
             </div>
+            {canEdit ? (
             <div className="flex items-center gap-2">
               <label htmlFor="project-status" className="sr-only">
                 Status
@@ -138,6 +165,9 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
                 </MenuContent>
               </Menu>
             </div>
+            ) : (
+              <Badge tone={status === "active" ? "success" : "accent"}>{PROJECT_STATUS_LABEL[status]}</Badge>
+            )}
           </div>
           {project.brief ? <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-muted">{project.brief}</p> : null}
           {project.goals.length ? (
@@ -153,11 +183,12 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
               </ul>
             </div>
           ) : null}
-          {!project.brief && !project.goals.length ? (
+          {canEdit && !project.brief && !project.goals.length ? (
             <button type="button" onClick={() => setEditing(true)} className="min-h-11 text-left text-[15px] text-accent-ink hover:underline">
               Add a brief and goals — CreatorBrain keeps them in mind when you create here.
             </button>
           ) : null}
+          {canEdit ? (
           <div className="flex flex-wrap gap-2">
             <Link href={`/create?project=${project.id}`} className={buttonClasses()}>
               <Sparkles className="size-4" aria-hidden /> Create in this project
@@ -169,8 +200,11 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
               <PenLine className="size-4" aria-hidden /> Edit
             </Button>
           </div>
+          ) : null}
         </div>
       </section>
+
+      <CrewStrip projectId={project.id} crew={crew} canEdit={canEdit} projectTitle={project.title} />
 
       <div aria-live="polite" className="sr-only">
         {msg}
@@ -203,14 +237,17 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
 
       {SECTIONS.map((s) => {
         const list = items.filter((i) => s.kind.includes(i.kind));
+        if (!canEdit && !list.length) return null;
         return (
           <section key={s.title} aria-label={s.title}>
             <SectionHeader
               title={`${s.title}${list.length ? ` (${list.length})` : ""}`}
               action={
-                <Button variant="ghost" onClick={() => setAdding(s.add)}>
-                  <Plus className="size-4" aria-hidden /> Add
-                </Button>
+                canEdit ? (
+                  <Button variant="ghost" onClick={() => setAdding(s.add)}>
+                    <Plus className="size-4" aria-hidden /> Add
+                  </Button>
+                ) : undefined
               }
             />
             {!list.length ? (
@@ -220,7 +257,7 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
                 {list.map((i) => (
                   <li key={i.id} className="relative">
                     {i.artifact ? <ArtifactCard a={i.artifact} /> : i.material ? <MaterialCard m={i.material} href={i.href ?? undefined} /> : <Unavailable title={i.title} />}
-                    <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} onCover={i.kind === "material" && i.material && (i.material.type === "image" || i.material.type === "sketch") ? makeCover : undefined} />
+                    {canEdit ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} onCover={i.kind === "material" && i.material && (i.material.type === "image" || i.material.type === "sketch") ? makeCover : undefined} /> : null}
                     {i.note ? <p className="mt-1 px-1 text-sm italic text-ink-muted">{i.note}</p> : null}
                   </li>
                 ))}
@@ -252,7 +289,7 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
                         {i.note ? <span className="italic"> · {i.note}</span> : null}
                       </p>
                     </div>
-                    <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} inline />
+                    {canEdit ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} inline /> : null}
                   </li>
                 ))}
               </ul>
@@ -265,9 +302,11 @@ export function ProjectView({ project, items, approvals }: { project: Project; i
         <SectionHeader
           title="Rights"
           action={
-            <Button variant="ghost" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
+            canEdit ? (
+              <Button variant="ghost" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            ) : undefined
           }
         />
         <p className="rounded-2xl border border-border-soft bg-surface px-5 py-4 text-[15px] leading-relaxed text-ink-muted">
@@ -575,3 +614,82 @@ function NoteDialog({ projectId, item, onOpenChange, onSaved }: { projectId: str
   );
 }
 
+
+/** Who's working on this, at a glance (Project > Crew). */
+function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: string; crew: CrewSummary | null; canEdit: boolean; projectTitle: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(projectTitle);
+  const [purpose, setPurpose] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!crew && !canEdit) return null;
+  return (
+    <section aria-label="Crew">
+      <SectionHeader title="Crew" action={crew ? <Link href={`/crews/${crew.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">Open crew</Link> : undefined} />
+      {crew ? (
+        <Link href={`/crews/${crew.id}`} className="flex items-center gap-4 rounded-2xl border border-border-soft bg-surface px-4 py-3 hover:bg-black/[0.02]">
+          <AvatarStack people={crew.members.map((m) => ({ name: m.name, src: m.avatarUrl }))} size={36} max={5} />
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium text-ink">
+              {crew.name} <Badge tone={crew.status === "active" ? "success" : "accent"}>{CREW_STATUS_LABEL[crew.status]}</Badge>
+            </span>
+            <span className="line-clamp-1 text-sm text-ink-muted">
+              {crew.members.map((m) => (m.roleTitle ? `${m.name} (${m.roleTitle})` : m.name)).join(", ")}
+              {crew.invited ? ` · ${crew.invited} invited` : ""}
+            </span>
+          </span>
+        </Link>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-4">
+          <Avatar name="+" size={36} />
+          <p className="min-w-0 flex-1 text-[15px] text-ink-muted">Bring people in: a crew is the team for this project, with whatever roles it needs.</p>
+          <Button variant="secondary" onClick={() => setOpen(true)}>
+            <Users className="size-4" aria-hidden /> Start a crew
+          </Button>
+        </div>
+      )}
+      {open ? (
+        <Dialog open onOpenChange={setOpen}>
+          <DialogContent title="Start a crew" description="You'll be its owner. Invite people next — they choose whether to join.">
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setBusy(true);
+                setError(null);
+                try {
+                  const r = await api<{ crew: { id: string } }>(`/api/v1/projects/${projectId}/crew`, { method: "POST", json: { name, purpose } });
+                  router.push(`/crews/${r.crew.id}`);
+                } catch (err) {
+                  setError(errorMessage(err));
+                  setBusy(false);
+                }
+              }}
+            >
+              <Field label="Crew name" htmlFor="crew-name">
+                <Input id="crew-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required />
+              </Field>
+              <Field label="Purpose" htmlFor="crew-purpose" hint="Optional. What is this crew coming together to make?">
+                <Textarea id="crew-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} maxLength={2000} className="min-h-24" />
+              </Field>
+              {error ? (
+                <p role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              ) : null}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" loading={busy} disabled={!name.trim()}>
+                  Start crew
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </section>
+  );
+}
