@@ -1,6 +1,6 @@
 "use client";
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
-import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { Avatar, AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
@@ -76,6 +76,7 @@ export function ProjectView({
   project,
   items: allItems,
   approvals,
+  nextSteps,
   canEdit,
   ownerName,
   crew,
@@ -91,6 +92,7 @@ export function ProjectView({
   project: Project;
   items: Item[];
   approvals: Array<{ id: string; actionLabel: string; understood: string; urgent: boolean }>;
+  nextSteps: Array<{ id: string; title: string; status: string; dueOn: string | null }>;
   /** The project's owner edits it; crew members read it. */
   canEdit: boolean;
   ownerName: string;
@@ -317,23 +319,29 @@ export function ProjectView({
         </p>
       ) : null}
 
+      {showOverview ? (
+        <RoomNow projectId={project.id} canEdit={canEdit} items={items} nextSteps={nextSteps} onCreate={() => router.push(`/create?project=${project.id}`)} />
+      ) : null}
+
+      {/* One CreativeMind moment (§23): what's waiting on you in this room. */}
       {showOverview && approvals.length ? (
-        <section aria-labelledby="approvals-h">
-          <SectionHeader title="Waiting for your approval" />
-          <ul className="space-y-2">
-            {approvals.map((a) => (
-              <li key={a.id}>
-                <Link href={`/approvals/${a.id}`} className="flex min-h-11 items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
-                  <Sparkles className="size-5 shrink-0 text-accent-ink" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium">{a.actionLabel}</span> <span className="text-ink-muted">— {a.understood}</span>
-                  </span>
-                  {a.urgent ? <Badge tone="warning">Expires soon</Badge> : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <CreativeMindInsight
+          kind="waiting"
+          action={
+            <ul className="space-y-1">
+              {approvals.map((a) => (
+                <li key={a.id}>
+                  <Link href={`/approvals/${a.id}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-accent-ink hover:underline">
+                    {a.actionLabel}
+                    {a.urgent ? <Badge tone="warning">Expires soon</Badge> : null}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          }
+        >
+          {approvals.length === 1 ? "One request in this room is" : `${approvals.length} requests in this room are`} waiting for your OK. Nothing happens until you approve.
+        </CreativeMindInsight>
       ) : null}
 
       {showWork && crew ? (
@@ -841,6 +849,91 @@ function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: stri
           </DialogContent>
         </Dialog>
       ) : null}
+    </section>
+  );
+}
+
+const TASK_STATUS: Record<string, string> = { todo: "To do", in_progress: "In progress", review: "In review", blocked: "Blocked" };
+
+/**
+ * "Everything around this creative work" at a glance (UI redesign §23): the Creation you're on, the next few steps and
+ * the latest Materials — not a dashboard. The full lists stay below; tasks, rights and the rest are in the Palette.
+ */
+function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId: string; canEdit: boolean; items: Item[]; nextSteps: Array<{ id: string; title: string; status: string; dueOn: string | null }>; onCreate: () => void }) {
+  const current = items
+    .filter((i) => i.artifact && i.available)
+    .sort((a, b) => b.artifact!.updated_at.localeCompare(a.artifact!.updated_at))[0]?.artifact;
+  const materials = items
+    .filter((i) => i.material && i.available)
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 6);
+  return (
+    <section aria-label="Now in this room" className="space-y-5">
+      {current ? (
+        <Link href={`/artifacts/${current.id}`} aria-label={`Continue ${current.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          {current.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={current.coverUrl} alt="" className="aspect-[16/9] w-full object-cover sm:aspect-[21/9]" />
+          ) : (
+            <div aria-hidden className="relative aspect-[16/9] w-full overflow-hidden bg-[linear-gradient(135deg,#efe9ff_0%,#fdf2e6_100%)] sm:aspect-[21/9]">
+              <KitArt art={KIT.painted.flowerBranch} sizes="18rem" className="absolute -bottom-6 -right-4 h-4/5 w-auto opacity-90" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/70 via-[#1e1b4b]/10 to-transparent" aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+            <p className="text-sm text-white/85">Current Creation</p>
+            <p className="font-display text-2xl leading-tight sm:text-3xl">{current.title}</p>
+          </div>
+        </Link>
+      ) : canEdit ? (
+        <button type="button" onClick={onCreate} className="flex w-full items-center gap-4 rounded-3xl border border-dashed border-border bg-[image:var(--gradient-card)] p-5 text-left hover:border-accent">
+          <KitArt art={KIT.painted.blossomSprig} sizes="4rem" className="h-16 w-auto shrink-0" />
+          <span>
+            <span className="block font-display text-xl text-ink">Nothing in progress here yet</span>
+            <span className="block text-[15px] text-ink-muted">Start a Creation in this room — it keeps the brief and goals in mind.</span>
+          </span>
+        </button>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-4 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-ink">Next steps</h2>
+            <Link href={`/projects/${projectId}?tab=tasks`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+              All tasks
+            </Link>
+          </div>
+          {nextSteps.length ? (
+            <ul className="mt-1 space-y-2">
+              {nextSteps.map((t) => (
+                <li key={t.id} className="flex items-start justify-between gap-3 text-[15px]">
+                  <span className="min-w-0 text-ink">{t.title}</span>
+                  <span className="shrink-0 text-sm text-ink-subtle">
+                    {TASK_STATUS[t.status] ?? t.status}
+                    {t.dueOn ? ` · ${new Date(`${t.dueOn}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-[15px] text-ink-muted">No open tasks. Add one when there&rsquo;s something to hand off or remember.</p>
+          )}
+        </div>
+        <div className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-4 shadow-[var(--shadow-card)]">
+          <h2 className="font-semibold text-ink">Recent Materials</h2>
+          {materials.length ? (
+            <ul className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+              {materials.map((i) => (
+                <li key={i.id} className="w-24 shrink-0">
+                  <MaterialCard m={i.material!} href={i.href ?? undefined} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-[15px] text-ink-muted">Materials you add to this room show up here.</p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

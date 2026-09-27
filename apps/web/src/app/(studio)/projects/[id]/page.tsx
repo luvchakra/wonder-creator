@@ -63,6 +63,11 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     tab === "contributions" ? listContributions(db, creator.id, { projectId: id }) : Promise.resolve(null),
     tab === "rights" ? getProjectRights(db, creator.id, id) : Promise.resolve(null),
   ]);
+  // The overview's "next steps" (UI redesign §23): a few open tasks, soonest first.
+  const nextSteps =
+    tab === "overview"
+      ? ((await db.from("project_tasks").select("id, title, status, due_on").eq("project_id", id).neq("status", "done").order("due_on", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(3)).data ?? [])
+      : [];
   // What the crew can point a chat message at: pieces, open tasks, open change proposals and ownership claims.
   const chatContexts =
     tab === "chat" && chat
@@ -176,6 +181,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             : null
         }
         approvals={approvals.map((a) => ({ id: a.id, actionLabel: a.actionLabel, understood: a.understood, urgent: a.urgent }))}
+        nextSteps={nextSteps.map((t) => ({ id: t.id, title: t.title, status: t.status, dueOn: t.due_on }))}
       />
     </>
   );

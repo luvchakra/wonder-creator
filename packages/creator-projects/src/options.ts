@@ -50,7 +50,7 @@ export const CREW_ACCESS_HELP: Record<CrewAccess, string> = {
 };
 
 /** Examples only: creators can name any role. */
-export const ROLE_SUGGESTIONS = ["Director", "Writer", "Cinematographer", "Musician", "Editor", "Visual artist", "Designer", "Producer", "Sound", "Performer", "Researcher", "Photographer"];
+export const ROLE_SUGGESTIONS = ["Creator", "Director", "Writer", "Filmmaker", "Cinematographer", "Musician", "Editor", "Visual artist", "Designer", "Producer", "Sound", "Performer", "Researcher", "Photographer"];
 
 export const TASK_STATUSES = ["todo", "in_progress", "review", "done", "blocked"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];

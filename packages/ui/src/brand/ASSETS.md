@@ -31,17 +31,17 @@ White #FEFFFF). No other prominent colours are introduced.
 3. **High-resolution background originals.** The supplied set is a single 1983×793 contact sheet;
    each tile is ~480–650 px wide. Replace `backgrounds/*.webp` with full-resolution originals when
    available (file names can stay the same).
-4. **Tagline lock-up** ("Ideas Become Real.") artwork — rendered as live text in Playfair Display
-   until an approved asset is supplied.
+4. **Tagline lock-up** ("Ideas Become Real.", confirmed by the owner 27 Sep 2026) artwork — rendered as live text in
+   Playfair Display (`<Tagline>`) until an approved asset is supplied.
 5. ~~Palette motif~~ — supplied 27 Sep 2026 (`watercolor-paint-palette`); now the Creative Palette trigger.
 6. ~~Composable botanical/watercolour pieces~~ — supplied 27 Sep 2026: four floral corners (TL/TR/BL/BR) and a peach
    wash. The 5000px PNG sources and SVG masters stay with the owner (not committed); re-run the script to republish.
 
 ## Vector Kit notes (27 Sep 2026)
 
-- **Tagline — owner decision pending.** The kit's tagline artwork reads "Same ideas. Brighter tomorrows."; the brand
-  board and the sign-in page say "Ideas Become Real." Both aren't shown together: surfaces use the tagline-free logo
-  until the owner picks one.
+- **Tagline — "Ideas Become Real."** (owner's decision, 27 Sep 2026). The kit's tagline artwork ("Same ideas.
+  Brighter tomorrows.") and the logo lock-ups that include it (full, mono ink, reversed) are published but not used;
+  the tagline is live Playfair text (`<Tagline>`), as the brand board sets it.
 - **Accessible primary button.** The kit's primary-button gradient (#8C7BFF → #7A64FA) gives white labels 3.3–4.2:1.
   `--gradient-primary` keeps the kit's pill, gradient and glow but runs #6D5BF5 → #5B47E0 (4.7–6.1:1, WCAG AA).
   Violet text uses `--color-accent-ink` #5B47E0; the kit's #8A84A8 grey is placeholder-only (3.3:1).
