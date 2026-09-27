@@ -759,6 +759,93 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"crew_activity": {
+                  Row: {
+                    "actor_creator_id": string | null,"created_at": string,"crew_id": string,"detail": NonNullable<Json>,"id": string,"kind": string,"subject_creator_id": string | null
+                  }
+                  Insert: {
+                    "actor_creator_id"?: string | null,"created_at"?: string,"crew_id": string,"detail"?: NonNullable<Json>,"id"?: string,"kind": string,"subject_creator_id"?: string | null
+                  }
+                  Update: {
+                    "actor_creator_id"?: string | null,"created_at"?: string,"crew_id"?: string,"detail"?: NonNullable<Json>,"id"?: string,"kind"?: string,"subject_creator_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_activity_actor_creator_id_fkey"
+      columns: ["actor_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_activity_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_activity_subject_creator_id_fkey"
+      columns: ["subject_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crew_members": {
+                  Row: {
+                    "access": string,"creator_id": string,"crew_id": string,"ended_at": string | null,"invite_note": string | null,"invited_at": string | null,"invited_by": string | null,"joined_at": string | null,"role_title": string | null,"status": string
+                  }
+                  Insert: {
+                    "access"?: string,"creator_id": string,"crew_id": string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"role_title"?: string | null,"status": string
+                  }
+                  Update: {
+                    "access"?: string,"creator_id"?: string,"crew_id"?: string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"role_title"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_members_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_members_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_members_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crews": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"id": string,"name": string,"project_id": string,"purpose": string,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"id"?: string,"name": string,"project_id": string,"purpose"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"id"?: string,"name"?: string,"project_id"?: string,"purpose"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crews_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crews_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: true
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"domain_events": {
                   Row: {
                     "aggregate_id": string | null,"aggregate_type": string,"correlation_id": string | null,"creator_id": string | null,"event_type": string,"id": string,"occurred_at": string,"payload": NonNullable<Json>,"tenant_id": string | null
@@ -1889,6 +1976,24 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"crew_invite":
+{ Args: { "p_access"?: string,"p_creator": string,"p_crew": string,"p_note"?: string,"p_role_title"?: string }; Returns: undefined
+                           },
+"crew_leave":
+{ Args: { "p_crew": string }; Returns: undefined
+                           },
+"crew_overview":
+{ Args: { "p_crew": string }; Returns: Json
+                           },
+"crew_remove":
+{ Args: { "p_creator": string,"p_crew": string }; Returns: undefined
+                           },
+"crew_respond":
+{ Args: { "p_accept": boolean,"p_crew": string }; Returns: undefined
+                           },
+"crew_set_role":
+{ Args: { "p_access"?: string,"p_clear_title"?: boolean,"p_creator": string,"p_crew": string,"p_role_title"?: string }; Returns: undefined
+                           },
 "handle_available":
 { Args: { "p_handle": string }; Returns: boolean
                            },

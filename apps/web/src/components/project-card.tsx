@@ -2,7 +2,7 @@ import { PROJECT_ITEM_LABEL, PROJECT_STATUS_LABEL, type ProjectCard as ProjectCa
 import { Badge, BACKGROUNDS, cn } from "@wonder/ui";
 import Link from "next/link";
 
-type Card = Pick<ProjectCardData, "id" | "title" | "brief" | "status" | "counts"> & { coverUrl: string | null };
+type Card = Pick<ProjectCardData, "id" | "title" | "brief" | "status" | "counts"> & { coverUrl: string | null; owner?: ProjectCardData["owner"] };
 
 const SHOWN: ProjectItemKind[] = ["artifact", "material", "conversation", "huddle"];
 
@@ -20,6 +20,7 @@ export function ProjectCard({ p, className }: { p: Card; className?: string }) {
       </div>
       <div className="px-1 pt-2">
         <p className="line-clamp-1 font-medium text-ink">{p.title}</p>
+        {p.owner ? <p className="line-clamp-1 text-sm text-accent-ink">Crew · {p.owner.name}&rsquo;s project</p> : null}
         <p className="line-clamp-1 text-sm text-ink-muted">{inside.length ? inside.join(" · ") : p.brief || "Nothing added yet"}</p>
       </div>
     </Link>

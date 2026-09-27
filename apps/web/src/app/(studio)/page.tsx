@@ -33,7 +33,7 @@ export default async function HomePage() {
     listMaterials(db, { limit: 6 }),
     liveCards(db, { limit: 6 }),
     db.from("ai_proposals").select("id", { count: "exact", head: true }).eq("status", "pending").gt("expires_at", new Date().toISOString()),
-    listProjects(db, { status: "open" }),
+    listProjects(db, { status: "open", viewerId: creator.id }),
   ]);
   const artifacts = artifactsRes.data ?? [];
   const [covers, previews] = await Promise.all([coverUrls(db, artifacts), signedUrlsFor(db, [...materials.map((m) => m.storage_object_id), ...projects.slice(0, 3).map((p) => p.coverObjectId)])]);

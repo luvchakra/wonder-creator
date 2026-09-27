@@ -33,4 +33,21 @@ export interface ProjectCard {
   updatedAt: string;
   coverObjectId: string | null;
   counts: Record<ProjectItemKind, number>;
+  /** Set when the project is someone else's and the viewer is in its crew. */
+  owner: { id: string; name: string } | null;
 }
+
+export type CrewStatus = "forming" | "active" | "completed";
+export type CrewAccess = "owner" | "admin" | "member";
+export type CrewMemberStatus = "invited" | "active" | "declined" | "cancelled" | "left" | "removed";
+
+export const CREW_STATUS_LABEL: Record<CrewStatus, string> = { forming: "Forming", active: "Active", completed: "Completed" };
+export const CREW_ACCESS_LABEL: Record<CrewAccess, string> = { owner: "Owner", admin: "Admin", member: "Member" };
+export const CREW_ACCESS_HELP: Record<CrewAccess, string> = {
+  owner: "Started the crew; manages everyone.",
+  admin: "Can invite people and manage members.",
+  member: "Part of the crew; can see the project.",
+};
+
+/** Examples only: creators can name any role. */
+export const ROLE_SUGGESTIONS = ["Director", "Writer", "Cinematographer", "Musician", "Editor", "Visual artist", "Designer", "Producer", "Sound", "Performer", "Researcher", "Photographer"];

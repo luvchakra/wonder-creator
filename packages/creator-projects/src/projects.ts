@@ -61,8 +61,8 @@ function emptyCounts(): Record<ProjectItemKind, number> {
 }
 
 /** The creator's projects, most recently touched first. Archived ones only when asked. */
-export async function listProjects(db: Db, opts: { status?: ProjectStatus | "open" | "all" } = {}): Promise<ProjectCard[]> {
-  let q = db.from("projects").select("id, title, brief, status, updated_at, cover_material_id").order("updated_at", { ascending: false }).limit(200);
+export async function listProjects(db: Db, opts: { status?: ProjectStatus | "open" | "all"; viewerId?: string } = {}): Promise<ProjectCard[]> {
+  let q = db.from("projects").select("id, title, brief, status, updated_at, cover_material_id, creator_id, creators(display_name)").order("updated_at", { ascending: false }).limit(200);
   const s = opts.status ?? "open";
   if (s === "open") q = q.neq("status", "archived");
   else if (s !== "all") q = q.eq("status", s);
@@ -99,6 +99,7 @@ export async function listProjects(db: Db, opts: { status?: ProjectStatus | "ope
     updatedAt: p.updated_at,
     coverObjectId: (p.cover_material_id && coverObject.get(p.cover_material_id)) || firstImage.get(p.id) || null,
     counts: counts.get(p.id)!,
+    owner: opts.viewerId && p.creator_id !== opts.viewerId ? { id: p.creator_id, name: (p.creators as { display_name: string } | null)?.display_name ?? "A creator" } : null,
   }));
 }
 
