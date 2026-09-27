@@ -11,6 +11,7 @@ export type TaskKind =
   | "transform"
   | "memory" // extract durable creative memories
   | "publish_copy" // draft titles and captions for publishing
+  | "task_plan" // suggest tasks and missing steps for a project (suggestions only)
   | "describe_image";
 
 export type ContentPart =

@@ -98,6 +98,7 @@ test.describe("mobile layout @mobile", () => {
       [crew, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
       [`${project}?tab=work`, (p) => expect(p.getByRole("region", { name: "Shared by the crew" })).toBeVisible()],
       [`${project}?tab=chat`, (p) => expect(p.getByLabel("Message the crew")).toBeVisible()],
+      [`${project}?tab=tasks`, (p) => expect(p.getByRole("button", { name: "New task" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],

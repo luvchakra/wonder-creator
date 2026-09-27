@@ -10,6 +10,7 @@ import { artifactType, isKnownArtifactType } from "@wonder/creator-studio/types"
 export const TOOLS = {
   create_artifact: { domain: "creative_generation", action: "execute", label: "Create a new piece" },
   suggest_directions: { domain: "creative_generation", action: "suggest", label: "Suggest creative directions" },
+  suggest_tasks: { domain: "organization", action: "suggest", label: "Suggest project tasks" },
   derive_artifact: { domain: "transformation", action: "draft", label: "Create a derivative piece" },
   apply_revision: { domain: "transformation", action: "execute", label: "Apply a revision as the current version" },
   save_memory: { domain: "organization", action: "draft", label: "Remember something about your practice" },

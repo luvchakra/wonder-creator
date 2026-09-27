@@ -157,6 +157,16 @@ export class OfflineProvider implements CreativeModelProvider {
           suggestions: [{ title: "Try a closer detail", detail: "A single physical object can carry more emotion than a description." }],
         };
         break;
+      case "task_plan":
+        value = {
+          tasks: [
+            { title: "Gather the reference material in one place", why: "Everyone starts from the same picture." },
+            { title: "Agree on the look and tone", why: "Early choices save rework later." },
+            { title: "Plan a first rough version", why: "Something to react to beats a blank page." },
+          ],
+          missing: ["A date for the first review"],
+        };
+        break;
       case "memories":
         value = { memories: [] };
         break;
