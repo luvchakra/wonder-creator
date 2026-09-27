@@ -47,6 +47,11 @@ const nextConfig: NextConfig = {
     ];
     return [
       {
+        // Supplied watercolor artwork: content-hashed file names, so safe to cache forever (UI redesign §46).
+        source: "/brand/watercolor/:file",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Everything except embeds: never framed.
         source: "/:path((?!embed/).*)",
         headers: [
