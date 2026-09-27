@@ -32,6 +32,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { type MaterialCardData } from "@/components/cards";
+import { VisualDirections } from "@/components/visual-directions";
 import { MaterialGrid, type GraphNode } from "./context-parts";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
@@ -279,6 +280,8 @@ export function ArtifactView(props: {
           ) : null}
         </span>
       </div>
+      {/* Visual directions from this Creation (image-generation §31): stored ones show at once; new ones only when asked. */}
+      {isOwner && a.status !== "archived" ? <VisualDirections creationId={a.id} purpose={/carousel/i.test(props.typeLabel) ? "carousel" : "explore"} title={/carousel/i.test(props.typeLabel) ? "Slide visuals" : "Visual directions"} /> : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}

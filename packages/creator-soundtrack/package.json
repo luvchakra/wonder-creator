@@ -1,0 +1,7 @@
+{
+  "name": "@wonder/creator-soundtrack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./catalog": "./src/catalog.ts", "./queue": "./src/queue.ts", "./server": "./src/server.ts" }
+}

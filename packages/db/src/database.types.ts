@@ -2532,6 +2532,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"soundtrack_favourites": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"track_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"track_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"track_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "soundtrack_favourites_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"soundtrack_files": {
+                  Row: {
+                    "mirrored_at": string,"sha256": string,"size_bytes": number,"storage_path": string,"track_id": string
+                  }
+                  Insert: {
+                    "mirrored_at"?: string,"sha256": string,"size_bytes": number,"storage_path": string,"track_id": string
+                  }
+                  Update: {
+                    "mirrored_at"?: string,"sha256"?: string,"size_bytes"?: number,"storage_path"?: string,"track_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"storage_objects": {
                   Row: {
                     "bucket": string,"created_at": string,"creator_id": string,"declared_mime_type": string | null,"id": string,"mime_type": string,"original_filename": string | null,"path": string,"privacy": Database["public"]['Enums']["privacy_class"],"security_status": string,"sha256": string,"size_bytes": number

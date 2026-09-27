@@ -75,7 +75,7 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
   const ready = gen && (gen.status === "complete" || gen.status === "partial") && gen.assets.length > 0;
 
   return (
-    <section aria-labelledby="visual-directions" className={cn("space-y-2", className)}>
+    <section aria-labelledby="visual-directions" className={cn("scroll-mt-20 space-y-2", className)}>
       <div className="flex min-h-11 items-center justify-between gap-2">
         <h2 id="visual-directions" className="text-base font-semibold text-ink">
           {title}

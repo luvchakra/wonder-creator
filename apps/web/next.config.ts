@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     "@wonder/db",
     "@wonder/ui",
     "@wonder/creator-identity",
+    "@wonder/creator-soundtrack",
     "@wonder/creator-library",
     "@wonder/creator-send",
     "@wonder/creator-talk",
