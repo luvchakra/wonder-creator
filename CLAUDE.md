@@ -21,8 +21,8 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
 (layout) and `apps/web/src/lib/palette/` (what it offers).
 
 * **Fan, not a list.** Leaves open as a fan on a quarter-arc around the corner trigger: the leaf nearest the trigger sits
-  beside it, the furthest sits above it, each leaning gently (≤4°) like fan slats. Labels stay horizontal enough to read
-  at a glance; never rotate text further, never use icon-only leaves.
+  beside it, the furthest sits above it. **Leaves stay horizontal** — the arc is in their placement, never a tilt or
+  rotation of the leaf or its text. Never use icon-only leaves.
 * The trigger is the painted Vector Kit palette only — no disc or background behind it. The open state may show a small
   surface behind the close icon so it stays legible.
 * **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
@@ -33,7 +33,8 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
   destructive actions are never first level. It hides what the server would refuse; it is not a security boundary.
 * Don't repeat the page's visible primary action as a first-level leaf unless there's a strong reason.
 * Compact leaves: 36–40px visual pills inside ≥44px hit targets, 14px labels, 12px hints, content-sized (not full-width).
-* Motion: a soft fan-open from the trigger in 200–280ms with minimal stagger; nothing when reduced motion is set.
+* Motion: a soft fan-open from the trigger (slide + fade, no rotation) in 200–280ms with minimal stagger; nothing when
+  reduced motion is set.
 * Accessibility: focus moves to the first leaf on open and on each view change (More…, Go to…, Create); Escape, an
   outside tap or the trigger closes it; the number of actions is announced; the trigger keeps its accessible name.
 * Every signed-in screen declares a `PaletteScope` context; screens without one get the global Palette.

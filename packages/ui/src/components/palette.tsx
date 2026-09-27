@@ -5,9 +5,8 @@ import * as React from "react";
 import { cn } from "../cn";
 import { KIT } from "../brand/kit";
 
-/** How far (rem) the leaf beside the trigger sits from the corner, and how far it leans (deg). */
+/** How far (rem) the leaf beside the trigger sits from the corner. Leaves stay horizontal (owner's direction). */
 const FAN_REACH = 4.5;
-const FAN_TILT = 4;
 
 export interface PaletteItem {
   key: string;
@@ -46,11 +45,9 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
   let index = 0;
   const total = groups.reduce((n, g) => n + g.items.length, 0);
   // The fan (CLAUDE.md → Creative Palette): leaves sit on a quarter-arc around the trigger. The leaf nearest the trigger
-  // sits beside it, the furthest right above it. Labels stay horizontal enough to read.
+  // sits beside it, the furthest right above it. Leaves stay level. Labels stay horizontal enough to read.
   const reach = (i: number) => (total > 1 ? (total - 1 - i) / (total - 1) : 0); // 0 = beside the trigger, 1 = above it
   const inset = (i: number) => FAN_REACH * Math.cos(reach(i) * (Math.PI / 2));
-  // Leaves lean toward the trigger like fan slats: level beside it, gently tipped the higher they sit.
-  const tilt = (i: number) => FAN_TILT * Math.sin(reach(i) * (Math.PI / 2));
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Trigger
@@ -103,7 +100,7 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
                 {g.items.map((item) => {
                   const i = index++;
                   return (
-                    <li key={item.key} className="flex w-full origin-right justify-end" style={{ paddingRight: `${inset(i).toFixed(2)}rem`, transform: `rotate(${tilt(i).toFixed(2)}deg)` }}>
+                    <li key={item.key} className="flex w-full justify-end" style={{ paddingRight: `${inset(i).toFixed(2)}rem` }}>
                       <button
                         type="button"
                         data-palette-item
