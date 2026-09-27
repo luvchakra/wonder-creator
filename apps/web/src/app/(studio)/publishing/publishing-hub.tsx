@@ -24,6 +24,8 @@ interface Item {
   failureReason: string | null;
   attempts: number;
   updatedAt: string;
+  /** Platform-reported numbers (P1-20); never a score. */
+  outcome?: { text: string; reportedBy: string; observedAt: string | null } | null;
 }
 
 interface Preferences {
@@ -250,6 +252,13 @@ export function PublishingHub({
                   <span className="block text-sm text-ink-muted">
                     <RelativeTime iso={p.publishedAt ?? p.updatedAt} />
                   </span>
+                  {p.outcome ? (
+                    <span className="block text-[13px] text-ink">
+                      {p.outcome.text} <span className="text-ink-subtle">· reported by {p.outcome.reportedBy}</span>
+                    </span>
+                  ) : p.status === "published" && p.destinationKind === "webhook" ? (
+                    <span className="block text-xs text-ink-subtle">No numbers reported by {p.destinationName} yet.</span>
+                  ) : null}
                 </span>
                 <Badge tone={STATUS[p.status]?.tone ?? "neutral"}>{STATUS[p.status]?.label ?? p.status}</Badge>
                 {p.externalUrl ? (
@@ -268,6 +277,17 @@ export function PublishingHub({
 
       <section aria-label="Destinations">
         <h2 className="mb-3 text-lg font-semibold text-ink">Destinations</h2>
+        {destinations.some((d) => d.status === "active") ? (
+          <details className="mb-3 rounded-xl bg-surface-muted px-3 py-2 text-[13px] text-ink-muted">
+            <summary className="flex min-h-11 cursor-pointer items-center font-medium text-ink">How a destination reports outcomes</summary>
+            <p className="mt-1">
+              Your webhook can send back the platform&apos;s own numbers for anything it received: <code className="rounded bg-surface px-1">POST /api/v1/publications/&lt;publication id&gt;/metrics</code> with{" "}
+              <code className="rounded bg-surface px-1">{`{ "metrics": { "views": 1204, "shares": 38 } }`}</code>, signed with the destination&apos;s secret the same way we sign what we send you (
+              <code className="rounded bg-surface px-1">x-wonder-timestamp</code>, <code className="rounded bg-surface px-1">x-wonder-signature: v1=…</code>).
+            </p>
+            <p className="mt-1">Accepted: views, plays, impressions, reach, watch seconds, completions, shares, saves, comments, clicks, new followers. Wonder Creator shows them as reported — it never scores your work, and doesn&apos;t count likes.</p>
+          </details>
+        ) : null}
         <ul className="space-y-2">
           <li className="flex items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-3">
             <Globe className="size-5 text-accent" aria-hidden />

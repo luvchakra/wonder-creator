@@ -2151,6 +2151,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"publication_metrics": {
+                  Row: {
+                    "artifact_id": string,"creator_id": string,"destination_id": string | null,"id": string,"metric": string,"observed_at": string,"publication_id": string,"received_at": string,"reported_by": string,"value": number
+                  }
+                  Insert: {
+                    "artifact_id": string,"creator_id": string,"destination_id"?: string | null,"id"?: string,"metric": string,"observed_at": string,"publication_id": string,"received_at"?: string,"reported_by": string,"value": number
+                  }
+                  Update: {
+                    "artifact_id"?: string,"creator_id"?: string,"destination_id"?: string | null,"id"?: string,"metric"?: string,"observed_at"?: string,"publication_id"?: string,"received_at"?: string,"reported_by"?: string,"value"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "publication_metrics_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_destination_id_fkey"
+      columns: ["destination_id"]
+isOneToOne: false
+      referencedRelation: "publishing_destinations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "publication_metrics_publication_id_fkey"
+      columns: ["publication_id"]
+isOneToOne: false
+      referencedRelation: "publications"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"publication_signoffs": {
                   Row: {
                     "artifact_id": string,"created_at": string,"creator_id": string,"decision": string,"note": string | null,"version_id": string
