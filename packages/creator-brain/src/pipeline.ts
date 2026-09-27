@@ -1,6 +1,7 @@
 import { DomainError, fromDbError, isDomainError, log, must } from "@wonder/core";
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { z } from "zod";
+import { findCollaborators, stemTerm, type CollaboratorCard } from "@wonder/creator-identity";
 import { artifactType, createArtifact, createVersion, getArtifact, inheritFromSource, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
@@ -649,5 +650,76 @@ export async function suggestProjectTasks(deps: BrainDeps, projectId: string): P
     await run.finish({ outputCategory: "task_plan" });
     const have = new Set((tasks.data ?? []).map((t) => t.title.trim().toLowerCase()));
     return { tasks: plan.tasks.filter((t) => !have.has(t.title.trim().toLowerCase())), missing: plan.missing, offline: !deps.provider.live };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Collaborator suggestions (P1-10): the request becomes filters; people are found and explained from facts only.
+// ---------------------------------------------------------------------------
+export const collaboratorQuerySchema = z.object({
+  terms: z.array(z.string().trim().min(2).max(60)).max(6).default([]),
+  count: z.number().int().min(1).max(10).default(5),
+  networkOnly: z.boolean().default(false),
+  location: z.string().trim().max(120).nullable().default(null),
+  interest: z.string().trim().max(60).nullable().default(null),
+});
+export type CollaboratorQuery = z.infer<typeof collaboratorQuerySchema>;
+
+const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, a: 1, an: 1 };
+const ASK_STOPWORDS = new Set(
+  "find show suggest me my our the a an some any few who whom that this these those for fit fits fitting would could might in on of to with and or people person creators creator collaborators collaborator someone somebody project network know known worked working work together near based from around please good great best".split(" "),
+);
+
+/** Offline: a plain, rule-based reading of the request (no model is involved). */
+export function parseCollaboratorAsk(ask: string): CollaboratorQuery {
+  const text = ask.toLowerCase();
+  const n = text.match(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b/);
+  const count = n ? Math.min(10, Math.max(1, Number(n[1]) || NUMBER_WORDS[n[1]!] || 5)) : 5;
+  const networkOnly = /\b(my network|people i know|i('ve| have) worked with|worked with before|know already|already know)\b/.test(text);
+  const location = text.match(/\b(?:in|near|based in|around)\s+([a-z][a-z .'-]{1,40}?)(?=[,.?!]|\s+(?:who|that|for|with)\b|$)/)?.[1]?.trim() ?? null;
+  const words = text
+    .replace(/[^a-z\s-]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !ASK_STOPWORDS.has(w) && !(w in NUMBER_WORDS) && w !== location);
+  return collaboratorQuerySchema.parse({ terms: [...new Set(words)].slice(0, 4), count, networkOnly, location: location && !ASK_STOPWORDS.has(location) ? location : null, interest: null });
+}
+
+/**
+ * "Find three cinematographers in my network who fit this project." Suggestions only: nobody is contacted or added.
+ * Governed by the Collaboration autonomy setting; every person comes with the factual reasons they were found.
+ */
+export async function suggestCollaborators(deps: BrainDeps, input: { ask: string; projectId?: string | null }): Promise<{ query: CollaboratorQuery; people: CollaboratorCard[]; offline: boolean }> {
+  const ask = input.ask.trim().slice(0, 500);
+  if (!ask) throw new DomainError("validation", "Say who you're looking for.");
+  const project = input.projectId ? must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", input.projectId).maybeSingle(), "We couldn't find that project.") : null;
+  const run = await startRun(deps, "collaborator_query", { inputCategory: "text" });
+  return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "find_collaborators", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
+    const query = await run.step("plan", async () => {
+      if (!deps.provider.live) return parseCollaboratorAsk(ask);
+      const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Find collaborators." });
+      if (project) ctx.project = { id: project.id, title: project.title, status: project.status, brief: project.brief.slice(0, 3000), goals: project.goals.slice(0, 12) };
+      const r = await deps.provider.structured({
+        task: "collaborator_query",
+        system: systemPrompt(ctx, TASKS.collaborator_query),
+        schema: collaboratorQuerySchema,
+        schemaName: "collaborator_query",
+        messages: [{ role: "user", content: fenceUntrusted("request", ask) }],
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value;
+    });
+    const people = await findCollaborators(deps.db, {
+      terms: query.terms.map(stemTerm),
+      location: query.location || null,
+      interest: query.interest || null,
+      networkOnly: query.networkOnly,
+      projectId: project?.id ?? null,
+      limit: 50,
+    });
+    await run.finish({ outputCategory: "collaborator_query" });
+    // People already in the project's crew aren't suggested again.
+    return { query, people: people.filter((p) => !p.signals.inProject).slice(0, query.count), offline: !deps.provider.live };
   });
 }

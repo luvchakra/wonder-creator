@@ -12,6 +12,7 @@ export type TaskKind =
   | "memory" // extract durable creative memories
   | "publish_copy" // draft titles and captions for publishing
   | "task_plan" // suggest tasks and missing steps for a project (suggestions only)
+  | "collaborator_query" // turn "find three cinematographers in my network" into search filters
   | "describe_image";
 
 export type ContentPart =

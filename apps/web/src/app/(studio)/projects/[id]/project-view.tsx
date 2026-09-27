@@ -217,6 +217,7 @@ export function ProjectView({
                 </MenuTrigger>
                 <MenuContent>
                   <MenuItem onSelect={() => setEditing(true)}>Edit details</MenuItem>
+                  <MenuItem onSelect={() => router.push(`/discover?project=${project.id}`)}>Find collaborators</MenuItem>
                   <MenuItem onSelect={() => router.push(`/projects/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
                   <MenuItem destructive onSelect={() => setDeleting(true)}>
                     Delete project

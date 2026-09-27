@@ -167,6 +167,9 @@ export class OfflineProvider implements CreativeModelProvider {
           missing: ["A date for the first review"],
         };
         break;
+      case "collaborator_query":
+        value = { terms: [], count: 5, networkOnly: false, location: null, interest: null };
+        break;
       case "memories":
         value = { memories: [] };
         break;

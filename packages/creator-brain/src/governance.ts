@@ -16,6 +16,7 @@ export const TOOLS = {
   save_memory: { domain: "organization", action: "draft", label: "Remember something about your practice" },
   organize_material: { domain: "organization", action: "execute", label: "Organize your material" },
   research: { domain: "research", action: "execute", label: "Research references" },
+  find_collaborators: { domain: "collaboration", action: "suggest", label: "Suggest collaborators" },
   invite_creator: { domain: "collaboration", action: "execute", label: "Invite a creator" },
   draft_publication: { domain: "publishing", action: "draft", label: "Draft publishing copy" },
   publish: { domain: "publishing", action: "execute", label: "Publish" },

@@ -394,6 +394,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"collaborator_shortlist": {
+                  Row: {
+                    "candidate_creator_id": string,"created_at": string,"creator_id": string,"id": string,"note": string | null,"project_id": string | null
+                  }
+                  Insert: {
+                    "candidate_creator_id": string,"created_at"?: string,"creator_id": string,"id"?: string,"note"?: string | null,"project_id"?: string | null
+                  }
+                  Update: {
+                    "candidate_creator_id"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"note"?: string | null,"project_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "collaborator_shortlist_candidate_creator_id_fkey"
+      columns: ["candidate_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "collaborator_shortlist_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "collaborator_shortlist_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"contribution_edits": {
                   Row: {
                     "changes": NonNullable<Json>,"contribution_id": string,"created_at": string,"editor_creator_id": string | null,"id": string
@@ -2569,6 +2600,11 @@ isOneToOne: false
                            },
 "derivative_permission":
 { Args: { "p_artifact": string }; Returns: string
+                           },
+"find_collaborators":
+{ Args: { "p_availability"?: (string)[],"p_interest"?: string,"p_limit"?: number,"p_location"?: string,"p_network_only"?: boolean,"p_project"?: string,"p_terms"?: (string)[] }; Returns: {
+              "availability": string,"bio": string,"creator_id": string,"disciplines": (string)[],"display_name": string,"follows_me": boolean,"handle": string,"i_follow": boolean,"in_project": string,"interest_match": boolean,"interests": (string)[],"languages": (string)[],"location": string,"location_match": boolean,"matched_terms": (string)[],"met_in_huddles": number,"published_pieces": number,"shared_crews": number,"skills": (string)[],"worked_together": number
+            }[]
                            },
 "handle_available":
 { Args: { "p_handle": string }; Returns: boolean
