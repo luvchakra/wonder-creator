@@ -2,6 +2,7 @@
 import { Palette, type PaletteGroup } from "@wonder/ui";
 import { Camera, Compass, FolderKanban, Home, ImagePlus, Images, Mic, PenLine, Sparkles, UserRound, Users, UsersRound } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { MeTalkSheet } from "./metalk-sheet";
 import { createContext, Suspense, useContext, useEffect, useMemo, useState } from "react";
 
 /**
@@ -20,17 +21,24 @@ export interface ContextAction {
 const ICONS = { home: Home, pen: PenLine, images: Images, users: Users, user: UserRound, spark: Sparkles, add: ImagePlus, camera: Camera, mic: Mic, compass: Compass, people: UsersRound, room: FolderKanban } as const;
 
 type Context = { title: string; actions: ContextAction[] } | null;
-const Ctx = createContext<{ set: (c: Context) => void } | null>(null);
+const Ctx = createContext<{ set: (c: Context) => void; openMeTalk: () => void } | null>(null);
+
+/** Open the meTalk sheet from anywhere on the Canvas (e.g. the Home empty state). */
+export function useMeTalk() {
+  return useContext(Ctx)?.openMeTalk ?? (() => undefined);
+}
 
 export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<Context>(null);
-  const value = useMemo(() => ({ set: setContext }), []);
+  const [talk, setTalk] = useState(false);
+  const value = useMemo(() => ({ set: setContext, openMeTalk: () => setTalk(true) }), []);
   return (
     <Ctx.Provider value={value}>
       {children}
       <Suspense>
-        <CreativePalette context={context} />
+        <CreativePalette context={context} onMeTalk={() => setTalk(true)} />
       </Suspense>
+      <MeTalkSheet open={talk} onOpenChange={setTalk} />
     </Ctx.Provider>
   );
 }
@@ -46,7 +54,7 @@ export function PaletteActions({ title, actions }: { title: string; actions: Con
   return null;
 }
 
-function CreativePalette({ context }: { context: Context }) {
+function CreativePalette({ context, onMeTalk }: { context: Context; onMeTalk: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -79,7 +87,7 @@ function CreativePalette({ context }: { context: Context }) {
         { key: "new", label: "New Creation", icon: icon("spark"), onSelect: go("/create") },
         { key: "bring", label: "Bring Material", icon: icon("add"), onSelect: go("/send") },
         { key: "capture", label: "Capture", hint: "Photo, voice or a note", icon: icon("camera"), onSelect: go("/send") },
-        { key: "metalk", label: "meTalk", hint: "Say what you want to make", icon: icon("mic"), onSelect: go("/create") },
+        { key: "metalk", label: "meTalk", hint: "Say what you want to make", icon: icon("mic"), onSelect: onMeTalk },
         { key: "explore", label: "Explore", icon: icon("compass"), current: pathname.startsWith("/search"), onSelect: go("/search") },
         { key: "people", label: "People", icon: icon("people"), current: pathname.startsWith("/discover"), onSelect: go("/discover") },
       ],

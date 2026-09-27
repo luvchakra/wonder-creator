@@ -5,3 +5,4 @@ export * from "./components/form";
 export * from "./components/overlay";
 export * from "./components/brand";
 export * from "./components/palette";
+export * from "./components/wonder";

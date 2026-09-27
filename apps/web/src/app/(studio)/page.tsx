@@ -1,144 +1,116 @@
 import { greetingFor } from "@wonder/core";
 import { liveCards } from "@wonder/creator-huddle";
 import { listMaterials, signedUrlsFor } from "@wonder/creator-library";
-import { listProjects } from "@wonder/creator-projects";
-import { BACKGROUNDS, BrandBackground, SectionHeader } from "@wonder/ui";
-import { Sparkles } from "lucide-react";
+import { artifactType } from "@wonder/creator-studio/types";
+import { BACKGROUNDS, CreativeMindInsight } from "@wonder/ui";
 import Link from "next/link";
-import { ArtifactCard, MaterialCard } from "@/components/cards";
+import { MaterialCard } from "@/components/cards";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
-import { ProjectCard } from "@/components/project-card";
 import { coverUrls } from "@/lib/covers";
 import { after } from "next/server";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
-import { HomeComposer } from "./home-composer";
+import { HomeBegin } from "./home-begin";
 
 export const metadata = { title: "Home" };
 
-const POSSIBILITIES = [
-  { label: "Short Film", prompt: "Help me turn this into a short film." },
-  { label: "Poem", prompt: "Turn this into a poem." },
-  { label: "Visual Story", prompt: "Create a visual story from this." },
-  { label: "Song", prompt: "Write a song from this." },
-  { label: "Documentary", prompt: "Shape this into a documentary treatment." },
-  { label: "Social Series", prompt: "Make a social series from this." },
-];
+const STATUS_LABEL: Record<string, string> = { draft: "In Progress", in_review: "In Review", final: "Completed", published: "Published" };
 
+/**
+ * The Home Canvas (UI redesign §8): "What are you exploring or creating right now?" — a greeting, the Creation you're
+ * in the middle of, one honest CreativeMind moment, your recent Materials and at most one more thing. Not a dashboard;
+ * everything else is in the Palette.
+ */
 export default async function HomePage() {
   const { db, creator } = await requireSession();
   after(sweepStalePresence);
-  const [artifactsRes, materials, live, proposals, projects] = await Promise.all([
-    db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(6),
-    listMaterials(db, { limit: 6 }),
-    liveCards(db, { limit: 6 }),
+  const [current, materials, live, proposals] = await Promise.all([
+    db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, description").eq("creator_id", creator.id).neq("status", "archived").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    listMaterials(db, { limit: 8 }),
+    liveCards(db, { limit: 3 }),
     db.from("ai_proposals").select("id", { count: "exact", head: true }).eq("status", "pending").gt("expires_at", new Date().toISOString()),
-    listProjects(db, { status: "open", viewerId: creator.id }),
   ]);
-  const artifacts = artifactsRes.data ?? [];
-  const [covers, previews] = await Promise.all([coverUrls(db, artifacts), signedUrlsFor(db, [...materials.map((m) => m.storage_object_id), ...projects.slice(0, 3).map((p) => p.coverObjectId)])]);
+  const creation = current.data;
+  const [covers, previews, quality] = await Promise.all([
+    creation ? coverUrls(db, [creation]) : Promise.resolve({} as Record<string, string>),
+    signedUrlsFor(db, materials.map((m) => m.storage_object_id)),
+    creation ? db.from("quality_reports").select("suggestions, created_at").eq("artifact_id", creation.id).order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
   const first = (creator.display_name || "Creator").split(" ")[0];
-  const journey = [
-    ...artifacts.map((a) => ({ kind: "artifact" as const, at: a.updated_at, a })),
-    ...materials.map((m) => ({ kind: "material" as const, at: m.created_at, m })),
-  ]
-    .sort((x, y) => y.at.localeCompare(x.at))
-    .slice(0, 8);
+  const cover = creation ? covers[creation.id] : null;
+
+  // One honest CreativeMind moment: waiting approvals, then CreativeMind's own suggestion, then a plain fact.
+  const suggestion = ((quality.data?.suggestions ?? []) as Array<{ title?: string; detail?: string }>).find((s) => s.title || s.detail);
+  const newSince = creation ? materials.filter((m) => m.created_at > creation.updated_at).length : 0;
+  const insight = proposals.count ? (
+    <CreativeMindInsight kind="waiting" action={<Link href="/approvals" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">{proposals.count} {proposals.count === 1 ? "proposal" : "proposals"} waiting for your approval</Link>}>
+      CreativeMind has something ready and won&rsquo;t act until you say so.
+    </CreativeMindInsight>
+  ) : creation && suggestion ? (
+    <CreativeMindInsight kind="insight" action={<Link href={`/artifacts/${creation.id}/studio`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">Refine in the Creative Studio</Link>}>
+      {suggestion.title ? <span className="font-medium">{suggestion.title}. </span> : null}
+      {suggestion.detail}
+    </CreativeMindInsight>
+  ) : creation && newSince ? (
+    <CreativeMindInsight kind="noticed" action={<Link href={`/create?artifact=${creation.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">Bring them into “{creation.title}”</Link>}>
+      You&rsquo;ve brought in {newSince} new {newSince === 1 ? "material" : "materials"} since you last worked on “{creation.title}”.
+    </CreativeMindInsight>
+  ) : null;
 
   return (
-    <div className="space-y-10">
-      <BrandBackground src={BACKGROUNDS.botanicalLeaves} overlay="cream" position="right center" className="-mx-4 rounded-none px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-3xl lg:px-10">
-        <section className="grid gap-8 py-8 [&>*]:min-w-0 lg:grid-cols-[1fr_1.35fr] lg:items-center lg:py-12" aria-labelledby="greeting">
-          <div>
-            <h1 id="greeting" className="text-ink">
-              <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
-              <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
-            </h1>
-            <p className="mt-5 max-w-sm font-display text-lg italic leading-relaxed text-ink-muted">
-              “Every thought, every reference, every conversation can become something extraordinary.”
+    <div className="mx-auto max-w-3xl space-y-7">
+      <h1 className="text-ink">
+        <span className="block font-display text-2xl italic text-ink-muted sm:text-3xl">{greetingFor(new Date())},</span>
+        <span className="mt-1 block break-words font-display text-5xl leading-none sm:text-6xl">{first}</span>
+      </h1>
+
+      {creation ? (
+        <Link href={`/artifacts/${creation.id}`} aria-label={`Continue ${creation.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cover ?? BACKGROUNDS.sunsetCoast} alt="" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none sm:aspect-[16/10]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy/75 via-navy/15 to-transparent" aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+            <p className="text-sm text-white/85">Continue</p>
+            <p className="font-display text-3xl leading-tight sm:text-4xl">{creation.title}</p>
+            <p className="mt-1 text-sm text-white/85">
+              {artifactType(creation.artifact_type).label} · {STATUS_LABEL[creation.status] ?? creation.status}
             </p>
           </div>
-          <HomeComposer />
-        </section>
-      </BrandBackground>
-
-      <Link href="/scrapbook" className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface px-4 py-3 text-[15px] text-ink hover:bg-black/[0.02]">
-        <span>
-          <span className="font-medium">Scrapbook</span> <span className="text-ink-muted">— share a thought, a sketch or a fragment, and see what others are thinking about.</span>
-        </span>
-        <span aria-hidden className="text-ink-muted">›</span>
-      </Link>
-
-      {proposals.count ? (
-        <Link href="/approvals" className="flex items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
-          <Sparkles className="size-5 text-accent-ink" aria-hidden />
-          CreatorBrain has {proposals.count} {proposals.count === 1 ? "proposal" : "proposals"} waiting for your approval.
         </Link>
-      ) : null}
+      ) : (
+        <HomeBegin hasMaterials={materials.length > 0} />
+      )}
 
-      <section>
-        <SectionHeader title="Continue your creative journey" action={journey.length ? <Link href="/space" className="text-sm font-medium text-accent-ink hover:underline">View all</Link> : undefined} />
-        {journey.length ? (
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {journey.map((j) => (
-              <li key={j.kind === "artifact" ? `a${j.a.id}` : `m${j.m.id}`}>
-                {j.kind === "artifact" ? <ArtifactCard a={{ ...j.a, coverUrl: covers[j.a.id] ?? null }} /> : <MaterialCard m={{ ...j.m, previewUrl: j.m.storage_object_id ? previews[j.m.storage_object_id] : null }} />}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-8 text-center text-ink-muted">
-            Nothing here yet. Bring an idea, photograph, note or voice memo — it will appear here.
-          </p>
-        )}
-      </section>
+      {insight}
 
-      <section>
-        <SectionHeader title="Your projects" action={<Link href="/projects" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">{projects.length ? "All projects" : "Start a project"}</Link>} />
-        {projects.length ? (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.slice(0, 3).map((p) => (
-              <li key={p.id}>
-                <ProjectCard p={{ ...p, coverUrl: p.coverObjectId ? (previews[p.coverObjectId] ?? null) : null }} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
-            Working on something bigger? A project brings its material, pieces, conversations and Huddles together.
-          </p>
-        )}
-      </section>
-
-      {live.length ? (
-        <section>
-          <SectionHeader title="Live now" action={<Link href="/huddles" className="text-sm font-medium text-accent-ink hover:underline">All Huddles</Link>} />
-          <ul className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
-            {live.slice(0, 3).map((h) => (
-              <li key={h.huddleId} className="w-72 shrink-0 sm:w-auto">
-                <LiveHuddleCard h={h} />
+      {materials.length ? (
+        <section aria-labelledby="recent-materials">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 id="recent-materials" className="text-lg font-semibold text-ink">
+              Recent Materials
+            </h2>
+            <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+              See all
+            </Link>
+          </div>
+          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+            {materials.map((m) => (
+              <li key={m.id} className="w-40 shrink-0 snap-start sm:w-44">
+                <MaterialCard m={{ ...m, previewUrl: m.storage_object_id ? (previews[m.storage_object_id] ?? null) : null }} />
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      <section aria-labelledby="explore" className="rounded-3xl border border-border-soft bg-surface p-5 sm:p-6">
-        <h2 id="explore" className="text-lg font-semibold text-ink">
-          Explore new possibilities
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">CreatorBrain can help you explore different directions from your existing ideas.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {POSSIBILITIES.map((p) => (
-            <Link key={p.label} href={`/create?prompt=${encodeURIComponent(p.prompt)}`} className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-sm text-ink-muted hover:border-accent hover:text-accent-ink">
-              {p.label}
-            </Link>
-          ))}
-          <Link href="/create/discover" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent-soft px-4 text-sm font-medium text-accent-ink hover:bg-[#e4e4ff]">
-            <Sparkles className="size-4" aria-hidden /> Surprise me
-          </Link>
-        </div>
-      </section>
+      {live[0] ? (
+        <section aria-labelledby="live-now">
+          <h2 id="live-now" className="mb-2 text-lg font-semibold text-ink">
+            Live now
+          </h2>
+          <LiveHuddleCard h={live[0]} />
+        </section>
+      ) : null}
     </div>
   );
 }

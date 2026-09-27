@@ -7,7 +7,8 @@ test.describe("Scrapbook", () => {
     const secret = `Not ready to share ${uid()}`;
 
     await a.goto("/");
-    await a.getByRole("link", { name: /Scrapbook/ }).first().click();
+    await a.getByRole("button", { name: "Your account" }).click();
+    await a.getByRole("menuitem", { name: "Scrapbook" }).click();
     await expect(a).toHaveURL(/\/scrapbook$/);
     await expect(a.getByText("Newest first. Nothing here is ranked or counted.")).toBeVisible();
     const composer = a.getByRole("form", { name: "Share to your Scrapbook" });
