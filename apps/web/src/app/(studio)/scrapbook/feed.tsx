@@ -1,6 +1,6 @@
 "use client";
 import { REPLY_POLICIES, SCRAPBOOK_KINDS, type ScrapbookPost } from "@wonder/creator-library/scrapbook-options";
-import { Button, ChoiceChip, Dialog, DialogContent, EmptyState, Field, Select, Textarea, cn } from "@wonder/ui";
+import { Button, ChoiceChip, Dialog, DialogContent, EmptyState, Field, Select, Textarea, cn, chipBase } from "@wonder/ui";
 import { Paperclip } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ export function ScrapbookFeed({ tab, initial, attachable }: { tab: "everyone" | 
             key={t}
             href={t === "everyone" ? "/scrapbook" : "/scrapbook?tab=following"}
             aria-current={t === tab ? "page" : undefined}
-            className={cn("inline-flex min-h-11 items-center rounded-full px-4 text-sm", t === tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
+            className={cn(chipBase, t === tab ? "bg-accent font-medium text-white" : "text-ink-muted hover:bg-black/[0.04]")}
           >
             {t === "everyone" ? "Everyone" : "People you follow"}
           </Link>

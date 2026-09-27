@@ -1,6 +1,6 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { lineageGraph } from "@wonder/creator-studio";
-import { Avatar, cn } from "@wonder/ui";
+import { Avatar, cn, chipBase } from "@wonder/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
@@ -79,7 +79,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
               href={`/artifacts/${a.id}/context?tab=${k}`}
               aria-current={section === k ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium",
+                chipBase, "border font-medium",
                 section === k ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-border-soft bg-surface text-ink hover:bg-accent-softer",
               )}
             >

@@ -83,6 +83,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: [
           { id: "refine", label: "Refine", hint: "CreativeMind suggestions", icon: "spark", class: "transform", target: route(`${a}/studio#creativemind`), score: 100, requires: "edit" },
           { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route(`/create?artifact=${i.artifactId}`), score: 95, requires: "edit" },
+          { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 92, requires: "edit" },
           { id: "references", label: "References", icon: "images", class: "context", target: route(`${a}/context?tab=references`), score: 90 },
           { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 85, requires: "edit" },
           { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 50 },
@@ -316,6 +317,7 @@ function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
     references: { id: "references", label: "References", class: "context", target: route(`${a}/context?tab=references`), score: 45 },
     transform: { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 44, requires: "edit" },
     versions: { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 43 },
+    visuals: { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 46, requires: "edit" },
     context: { id: "context", label: "Context", hint: "Materials, people, related", icon: "compass", class: "context", target: route(`${a}/context`), score: 42 },
     share: { id: "share", label: "Share", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
     rights: { id: "rights", label: "Rights", class: "rights", target: route(`${a}?tab=rights`), score: 35 },
@@ -368,6 +370,6 @@ function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
       return [bump(it.context, 90), bump(it.versions, 80), bump(it.rights, 60)];
     case "in-progress":
     default:
-      return [it.continue, it.bring, it.refine, it.people, it.references, it.transform, it.versions, it.context, it.share, it.rights, it.publish];
+      return [it.continue, it.bring, it.refine, it.people, it.visuals, it.references, it.transform, it.versions, it.context, it.share, it.rights, it.publish];
   }
 }

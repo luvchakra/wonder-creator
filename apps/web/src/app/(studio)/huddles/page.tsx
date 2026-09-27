@@ -1,6 +1,6 @@
 import { liveCards, recentHuddles } from "@wonder/creator-huddle";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
-import { BACKGROUNDS, BrandBackground, EmptyState, PageTitle, cn } from "@wonder/ui";
+import { BACKGROUNDS, BrandBackground, EmptyState, PageTitle, cn, chipBase } from "@wonder/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
@@ -33,7 +33,7 @@ export default async function HuddlesPage({ searchParams }: { searchParams: Prom
       <PaletteScope context={{ page: "huddles" }} />
       <div className="space-y-8">
         <BrandBackground src={BACKGROUNDS.coastalVillage} overlay="cream" position="right center" className="-mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-3xl lg:px-10">
-          <div className="py-8 lg:py-12">
+          <div className="py-5 lg:py-10">
             <PageTitle title="Live Huddles" subtitle="Spontaneous, temporary conversations between creators. Join one, or start your own." className="mb-4" />
             <StartHuddle currentHuddleId={mine?.huddleId ?? null} mediaConfigured={selectMediaProvider().configured} creatorName={creator.display_name} related={related} />
           </div>
@@ -50,7 +50,8 @@ export default async function HuddlesPage({ searchParams }: { searchParams: Prom
               href={href}
               aria-current={view === k ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium",
+                chipBase,
+                "font-medium",
                 view === k ? "bg-[image:var(--gradient-primary)] text-white shadow-[var(--shadow-glow)]" : "bg-surface text-accent-ink shadow-[0_3px_12px_-4px_rgb(107_91_149/0.16)] hover:bg-accent-softer",
               )}
             >

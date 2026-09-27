@@ -1,6 +1,6 @@
 "use client";
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
-import { Avatar, AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { Avatar, AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn, chipBase } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
@@ -182,7 +182,7 @@ export function ProjectView({
 
       <section aria-labelledby="project-title" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
         {showOverview ? (
-          <div className="relative h-40 sm:h-56">
+          <div className="relative h-32 sm:h-48">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={project.coverUrl ?? BACKGROUNDS.botanicalLeaves} alt="" className={cn("size-full object-cover", !project.coverUrl && "opacity-60")} />
           </div>
@@ -190,7 +190,7 @@ export function ProjectView({
         <div className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 id="project-title" className="break-words font-display text-3xl text-ink sm:text-4xl">
+              <h1 id="project-title" className="break-words font-display text-2xl leading-tight text-ink sm:text-3xl">
                 {project.title}
               </h1>
               <p className="mt-1 text-sm text-ink-subtle">
@@ -290,7 +290,7 @@ export function ProjectView({
                 <Link
                   href={href}
                   aria-current={tab === key ? "page" : undefined}
-                  className={cn("inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm", tab === key ? "bg-accent text-white" : "border border-border bg-surface text-ink-muted hover:border-accent")}
+                  className={cn(chipBase, tab === key ? "bg-accent text-white" : "border border-border bg-surface text-ink-muted hover:border-accent")}
                 >
                   {label}
                 </Link>
@@ -581,7 +581,7 @@ function AddDialog({ projectId, initialKind, onOpenChange, onAdded, shareMode }:
                 role="radio"
                 aria-checked={kind === k}
                 onClick={() => (setKind(k), setPicked([]), setList(null))}
-                className={cn("inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm", kind === k ? "bg-accent text-white" : "border border-border text-ink-muted hover:border-accent")}
+                className={cn(chipBase, kind === k ? "bg-accent text-white" : "border border-border text-ink-muted hover:border-accent")}
               >
                 {PROJECT_ITEM_LABEL[k].many}
               </button>

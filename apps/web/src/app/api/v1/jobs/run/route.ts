@@ -4,6 +4,7 @@ import { indexStaleSubjects, runImageGeneration, selectProvider } from "@wonder/
 import { processIntake } from "@wonder/creator-send";
 import { attemptPublication, duePublications } from "@wonder/creator-studio";
 import { NextResponse, type NextRequest } from "next/server";
+import { mirrorSoundtrack } from "@wonder/creator-soundtrack/server";
 import { imageWorkerDeps } from "@/lib/images";
 import { serviceClient } from "@/lib/supabase/service";
 
@@ -59,6 +60,8 @@ async function run(req: NextRequest) {
       results.push({ id: job.id, ok: false });
     }
   }
+  // Mirror licensed Soundtrack files into storage, a few per run (hash-checked; see @wonder/creator-soundtrack).
+  const soundtrack = await mirrorSoundtrack(service, { limit: 10 }).catch(() => ({ mirrored: [], failed: [] }));
   // Backfill semantic-search embeddings (missing or stale after edits) across creators.
   const indexed = await indexStaleSubjects(service, selectProvider(), { limit: 100 }).catch((e) => {
     log("warn", "jobs.index_failed", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" });
@@ -74,7 +77,7 @@ async function run(req: NextRequest) {
       log("warn", "jobs.publication_failed", { publicationId: due.id, error: isDomainError(e) ? e.code : "internal" });
     }
   }
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published });
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length });
 }
 
 export const GET = run;

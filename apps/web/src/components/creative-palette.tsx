@@ -1,8 +1,10 @@
 "use client";
 import { CanvasAtmosphere, type AtmosphereMood, KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, KitPencilIcon, KitPlusIcon, KitSearchIcon, KitSparklesIcon, KitUsersIcon, Palette, type PaletteGroup, type PaletteItem as LeafItem } from "@wonder/ui";
-import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, UserRound } from "lucide-react";
+import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, Music2, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { MeTalkSheet } from "./metalk-sheet";
+import { useSoundtrack } from "./soundtrack/audio-provider";
+import { MOOD_LABEL } from "@wonder/creator-soundtrack";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { resolveContextStrip } from "@/lib/context-strip/resolve";
 import { PRIORITY, type StripItem, type StripModel } from "@/lib/context-strip/types";
@@ -210,9 +212,23 @@ function CreativePalette({ context, onMeTalk }: { context: PaletteContext | null
     return { key: id, label, hint, quiet: true, keepOpen: true, icon: <Icon className="size-5" />, onSelect: () => setView(to) };
   };
 
+  // Music only as a quiet, contextual leaf (music-player §16): "Set the mood", or what's playing once it is.
+  const sound = useSoundtrack();
+  const music: LeafItem[] = sound
+    ? [
+        {
+          key: "music",
+          label: sound.current ? `${MOOD_LABEL[sound.state.mood]} · ${sound.current.title}` : "Set the mood",
+          hint: sound.current ? "CreativeRadio · change mood, pause or skip" : "CreativeRadio · music for your creativity",
+          quiet: true,
+          icon: <Music2 className="size-5" />,
+          onSelect: () => sound.openPanel("songs"),
+        },
+      ]
+    : [];
   const extras: LeafItem[] =
     view === "main"
-      ? [...(main.more.length ? [nav("more", "More…", "more", "more")] : []), ...(main.global ? [] : [nav("goto", "Go to…", "go", "global", "Home, Materials, Huddles…")])]
+      ? [...(main.more.length ? [nav("more", "More…", "more", "more")] : []), ...music, ...(main.global ? [] : [nav("goto", "Go to…", "go", "global", "Home, Materials, Huddles…")])]
       : [nav("back", "Back", "back", "main")];
   const groups: PaletteGroup[] = [
     { key: view, label: model.title ?? undefined, srLabel: model.global ? "Destinations" : undefined, items: model.primary.map(leaf) },

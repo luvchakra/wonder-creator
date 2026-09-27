@@ -87,7 +87,7 @@ export function SettingsView(props: Props) {
           <Plug className="size-4" aria-hidden /> Connected apps
         </Link>
       </nav>
-      <div className="min-w-0 rounded-3xl border border-border-soft bg-surface p-5 sm:p-7">
+      <div className="min-w-0 rounded-2xl border border-border-soft bg-surface p-4 sm:p-6">
         {section === "profile" ? <ProfileSection {...props} /> : null}
         {section === "identity" ? <IdentitySection {...props} /> : null}
         {section === "preferences" ? <PreferencesSection {...props} /> : null}
@@ -140,9 +140,9 @@ function ProfileSection({ profile, avatarUrl, email }: Props) {
         });
       }}
     >
-      <h2 className="text-xl font-semibold text-ink">Account & Profile</h2>
+      <h2 className="text-base font-semibold text-ink">Account & Profile</h2>
       <div className="flex items-center gap-4">
-        <Avatar name={p.displayName || "You"} src={avatarUrl} size={72} />
+        <Avatar name={p.displayName || "You"} src={avatarUrl} size={56} />
         <div>
           <label className={buttonClasses({ variant: "secondary", size: "sm", className: "cursor-pointer" })}>
             Change photo
@@ -213,7 +213,7 @@ function IdentitySection({ identity }: Props) {
   const { busy, save, status } = useSaver();
   return (
     <div className="space-y-5">
-      <h2 className="text-xl font-semibold text-ink">Creative Identity</h2>
+      <h2 className="text-base font-semibold text-ink">Creative Identity</h2>
       <div>
         <p className="mb-2 text-sm font-medium text-ink">Creative disciplines</p>
         <div className="flex flex-wrap gap-2">
@@ -248,7 +248,7 @@ function PreferencesSection({ voice, boundaries }: Props) {
   const { busy, save, status } = useSaver();
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-ink">Creative Preferences</h2>
+      <h2 className="text-base font-semibold text-ink">Creative Preferences</h2>
       <div>
         <p className="mb-2 text-sm font-medium text-ink">Tone</p>
         <div className="flex flex-wrap gap-2">
@@ -356,7 +356,7 @@ function AutonomySection({ autonomy }: Props) {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-ink">AI & CreativeMind</h2>
+          <h2 className="text-base font-semibold text-ink">AI & CreativeMind</h2>
           <p className="mt-1 text-[15px] text-ink-muted">Choose how CreativeMind can work with you. Be bold with creativity; be conservative with consequences.</p>
           <Link href="/approvals" className="mt-1 inline-flex min-h-11 items-center text-[15px] font-medium text-accent-ink hover:underline">
             Review approvals
@@ -434,7 +434,7 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-ink">Privacy & Security</h2>
+      <h2 className="text-base font-semibold text-ink">Privacy & Security</h2>
       <Link href="/settings/audit" className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border-soft px-4 py-3 hover:bg-black/[0.02]">
         <span>
           <span className="block font-medium text-ink">Security & activity</span>
@@ -614,7 +614,7 @@ function CollaborationSection({ collaboration, profile }: Props) {
       }}
     >
       <div>
-        <h2 className="text-xl font-semibold text-ink">Collaboration</h2>
+        <h2 className="text-base font-semibold text-ink">Collaboration</h2>
         <p className="mt-1 text-[15px] text-ink-muted">
           How you like to work with others. Availability is <span className="font-medium text-ink">{availability}</span> — change it under Account &amp; Profile. Your disciplines and languages come from your profile too.
         </p>
@@ -709,7 +709,7 @@ function BrandSection({ brand }: Props) {
       }}
     >
       <div>
-        <h2 className="text-xl font-semibold text-ink">Brand work</h2>
+        <h2 className="text-base font-semibold text-ink">Brand work</h2>
         <p className="mt-1 text-[15px] text-ink-muted">
           Say whether you&rsquo;re open to working with brands and what you&rsquo;d make. When you&rsquo;re open, your profile shows a short summary (niches, industries, platforms, deliverables); everything else here stays with you. Nothing is priced or sold.
         </p>
