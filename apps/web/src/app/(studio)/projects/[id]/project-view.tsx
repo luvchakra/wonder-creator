@@ -2,6 +2,7 @@
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
 import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
+import { CrewChat, type ChatMessage } from "./crew-chat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -34,7 +35,22 @@ interface Item {
   at: string;
   material: (MaterialCardData & { storage_object_id: string | null }) | null;
   artifact: ArtifactCardData | null;
+  shared: boolean;
+  linkedBy: string;
 }
+
+export interface SharedSummary {
+  itemId: string;
+  kind: "material" | "reference" | "artifact";
+  title: string;
+  detail: string | null;
+  sharedBy: { id: string; name: string };
+  sharedAt: string;
+  mine: boolean;
+}
+
+export type ProjectTab = "overview" | "work" | "chat";
+const SHAREABLE: ProjectItemKind[] = ["material", "reference", "artifact"];
 
 /** Sections in the order the work matters: what's being made, what it's made from, then how it's being made. */
 const SECTIONS: Array<{ kind: ProjectItemKind[]; title: string; add: ProjectItemKind; empty: string }> = [
@@ -60,6 +76,10 @@ export function ProjectView({
   canEdit,
   ownerName,
   crew,
+  viewerId,
+  tab,
+  shared,
+  chat,
 }: {
   project: Project;
   items: Item[];
@@ -68,9 +88,18 @@ export function ProjectView({
   canEdit: boolean;
   ownerName: string;
   crew: CrewSummary | null;
+  viewerId: string;
+  tab: ProjectTab;
+  /** Work shared with the crew (read-only for everyone but its owner). */
+  shared: SharedSummary[];
+  chat: { messages: ChatMessage[]; olderBefore: string | null } | null;
 }) {
-  // Crew members see what's linked only where they can open it themselves.
-  const items = canEdit ? allItems : allItems.filter((i) => i.available);
+  // Your own links here; work others shared with the crew is listed separately (and opened read-only).
+  const items = allItems.filter((i) => i.linkedBy === viewerId && (canEdit || i.available));
+  const fromCrew = shared.filter((x) => !x.mine);
+  const showOverview = !crew || tab === "overview";
+  const showWork = !crew || tab === "work";
+  const [sharing, setSharing] = useState(false);
   const router = useRouter();
   const [status, setStatus] = useState(project.status);
   const [adding, setAdding] = useState<ProjectItemKind | null>(null);
@@ -106,6 +135,17 @@ export function ProjectView({
     }
   }
 
+  async function toggleShare(i: Item) {
+    setError(null);
+    try {
+      await api(`/api/v1/projects/${project.id}/items`, { method: "PATCH", json: { itemId: i.id, shared: !i.shared } });
+      setMsg(i.shared ? `“${i.title}” is no longer shared with the crew.` : `Shared “${i.title}” with the crew (read-only for them).`);
+      router.refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
   async function makeCover(i: Item) {
     setError(null);
     try {
@@ -126,10 +166,12 @@ export function ProjectView({
       </div>
 
       <section aria-labelledby="project-title" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-        <div className="relative h-40 sm:h-56">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={project.coverUrl ?? BACKGROUNDS.botanicalLeaves} alt="" className={cn("size-full object-cover", !project.coverUrl && "opacity-60")} />
-        </div>
+        {showOverview ? (
+          <div className="relative h-40 sm:h-56">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={project.coverUrl ?? BACKGROUNDS.botanicalLeaves} alt="" className={cn("size-full object-cover", !project.coverUrl && "opacity-60")} />
+          </div>
+        ) : null}
         <div className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -169,6 +211,8 @@ export function ProjectView({
               <Badge tone={status === "active" ? "success" : "accent"}>{PROJECT_STATUS_LABEL[status]}</Badge>
             )}
           </div>
+          {showOverview ? (
+            <>
           {project.brief ? <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-muted">{project.brief}</p> : null}
           {project.goals.length ? (
             <div>
@@ -201,10 +245,41 @@ export function ProjectView({
             </Button>
           </div>
           ) : null}
+            </>
+          ) : null}
         </div>
       </section>
 
-      <CrewStrip projectId={project.id} crew={crew} canEdit={canEdit} projectTitle={project.title} />
+      {crew ? (
+        <nav aria-label="Project sections" className="-mx-4 overflow-x-auto px-4">
+          <ul className="flex gap-2">
+            {(
+              [
+                ["overview", "Overview", `/projects/${project.id}`],
+                ["work", "Work", `/projects/${project.id}?tab=work`],
+                ["chat", "Chat", `/projects/${project.id}?tab=chat`],
+              ] as const
+            ).map(([key, label, href]) => (
+              <li key={key}>
+                <Link
+                  href={href}
+                  aria-current={tab === key ? "page" : undefined}
+                  className={cn("inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm", tab === key ? "bg-accent text-white" : "border border-border bg-surface text-ink-muted hover:border-accent")}
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link href={`/crews/${crew.id}`} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full border border-border bg-surface px-4 text-sm text-ink-muted hover:border-accent">
+                People
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      ) : null}
+
+      {showOverview ? <CrewStrip projectId={project.id} crew={crew} canEdit={canEdit} projectTitle={project.title} /> : null}
 
       <div aria-live="polite" className="sr-only">
         {msg}
@@ -216,7 +291,7 @@ export function ProjectView({
         </p>
       ) : null}
 
-      {approvals.length ? (
+      {showOverview && approvals.length ? (
         <section aria-labelledby="approvals-h">
           <SectionHeader title="Waiting for your approval" />
           <ul className="space-y-2">
@@ -235,7 +310,41 @@ export function ProjectView({
         </section>
       ) : null}
 
-      {SECTIONS.map((s) => {
+      {showWork && crew ? (
+        <section aria-label="Shared by the crew">
+          <SectionHeader
+            title={`Shared by the crew${fromCrew.length ? ` (${fromCrew.length})` : ""}`}
+            action={
+              <Button variant="ghost" onClick={() => setSharing(true)}>
+                <Plus className="size-4" aria-hidden /> Share your work
+              </Button>
+            }
+          />
+          {fromCrew.length ? (
+            <ul className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface">
+              {fromCrew.map((x) => (
+                <li key={x.itemId}>
+                  <Link href={`/projects/${project.id}/shared/${x.itemId}`} className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-black/[0.02]">
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-1 font-medium text-ink">{x.title}</span>
+                      <span className="line-clamp-1 text-sm text-ink-muted">
+                        {x.detail ? `${x.detail} · ` : ""}Shared by {x.sharedBy.name} · <RelativeTime iso={x.sharedAt} />
+                      </span>
+                    </span>
+                    <Badge tone="neutral">Read-only</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+              When someone in the crew shares their material or pieces, they appear here. You can open them, not change them.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {showWork && SECTIONS.map((s) => {
         const list = items.filter((i) => s.kind.includes(i.kind));
         if (!canEdit && !list.length) return null;
         return (
@@ -257,7 +366,8 @@ export function ProjectView({
                 {list.map((i) => (
                   <li key={i.id} className="relative">
                     {i.artifact ? <ArtifactCard a={i.artifact} /> : i.material ? <MaterialCard m={i.material} href={i.href ?? undefined} /> : <Unavailable title={i.title} />}
-                    {canEdit ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} onCover={i.kind === "material" && i.material && (i.material.type === "image" || i.material.type === "sketch") ? makeCover : undefined} /> : null}
+                    {i.shared ? <Badge tone="accent" className="absolute left-2 top-2">Shared with crew</Badge> : null}
+                    {canEdit || i.linkedBy === viewerId ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} onShare={crew && SHAREABLE.includes(i.kind) ? toggleShare : undefined} onCover={canEdit && i.kind === "material" && i.material && (i.material.type === "image" || i.material.type === "sketch") ? makeCover : undefined} /> : null}
                     {i.note ? <p className="mt-1 px-1 text-sm italic text-ink-muted">{i.note}</p> : null}
                   </li>
                 ))}
@@ -289,7 +399,7 @@ export function ProjectView({
                         {i.note ? <span className="italic"> · {i.note}</span> : null}
                       </p>
                     </div>
-                    {canEdit ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} inline /> : null}
+                    {canEdit || i.linkedBy === viewerId ? <ItemMenu item={i} onUnlink={unlink} onNote={setNoteFor} inline /> : null}
                   </li>
                 ))}
               </ul>
@@ -298,6 +408,9 @@ export function ProjectView({
         );
       })}
 
+      {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} /> : null}
+
+      {showOverview ? (
       <section aria-label="Rights">
         <SectionHeader
           title="Rights"
@@ -314,7 +427,9 @@ export function ProjectView({
         </p>
       </section>
 
-      {project.budget.enabled ? (
+      ) : null}
+
+      {showOverview && project.budget.enabled ? (
         <section aria-label="Budget">
           <SectionHeader title="Budget" />
           <div className="rounded-2xl border border-border-soft bg-surface px-5 py-4 text-[15px] text-ink-muted">
@@ -328,6 +443,7 @@ export function ProjectView({
         </section>
       ) : null}
 
+      {sharing ? <AddDialog projectId={project.id} initialKind="artifact" shareMode onOpenChange={setSharing} onAdded={(n) => (setMsg(n ? `Shared ${n} with the crew.` : "Those were already shared."), router.refresh())} /> : null}
       {adding ? <AddDialog projectId={project.id} initialKind={adding} onOpenChange={(o) => !o && setAdding(null)} onAdded={(n, kind) => (setMsg(n ? `Added ${n} ${(n === 1 ? PROJECT_ITEM_LABEL[kind].one : PROJECT_ITEM_LABEL[kind].many).toLowerCase()} to the project.` : "Those were already here."), router.refresh())} /> : null}
       {editing ? <EditDialog project={project} onOpenChange={setEditing} onSaved={() => (setEditing(false), setMsg("Project saved."), router.refresh())} /> : null}
       {noteFor ? <NoteDialog projectId={project.id} item={noteFor} onOpenChange={(o) => !o && setNoteFor(null)} onSaved={() => (setNoteFor(null), router.refresh())} /> : null}
@@ -364,7 +480,7 @@ function Unavailable({ title }: { title: string }) {
   );
 }
 
-function ItemMenu({ item, onUnlink, onNote, onCover, inline }: { item: Item; onUnlink: (i: Item) => void; onNote: (i: Item) => void; onCover?: (i: Item) => void; inline?: boolean }) {
+function ItemMenu({ item, onUnlink, onNote, onCover, onShare, inline }: { item: Item; onUnlink: (i: Item) => void; onNote: (i: Item) => void; onCover?: (i: Item) => void; onShare?: (i: Item) => void; inline?: boolean }) {
   return (
     <Menu>
       <MenuTrigger
@@ -375,6 +491,7 @@ function ItemMenu({ item, onUnlink, onNote, onCover, inline }: { item: Item; onU
       </MenuTrigger>
       <MenuContent>
         <MenuItem onSelect={() => onNote(item)}>{item.note ? "Edit note" : "Add a note"}</MenuItem>
+        {onShare ? <MenuItem onSelect={() => onShare(item)}>{item.shared ? "Stop sharing with crew" : "Share with crew"}</MenuItem> : null}
         {onCover ? <MenuItem onSelect={() => onCover(item)}>Use as project cover</MenuItem> : null}
         <MenuItem destructive onSelect={() => onUnlink(item)}>
           Remove from project
@@ -386,7 +503,7 @@ function ItemMenu({ item, onUnlink, onNote, onCover, inline }: { item: Item; onU
 
 const ADD_KINDS: ProjectItemKind[] = ["artifact", "material", "reference", "conversation", "huddle", "collection"];
 
-function AddDialog({ projectId, initialKind, onOpenChange, onAdded }: { projectId: string; initialKind: ProjectItemKind; onOpenChange: (o: boolean) => void; onAdded: (n: number, kind: ProjectItemKind) => void }) {
+function AddDialog({ projectId, initialKind, onOpenChange, onAdded, shareMode }: { projectId: string; initialKind: ProjectItemKind; onOpenChange: (o: boolean) => void; onAdded: (n: number, kind: ProjectItemKind) => void; shareMode?: boolean }) {
   const [kind, setKind] = useState<ProjectItemKind>(initialKind);
   const [q, setQ] = useState("");
   const [list, setList] = useState<Array<{ id: string; title: string; detail: string | null }> | null>(null);
@@ -412,10 +529,14 @@ function AddDialog({ projectId, initialKind, onOpenChange, onAdded }: { projectI
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Add to project" description="Adding links your work to the project. Nothing is moved or copied." wide>
+      <DialogContent
+        title={shareMode ? "Share with the crew" : "Add to project"}
+        description={shareMode ? "The crew can open what you share, read-only. You can stop sharing any time; nothing is moved or copied." : "Adding links your work to the project. Nothing is moved or copied."}
+        wide
+      >
         <div className="-mx-1 overflow-x-auto px-1">
           <div role="radiogroup" aria-label="What to add" className="flex gap-2">
-            {ADD_KINDS.map((k) => (
+            {ADD_KINDS.filter((k) => !shareMode || SHAREABLE.includes(k)).map((k) => (
               <button
                 key={k}
                 type="button"
@@ -472,7 +593,7 @@ function AddDialog({ projectId, initialKind, onOpenChange, onAdded }: { projectI
               setBusy(true);
               setError(null);
               try {
-                const r = await api<{ added: number }>(`/api/v1/projects/${projectId}/items`, { method: "POST", json: { kind, ids: picked } });
+                const r = await api<{ added: number }>(`/api/v1/projects/${projectId}/items`, { method: "POST", json: { kind, ids: picked, shared: !!shareMode } });
                 onAdded(r.added, kind);
                 onOpenChange(false);
               } catch (e) {
