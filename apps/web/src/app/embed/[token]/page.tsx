@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SharedPieceView } from "@/components/shared-piece";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Shared piece", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: "Shared Creation", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /** Embeddable view of a private link, only when the creator allowed embedding. */
 export default async function EmbedPage({ params }: { params: Promise<{ token: string }> }) {
@@ -14,7 +14,7 @@ export default async function EmbedPage({ params }: { params: Promise<{ token: s
       {piece?.allowEmbed ? (
         <SharedPieceView piece={piece} downloadBase={null} compact />
       ) : (
-        <p className="p-5 text-[15px] text-ink-muted">This piece isn&apos;t available to embed.</p>
+        <p className="p-5 text-[15px] text-ink-muted">This Creation isn&apos;t available to embed.</p>
       )}
     </main>
   );

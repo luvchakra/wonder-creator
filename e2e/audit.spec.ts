@@ -19,10 +19,10 @@ test.describe("Security & activity", () => {
     const activity = page.getByRole("list", { name: "Activity" });
     await expect(activity).toContainText("Signed in");
     const link = activity.getByRole("listitem").filter({ hasText: "Made a private link" });
-    await expect(link).toContainText("Piece: Harbour notes");
+    await expect(link).toContainText("Creation: Harbour notes");
     await link.getByText("Made a private link").click();
     await expect(link.getByText("Downloads allowed")).toBeVisible();
-    await expect(link.getByRole("link", { name: "Open piece" })).toHaveAttribute("href", `/artifacts/${id}`);
+    await expect(link.getByRole("link", { name: "Open Creation" })).toHaveAttribute("href", `/artifacts/${id}`);
 
     // Filters live in a sheet.
     await page.getByRole("button", { name: /^Filter/ }).click();

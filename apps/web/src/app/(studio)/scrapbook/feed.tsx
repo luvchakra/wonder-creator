@@ -151,7 +151,7 @@ function Composer({ attachable, onPosted }: { attachable: { materials: Option[];
       <Dialog open={attachOpen} onOpenChange={setAttachOpen}>
         <DialogContent title="Attach your work" description="Attaching shares it with everyone who can see this post: its title, a short excerpt and its file. Nothing else from your Space.">
           <AttachList title="Material" options={attachable.materials} selected={materialIds} onChange={setMaterialIds} />
-          <AttachList title="Pieces" options={attachable.pieces} selected={artifactIds} onChange={setArtifactIds} note="People see the title; they can open it only if the piece is already visible to them." />
+          <AttachList title="Creations" options={attachable.pieces} selected={artifactIds} onChange={setArtifactIds} note="People see the title; they can open it only if the Creation is already visible to them." />
           <div className="mt-4 flex justify-end">
             <Button onClick={() => setAttachOpen(false)}>Done</Button>
           </div>

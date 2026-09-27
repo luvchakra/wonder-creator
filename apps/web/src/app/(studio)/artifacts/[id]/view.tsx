@@ -428,8 +428,8 @@ export function ArtifactView(props: {
             onOpenChange={setDeleteOpen}
             destructive
             busy={busy}
-            title="Delete this piece permanently?"
-            body="All versions, lineage and rights records for this piece will be removed. Your source material stays safe. This can't be undone."
+            title="Delete this Creation permanently?"
+            body="All versions, lineage and rights records for this Creation will be removed. Your source material stays safe. This can't be undone."
             confirmLabel="Delete permanently"
             onConfirm={async () => {
               setBusy(true);
@@ -560,12 +560,12 @@ function ShareDialog({
   const [busy, setBusy] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Share" description="Choose who can see this piece. Private by default.">
+      <DialogContent title="Share" description="Choose who can see this Creation. Private by default.">
         <div className="space-y-4">
           <label className="flex items-center justify-between gap-4">
             <span>
               <span className="block font-medium text-ink">Mark as final</span>
-              <span className="text-sm text-ink-muted">Only final pieces can be shown publicly.</span>
+              <span className="text-sm text-ink-muted">Only final Creations can be shown publicly.</span>
             </span>
             <Switch checked={final} onCheckedChange={setFinal} label="Mark as final" />
           </label>
@@ -648,7 +648,7 @@ export function TransformDialog({
   const others = ARTIFACT_TYPES.filter((t) => t.type !== currentType && !suggested.some((s) => s.targetType === t.type));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Create a derivative" description="A new piece adapted from this one. The original stays unchanged and the new piece records where it came from." wide>
+      <DialogContent title="Create a derivative" description="A new Creation adapted from this one. The original stays unchanged and the new Creation records where it came from." wide>
         {source ? (
           <div className="rounded-2xl bg-surface-muted p-3 text-sm">
             <p className="text-ink">
@@ -686,8 +686,8 @@ export function TransformDialog({
             ))}
           </div>
           <details className="mt-3" open={!!type && !suggested.some((s) => s.targetType === type)}>
-            <summary className="cursor-pointer text-sm text-accent-ink">More kinds of piece</summary>
-            <Field label="Any kind of piece" htmlFor="target" className="mt-2">
+            <summary className="cursor-pointer text-sm text-accent-ink">More kinds of Creation</summary>
+            <Field label="Any kind of Creation" htmlFor="target" className="mt-2">
               <Select id="target" value={type} onChange={(e) => setType(e.target.value)}>
                 <option value="">Choose…</option>
                 {others.map((t) => (
@@ -708,8 +708,8 @@ export function TransformDialog({
           <section aria-label="What carries over" className="mt-4 rounded-2xl border border-border-soft p-3 text-sm">
             <p className="font-medium text-ink">What carries over</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-muted">
-              <li>A link back to this piece and the version you chose.</li>
-              <li>{source.materials ? `${source.materials} piece${source.materials === 1 ? "" : "s"} of material it was made from.` : "No material was attached to this piece."}</li>
+              <li>A link back to this Creation and the version you chose.</li>
+              <li>{source.materials ? `${source.materials} piece${source.materials === 1 ? "" : "s"} of material it was made from.` : "No material was attached to this Creation."}</li>
               {source.contributors.length ? <li>Contributors: {source.contributors.join(", ")}.</li> : null}
               {source.rights ? (
                 <li>
@@ -717,7 +717,7 @@ export function TransformDialog({
                   {source.rights.attributionRequired ? ", attribution required" : ""}.
                 </li>
               ) : null}
-              <li>The new piece starts as a private draft — you review it before sharing or publishing.</li>
+              <li>The new Creation starts as a private draft — you review it before sharing or publishing.</li>
             </ul>
           </section>
         ) : null}

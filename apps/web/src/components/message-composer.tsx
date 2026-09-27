@@ -66,7 +66,7 @@ export function MessageComposer({
       {drafted ? (
         <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-ink-muted" role="status">
           <Badge tone="warning">Draft — not sent</Badge>
-          {offline ? "AI isn't connected, so this is only a starting point." : "Written by CreatorBrain. Edit it, then send when you're ready."}
+          {offline ? "AI isn't connected, so this is only a starting point." : "Written by CreativeMind. Edit it, then send when you're ready."}
         </p>
       ) : null}
       <label htmlFor={id} className="sr-only">
@@ -134,7 +134,7 @@ export function MessageComposer({
         ) : null}
         {!asking ? (
           <Button type="button" variant="ghost" onClick={() => setAsking(true)}>
-            <Sparkles className="size-4" aria-hidden /> Draft with CreatorBrain
+            <Sparkles className="size-4" aria-hidden /> Draft with CreativeMind
           </Button>
         ) : null}
         <Button type="submit" loading={busy} disabled={!body.trim()} className="ml-auto">

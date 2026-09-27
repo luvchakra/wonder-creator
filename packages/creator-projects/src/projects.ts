@@ -26,14 +26,14 @@ const budget = z.object({
 });
 
 export const projectSchema = z.object({
-  title: z.string().trim().min(1, "Give your project a name.").max(120),
+  title: z.string().trim().min(1, "Give your Creative Room a name.").max(120),
   brief: z.string().trim().max(5000).default(""),
   goals: goals.default([]),
   status: z.enum(PROJECT_STATUSES).default("idea"),
 });
 
 export const updateProjectSchema = z.object({
-  title: z.string().trim().min(1, "Give your project a name.").max(120).optional(),
+  title: z.string().trim().min(1, "Give your Creative Room a name.").max(120).optional(),
   brief: z.string().trim().max(5000).optional(),
   goals: goals.optional(),
   status: z.enum(PROJECT_STATUSES).optional(),
@@ -148,7 +148,7 @@ type Row = {
 };
 
 export async function getProject(db: Db, id: string) {
-  const project = must(await db.from("projects").select("*").eq("id", id).maybeSingle(), "We couldn't find that project.");
+  const project = must(await db.from("projects").select("*").eq("id", id).maybeSingle(), "We couldn't find that Creative Room.");
   const { data, error } = await db
     .from("project_items")
     .select(
@@ -185,7 +185,7 @@ export async function getProject(db: Db, id: string) {
       }
       case "artifact": {
         const a = r.artifacts;
-        return { ...base, itemId: r.artifact_id!, title: a?.title ?? r.label ?? "Piece", detail: a?.artifact_type ?? null, href: a ? `/artifacts/${r.artifact_id}` : null, available: !!a, at: a?.updated_at ?? r.added_at, artifact: a ?? undefined };
+        return { ...base, itemId: r.artifact_id!, title: a?.title ?? r.label ?? "Creation", detail: a?.artifact_type ?? null, href: a ? `/artifacts/${r.artifact_id}` : null, available: !!a, at: a?.updated_at ?? r.added_at, artifact: a ?? undefined };
       }
       case "collection": {
         const c = r.material_collections;
@@ -228,9 +228,9 @@ export async function updateProject(db: Db, id: string, raw: unknown) {
   if (!Object.keys(patch).length) return;
   const res = await db.from("projects").update(patch).eq("id", id).select("id");
   if (res.error?.code === "42501") throw new DomainError("validation", "The cover has to be one of your own images.");
-  if (res.error?.message?.includes("use the completion checklist")) throw new DomainError("conflict", "This project has a crew. Use the completion checklist to complete, archive or reopen it.");
+  if (res.error?.message?.includes("use the completion checklist")) throw new DomainError("conflict", "This Creative Room has a crew. Use the completion checklist to complete, archive or reopen it.");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that project.");
+  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that Creative Room.");
 }
 
 /** Deletes the project and its links. Everything it referenced stays where it is. */
@@ -238,13 +238,13 @@ export async function deleteProject(db: Db, id: string) {
   const res = await db.from("projects").delete().eq("id", id).select("id");
   if (res.error?.code === "55000") throw new DomainError("conflict", res.error.message);
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that project.");
+  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that Creative Room.");
 }
 
 /** Links work to a project. Already-linked items are skipped; returns how many were added. */
 export async function linkToProject(db: Db, creatorId: string, projectId: string, raw: unknown): Promise<number> {
   const { kind, ids, shared } = linkSchema.parse(raw);
-  if (shared && !["material", "reference", "artifact"].includes(kind)) throw new DomainError("validation", "Only material, references and pieces can be shared with the crew.");
+  if (shared && !["material", "reference", "artifact"].includes(kind)) throw new DomainError("validation", "Only material, references and Creations can be shared with the crew.");
   const col = COLUMN[kind];
   const unique = [...new Set(ids)];
   const existing = await db.from("project_items").select(col).eq("project_id", projectId).eq("kind", kind).in(col, unique);
@@ -260,8 +260,8 @@ export async function linkToProject(db: Db, creatorId: string, projectId: string
   }
   const rows = fresh.map((id) => ({ project_id: projectId, creator_id: creatorId, kind, [col]: id, label: labels.get(id) ?? null, shared, shared_at: shared ? new Date().toISOString() : null }) as TablesInsert<"project_items">);
   const res = await db.from("project_items").insert(rows);
-  if (res.error?.code === "42501") throw new DomainError("forbidden", "You can add only your own work (and Huddles you were part of) to your own projects.");
-  if (res.error?.code === "23505") throw new DomainError("conflict", "That's already in this project.");
+  if (res.error?.code === "42501") throw new DomainError("forbidden", "You can add only your own work (and Huddles you were part of) to your own Creative Rooms.");
+  if (res.error?.code === "23505") throw new DomainError("conflict", "That's already in this Creative Room.");
   if (res.error?.code === "23503") throw new DomainError("not_found", "We couldn't find that item.");
   if (res.error) throw fromDbError(res.error);
   return fresh.length;
@@ -271,14 +271,14 @@ export async function linkToProject(db: Db, creatorId: string, projectId: string
 export async function unlinkFromProject(db: Db, projectId: string, itemId: string) {
   const res = await db.from("project_items").delete().eq("project_id", projectId).eq("id", itemId).select("id");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this project.");
+  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this Creative Room.");
 }
 
 export async function setProjectItemNote(db: Db, projectId: string, itemId: string, note: string | null) {
   const clean = z.string().trim().max(500).nullable().parse(note) || null;
   const res = await db.from("project_items").update({ note: clean }).eq("project_id", projectId).eq("id", itemId).select("id");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this project.");
+  if (!res.data?.length) throw new DomainError("not_found", "That's no longer in this Creative Room.");
 }
 
 /** Which of the creator's projects already contain an item (for "Add to project" pickers). */

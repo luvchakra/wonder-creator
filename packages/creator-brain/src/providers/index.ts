@@ -24,7 +24,7 @@ class UnavailableProvider implements CreativeModelProvider {
     return "none";
   }
   private fail(): never {
-    throw new DomainError("provider_unavailable", "CreatorBrain isn't connected yet. Your material is saved; you can create once it's set up.");
+    throw new DomainError("provider_unavailable", "CreativeMind isn't connected yet. Your material is saved; you can create once it's set up.");
   }
   async generate(): Promise<never> {
     this.fail();

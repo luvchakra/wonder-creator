@@ -1,9 +1,9 @@
 import { artifactCard, expect, pngBytes, poemFromNote, saveNote, test, uid } from "./fixtures";
 
-test.describe("creating with CreatorBrain", () => {
+test.describe("creating with CreativeMind", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("universal composer on Home: text + attachment lands in CreatorTalk with a draft", async ({ page }) => {
+  test("universal composer on Home: text + attachment lands in meTalk with a draft", async ({ page }) => {
     // meTalk is a transient sheet from the Palette, not a chat screen.
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
@@ -24,7 +24,7 @@ test.describe("creating with CreatorBrain", () => {
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page).toHaveURL(/\/create\?c=[0-9a-f-]{36}$/, { timeout: 45_000 });
 
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await expect(talk.getByText("Write a poem about the lighthouse at dawn.").first()).toBeVisible();
     // The photo was stored as material and is attached to the creator's message.
     await expect(talk.getByRole("list", { name: "Attached material" }).getByRole("link", { name: file })).toBeVisible();
@@ -32,7 +32,7 @@ test.describe("creating with CreatorBrain", () => {
     await expect(card).toBeVisible();
     await expect(card).toContainText("Poem");
     await expect(card.getByRole("link", { name: /View/ })).toHaveAttribute("href", /\/artifacts\/[0-9a-f-]{36}$/);
-    await expect(page.getByText("CreatorBrain is in offline development mode")).toBeVisible();
+    await expect(page.getByText("CreativeMind is in offline development mode")).toBeVisible();
 
     // The conversation is listed and the draft opens.
     await expect(page.getByRole("complementary", { name: "Conversations" }).getByRole("link", { name: /Write a poem about the lighthouse/ })).toHaveAttribute("aria-current", "page");
@@ -61,14 +61,14 @@ test.describe("creating with CreatorBrain", () => {
       .getByRole("button", { name: /Create this direction/ })
       .click();
     await expect(page).toHaveURL(/\/create\?c=[0-9a-f-]{36}$/, { timeout: 45_000 });
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await expect(talk.getByText(/Create a memory-driven short film/).first()).toBeVisible();
     const card = artifactCard(page);
     await expect(card).toBeVisible();
     await expect(card).toContainText("Short Film");
   });
 
-  test('CreatorTalk: "Turn these notes into a poem." with a note produces a poem', async ({ page }) => {
+  test('meTalk: "Turn these notes into a poem." with a note produces a poem', async ({ page }) => {
     const { artifactId, noteTitle } = await poemFromNote(page);
     const card = artifactCard(page);
     await expect(card).toContainText("Poem");
@@ -90,10 +90,10 @@ test.describe("creating with CreatorBrain", () => {
     // A blank piece created from Space, with the same word in its title.
     await page.goto("/space");
     await page.getByRole("button", { name: "New", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Start a new piece" });
-    await dialog.getByLabel("Kind of piece").selectOption({ label: "Poem" });
+    const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
+    await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
     await dialog.getByLabel("Title").fill(`Song of ${word}`);
-    await dialog.getByRole("button", { name: "Open Studio" }).click();
+    await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
     await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
     const artifactUrl = page.url().replace(/\/studio$/, "");
 

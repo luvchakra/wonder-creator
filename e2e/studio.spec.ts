@@ -8,7 +8,7 @@ async function openStudio(page: Page, artifactId: string) {
 test.describe("Studio, versions and lineage", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("refine with CreatorBrain: Improve → proposal → Keep revision adds a version", async ({ page }) => {
+  test("refine with CreativeMind: Improve → proposal → Keep revision adds a version", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
     await openStudio(page, artifactId);
     await expect(page.getByText("Poem · v1")).toBeVisible();

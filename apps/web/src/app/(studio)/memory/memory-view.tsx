@@ -31,7 +31,7 @@ const CATEGORY_OPTIONS = [
   { value: "creative_preference", label: "Creative preference" },
   { value: "recurring_theme", label: "Recurring theme" },
   { value: "creative_history", label: "Past work" },
-  { value: "project_context", label: "Project" },
+  { value: "project_context", label: "Creative Room" },
   { value: "relationship_context", label: "People" },
 ];
 
@@ -102,7 +102,7 @@ export function MemoryView({ initial }: { initial: Memory[] }) {
                 ))}
               </ul>
             ) : (
-              <EmptyState image={BACKGROUNDS.pastelClouds} title="Nothing remembered here yet" body="As you create and talk with CreatorBrain, what matters about your practice will appear here — always editable." />
+              <EmptyState image={BACKGROUNDS.pastelClouds} title="Nothing remembered here yet" body="As you create and talk with CreativeMind, what matters about your practice will appear here — always editable." />
             )}
           </TabPanel>
         ))}
@@ -127,7 +127,7 @@ export function MemoryView({ initial }: { initial: Memory[] }) {
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}
         title="Remove this memory?"
-        body={`CreatorBrain will stop using: “${removing?.statement ?? ""}”`}
+        body={`CreativeMind will stop using: “${removing?.statement ?? ""}”`}
         confirmLabel="Remove"
         destructive
         onConfirm={async () => {
@@ -151,7 +151,7 @@ function MemoryDialog({ open, onOpenChange, memory, onSaved }: { open: boolean; 
   const [busy, setBusy] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={memory ? "Edit memory" : "Add a memory"} description="Write it the way you'd like CreatorBrain to understand it.">
+      <DialogContent title={memory ? "Edit memory" : "Add a memory"} description="Write it the way you'd like CreativeMind to understand it.">
         <form
           className="space-y-4"
           onSubmit={async (e) => {

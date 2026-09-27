@@ -71,18 +71,18 @@ function toMessages(messages: ModelMessage[]): BetaMessageParam[] {
 function mapError(e: unknown): DomainError {
   if (e instanceof DomainError) return e;
   if (e instanceof Anthropic.RateLimitError) {
-    return new DomainError("provider_unavailable", "CreatorBrain is busy right now. Please try again in a moment.", { cause: e });
+    return new DomainError("provider_unavailable", "CreativeMind is busy right now. Please try again in a moment.", { cause: e });
   }
   if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
-    return new DomainError("provider_unavailable", "CreatorBrain isn't available right now.", { cause: e });
+    return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause: e });
   }
   if (e instanceof Anthropic.BadRequestError) {
-    return new DomainError("provider_failed", "CreatorBrain couldn't work with that request.", { cause: e });
+    return new DomainError("provider_failed", "CreativeMind couldn't work with that request.", { cause: e });
   }
   if (e instanceof Anthropic.APIConnectionError || e instanceof Anthropic.InternalServerError || e instanceof Anthropic.APIError) {
-    return new DomainError("provider_failed", "CreatorBrain didn't respond. Nothing was changed; please try again.", { cause: e });
+    return new DomainError("provider_failed", "CreativeMind didn't respond. Nothing was changed; please try again.", { cause: e });
   }
-  return new DomainError("provider_failed", "CreatorBrain didn't respond. Nothing was changed; please try again.", { cause: e });
+  return new DomainError("provider_failed", "CreativeMind didn't respond. Nothing was changed; please try again.", { cause: e });
 }
 
 export class AnthropicProvider implements CreativeModelProvider {
@@ -116,7 +116,7 @@ export class AnthropicProvider implements CreativeModelProvider {
 
   private finish(msg: Anthropic.Beta.Messages.BetaMessage): GenerateOutput {
     if (msg.stop_reason === "refusal") {
-      throw new DomainError("provider_failed", "CreatorBrain can't help with that particular request. Try rephrasing or choosing different material.");
+      throw new DomainError("provider_failed", "CreativeMind can't help with that particular request. Try rephrasing or choosing different material.");
     }
     const text = msg.content
       .filter((b): b is Anthropic.Beta.Messages.BetaTextBlock => b.type === "text")
@@ -168,11 +168,11 @@ export class AnthropicProvider implements CreativeModelProvider {
       try {
         parsed = JSON.parse(out.text);
       } catch (e) {
-        throw new DomainError("provider_failed", "CreatorBrain returned something unexpected. Please try again.", { cause: e });
+        throw new DomainError("provider_failed", "CreativeMind returned something unexpected. Please try again.", { cause: e });
       }
       const result = input.schema.safeParse(parsed);
       if (!result.success) {
-        throw new DomainError("provider_failed", "CreatorBrain returned something unexpected. Please try again.", { cause: result.error });
+        throw new DomainError("provider_failed", "CreativeMind returned something unexpected. Please try again.", { cause: result.error });
       }
       return { value: result.data, usage: out.usage, model: out.model, provider: out.provider };
     } catch (e) {

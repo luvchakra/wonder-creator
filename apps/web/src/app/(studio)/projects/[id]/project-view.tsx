@@ -57,11 +57,11 @@ const SHAREABLE: ProjectItemKind[] = ["material", "reference", "artifact"];
 
 /** Sections in the order the work matters: what's being made, what it's made from, then how it's being made. */
 const SECTIONS: Array<{ kind: ProjectItemKind[]; title: string; add: ProjectItemKind; empty: string }> = [
-  { kind: ["artifact"], title: "Pieces", add: "artifact", empty: "Pieces you make in this project, or add to it, appear here." },
+  { kind: ["artifact"], title: "Creations", add: "artifact", empty: "Creations you make in this Creative Room, or add to it, appear here." },
   { kind: ["material", "reference"], title: "Material & references", add: "material", empty: "Add the notes, images, voice memos and references this work draws on." },
-  { kind: ["conversation"], title: "Conversations", add: "conversation", empty: "Conversations started in this project appear here." },
+  { kind: ["conversation"], title: "Conversations", add: "conversation", empty: "Conversations started in this Creative Room appear here." },
   { kind: ["huddle"], title: "Huddles", add: "huddle", empty: "Add Huddles you were part of that shaped this work." },
-  { kind: ["collection"], title: "Collections", add: "collection", empty: "Add collections that belong with this project." },
+  { kind: ["collection"], title: "Collections", add: "collection", empty: "Add collections that belong with this Creative Room." },
 ];
 
 export interface CrewSummary {
@@ -141,7 +141,7 @@ export function ProjectView({
     setError(null);
     try {
       await api(`/api/v1/projects/${project.id}/items`, { method: "DELETE", json: { itemId: i.id } });
-      setMsg(`Removed “${i.title}” from the project. It's still in your space.`);
+      setMsg(`Removed “${i.title}” from the Creative Room. It's still in your space.`);
       router.refresh();
     } catch (e) {
       setError(errorMessage(e));
@@ -174,7 +174,7 @@ export function ProjectView({
     <div className="space-y-8">
       <div>
         <Link href="/projects" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-          <ArrowLeft className="size-4" aria-hidden /> Projects
+          <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
         </Link>
       </div>
 
@@ -192,7 +192,7 @@ export function ProjectView({
                 {project.title}
               </h1>
               <p className="mt-1 text-sm text-ink-subtle">
-                {canEdit ? null : <>{ownerName}&rsquo;s project · You&rsquo;re in the crew · </>}
+                {canEdit ? null : <>{ownerName}&rsquo;s Creative Room · You&rsquo;re in the crew · </>}
                 Updated <RelativeTime iso={project.updatedAt} />
               </p>
             </div>
@@ -214,7 +214,7 @@ export function ProjectView({
                 </Select>
               )}
               <Menu>
-                <MenuTrigger className="inline-flex size-11 items-center justify-center rounded-full border border-border bg-surface hover:bg-black/[0.03]" aria-label="More project actions">
+                <MenuTrigger className="inline-flex size-11 items-center justify-center rounded-full border border-border bg-surface hover:bg-black/[0.03]" aria-label="More Creative Room actions">
                   <MoreHorizontal className="size-5" aria-hidden />
                 </MenuTrigger>
                 <MenuContent>
@@ -223,7 +223,7 @@ export function ProjectView({
                   <MenuItem onSelect={() => router.push("/publishing")}>Publishing</MenuItem>
                   <MenuItem onSelect={() => router.push(`/projects/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
                   <MenuItem destructive onSelect={() => setDeleting(true)}>
-                    Delete project
+                    Delete Creative Room
                   </MenuItem>
                 </MenuContent>
               </Menu>
@@ -250,13 +250,13 @@ export function ProjectView({
           ) : null}
           {canEdit && !project.brief && !project.goals.length ? (
             <button type="button" onClick={() => setEditing(true)} className="min-h-11 text-left text-[15px] text-accent-ink hover:underline">
-              Add a brief and goals — CreatorBrain keeps them in mind when you create here.
+              Add a brief and goals — CreativeMind keeps them in mind when you create here.
             </button>
           ) : null}
           {canEdit ? (
           <div className="flex flex-wrap gap-2">
             <Link href={`/create?project=${project.id}`} className={buttonClasses()}>
-              <Sparkles className="size-4" aria-hidden /> Create in this project
+              <Sparkles className="size-4" aria-hidden /> Create in this Creative Room
             </Link>
             <Button variant="secondary" onClick={() => setAdding("artifact")}>
               <Plus className="size-4" aria-hidden /> Add work
@@ -272,7 +272,7 @@ export function ProjectView({
       </section>
 
       {crew || canEdit ? (
-        <nav aria-label="Project sections" className="-mx-4 overflow-x-auto px-4">
+        <nav aria-label="Creative Room sections" className="-mx-4 overflow-x-auto px-4">
           <ul className="flex gap-2">
             {(
               [
@@ -364,7 +364,7 @@ export function ProjectView({
             </ul>
           ) : (
             <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
-              When someone in the crew shares their material or pieces, they appear here. You can open them, not change them.
+              When someone in the crew shares their material or Creations, they appear here. You can open them, not change them.
             </p>
           )}
         </section>
@@ -453,7 +453,7 @@ export function ProjectView({
           }
         />
         <p className="rounded-2xl border border-border-soft bg-surface px-5 py-4 text-[15px] leading-relaxed text-ink-muted">
-          {project.rightsNote || "Each piece keeps its own rights and licences. Note anything that applies to the whole project here — for example, who owns what, or what a collaborator agreed to."}
+          {project.rightsNote || "Each Creation keeps its own rights and licences. Note anything that applies to the whole Creative Room here — for example, who owns what, or what a collaborator agreed to."}
         </p>
       </section>
 
@@ -474,15 +474,15 @@ export function ProjectView({
       ) : null}
 
       {sharing ? <AddDialog projectId={project.id} initialKind="artifact" shareMode onOpenChange={setSharing} onAdded={(n) => (setMsg(n ? `Shared ${n} with the crew.` : "Those were already shared."), router.refresh())} /> : null}
-      {adding ? <AddDialog projectId={project.id} initialKind={adding} onOpenChange={(o) => !o && setAdding(null)} onAdded={(n, kind) => (setMsg(n ? `Added ${n} ${(n === 1 ? PROJECT_ITEM_LABEL[kind].one : PROJECT_ITEM_LABEL[kind].many).toLowerCase()} to the project.` : "Those were already here."), router.refresh())} /> : null}
-      {editing ? <EditDialog project={project} onOpenChange={setEditing} onSaved={() => (setEditing(false), setMsg("Project saved."), router.refresh())} /> : null}
+      {adding ? <AddDialog projectId={project.id} initialKind={adding} onOpenChange={(o) => !o && setAdding(null)} onAdded={(n, kind) => (setMsg(n ? `Added ${n} ${(n === 1 ? PROJECT_ITEM_LABEL[kind].one : PROJECT_ITEM_LABEL[kind].many).toLowerCase()} to the Creative Room.` : "Those were already here."), router.refresh())} /> : null}
+      {editing ? <EditDialog project={project} onOpenChange={setEditing} onSaved={() => (setEditing(false), setMsg("Creative Room saved."), router.refresh())} /> : null}
       {noteFor ? <NoteDialog projectId={project.id} item={noteFor} onOpenChange={(o) => !o && setNoteFor(null)} onSaved={() => (setNoteFor(null), router.refresh())} /> : null}
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title="Delete this project?"
-        body="The project, its brief and its list of links will be deleted. Your material, pieces, conversations and collections are not deleted — they stay in your space."
-        confirmLabel="Delete project"
+        title="Delete this Creative Room?"
+        body="The Creative Room, its brief and its list of links will be deleted. Your material, Creations, conversations and collections are not deleted — they stay in your space."
+        confirmLabel="Delete Creative Room"
         destructive
         busy={busy}
         onConfirm={async () => {
@@ -522,9 +522,9 @@ function ItemMenu({ item, onUnlink, onNote, onCover, onShare, inline }: { item: 
       <MenuContent>
         <MenuItem onSelect={() => onNote(item)}>{item.note ? "Edit note" : "Add a note"}</MenuItem>
         {onShare ? <MenuItem onSelect={() => onShare(item)}>{item.shared ? "Stop sharing with crew" : "Share with crew"}</MenuItem> : null}
-        {onCover ? <MenuItem onSelect={() => onCover(item)}>Use as project cover</MenuItem> : null}
+        {onCover ? <MenuItem onSelect={() => onCover(item)}>Use as Creative Room cover</MenuItem> : null}
         <MenuItem destructive onSelect={() => onUnlink(item)}>
-          Remove from project
+          Remove from Creative Room
         </MenuItem>
       </MenuContent>
     </Menu>
@@ -560,8 +560,8 @@ function AddDialog({ projectId, initialKind, onOpenChange, onAdded, shareMode }:
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent
-        title={shareMode ? "Share with the crew" : "Add to project"}
-        description={shareMode ? "The crew can open what you share, read-only. You can stop sharing any time; nothing is moved or copied." : "Adding links your work to the project. Nothing is moved or copied."}
+        title={shareMode ? "Share with the crew" : "Add to Creative Room"}
+        description={shareMode ? "The crew can open what you share, read-only. You can stop sharing any time; nothing is moved or copied." : "Adding links your work to the Creative Room. Nothing is moved or copied."}
         wide
       >
         <div className="-mx-1 overflow-x-auto px-1">
@@ -655,7 +655,7 @@ function EditDialog({ project, onOpenChange, onSaved }: { project: Project; onOp
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Edit project" wide>
+      <DialogContent title="Edit Creative Room" wide>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -689,11 +689,11 @@ function EditDialog({ project, onOpenChange, onSaved }: { project: Project; onOp
           <Field label="Goals" htmlFor="edit-goals" hint={`One per line, up to ${MAX_GOALS}.`} error={goalList.length > MAX_GOALS ? `That's ${goalList.length} — keep it to ${MAX_GOALS}.` : null}>
             <Textarea id="edit-goals" value={goals} onChange={(e) => setGoals(e.target.value)} className="min-h-24" />
           </Field>
-          <Field label="Rights" htmlFor="edit-rights" hint="Optional. Anything that applies to the whole project.">
+          <Field label="Rights" htmlFor="edit-rights" hint="Optional. Anything that applies to the whole Creative Room.">
             <Textarea id="edit-rights" value={rightsNote} onChange={(e) => setRightsNote(e.target.value)} maxLength={2000} className="min-h-20" />
           </Field>
           <div className="space-y-3 rounded-2xl border border-border-soft p-4">
-            <Switch checked={budgetOn} onCheckedChange={setBudgetOn} label="Track a budget for this project" id="edit-budget" />
+            <Switch checked={budgetOn} onCheckedChange={setBudgetOn} label="Track a budget for this Creative Room" id="edit-budget" />
             {budgetOn ? (
               <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
                 <Field label="Amount" htmlFor="edit-amount">
@@ -733,7 +733,7 @@ function NoteDialog({ projectId, item, onOpenChange, onSaved }: { projectId: str
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Note" description={`Why “${item.title}” belongs in this project.`}>
+      <DialogContent title="Note" description={`Why “${item.title}” belongs in this Creative Room.`}>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -794,7 +794,7 @@ function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: stri
       ) : (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-4">
           <Avatar name="+" size={36} />
-          <p className="min-w-0 flex-1 text-[15px] text-ink-muted">Bring people in: a crew is the team for this project, with whatever roles it needs.</p>
+          <p className="min-w-0 flex-1 text-[15px] text-ink-muted">Bring people in: a crew is the team for this Creative Room, with whatever roles it needs.</p>
           <Button variant="secondary" onClick={() => setOpen(true)}>
             <Users className="size-4" aria-hidden /> Start a crew
           </Button>

@@ -322,7 +322,7 @@ function AutonomySection({ autonomy }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-ink">Creator Autonomy</h2>
-          <p className="mt-1 text-[15px] text-ink-muted">Choose how CreatorBrain can work with you. Be bold with creativity; be conservative with consequences.</p>
+          <p className="mt-1 text-[15px] text-ink-muted">Choose how CreativeMind can work with you. Be bold with creativity; be conservative with consequences.</p>
           <Link href="/approvals" className="mt-1 inline-flex min-h-11 items-center text-[15px] font-medium text-accent-ink hover:underline">
             Review approvals
           </Link>
@@ -388,7 +388,7 @@ function AutonomySection({ autonomy }: Props) {
           {error}
         </p>
       ) : null}
-      <p className="mt-4 text-sm text-ink-subtle">Rights, commerce and destructive actions can never run automatically — at most, CreatorBrain asks for your approval. Imported material can never change these settings.</p>
+      <p className="mt-4 text-sm text-ink-subtle">Rights, commerce and destructive actions can never run automatically — at most, CreativeMind asks for your approval. Imported material can never change these settings.</p>
     </div>
   );
 }
@@ -409,9 +409,9 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
       </Link>
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          ["Your content", "You own your materials and artifacts."],
+          ["Your content", "You own your materials and Creations."],
           ["Private by default", "Only you can see your content unless you share it."],
-          ["No hidden AI", "CreatorBrain works only on what you choose, within your autonomy settings."],
+          ["No hidden AI", "CreativeMind works only on what you choose, within your autonomy settings."],
         ].map(([t, b]) => (
           <div key={t} className="rounded-2xl bg-surface-muted p-4">
             <p className="font-medium text-ink">{t}</p>
@@ -448,7 +448,7 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
         <h3 className="font-medium text-ink">Connected services</h3>
         <ul className="mt-2 space-y-2 text-sm">
           <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-soft p-3">
-            <span>CreatorBrain (AI)</span>
+            <span>CreativeMind (AI)</span>
             <Badge tone={readiness.ai.live ? "success" : "warning"}>{readiness.ai.live ? "Connected" : readiness.ai.provider === "offline" ? "Offline development model" : "Not connected"}</Badge>
           </li>
           <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-soft p-3">
@@ -475,7 +475,7 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-border-soft p-4">
           <p className="font-medium text-ink">Data export</p>
-          <p className="mt-1 text-sm text-ink-muted">Download your materials, artifacts, conversations and account data.</p>
+          <p className="mt-1 text-sm text-ink-muted">Download your materials, Creations, conversations and account data.</p>
           <a href="/api/v1/account/export" className={buttonClasses({ variant: "secondary", size: "sm", className: "mt-3" })}>
             <Download className="size-4" aria-hidden /> Export my data
           </a>
@@ -527,7 +527,7 @@ function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [busy, setBusy] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Delete your account" description="This permanently deletes your profile, materials, artifacts, memories and conversations. It can't be undone.">
+      <DialogContent title="Delete your account" description="This permanently deletes your profile, materials, Creations, memories and conversations. It can't be undone.">
         <form
           className="space-y-4"
           onSubmit={async (e) => {

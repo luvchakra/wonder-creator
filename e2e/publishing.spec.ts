@@ -16,7 +16,7 @@ test.describe("publishing", () => {
     await page.goto(`/artifacts/${id}`);
     await page.getByRole("link", { name: "Publish" }).click();
     await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/publish$`));
-    await expect(page.getByText("This piece hasn't been published anywhere yet.")).toBeVisible();
+    await expect(page.getByText("This Creation hasn't been published anywhere yet.")).toBeVisible();
     await expect(page.getByText(/Instagram · YouTube/)).toBeVisible();
 
     // 1. Where: the profile, plus a webhook connected on the spot.
@@ -32,14 +32,14 @@ test.describe("publishing", () => {
     await page.getByRole("button", { name: "Next" }).click();
 
     // 2. Details, drafted by CreatorBrain and editable.
-    await page.getByRole("button", { name: "Draft with CreatorBrain" }).click();
+    await page.getByRole("button", { name: "Draft with CreativeMind" }).click();
     await expect(page.getByRole("status").filter({ hasText: "offline development mode" })).toBeVisible();
     await page.getByLabel("Caption", { exact: true }).fill("Out now.");
     await page.getByRole("button", { name: "Next" }).click();
 
     // 3. Review: the final public representation.
     await expect(page.getByText("Your Wonder Creator profile, My site")).toBeVisible();
-    await expect(page.getByText("The piece becomes public and marked published")).toBeVisible();
+    await expect(page.getByText("The Creation becomes public and marked published")).toBeVisible();
     await page.getByRole("button", { name: "Approve and publish" }).click();
 
     // 4. Outcomes, per destination: published only once confirmed.

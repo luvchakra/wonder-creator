@@ -16,7 +16,7 @@ test.describe("Contribution ledger", () => {
     expect((await b.request.patch(`/api/v1/tasks/${taskId}`, { data: { status: "done" } })).ok()).toBeTruthy();
 
     await a.goto(`/projects/${project.id}`);
-    await a.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Contributions" }).click();
+    await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Contributions" }).click();
     const list = a.getByRole("region", { name: "Contributions" });
     await expect(list).toContainText("Completed: Record the rain");
     await expect(list).toContainText("Completed a task");

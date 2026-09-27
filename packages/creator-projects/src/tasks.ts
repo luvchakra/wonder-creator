@@ -39,7 +39,7 @@ function taskError(e: { code?: string; message?: string }) {
   const msg = e.message ?? "";
   if (msg.includes("needs approval")) return new DomainError("forbidden", "This task needs approval: move it to Review, and the owner or an admin will mark it done.");
   if (msg.includes("change approval")) return new DomainError("forbidden", "Only the owner or an admin can decide whether a task needs approval.");
-  if (msg.includes("not in this project")) return new DomainError("validation", "That has to be part of this project.");
+  if (msg.includes("not in this project")) return new DomainError("validation", "That has to be part of this Creative Room.");
   if (e.code === "42501") return new DomainError("forbidden", "You can't change that task.");
   return fromDbError(e);
 }
@@ -156,7 +156,7 @@ export async function createTask(db: Db, creatorId: string, projectId: string, r
     })
     .select("id")
     .single();
-  if (res.error?.code === "42501" && !res.error.message.includes("approval")) throw new DomainError("forbidden", "Only the project's owner and crew can add tasks.");
+  if (res.error?.code === "42501" && !res.error.message.includes("approval")) throw new DomainError("forbidden", "Only the Creative Room's owner and crew can add tasks.");
   if (res.error) throw taskError(res.error);
   const id = res.data.id;
   if (t.assigneeIds?.length) {
@@ -195,7 +195,7 @@ export async function deleteTask(db: Db, taskId: string) {
 /** Assign someone (the owner/admins), or take a task on yourself. */
 export async function assignTask(db: Db, actorId: string, taskId: string, creatorId: string) {
   const res = await db.from("project_task_assignees").upsert({ task_id: taskId, creator_id: creatorId, assigned_by: actorId }, { onConflict: "task_id,creator_id", ignoreDuplicates: true });
-  if (res.error?.code === "42501") throw new DomainError("forbidden", creatorId === actorId ? "Only people in the project can take tasks on." : "Only the owner or an admin can assign other people.");
+  if (res.error?.code === "42501") throw new DomainError("forbidden", creatorId === actorId ? "Only people in the Creative Room can take tasks on." : "Only the owner or an admin can assign other people.");
   if (res.error) throw fromDbError(res.error);
 }
 
@@ -214,7 +214,7 @@ export async function listTaskComments(db: Db, taskId: string) {
 export async function addTaskComment(db: Db, creatorId: string, taskId: string, raw: unknown) {
   const { body } = z.object({ body: z.string().trim().min(1, "Write a comment first.").max(2000) }).parse(raw);
   const res = await db.from("project_task_comments").insert({ task_id: taskId, creator_id: creatorId, body }).select("id").single();
-  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only people in the project can comment.");
+  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only people in the Creative Room can comment.");
   return must(res);
 }
 

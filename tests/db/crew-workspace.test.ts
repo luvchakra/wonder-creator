@@ -91,7 +91,7 @@ describe("sharing work with the crew", () => {
     const othersPiece = await createArtifact(out, { title: "Not mine" });
     await expect(linkToProject(db(mia), mia.creatorId, projectId, { kind: "artifact", ids: [piece] })).rejects.toThrow(/only your own work/);
     await expect(linkToProject(db(mia), mia.creatorId, projectId, { kind: "artifact", ids: [othersPiece], shared: true })).rejects.toThrow(/only your own work/);
-    await expect(linkToProject(db(mia), mia.creatorId, projectId, { kind: "conversation", ids: [randomUUID()], shared: true })).rejects.toThrow(/Only material, references and pieces/);
+    await expect(linkToProject(db(mia), mia.creatorId, projectId, { kind: "conversation", ids: [randomUUID()], shared: true })).rejects.toThrow(/Only material, references and Creations/);
     await linkToProject(db(mia), mia.creatorId, projectId, { kind: "artifact", ids: [piece], shared: true });
 
     const shared = await listSharedItems(db(owner), projectId);

@@ -73,7 +73,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
       <header className="space-y-2">
         <h1 className="font-display text-3xl text-ink sm:text-4xl">Collaborate</h1>
         <p className="text-[15px] text-ink-muted">
-          {owner ? "People you bring in can comment, propose changes you accept or decline, or edit. " : `You're a collaborator on ${artifact.ownerName}'s piece (${ACCESS_LABEL[access as Access].toLowerCase()}). `}
+          {owner ? "People you bring in can comment, propose changes you accept or decline, or edit. " : `You're a collaborator on ${artifact.ownerName}'s Creation (${ACCESS_LABEL[access as Access].toLowerCase()}). `}
           Every change is a new version credited to whoever wrote it.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -82,7 +82,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
               <UserPlus className="size-4" aria-hidden /> Add a collaborator
             </Button>
           ) : null}
-          {(access === "propose" || access === "edit") && current ? <Button onClick={() => setWriting(true)}>{access === "edit" ? "Edit the piece" : "Propose a change"}</Button> : null}
+          {(access === "propose" || access === "edit") && current ? <Button onClick={() => setWriting(true)}>{access === "edit" ? "Edit the Creation" : "Propose a change"}</Button> : null}
           {!owner ? (
             <Button variant="ghost" onClick={() => setLeaving(true)}>
               Stop collaborating
@@ -105,7 +105,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
         <section aria-label="Publishing sign-off" className="rounded-2xl border border-border-soft bg-surface px-5 py-4">
           <SectionHeader title="Publishing sign-off" />
           <p className="text-sm text-ink-muted">
-            This piece&rsquo;s project asks collaborators and co-owners to approve {current ? `version ${current.number}` : "the current version"} before it&rsquo;s published. A new version needs a new sign-off.
+            This Creation&rsquo;s Creative Room asks collaborators and co-owners to approve {current ? `version ${current.number}` : "the current version"} before it&rsquo;s published. A new version needs a new sign-off.
           </p>
           <ul className="mt-2 space-y-1">
             {signoffs.map((s) => (
@@ -141,7 +141,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
                     {p.mine ? "You" : p.proposer.name} · on v{p.baseVersion.number ?? "?"} · <RelativeTime iso={p.at} />
                   </p>
                 </div>
-                {p.stale ? <Badge tone="warning">Piece changed since</Badge> : null}
+                {p.stale ? <Badge tone="warning">Creation changed since</Badge> : null}
                 <Button variant="secondary" onClick={() => setReviewing(p)}>
                   Review
                 </Button>
@@ -274,7 +274,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
         open={leaving}
         onOpenChange={setLeaving}
         title="Stop collaborating?"
-        body="You'll lose access to this piece. Every version you wrote stays credited to you."
+        body="You'll lose access to this Creation. Every version you wrote stays credited to you."
         confirmLabel="Stop collaborating"
         destructive
         onConfirm={() =>
@@ -397,7 +397,7 @@ function ReviewDialog({ proposal, current, owner, onOpenChange, onDone }: { prop
       <DialogContent title={proposal.summary} description={`Proposed by ${proposal.mine ? "you" : proposal.proposer.name} on v${proposal.baseVersion.number ?? "?"}.`} wide>
         {proposal.stale ? (
           <p role="status" className="mb-3 rounded-xl bg-[#fff4e5] px-3 py-2 text-sm text-ink">
-            The piece has changed since this was proposed (it&rsquo;s now v{current.number}). Below is the difference from the <strong>current</strong> version — accepting replaces the newer changes with this text.
+            The Creation has changed since this was proposed (it&rsquo;s now v{current.number}). Below is the difference from the <strong>current</strong> version — accepting replaces the newer changes with this text.
           </p>
         ) : null}
         <Diff from={current.content} to={proposal.content} />
@@ -439,7 +439,7 @@ function WriteDialog({ artifactId, base, mode, onOpenChange, onDone }: { artifac
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title={mode === "edit" ? "Edit the piece" : "Propose a change"} description={`Based on v${base.number}. ${mode === "edit" ? "Saving creates a new version credited to you." : "The owner reviews it and accepts or declines."}`} wide>
+      <DialogContent title={mode === "edit" ? "Edit the Creation" : "Propose a change"} description={`Based on v${base.number}. ${mode === "edit" ? "Saving creates a new version credited to you." : "The owner reviews it and accepts or declines."}`} wide>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -494,7 +494,7 @@ function AddCollaboratorDialog({ artifactId, exclude, onOpenChange, onAdded }: {
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Add a collaborator" description="They'll be able to open this piece and its versions." wide>
+      <DialogContent title="Add a collaborator" description="They'll be able to open this Creation and its versions." wide>
         {who ? (
           <form
             className="space-y-4"

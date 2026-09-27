@@ -12,15 +12,15 @@ test.describe("Projects", () => {
     // From the account menu to an empty project list, then a new project.
     await page.goto("/");
     await page.getByRole("button", { name: "Your account" }).click();
-    await page.getByRole("menuitem", { name: "Projects" }).click();
+    await page.getByRole("menuitem", { name: "Creative Rooms" }).click();
     await expect(page).toHaveURL(/\/projects$/);
-    await expect(page.getByRole("heading", { name: "No projects yet" })).toBeVisible();
-    await page.getByRole("button", { name: "New project" }).first().click();
-    const create = page.getByRole("dialog", { name: "New project" });
+    await expect(page.getByRole("heading", { name: "No Creative Rooms yet" })).toBeVisible();
+    await page.getByRole("button", { name: "New Creative Room" }).first().click();
+    const create = page.getByRole("dialog", { name: "New Creative Room" });
     await create.getByLabel("Name").fill(title);
     await create.getByLabel("Brief").fill("A short film about memory and the passing of time.");
     await create.getByLabel("Already underway").check();
-    await create.getByRole("button", { name: "Create project" }).click();
+    await create.getByRole("button", { name: "Create Creative Room" }).click();
     await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
     const projectId = page.url().split("/").pop()!;
     await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
@@ -29,9 +29,9 @@ test.describe("Projects", () => {
     // Goals and a budget, which only shows once it's switched on.
     await expect(page.getByRole("region", { name: "Budget" })).toHaveCount(0);
     await page.getByRole("button", { name: "Edit", exact: true }).first().click();
-    const edit = page.getByRole("dialog", { name: "Edit project" });
+    const edit = page.getByRole("dialog", { name: "Edit Creative Room" });
     await edit.getByLabel("Goals").fill("Finish the script\nShoot in Goa");
-    await edit.getByRole("switch", { name: "Track a budget for this project" }).click();
+    await edit.getByRole("switch", { name: "Track a budget for this Creative Room" }).click();
     await edit.getByLabel("Amount").fill("125000");
     await edit.getByLabel("Currency").fill("INR");
     await edit.getByRole("button", { name: "Save" }).click();
@@ -41,33 +41,33 @@ test.describe("Projects", () => {
     // Add the note from the material picker (nothing is copied).
     const materialSection = page.getByRole("region", { name: "Material & references" });
     await materialSection.getByRole("button", { name: "Add" }).click();
-    const add = page.getByRole("dialog", { name: "Add to project" });
+    const add = page.getByRole("dialog", { name: "Add to Creative Room" });
     await expect(add.getByRole("radio", { name: "Material" })).toHaveAttribute("aria-checked", "true");
     await add.getByLabel(note).check();
     await add.getByRole("button", { name: "Add 1" }).click();
-    await expect(page.getByText("Added 1 material to the project.").first()).toBeVisible();
+    await expect(page.getByText("Added 1 material to the Creative Room.").first()).toBeVisible();
     await expect(materialSection.getByRole("link", { name: new RegExp(note) })).toBeVisible();
 
     // Creating in the project: the conversation, and the piece made there, join it.
-    await page.getByRole("link", { name: "Create in this project" }).click();
-    await expect(page.getByText(`In project: ${title}`)).toBeVisible();
+    await page.getByRole("link", { name: "Create in this Creative Room" }).click();
+    await expect(page.getByText(`In Creative Room: ${title}`)).toBeVisible();
     const turn = await page.request.post("/api/v1/conversations/turn", { data: { message: "Write a poem about the monsoon on the balcony.", projectId } });
     expect(turn.ok()).toBeTruthy();
     await page.goto(`/projects/${projectId}`);
     await expect(page.getByRole("region", { name: "Conversations" }).getByRole("listitem")).toHaveCount(1);
-    await expect(page.getByRole("region", { name: "Pieces" }).getByRole("listitem")).toHaveCount(1);
+    await expect(page.getByRole("region", { name: "Creations" }).getByRole("listitem")).toHaveCount(1);
 
     // Removing from the project keeps the work.
     await materialSection.getByRole("button", { name: `Options for ${note}` }).click();
-    await page.getByRole("menuitem", { name: "Remove from project" }).click();
-    await expect(page.getByText(`Removed “${note}” from the project. It's still in your space.`).first()).toBeVisible();
+    await page.getByRole("menuitem", { name: "Remove from Creative Room" }).click();
+    await expect(page.getByText(`Removed “${note}” from the Creative Room. It's still in your space.`).first()).toBeVisible();
 
     // Deleting the project keeps the work too.
-    await page.getByRole("button", { name: "More project actions" }).click();
-    await page.getByRole("menuitem", { name: "Delete project" }).click();
-    const confirm = page.getByRole("dialog", { name: "Delete this project?" });
+    await page.getByRole("button", { name: "More Creative Room actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete Creative Room" }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete this Creative Room?" });
     await expect(confirm).toContainText("are not deleted");
-    await confirm.getByRole("button", { name: "Delete project" }).click();
+    await confirm.getByRole("button", { name: "Delete Creative Room" }).click();
     await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByText(title)).toHaveCount(0);
     await page.goto(`/space/materials/${noteId}`);

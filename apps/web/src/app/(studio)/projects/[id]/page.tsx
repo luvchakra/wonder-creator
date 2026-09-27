@@ -22,7 +22,7 @@ import { PaletteActions } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { ProjectView, type ProjectTab } from "./project-view";
 
-export const metadata = { title: "Project" };
+export const metadata = { title: "Creative Room" };
 
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
@@ -76,10 +76,10 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             db.from("ownership_assertions").select("id, claim, artifacts(title)").eq("project_id", id).in("status", ["asserted", "disputed"]).limit(30),
           ]);
           return [
-            ...items.filter((i) => i.kind === "artifact" && i.available).map((i) => ({ kind: "artifact" as const, id: i.itemId, label: `Piece: ${i.title}` })),
+            ...items.filter((i) => i.kind === "artifact" && i.available).map((i) => ({ kind: "artifact" as const, id: i.itemId, label: `Creation: ${i.title}` })),
             ...(openTasks.data ?? []).map((t) => ({ kind: "task" as const, id: t.id, label: `Task: ${t.title}` })),
             ...(proposals.data ?? []).map((p) => ({ kind: "proposal" as const, id: p.id, label: `Proposed change: ${p.summary.slice(0, 60)}` })),
-            ...(claims.data ?? []).map((c) => ({ kind: "claim" as const, id: c.id, label: `Ownership claim on ${(c.artifacts as { title: string } | null)?.title ?? "a piece"}` })),
+            ...(claims.data ?? []).map((c) => ({ kind: "claim" as const, id: c.id, label: `Ownership claim on ${(c.artifacts as { title: string } | null)?.title ?? "a Creation"}` })),
           ];
         })()
       : [];

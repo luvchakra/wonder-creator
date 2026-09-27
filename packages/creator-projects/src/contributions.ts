@@ -26,7 +26,7 @@ export const recordContributionSchema = z
     compensation: z.string().trim().max(500).optional(),
     sharePercent: z.number().gt(0).max(100).optional(),
   })
-  .refine((c) => c.projectId || c.artifactId, { message: "A contribution belongs to a project or a piece." });
+  .refine((c) => c.projectId || c.artifactId, { message: "A contribution belongs to a Creative Room or a Creation." });
 
 export const updateContributionSchema = z.object({
   description: z.string().trim().max(1000).optional(),
@@ -153,7 +153,7 @@ export async function recordContribution(db: Db, recorderId: string, raw: unknow
     })
     .select("id")
     .single();
-  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only the project's owner and admins (or the piece's owner) record contributions, for people involved in it.");
+  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only the Creative Room's owner and admins (or the Creation's owner) record contributions, for people involved in it.");
   if (res.error) throw ledgerError(res.error);
   return must(res).id;
 }

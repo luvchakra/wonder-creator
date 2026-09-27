@@ -15,7 +15,7 @@ async function skewClock(page: Page) {
 test.describe("hydration with a skewed device clock", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("inbox, material, CreatorTalk, artifact and memory pages hydrate without mismatches", async ({ page }) => {
+  test("inbox, material, meTalk, artifact and memory pages hydrate without mismatches", async ({ page }) => {
     const { materialId, artifactId } = await poemFromNote(page);
     await expect(page).toHaveURL(/\/create\?c=/);
     const conversation = new URL(page.url()).pathname + new URL(page.url()).search;

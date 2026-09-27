@@ -25,10 +25,10 @@ export function NewProjectButton() {
           setOpen(true);
         }}
       >
-        <Plus className="size-4" aria-hidden /> New project
+        <Plus className="size-4" aria-hidden /> New Creative Room
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New project" description="A project points to your work; nothing is moved or copied into it.">
+        <DialogContent title="New Creative Room" description="A Creative Room points to your work; nothing is moved or copied into it.">
           <form
             className="space-y-4"
             onSubmit={async (e) => {
@@ -47,7 +47,7 @@ export function NewProjectButton() {
             <Field label="Name" htmlFor="project-title">
               <Input id="project-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required autoFocus placeholder="A Life in Moments" />
             </Field>
-            <Field label="Brief" htmlFor="project-brief" hint="Optional. What is it, and what should it feel like? CreatorBrain uses this when you create inside the project.">
+            <Field label="Brief" htmlFor="project-brief" hint="Optional. What is it, and what should it feel like? CreativeMind uses this when you create inside the Creative Room.">
               <Textarea id="project-brief" value={brief} onChange={(e) => setBrief(e.target.value)} maxLength={5000} className="min-h-28" />
             </Field>
             <fieldset>
@@ -74,7 +74,7 @@ export function NewProjectButton() {
                 Cancel
               </Button>
               <Button type="submit" loading={busy} disabled={!title.trim()}>
-                Create project
+                Create Creative Room
               </Button>
             </div>
           </form>

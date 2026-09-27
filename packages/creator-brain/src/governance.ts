@@ -8,10 +8,10 @@ import { artifactType, isKnownArtifactType } from "@wonder/creator-studio/types"
  * autonomy domain and action kind; authorization is deterministic and recorded.
  */
 export const TOOLS = {
-  create_artifact: { domain: "creative_generation", action: "execute", label: "Create a new piece" },
+  create_artifact: { domain: "creative_generation", action: "execute", label: "Create a new Creation" },
   suggest_directions: { domain: "creative_generation", action: "suggest", label: "Suggest creative directions" },
-  suggest_tasks: { domain: "organization", action: "suggest", label: "Suggest project tasks" },
-  derive_artifact: { domain: "transformation", action: "draft", label: "Create a derivative piece" },
+  suggest_tasks: { domain: "organization", action: "suggest", label: "Suggest Creative Room tasks" },
+  derive_artifact: { domain: "transformation", action: "draft", label: "Create a derivative Creation" },
   apply_revision: { domain: "transformation", action: "execute", label: "Apply a revision as the current version" },
   save_memory: { domain: "organization", action: "draft", label: "Remember something about your practice" },
   organize_material: { domain: "organization", action: "execute", label: "Organize your material" },
@@ -87,7 +87,7 @@ export async function getPendingProposal(db: Db, id: string): Promise<Proposal> 
   if (p.status !== "pending") throw new DomainError("conflict", "That proposal has already been handled.");
   if (new Date(p.expires_at).getTime() <= Date.now()) {
     await db.from("ai_proposals").update({ status: "expired", resolved_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
-    throw new DomainError("conflict", "That proposal has expired. Ask CreatorBrain again.");
+    throw new DomainError("conflict", "That proposal has expired. Ask CreativeMind again.");
   }
   return p;
 }
@@ -177,7 +177,7 @@ function stateOf(p: Proposal): ApprovalState {
 function parametersOf(p: Proposal): Array<{ label: string; value: string }> {
   const d = (p.payload ?? {}) as Record<string, unknown>;
   const out: Array<{ label: string; value: string }> = [];
-  if (typeof d.artifactType === "string") out.push({ label: "Kind of piece", value: d.artifactType.replace(/_/g, " ") });
+  if (typeof d.artifactType === "string") out.push({ label: "Kind of Creation", value: d.artifactType.replace(/_/g, " ") });
   if (typeof d.instruction === "string") out.push({ label: "Request", value: d.instruction.slice(0, 300) });
   if (Array.isArray(d.materialIds)) out.push({ label: "Material", value: `${d.materialIds.length} piece${d.materialIds.length === 1 ? "" : "s"}` });
   if (typeof d.baseVersionId === "string") out.push({ label: "Based on", value: "the version current when this was proposed" });
@@ -251,7 +251,7 @@ async function approvalViews(db: Db, rows: Proposal[]): Promise<ApprovalView[]> 
 export async function editProposal(db: Db, creatorId: string, id: string, changes: { artifactType?: string; instruction?: string }): Promise<Proposal> {
   const old = await getPendingProposal(db, id);
   if (old.action !== "create_artifact") throw new DomainError("validation", "This kind of proposal can't be edited. Decline it and ask again.");
-  if (changes.artifactType && !isKnownArtifactType(changes.artifactType)) throw new DomainError("validation", "Choose a kind of piece.");
+  if (changes.artifactType && !isKnownArtifactType(changes.artifactType)) throw new DomainError("validation", "Choose a kind of Creation.");
   const payload = { ...(old.payload as Record<string, unknown>) };
   if (changes.artifactType) payload.artifactType = changes.artifactType;
   if (changes.instruction?.trim()) payload.instruction = changes.instruction.trim().slice(0, 4000);

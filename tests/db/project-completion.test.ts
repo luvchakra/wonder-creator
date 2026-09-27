@@ -102,7 +102,7 @@ describe("completing", () => {
         outcome: "completed",
         confirmTitle: TITLE,
       }),
-    ).rejects.toThrow(/Only the project's owner/);
+    ).rejects.toThrow(/Only the Creative Room's owner/);
     await expect(
       completeProject(db(owner), projectId, {
         outcome: "completed",
@@ -171,7 +171,7 @@ describe("completing", () => {
   });
 
   it("reopening revives the crew it dissolved and keeps the completion on record", async () => {
-    await expect(reopenProject(db(kai), projectId)).rejects.toThrow(/Only the project's owner/);
+    await expect(reopenProject(db(kai), projectId)).rejects.toThrow(/Only the Creative Room's owner/);
     await reopenProject(db(owner), projectId);
     expect(expectOk(await admin.from("projects").select("status").eq("id", projectId).single()).status).toBe("active");
     expect((await getCrew(db(owner), owner.creatorId, crewId))!.crew.status).toBe("active");

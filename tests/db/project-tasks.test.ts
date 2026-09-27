@@ -102,7 +102,7 @@ describe("tasks", () => {
     const second = await createTask(db(owner), owner.creatorId, projectId, { title: "Record demo", dependsOn: first, milestoneId: m });
     const otherProject = (await createProject(db(owner), owner.creatorId, { title: "Other" })).id;
     const foreign = await createTask(db(owner), owner.creatorId, otherProject, { title: "Unrelated" });
-    await expect(updateTask(db(owner), second, { dependsOn: foreign })).rejects.toThrow(/part of this project/);
+    await expect(updateTask(db(owner), second, { dependsOn: foreign })).rejects.toThrow(/part of this Creative Room/);
     await expect(updateTask(db(owner), second, { dependsOn: second })).rejects.toThrow();
 
     const { tasks, milestones } = await listTasks(db(bea), projectId);
@@ -118,7 +118,7 @@ describe("tasks", () => {
   it("comments are for the project's people; tasks are removed by their creator or managers", async () => {
     const t = await createTask(db(ada), ada.creatorId, projectId, { title: "Pick a single" });
     await addTaskComment(db(bea), bea.creatorId, t, { body: "Track 3?" });
-    await expect(addTaskComment(db(out), out.creatorId, t, { body: "hi" })).rejects.toThrow(/Only people in the project/);
+    await expect(addTaskComment(db(out), out.creatorId, t, { body: "hi" })).rejects.toThrow(/Only people in the Creative Room/);
     const [c] = await listTaskComments(db(owner), t);
     expect(c).toMatchObject({ body: "Track 3?", author: { id: bea.creatorId } });
     await expect(deleteTaskComment(db(ada), c.id)).resolves.toBeUndefined(); // admins moderate

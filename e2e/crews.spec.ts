@@ -47,8 +47,8 @@ test.describe("CreatorCrew", () => {
     await b.goto(`/projects/${project.id}`);
     await expect(b.getByRole("heading", { name: title, level: 1 })).toBeVisible();
     await expect(b.getByText(/You’re in the crew/)).toBeVisible();
-    await expect(b.getByRole("link", { name: "Create in this project" })).toHaveCount(0);
-    await expect(b.getByRole("button", { name: "More project actions" })).toHaveCount(0);
+    await expect(b.getByRole("link", { name: "Create in this Creative Room" })).toHaveCount(0);
+    await expect(b.getByRole("button", { name: "More Creative Room actions" })).toHaveCount(0);
     expect((await b.request.patch(`/api/v1/projects/${project.id}`, { data: { title: "Hijacked" } })).status()).toBe(404);
 
     // The owner changes Bea's role; the activity records it.

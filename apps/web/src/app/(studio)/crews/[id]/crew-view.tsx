@@ -144,7 +144,7 @@ export function CrewView({
           </Link>
         ) : (
           <Link href="/projects" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-            <ArrowLeft className="size-4" aria-hidden /> Projects
+            <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
           </Link>
         )}
       </div>
@@ -205,7 +205,7 @@ export function CrewView({
                     onSelect={() =>
                       setConfirm({
                         title: "Leave this crew?",
-                        body: "You'll stop seeing the project. What you contributed stays credited to you, and your membership stays in the crew's history.",
+                        body: "You'll stop seeing the Creative Room. What you contributed stays credited to you, and your membership stays in the crew's history.",
                         label: "Leave crew",
                         run: async () => {
                           await api(`/api/v1/crews/${crew.id}/leave`, { method: "POST" });
@@ -250,14 +250,14 @@ export function CrewView({
           {me.inviteNote ? <blockquote className="mt-3 border-l-2 border-accent pl-3 text-[15px] italic text-ink-muted">{me.inviteNote}</blockquote> : null}
           <dl className="mt-4 grid gap-3 text-[15px] sm:grid-cols-2">
             <div>
-              <dt className="text-sm text-ink-subtle">Project</dt>
+              <dt className="text-sm text-ink-subtle">Creative Room</dt>
               <dd className="text-ink">{project.title}</dd>
               {project.brief ? <dd className="mt-1 line-clamp-4 text-ink-muted">{project.brief}</dd> : null}
             </div>
             <div>
               <dt className="text-sm text-ink-subtle">What you could do</dt>
               <dd className="text-ink">{CREW_ACCESS_LABEL[me.access]}</dd>
-              <dd className="mt-1 text-ink-muted">{CREW_ACCESS_HELP[me.access]} Your own material and pieces stay private unless you share them.</dd>
+              <dd className="mt-1 text-ink-muted">{CREW_ACCESS_HELP[me.access]} Your own material and Creations stay private unless you share them.</dd>
             </div>
             {me.scope ? (
               <div className="sm:col-span-2">
@@ -342,7 +342,7 @@ export function CrewView({
                         onSelect={() =>
                           setConfirm({
                             title: `Remove ${m.name}?`,
-                            body: `${m.name} will stop seeing the project. What they contributed stays credited to them, and their membership stays in the crew's history.`,
+                            body: `${m.name} will stop seeing the Creative Room. What they contributed stays credited to them, and their membership stays in the crew's history.`,
                             label: "Remove",
                             run: () => api(`/api/v1/crews/${crew.id}/members`, { method: "DELETE", json: { creatorId: m.creatorId } }).then(() => (setMsg(`${m.name} was removed from the crew.`), router.refresh())),
                           })
@@ -526,7 +526,7 @@ function InviteDialog({ crewId, owner, exclude, onOpenChange, onInvited }: { cre
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Invite to the crew" description="They'll see the project's name and brief, their role and your note, and choose whether to join." wide>
+      <DialogContent title="Invite to the crew" description="They'll see the Creative Room's name and brief, their role and your note, and choose whether to join." wide>
         {who ? (
           <form
             className="space-y-4"

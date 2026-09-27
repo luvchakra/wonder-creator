@@ -27,7 +27,7 @@ describe("Approval Center", () => {
     const p = await propose();
     const [view] = await listApprovals(db(a), { state: "open" });
     expect(view).toMatchObject({ id: p.id, state: "pending", domain: "creative_generation", rightsImplications: false, cost: "No cost", editable: true });
-    expect(view.parameters).toEqual(expect.arrayContaining([{ label: "Kind of piece", value: "poem" }, { label: "Request", value: "A poem about the harbour at dusk" }]));
+    expect(view.parameters).toEqual(expect.arrayContaining([{ label: "Kind of Creation", value: "poem" }, { label: "Request", value: "A poem about the harbour at dusk" }]));
     expect(new Date(view.expiresAt).getTime()).toBeGreaterThan(Date.now() + 6 * 86400_000);
     expect(await listApprovals(db(b), { state: "open" })).toEqual([]);
     await expect(getApproval(db(b), p.id)).rejects.toThrow(/couldn't find/);
@@ -63,7 +63,7 @@ describe("Approval Center", () => {
     expect(next.supersedes).toBe(p.id);
     expect((await getApproval(db(a), p.id)).state).toBe("cancelled");
     const view = await getApproval(db(a), next.id);
-    expect(view.parameters).toEqual(expect.arrayContaining([{ label: "Kind of piece", value: "story" }, { label: "Request", value: "A story about bridges" }]));
+    expect(view.parameters).toEqual(expect.arrayContaining([{ label: "Kind of Creation", value: "story" }, { label: "Request", value: "A story about bridges" }]));
     await expect(editProposal(db(a), a.creatorId, p.id, { instruction: "again" })).rejects.toThrow(/already been handled/);
   });
 

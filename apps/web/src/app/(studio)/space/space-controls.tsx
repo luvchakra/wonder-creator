@@ -45,7 +45,7 @@ export function NewPieceButton() {
         <Plus className="size-4" aria-hidden /> New
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Start a new piece" description="Begin from a blank page. You can bring CreatorBrain in anytime.">
+        <DialogContent title="Start a new Creation" description="Begin from a blank page. You can bring CreativeMind in anytime.">
           <form
             className="space-y-4"
             onSubmit={async (e) => {
@@ -61,7 +61,7 @@ export function NewPieceButton() {
               }
             }}
           >
-            <Field label="Kind of piece" htmlFor="kind">
+            <Field label="Kind of Creation" htmlFor="kind">
               <Select id="kind" value={type} onChange={(e) => setType(e.target.value)}>
                 {ARTIFACT_TYPES.map((t) => (
                   <option key={t.type} value={t.type}>
@@ -83,7 +83,7 @@ export function NewPieceButton() {
                 Cancel
               </Button>
               <Button type="submit" loading={busy}>
-                Open Studio
+                Open Creative Studio
               </Button>
             </div>
           </form>

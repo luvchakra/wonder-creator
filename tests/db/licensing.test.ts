@@ -22,7 +22,7 @@ afterAll(cleanupTestCreators);
 describe("license requests", () => {
   it("can be made only for work you can see and don't own, one open request at a time", async () => {
     await expect(requestLicense(db(b), b.creatorId, privatePiece, { proposedUse: "x", terms: terms() })).rejects.toThrow();
-    await expect(requestLicense(db(a), a.creatorId, piece, { proposedUse: "x", terms: terms() })).rejects.toThrow(/your own piece/);
+    await expect(requestLicense(db(a), a.creatorId, piece, { proposedUse: "x", terms: terms() })).rejects.toThrow(/your own Creation/);
     await requestLicense(db(b), b.creatorId, piece, { proposedUse: "Our newsletter cover", terms: terms() });
     await expect(requestLicense(db(b), b.creatorId, piece, { proposedUse: "again", terms: terms() })).rejects.toThrow(/already have an open request/);
     // A request can't be forged as already approved.

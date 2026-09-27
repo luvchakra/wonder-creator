@@ -35,7 +35,7 @@ export interface BrainDeps {
 const STEP_LABEL: Record<StepName, string> = {
   understand: "Understanding your material",
   research: "Gathering references",
-  plan: "Planning the piece",
+  plan: "Planning the Creation",
   generate: "Creating",
   critique: "Checking quality",
   refine: "Refining",
@@ -196,7 +196,7 @@ export type CreateResult =
   | { kind: "proposal"; proposal: Proposal; runId: string };
 
 export async function create(deps: BrainDeps, input: CreateInput, opts: { approved?: boolean; retryOf?: string } = {}): Promise<CreateResult> {
-  if (!isKnownArtifactType(input.artifactType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
+  if (!isKnownArtifactType(input.artifactType)) throw new DomainError("validation", "I don't know how to make that kind of Creation yet.");
   const def = artifactType(input.artifactType);
   // The chosen material leads; the confirmed brief travels with the request.
   const lead = input.brief?.values.emphasisMaterialId;
@@ -232,7 +232,7 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
         tool: "create_artifact",
         understood: `You'd like a ${def.label.toLowerCase()}${ctx.selectedMaterials.length ? ` from ${ctx.selectedMaterials.length} piece${ctx.selectedMaterials.length === 1 ? "" : "s"} of material` : ""}.`,
         plan: `Draft a new ${def.label.toLowerCase()} in your voice and save it as v1.`,
-        impact: "Creates a new private piece. Nothing existing changes.",
+        impact: "Creates a new private Creation. Nothing existing changes.",
         payload: { ...input },
         runId: run.id,
         conversationId: input.conversationId,
@@ -396,7 +396,7 @@ export async function refine(
   opts: { previewOnly?: boolean; changeSummary?: string; quality?: { reportId: string; keys: string[]; titles: string[] } } = {},
 ): Promise<RefineResult> {
   const artifact = await getArtifact(deps.db, input.artifactId);
-  if (artifact.creator_id !== deps.creatorId) throw new DomainError("forbidden", "You can only refine your own pieces.");
+  if (artifact.creator_id !== deps.creatorId) throw new DomainError("forbidden", "You can only refine your own Creations.");
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "refine", instruction: input.instruction, artifactIds: [artifact.id], conversationId: input.conversationId });
   const current = ctx.selectedArtifacts[0];
   if (!current?.versionId) throw new DomainError("validation", "There's no draft to refine yet.");
@@ -420,7 +420,7 @@ export async function refine(
     deps.onProgress?.({ step: "deciding", label: "Checking your autonomy settings" });
     const decision = await authorizeTool(deps.db, deps.creatorId, "apply_revision", run.id);
     if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
-    const summary = opts.changeSummary ?? `CreatorBrain: ${input.instruction.slice(0, 200)}`;
+    const summary = opts.changeSummary ?? `CreativeMind: ${input.instruction.slice(0, 200)}`;
     if (decision.outcome === "needs_approval" || opts.previewOnly) {
       const proposal = await createProposal(deps.db, deps.creatorId, {
         tool: "apply_revision",
@@ -435,7 +435,7 @@ export async function refine(
       return { kind: "proposal" as const, proposal, runId: run.id, preview: revised };
     }
     progress(deps, "render");
-    const v = await createVersion(deps.db, artifact.id, { content: revised, label: "Revised with CreatorBrain", authorKind: "ai", aiRunId: run.id, changeSummary: summary, generationMetadata: { provider: deps.provider.name, offline: !deps.provider.live } });
+    const v = await createVersion(deps.db, artifact.id, { content: revised, label: "Revised with CreativeMind", authorKind: "ai", aiRunId: run.id, changeSummary: summary, generationMetadata: { provider: deps.provider.name, offline: !deps.provider.live } });
     await run.finish({ outputCategory: "version", artifactId: artifact.id });
     return { kind: "version" as const, artifactId: artifact.id, versionId: v.id, versionNumber: v.version_number, runId: run.id };
   });
@@ -445,18 +445,18 @@ export async function refine(
 // Transform: always a new, derived artifact (lineage preserved; never passed off as original)
 // ---------------------------------------------------------------------------
 export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null; madeFor?: string | null }) {
-  if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
+  if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of Creation yet.");
   const source = await getArtifact(deps.db, input.artifactId);
   // Someone else's work can only be adapted when they allowed derivatives (or their project's rights policy does).
   if (source.creator_id !== deps.creatorId) {
     const { data: permission } = await deps.db.rpc("derivative_permission", { p_artifact: source.id });
-    if (permission === "project_not_allowed") throw new DomainError("forbidden", "This piece's project doesn't allow derivatives.");
-    if (permission !== "allowed") throw new DomainError("forbidden", "The creator of this piece hasn't allowed derivatives.");
+    if (permission === "project_not_allowed") throw new DomainError("forbidden", "This Creation's Creative Room doesn't allow derivatives.");
+    if (permission !== "allowed") throw new DomainError("forbidden", "The creator of this Creation hasn't allowed derivatives.");
   }
   const def = artifactType(input.targetType);
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "transform", instruction: input.instruction, artifactType: def.type, artifactIds: [source.id], conversationId: input.conversationId });
   const current = ctx.selectedArtifacts[0];
-  if (!current) throw new DomainError("not_found", "We couldn't find that piece.");
+  if (!current) throw new DomainError("not_found", "We couldn't find that Creation.");
   // Any version of the source can be adapted; the current one by default.
   let src = { content: current.content, versionId: current.versionId, versionNumber: current.versionNumber };
   if (input.versionId && input.versionId !== current.versionId) {
@@ -523,11 +523,11 @@ export async function approveProposal(deps: BrainDeps, proposalId: string) {
       const artifactId = String(payload.artifactId);
       const a = await getArtifact(deps.db, artifactId);
       if (a.current_version_id !== payload.baseVersionId) {
-        throw new DomainError("conflict", "This piece changed since the suggestion was made. Ask CreatorBrain again for a fresh revision.");
+        throw new DomainError("conflict", "This Creation changed since the suggestion was made. Ask CreativeMind again for a fresh revision.");
       }
       const v = await createVersion(deps.db, artifactId, {
         content: String(payload.content),
-        label: "Revised with CreatorBrain",
+        label: "Revised with CreativeMind",
         authorKind: "ai",
         aiRunId: (payload.runId as string) ?? null,
         changeSummary: String(payload.changeSummary ?? "Approved revision."),
@@ -540,7 +540,7 @@ export async function approveProposal(deps: BrainDeps, proposalId: string) {
     if (p.action === "create_artifact") {
       // The creator's confirmation is consent for this one creation; "never" still blocks it.
       const res = await create(deps, payload as unknown as CreateInput, { approved: true });
-      if (res.kind !== "artifact") throw new DomainError("internal", "Approval did not produce a piece.");
+      if (res.kind !== "artifact") throw new DomainError("internal", "Approval did not produce a Creation.");
       await resolveProposal(deps.db, p.id, "executed");
       return { kind: "artifact" as const, artifact: res.artifact };
     }
@@ -575,7 +575,7 @@ export async function applyQualityFindings(deps: BrainDeps, artifactId: string, 
   const findings = findingsOf(report);
   const chosen = findings.filter((f) => input.keys.includes(f.key));
   if (!chosen.length) throw new DomainError("validation", "Choose at least one suggestion to apply.");
-  if (chosen.some((f) => f.locked)) throw new DomainError("validation", "Rights and provenance notes can't be fixed by rewriting. Check your permissions or set the piece's rights.");
+  if (chosen.some((f) => f.locked)) throw new DomainError("validation", "Rights and provenance notes can't be fixed by rewriting. Check your permissions or set the Creation's rights.");
   if (chosen.some((f) => f.state !== "open")) throw new DomainError("conflict", "Some of those suggestions were already applied or set aside.");
   const { instruction, summary } = selectiveInstruction(chosen);
   return refine(deps, { artifactId, instruction, action: "quality" }, { previewOnly: true, changeSummary: summary, quality: { reportId: report.id, keys: chosen.map((f) => f.key), titles: chosen.map((f) => f.title) } });
@@ -627,7 +627,7 @@ export type TaskPlan = z.infer<typeof taskPlanSchema>;
  * set — the creator picks what to add. Governed by the Organization autonomy setting.
  */
 export async function suggestProjectTasks(deps: BrainDeps, projectId: string): Promise<TaskPlan & { offline: boolean }> {
-  const project = must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", projectId).maybeSingle(), "We couldn't find that project.");
+  const project = must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", projectId).maybeSingle(), "We couldn't find that Creative Room.");
   const [tasks, milestones] = await Promise.all([
     deps.db.from("project_tasks").select("title, status").eq("project_id", projectId).limit(100),
     deps.db.from("project_milestones").select("title, due_on, done_at").eq("project_id", projectId).limit(30),
@@ -696,7 +696,7 @@ export function parseCollaboratorAsk(ask: string): CollaboratorQuery {
 export async function suggestCollaborators(deps: BrainDeps, input: { ask: string; projectId?: string | null }): Promise<{ query: CollaboratorQuery; people: CollaboratorCard[]; offline: boolean }> {
   const ask = input.ask.trim().slice(0, 500);
   if (!ask) throw new DomainError("validation", "Say who you're looking for.");
-  const project = input.projectId ? must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", input.projectId).maybeSingle(), "We couldn't find that project.") : null;
+  const project = input.projectId ? must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", input.projectId).maybeSingle(), "We couldn't find that Creative Room.") : null;
   const run = await startRun(deps, "collaborator_query", { inputCategory: "text" });
   return runGuarded(run, async () => {
     const decision = await authorizeTool(deps.db, deps.creatorId, "find_collaborators", run.id);
@@ -807,7 +807,7 @@ export function nextLocalTime(hhmm: string, timeZone: string, now = new Date(), 
 
 export async function planPublishing(deps: BrainDeps, artifactId: string): Promise<PublishPlan & { offline: boolean }> {
   const owned = await deps.db.from("artifacts").select("creator_id").eq("id", artifactId).maybeSingle();
-  if (owned.data?.creator_id !== deps.creatorId) throw new DomainError("not_found", "We couldn't find that piece.");
+  if (owned.data?.creator_id !== deps.creatorId) throw new DomainError("not_found", "We couldn't find that Creation.");
   const [destinations, prefs] = await Promise.all([listDestinations(deps.db), getPublishingPreferences(deps.db, deps.creatorId)]);
   const available = new Map<string, string>([["profile", "Your Wonder Creator profile"], ...destinations.filter((d) => d.status === "active").map((d) => [d.id, d.name] as [string, string])]);
   const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Plan publishing for this piece.", artifactIds: [artifactId] });

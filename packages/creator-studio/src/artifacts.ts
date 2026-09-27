@@ -55,7 +55,7 @@ export async function createArtifact(db: Db, creatorId: string, input: CreateArt
     aiRunId: input.aiRunId ?? null,
     generationMetadata: input.generationMetadata,
     structuredContent: input.structuredContent ?? null,
-    changeSummary: input.authorKind === "ai" ? "First version, created with CreatorBrain." : "First version.",
+    changeSummary: input.authorKind === "ai" ? "First version, created with CreativeMind." : "First version.",
   });
   for (const s of input.sources ?? []) await addLineage(db, creatorId, s, { type: "artifact", id: artifact.id });
 
@@ -136,7 +136,7 @@ export async function saveCreatorVersion(db: Db, artifactId: string, raw: unknow
     content: input.content,
     label: input.label || "Revised",
     authorKind: "creator",
-    changeSummary: input.changeSummary || "Edited in Studio.",
+    changeSummary: input.changeSummary || "Edited in the Creative Studio.",
   });
 }
 
@@ -158,7 +158,7 @@ export async function restoreVersion(db: Db, artifactId: string, versionId: stri
 }
 
 export async function getArtifact(db: Db, id: string): Promise<Artifact> {
-  return must(await db.from("artifacts").select("*").eq("id", id).maybeSingle(), "We couldn't find that piece.");
+  return must(await db.from("artifacts").select("*").eq("id", id).maybeSingle(), "We couldn't find that Creation.");
 }
 
 export async function listArtifacts(db: Db, opts: { status?: ArtifactStatus[]; q?: string; limit?: number; creatorId?: string } = {}) {
@@ -202,7 +202,7 @@ export async function updateArtifact(db: Db, id: string, raw: unknown): Promise<
   if (input.featuredOnProfile !== undefined) patch.featured_on_profile = input.featuredOnProfile;
   const res = await db.from("artifacts").update(patch).eq("id", id).select("*");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that piece.");
+  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that Creation.");
   if (input.privacy) await audit(db, { action: "artifact.visibility", objectType: "artifact", objectId: id, metadata: { privacy: input.privacy } });
   await publishEvent(db, { type: "ArtifactUpdated", aggregate: "artifact", aggregateId: id, payload: { fields: Object.keys(input) } });
   return res.data[0];
@@ -211,7 +211,7 @@ export async function updateArtifact(db: Db, id: string, raw: unknown): Promise<
 export async function deleteArtifact(db: Db, id: string): Promise<void> {
   const res = await db.from("artifacts").delete().eq("id", id).select("id");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that piece.");
+  if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that Creation.");
   await audit(db, { action: "artifact.delete", objectType: "artifact", objectId: id });
 }
 
@@ -315,7 +315,7 @@ export async function lineageGraph(db: Db, artifactId: string, maxDepth = 4): Pr
   }
   for (const n of nodes.values()) {
     if (!n.title) {
-      n.title = n.type === "huddle" ? "A Huddle" : n.type === "artifact" ? "A private piece" : "Private source";
+      n.title = n.type === "huddle" ? "A Huddle" : n.type === "artifact" ? "A private Creation" : "Private source";
       n.subtitle = n.type === "huddle" ? "Preserved from a Huddle" : n.subtitle || "Not visible to you";
     }
   }

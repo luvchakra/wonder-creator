@@ -12,5 +12,5 @@ export const POST = withApi<{ id: string }>(async ({ db, userId, creatorId, req 
   const { password } = z.object({ password: z.string().optional() }).passthrough().parse(body);
   const license = licenseSchema.parse(body);
   if (license.status === "active" && isConsequential(license)) await requirePassword(db, userId, password, "grant this license");
-  return { license: await addLicense(db, creatorId, requireUuid(id, "piece"), body) };
+  return { license: await addLicense(db, creatorId, requireUuid(id, "Creation"), body) };
 });

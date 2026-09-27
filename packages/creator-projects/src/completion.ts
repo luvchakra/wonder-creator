@@ -15,7 +15,7 @@ import { listTasks, projectPeople } from "./tasks";
 export const completionSchema = z.object({
   outcome: z.enum(["completed", "archived"]),
   dissolveCrew: z.boolean().default(false),
-  confirmTitle: z.string().trim().min(1, "Type the project's name to confirm.").max(200),
+  confirmTitle: z.string().trim().min(1, "Type the Creative Room's name to confirm.").max(200),
   acknowledgeOpen: z.boolean().default(false),
   note: z.string().trim().max(2000).nullish(),
 });
@@ -30,12 +30,12 @@ export interface OpenItems {
 
 function completionError(e: { code?: string; message?: string }) {
   const msg = e.message ?? "";
-  if (msg.includes("confirmation mismatch")) return new DomainError("validation", "Type the project's name exactly to confirm.");
+  if (msg.includes("confirmation mismatch")) return new DomainError("validation", "Type the Creative Room's name exactly to confirm.");
   if (msg.includes("open items")) return new DomainError("conflict", "Some things are still open. Resolve them, or confirm that they stay open on record.");
-  if (msg.includes("already")) return new DomainError("conflict", "The project is already closed that way.");
-  if (msg.includes("not closed")) return new DomainError("conflict", "The project isn't completed or archived.");
-  if (msg.includes("use the completion checklist")) return new DomainError("conflict", "Use the completion checklist to complete, archive or reopen a project with a crew.");
-  if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "Only the project's owner can do that.");
+  if (msg.includes("already")) return new DomainError("conflict", "The Creative Room is already closed that way.");
+  if (msg.includes("not closed")) return new DomainError("conflict", "The Creative Room isn't completed or archived.");
+  if (msg.includes("use the completion checklist")) return new DomainError("conflict", "Use the completion checklist to complete, archive or reopen a Creative Room with a crew.");
+  if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "Only the Creative Room's owner can do that.");
   return fromDbError(e);
 }
 
@@ -57,7 +57,7 @@ export async function openItems(db: Db, projectId: string): Promise<OpenItems> {
 /** Everything the completion checklist walks through, in the plan's order. */
 export async function completionReview(db: Db, viewerId: string, projectId: string) {
   const data = await getProject(db, projectId);
-  if (!data) throw new DomainError("not_found", "We couldn't find that project.");
+  if (!data) throw new DomainError("not_found", "We couldn't find that Creative Room.");
   const { project, items } = data;
   const artifactIds = items.filter((i) => i.kind === "artifact").map((i) => i.itemId);
   const [open, taskData, rights, assertions, ledger, people, crew, proposals, completions] = await Promise.all([
@@ -123,7 +123,7 @@ export async function completionReview(db: Db, viewerId: string, projectId: stri
       id: p.id,
       artifactId: p.artifact_id,
       summary: p.summary,
-      title: (p.artifacts as { title: string } | null)?.title ?? "A piece",
+      title: (p.artifacts as { title: string } | null)?.title ?? "A Creation",
     })),
     rights: {
       unrecorded: rights.filter((r) => !r.recorded).map((r) => ({ id: r.artifactId, title: r.title })),

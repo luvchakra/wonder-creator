@@ -32,13 +32,13 @@ export const commentSchema = z.object({
 
 function collabError(e: { code?: string; message?: string }) {
   const msg = e.message ?? "";
-  if (msg.includes("stale proposal")) return new DomainError("conflict", "The piece has changed since this was proposed. Compare it with the current version, then confirm to accept anyway.");
+  if (msg.includes("stale proposal")) return new DomainError("conflict", "The Creation has changed since this was proposed. Compare it with the current version, then confirm to accept anyway.");
   if (msg.includes("stale edit")) return new DomainError("conflict", "Someone saved a newer version while you were editing. Your text is still here — copy it, reload, and apply it to the latest version.");
   if (msg.includes("already decided")) return new DomainError("conflict", "That proposal has already been decided.");
   if (msg.includes("proposal not found")) return new DomainError("not_found", "We couldn't find that proposal.");
   if (msg.includes("no changes")) return new DomainError("validation", "There are no changes to save.");
-  if (msg.includes("archived")) return new DomainError("conflict", "This piece is archived.");
-  if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "You don't have that access to this piece.");
+  if (msg.includes("archived")) return new DomainError("conflict", "This Creation is archived.");
+  if (msg.includes("not allowed") || e.code === "42501") return new DomainError("forbidden", "You don't have that access to this Creation.");
   return fromDbError(e);
 }
 
@@ -88,7 +88,7 @@ export async function getCollaboration(db: Db, viewerId: string, artifactId: str
       label: v.label,
       summary: v.change_summary,
       authorKind: v.author_kind as "creator" | "ai" | "restore",
-      author: v.author_kind === "ai" ? "CreatorBrain (AI)" : ((v.creators as { display_name: string } | null)?.display_name ?? "Someone"),
+      author: v.author_kind === "ai" ? "CreativeMind (AI)" : ((v.creators as { display_name: string } | null)?.display_name ?? "Someone"),
       authorId: v.created_by_creator_id,
       at: v.created_at,
     })),
@@ -121,12 +121,12 @@ export async function getCollaboration(db: Db, viewerId: string, artifactId: str
 
 export async function addCollaborator(db: Db, ownerId: string, artifactId: string, raw: unknown) {
   const c = collaboratorSchema.parse(raw);
-  if (c.creatorId === ownerId) throw new DomainError("validation", "You already own this piece.");
+  if (c.creatorId === ownerId) throw new DomainError("validation", "You already own this Creation.");
   const { data: reachable } = await db.rpc("creator_reachable", { p_creator: c.creatorId });
   if (!reachable) throw new DomainError("not_found", "We couldn't find that creator.");
   const res = await db.from("artifact_contributors").insert({ artifact_id: artifactId, contributor_creator_id: c.creatorId, role: c.role, access: c.access, added_by_creator_id: ownerId });
   if (res.error?.code === "23505") throw new DomainError("conflict", "They're already a collaborator.");
-  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only the piece's owner can add collaborators.");
+  if (res.error?.code === "42501") throw new DomainError("forbidden", "Only the Creation's owner can add collaborators.");
   if (res.error) throw fromDbError(res.error);
 }
 
@@ -139,7 +139,7 @@ export async function updateCollaborator(db: Db, ownerId: string, artifactId: st
     .eq("contributor_creator_id", c.creatorId)
     .select("artifact_id");
   if (res.error) throw fromDbError(res.error);
-  if (!res.data?.length) throw new DomainError("forbidden", "Only the piece's owner can change collaborators.");
+  if (!res.data?.length) throw new DomainError("forbidden", "Only the Creation's owner can change collaborators.");
 }
 
 /** The owner removes someone, or a collaborator leaves. Their versions and comments stay credited to them. */
@@ -152,7 +152,7 @@ export async function removeCollaborator(db: Db, artifactId: string, creatorId: 
 export async function proposeChange(db: Db, creatorId: string, artifactId: string, raw: unknown) {
   const p = proposalSchema.parse(raw);
   const cur = await db.from("artifacts").select("current_version_id").eq("id", artifactId).maybeSingle();
-  if (cur.data && cur.data.current_version_id !== p.baseVersionId) throw new DomainError("conflict", "The piece changed while you were editing. Your text is still here — copy it, reload, and propose it on the latest version.");
+  if (cur.data && cur.data.current_version_id !== p.baseVersionId) throw new DomainError("conflict", "The Creation changed while you were editing. Your text is still here — copy it, reload, and propose it on the latest version.");
   const res = await db.from("artifact_change_proposals").insert({ artifact_id: artifactId, creator_id: creatorId, base_version_id: p.baseVersionId, content: p.content, summary: p.summary }).select("id").single();
   if (res.error) throw collabError(res.error);
   return res.data.id;

@@ -327,7 +327,7 @@ async function publishToProfile(deps: AttemptDeps, p: Publication): Promise<Outc
     .neq("status", "archived")
     .select("id")
     .maybeSingle();
-  if (res.error || !res.data) return { ok: false, reason: "The piece couldn't be published to your profile (it may be archived).", httpStatus: null };
+  if (res.error || !res.data) return { ok: false, reason: "The Creation couldn't be published to your profile (it may be archived).", httpStatus: null };
   const { data: c } = await deps.service.from("creators").select("handle").eq("id", deps.creatorId).maybeSingle();
   return { ok: true, externalId: p.artifact_id, externalUrl: c?.handle ? `/creators/${c.handle}` : null, httpStatus: null };
 }

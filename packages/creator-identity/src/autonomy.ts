@@ -7,7 +7,7 @@ export const AUTONOMY_DOMAINS: Array<{ domain: AutonomyDomain; label: string; de
   { domain: "creative_generation", label: "Creative Generation", description: "Create new content, ideas and drafts" },
   { domain: "research", label: "Research", description: "Search and gather references" },
   { domain: "transformation", label: "Transformation", description: "Edit, refine and reimagine existing work" },
-  { domain: "organization", label: "Organization", description: "Organize materials, artifacts and projects" },
+  { domain: "organization", label: "Organization", description: "Organize materials, Creations and Creative Rooms" },
   { domain: "collaboration", label: "Collaboration", description: "Invite creators, start huddles" },
   { domain: "communication", label: "Communication", description: "Send messages on your behalf" },
   { domain: "publishing", label: "Publishing", description: "Publish to platforms and schedules" },
@@ -17,7 +17,7 @@ export const AUTONOMY_DOMAINS: Array<{ domain: AutonomyDomain; label: string; de
 ];
 
 export const AUTONOMY_LEVELS: Array<{ level: AutonomyLevel; label: string; description: string }> = [
-  { level: "never", label: "Never", description: "CreatorBrain will not do this" },
+  { level: "never", label: "Never", description: "CreativeMind will not do this" },
   { level: "observe", label: "Observe", description: "Only view and analyze. No actions." },
   { level: "suggest", label: "Suggest", description: "Provide ideas and suggestions" },
   { level: "draft", label: "Draft", description: "Create drafts for your review" },
@@ -90,6 +90,6 @@ export function decideAutonomy(domain: AutonomyDomain, configured: AutonomyLevel
       if (level === "execute_with_approval" || level === "draft") {
         return { outcome: "needs_approval", reason: `${label} asks for your approval first.` };
       }
-      return { outcome: "denied", reason: `${label} doesn't allow CreatorBrain to act.` };
+      return { outcome: "denied", reason: `${label} doesn't allow CreativeMind to act.` };
   }
 }

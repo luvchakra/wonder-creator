@@ -35,7 +35,7 @@ const rpcError = (e: { code?: string; message?: string }) => {
   if (msg.includes("not admitted")) return new DomainError("forbidden", "Your request needs to be approved first.");
   if (msg.includes("not a participant")) return new DomainError("forbidden", "You're not in this Huddle.");
   if (msg.includes("saving not allowed")) return new DomainError("forbidden", "Only your own messages can be saved, unless the host allowed saving chat when it was sent.");
-  if (msg.includes("invalid related item")) return new DomainError("validation", "You can only link your own material, or a piece you can open.");
+  if (msg.includes("invalid related item")) return new DomainError("validation", "You can only link your own material, or a Creation you can open.");
   if (msg.includes("invalid invitee")) return new DomainError("validation", "You can't invite that creator.");
   if (msg.includes("invitation not found")) return new DomainError("not_found", "That invitation isn't open anymore.");
   if (msg.includes("message not found")) return new DomainError("not_found", "That message is gone.");

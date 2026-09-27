@@ -5,7 +5,7 @@ test.describe("Creation run progress", () => {
 
   test("a finished creation links to its run: stages, the saved piece, no retry", async ({ page }) => {
     await page.goto("/create");
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await talk.getByLabel("What are you thinking about?").fill("Write a poem about the night ferry.");
     await talk.getByRole("button", { name: "Send", exact: true }).click();
     await expect(artifactCard(page)).toBeVisible({ timeout: 45_000 });
@@ -18,7 +18,7 @@ test.describe("Creation run progress", () => {
     await expect(stages.getByRole("listitem").filter({ hasText: "Saving your draft" })).toContainText("Done");
     await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
-    await page.getByRole("link", { name: /Open “.*” in the Studio/ }).click();
+    await page.getByRole("link", { name: /Open “.*” in the Creative Studio/ }).click();
     await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
   });
 

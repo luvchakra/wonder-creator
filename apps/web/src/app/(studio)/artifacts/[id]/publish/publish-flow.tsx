@@ -176,7 +176,7 @@ export function PublishFlow(props: {
     }
   }
 
-  const blocked = artifact.archived ? "This piece is archived. Restore it to publish." : !artifact.hasContent ? "Write something first — there's nothing to publish yet." : !props.available ? "Publishing isn't set up on this server yet." : null;
+  const blocked = artifact.archived ? "This Creation is archived. Restore it to publish." : !artifact.hasContent ? "Write something first — there's nothing to publish yet." : !props.available ? "Publishing isn't set up on this server yet." : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -215,11 +215,11 @@ export function PublishFlow(props: {
           {step === 0 ? (
             <div className="mt-3 space-y-2">
               <Button variant="soft" size="sm" loading={busy === "plan"} onClick={planWithBrain}>
-                <Sparkles className="size-4" aria-hidden /> Plan with CreatorBrain
+                <Sparkles className="size-4" aria-hidden /> Plan with CreativeMind
               </Button>
               {plan ? (
                 <div role="status" className="rounded-xl bg-accent-softer p-3 text-sm text-ink">
-                  <p className="font-medium">CreatorBrain suggests — nothing is prepared or sent until you approve.</p>
+                  <p className="font-medium">CreativeMind suggests — nothing is prepared or sent until you approve.</p>
                   <ul className="mt-1 list-disc pl-5">
                     {plan.reasons.map((r, i) => (
                       <li key={`${r.key}-${i}`}>
@@ -260,7 +260,7 @@ export function PublishFlow(props: {
                     setTitle(c.title);
                     setCaption(c.caption);
                     setDescription(c.description);
-                    setDrafted(c.offline ? "CreatorBrain drafted this in offline development mode. Edit it before you publish." : "CreatorBrain drafted this. Edit anything before you publish.");
+                    setDrafted(c.offline ? "CreativeMind drafted this in offline development mode. Edit it before you publish." : "CreativeMind drafted this. Edit anything before you publish.");
                   } catch (e) {
                     setError(errorMessage(e));
                   } finally {
@@ -268,7 +268,7 @@ export function PublishFlow(props: {
                   }
                 }}
               >
-                <Sparkles className="size-4" aria-hidden /> Draft with CreatorBrain
+                <Sparkles className="size-4" aria-hidden /> Draft with CreativeMind
               </Button>
               {drafted ? (
                 <p role="status" className="text-sm text-ink-muted">
@@ -328,7 +328,7 @@ export function PublishFlow(props: {
                 {chosen.includes("profile") ? (
                   <div>
                     <dt className="text-sm text-ink-muted">On your profile</dt>
-                    <dd className="text-ink">The piece becomes public and marked published{props.handle ? ` on @${props.handle}` : ""}. Your source material stays private.</dd>
+                    <dd className="text-ink">The Creation becomes public and marked published{props.handle ? ` on @${props.handle}` : ""}. Your source material stays private.</dd>
                   </div>
                 ) : null}
                 <div>
@@ -347,7 +347,7 @@ export function PublishFlow(props: {
                   </label>
                   {plan?.timed ? (
                     <label className="flex min-h-11 items-center gap-2 text-[15px]">
-                      <input type="radio" name="when" checked={when === "suggested"} onChange={() => setWhen("suggested")} className="size-5 accent-[var(--color-accent)]" /> As CreatorBrain suggested
+                      <input type="radio" name="when" checked={when === "suggested"} onChange={() => setWhen("suggested")} className="size-5 accent-[var(--color-accent)]" /> As CreativeMind suggested
                     </label>
                   ) : null}
                 </div>
@@ -422,7 +422,7 @@ export function PublishFlow(props: {
           Publication history
         </h2>
         <p className="text-sm text-ink-muted">
-          Everything you&rsquo;re publishing, across pieces, is in{" "}
+          Everything you&rsquo;re publishing, across Creations, is in{" "}
           <Link href="/publishing" className="font-medium text-accent-ink hover:underline">
             Publishing
           </Link>
@@ -435,7 +435,7 @@ export function PublishFlow(props: {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[15px] text-ink-muted">This piece hasn&apos;t been published anywhere yet.</p>
+          <p className="mt-2 text-[15px] text-ink-muted">This Creation hasn&apos;t been published anywhere yet.</p>
         )}
       </section>
 

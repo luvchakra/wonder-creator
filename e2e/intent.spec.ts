@@ -1,11 +1,11 @@
 import { artifactCard, expect, test } from "./fixtures";
 
-test.describe("CreatorBrain intent clarification", () => {
+test.describe("CreativeMind intent clarification", () => {
   test.beforeEach(({ creator }) => void creator);
 
   test("a clear request goes straight to a draft and says what it assumed", async ({ page }) => {
     await page.goto("/create");
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await talk.getByLabel("What are you thinking about?").fill("Write a poem about rain on the harbour.");
     await talk.getByRole("button", { name: "Send", exact: true }).click();
     await expect(artifactCard(page)).toBeVisible({ timeout: 45_000 });
@@ -15,7 +15,7 @@ test.describe("CreatorBrain intent clarification", () => {
 
   test("an open-ended request asks only what's missing; the creator's choices shape the draft", async ({ page }) => {
     await page.goto("/create");
-    const talk = page.getByRole("region", { name: "CreatorTalk" });
+    const talk = page.getByRole("region", { name: "meTalk" });
     await talk.getByLabel("What are you thinking about?").fill("Write a screenplay about the harbour and publish it to YouTube.");
     await talk.getByRole("button", { name: "Send", exact: true }).click();
 

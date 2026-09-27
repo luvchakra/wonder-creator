@@ -8,7 +8,7 @@ async function taskId(page: Page, title: string): Promise<string> {
 }
 
 test.describe("Crew tasks & milestones", () => {
-  test("plan with a milestone, assign, move through statuses by menu, approval gates done, comment, and add CreatorBrain suggestions", async ({ page: a, creator: _owner, openContext }) => {
+  test("plan with a milestone, assign, move through statuses by menu, approval gates done, comment, and add CreativeMind suggestions", async ({ page: a, creator: _owner, openContext }) => {
     test.setTimeout(180_000);
     const { page: b } = await openContext("B");
     const sol = await newCreator(b, { name: `Sol ${uid()}` });
@@ -20,7 +20,7 @@ test.describe("Crew tasks & milestones", () => {
 
     // Project > Tasks: a milestone, then a task assigned to Sol that needs approval.
     await a.goto(`/projects/${project.id}`);
-    await a.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Tasks" }).click();
+    await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Tasks" }).click();
     await expect(a.getByText("No tasks yet.")).toBeVisible();
     await a.getByRole("region", { name: "Milestones" }).getByRole("button", { name: "Add" }).click();
     const ms = a.getByRole("dialog", { name: "New milestone" });

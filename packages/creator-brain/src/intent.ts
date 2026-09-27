@@ -75,7 +75,7 @@ export function resolveArtifactReference(message: string, selectedArtifactId: st
   if (pool.length === 1) return { kind: "resolved", artifactId: pool[0].id };
   if (!pool.length) pool = recent;
   if (DEICTIC.test(message) || type) {
-    return { kind: "ask", question: "Which piece do you mean?", options: pool.slice(0, 4) };
+    return { kind: "ask", question: "Which Creation do you mean?", options: pool.slice(0, 4) };
   }
   return { kind: "none" };
 }

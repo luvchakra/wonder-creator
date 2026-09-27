@@ -38,9 +38,9 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
       </Link>
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">Share</h1>
       <p className="mt-1 text-[15px] text-ink-muted">
-        {artifact.isPublic ? "This piece is public on your profile." : "This piece is private."} Links and shares below show only the piece itself, never your source material.
+        {artifact.isPublic ? "This Creation is public on your profile." : "This Creation is private."} Links and shares below show only the Creation itself, never your source material.
       </p>
-      {artifact.archived ? <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">This piece is archived, so its shares don&apos;t open until you restore it.</p> : null}
+      {artifact.archived ? <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">This Creation is archived, so its shares don&apos;t open until you restore it.</p> : null}
       {error ? (
         <p role="alert" className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[15px] text-danger">
           {error}
@@ -80,7 +80,7 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
         open={!!revoking}
         onOpenChange={(o) => !o && setRevoking(null)}
         title="Revoke this share?"
-        body={revoking?.kind === "link" ? "The link stops working right away for everyone who has it. You can make a new link later." : `${revoking?.recipient?.name ?? "They"} will no longer be able to open this piece.`}
+        body={revoking?.kind === "link" ? "The link stops working right away for everyone who has it. You can make a new link later." : `${revoking?.recipient?.name ?? "They"} will no longer be able to open this Creation.`}
         confirmLabel="Revoke"
         destructive
         busy={busy === "revoke"}
@@ -164,7 +164,7 @@ function LinkForm({ artifactId, versions, onCreated, onError }: { artifactId: st
       <h2 id="link-h" className="text-lg font-semibold text-ink">
         Private link
       </h2>
-      <p className="mt-1 text-[15px] text-ink-muted">Anyone with the link can read the piece, without signing in. It isn&apos;t listed anywhere.</p>
+      <p className="mt-1 text-[15px] text-ink-muted">Anyone with the link can read the Creation, without signing in. It isn&apos;t listed anywhere.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <VersionSelect id="link-version" versions={versions} value={versionId} onChange={setVersionId} />
         <Field label="Link ends" htmlFor="link-expiry">
@@ -211,7 +211,7 @@ function LinkForm({ artifactId, versions, onCreated, onError }: { artifactId: st
         <div className="mt-4 space-y-3 rounded-xl bg-accent-softer p-4" role="status">
           <p className="text-sm text-ink">Copy it now: for your security, the full link is shown only once.</p>
           <CopyField label="Link" value={made.url} />
-          {made.embedUrl ? <CopyField label="Embed code" value={`<iframe src="${made.embedUrl}" width="100%" height="480" style="border:0" title="Shared piece"></iframe>`} /> : null}
+          {made.embedUrl ? <CopyField label="Embed code" value={`<iframe src="${made.embedUrl}" width="100%" height="480" style="border:0" title="Shared Creation"></iframe>`} /> : null}
         </div>
       ) : null}
     </section>

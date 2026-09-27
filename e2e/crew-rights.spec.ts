@@ -53,14 +53,14 @@ test.describe("Crew rights", () => {
 
     // The owner requires sign-off before publishing.
     await a.goto(`/projects/${project.id}`);
-    await a.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Rights" }).click();
+    await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Rights" }).click();
     await expect(a.getByText("not legal determinations")).toBeVisible();
     await a.getByRole("button", { name: "Edit policy" }).click();
-    const policy = a.getByRole("dialog", { name: "Project rights policy" });
+    const policy = a.getByRole("dialog", { name: "Creative Room rights policy" });
     await policy.getByLabel(/Require sign-off before publishing/).check();
     await policy.getByLabel("Agreement").fill("Credits in order of contribution.");
     await policy.getByRole("button", { name: "Save policy" }).click();
-    await expect(a.getByRole("region", { name: "Project policy" })).toContainText("Collaborators sign off first");
+    await expect(a.getByRole("region", { name: "Creative Room policy" })).toContainText("Collaborators sign off first");
     await expect(a.getByRole("region", { name: "Waiting for sign-off" })).toContainText(zo.name);
 
     const { publications } = (await (
@@ -74,7 +74,7 @@ test.describe("Crew rights", () => {
 
     // Zo sees their permission and makes an ownership claim.
     await b.goto(`/projects/${project.id}?tab=rights`);
-    const pieces = b.getByRole("region", { name: "Pieces" });
+    const pieces = b.getByRole("region", { name: "Creations" });
     await pieces.getByText(art.title).click();
     await expect(pieces).toContainText("Can propose changes");
     await b.getByRole("button", { name: "Make a claim" }).click();

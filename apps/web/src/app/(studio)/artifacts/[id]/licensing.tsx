@@ -527,7 +527,7 @@ export function RequesterLicensing({ artifactId, title, requests }: { artifactId
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-ink-muted">Want to use this piece? Ask its creator for a license — they decide the terms.</p>
+        <p className="mt-2 text-sm text-ink-muted">Want to use this Creation? Ask its creator for a license — they decide the terms.</p>
       )}
       {error ? (
         <p role="alert" className="mt-2 text-sm text-danger">

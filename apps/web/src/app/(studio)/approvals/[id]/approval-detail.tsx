@@ -21,7 +21,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
   const [note, setNote] = useState("");
   const current = (label: string) => a.parameters.find((p) => p.label === label)?.value ?? "";
   const [instruction, setInstruction] = useState(current("Request"));
-  const [kind, setKind] = useState(() => ARTIFACT_TYPES.find((t) => t.type.replace(/_/g, " ") === current("Kind of piece"))?.type ?? "");
+  const [kind, setKind] = useState(() => ARTIFACT_TYPES.find((t) => t.type.replace(/_/g, " ") === current("Kind of Creation"))?.type ?? "");
   const open = a.state === "pending";
 
   async function decide(decision: "approve" | "reject" | "edit", extra: Record<string, unknown> = {}) {
@@ -72,10 +72,10 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
 
       <dl className="mt-6 space-y-5 rounded-2xl border border-border-soft bg-surface p-5">
         <Row term="What you asked">{a.understood}</Row>
-        <Row term="What CreatorBrain will do">{a.plan}</Row>
+        <Row term="What CreativeMind will do">{a.plan}</Row>
         <Row term="What changes">{a.impact}</Row>
         {a.target.title ? (
-          <Row term={a.target.kind === "artifact" ? "Piece" : "Conversation"}>
+          <Row term={a.target.kind === "artifact" ? "Creation" : "Conversation"}>
             <Link href={a.target.kind === "artifact" ? `/artifacts/${a.target.id}` : `/create?c=${a.target.id}`} className="text-accent-ink hover:underline">
               {a.target.title}
             </Link>
@@ -159,7 +159,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
       ) : null}
 
       <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
-        <DialogContent title="Decline this?" description="Nothing will change. CreatorBrain won't do this unless you ask again.">
+        <DialogContent title="Decline this?" description="Nothing will change. CreativeMind won't do this unless you ask again.">
           <Field label="Note (optional)" htmlFor="decline-note" hint="Only you see this.">
             <Textarea id="decline-note" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} rows={3} />
           </Field>
@@ -177,7 +177,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent title="Edit the request" description="Your changes make a new request for you to approve; this one is cancelled.">
           <div className="space-y-4">
-            <Field label="Kind of piece" htmlFor="edit-kind">
+            <Field label="Kind of Creation" htmlFor="edit-kind">
               <Select id="edit-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
                 <option value="">Keep as is</option>
                 {ARTIFACT_TYPES.map((t) => (

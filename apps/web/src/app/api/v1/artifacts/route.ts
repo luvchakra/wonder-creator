@@ -12,7 +12,7 @@ const blank = z.object({ artifactType: z.string(), title: z.string().trim().min(
 /** Start from blank (or from material, creator-authored). AI creation goes through CreatorTalk. */
 export const POST = withApi(async ({ db, creatorId, req }) => {
   const b = blank.parse(await readJson(req, 600_000));
-  if (!isKnownArtifactType(b.artifactType)) throw new DomainError("validation", "Choose a kind of piece.");
+  if (!isKnownArtifactType(b.artifactType)) throw new DomainError("validation", "Choose a kind of Creation.");
   const artifact = await createArtifact(db, creatorId, {
     artifactType: b.artifactType,
     title: b.title,

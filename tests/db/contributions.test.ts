@@ -70,7 +70,7 @@ describe("automatic entries", () => {
 describe("manual entries, edits and retraction", () => {
   it("managers record contributions for people involved; facts can't be changed or deleted", async () => {
     const id = await recordContribution(db(owner), owner.creatorId, { projectId, contributorId: ivy.creatorId, kind: "sound", description: "Recorded the monsoon ambience", creditLine: "Sound recordist", sharePercent: 30 });
-    await expect(recordContribution(db(ivy), ivy.creatorId, { projectId, contributorId: ivy.creatorId, kind: "idea", description: "Self-credit" })).rejects.toThrow(/Only the project's owner/);
+    await expect(recordContribution(db(ivy), ivy.creatorId, { projectId, contributorId: ivy.creatorId, kind: "idea", description: "Self-credit" })).rejects.toThrow(/Only the Creative Room's owner/);
     await expect(recordContribution(db(owner), owner.creatorId, { projectId, contributorId: out.creatorId, kind: "idea", description: "Not involved" })).rejects.toThrow(/people involved/);
     await expect(recordContribution(db(owner), owner.creatorId, { projectId, contributorId: owner.creatorId, kind: "direction", description: "Directed", sharePercent: 80 })).rejects.toThrow(/more than 100%/);
     expectDenied(await owner.client.from("contributions").update({ contributor_creator_id: owner.creatorId }).eq("id", id));

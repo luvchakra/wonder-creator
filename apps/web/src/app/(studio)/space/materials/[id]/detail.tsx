@@ -17,7 +17,7 @@ const ORIGIN: Record<string, string> = {
   youtube: "From YouTube",
   huddle: "Preserved from a Huddle",
   conversation: "From a conversation",
-  ai_generated: "Created with CreatorBrain",
+  ai_generated: "Created with CreativeMind",
   derived: "Derived",
   import: "Imported",
 };
@@ -577,7 +577,7 @@ export function MaterialDetail({
         title="Delete this material permanently?"
         body={
           usedIn.length
-            ? `It's part of the lineage of ${usedIn.length} piece${usedIn.length === 1 ? "" : "s"}; they'll keep their text but lose this source. This can't be undone.`
+            ? `It's part of the lineage of ${usedIn.length} Creation${usedIn.length === 1 ? "" : "s"}; they'll keep their text but lose this source. This can't be undone.`
             : "The original file and its details will be removed. This can't be undone. Archiving keeps it out of the way instead."
         }
         confirmLabel="Delete permanently"

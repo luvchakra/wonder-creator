@@ -515,7 +515,7 @@ function SuggestDialog({ projectId, onOpenChange, onAdded }: { projectId: string
   }, [projectId]);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title="Suggested tasks" description="CreatorBrain suggests; you decide. Nothing is added or assigned until you choose." wide>
+      <DialogContent title="Suggested tasks" description="CreativeMind suggests; you decide. Nothing is added or assigned until you choose." wide>
         {error ? (
           <p role="alert" className="text-sm text-danger">
             {error}
@@ -524,7 +524,7 @@ function SuggestDialog({ projectId, onOpenChange, onAdded }: { projectId: string
           <p className="py-6 text-center text-sm text-ink-muted">Thinking about next steps…</p>
         ) : (
           <div className="space-y-4">
-            {plan.offline ? <p className="rounded-xl bg-accent-softer px-3 py-2 text-sm text-ink-muted">AI isn&rsquo;t connected, so these are general starting points rather than suggestions about your project.</p> : null}
+            {plan.offline ? <p className="rounded-xl bg-accent-softer px-3 py-2 text-sm text-ink-muted">AI isn&rsquo;t connected, so these are general starting points rather than suggestions about your Creative Room.</p> : null}
             {plan.tasks.length ? (
               <ul className="space-y-1">
                 {plan.tasks.map((t) => (

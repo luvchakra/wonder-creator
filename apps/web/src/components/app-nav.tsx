@@ -53,7 +53,7 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                   <UserRound className="size-4" aria-hidden /> Profile
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/projects")}>
-                  <FolderKanban className="size-4" aria-hidden /> Projects
+                  <FolderKanban className="size-4" aria-hidden /> Creative Rooms
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/publishing")}>
                   <Send className="size-4" aria-hidden /> Publishing

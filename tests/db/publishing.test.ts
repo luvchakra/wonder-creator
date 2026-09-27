@@ -119,13 +119,13 @@ describe("webhooks", () => {
   });
 });
 
-describe("context, CreatorBrain and audit", () => {
+describe("context, CreativeMind and audit", () => {
   it("publication outcomes enter the Creative Context", async () => {
     const ctx = await assembleContext(db(a), a.creatorId, { intent: "question", instruction: "x", artifactIds: [piece] });
     expect(ctx.selectedArtifacts[0].publications.join(" ")).toMatch(/Your Wonder Creator profile/);
   });
 
-  it("CreatorBrain drafts copy only as far as Publishing autonomy allows", async () => {
+  it("CreativeMind drafts copy only as far as Publishing autonomy allows", async () => {
     const copy = await draftPublicationCopy({ db: db(a), creatorId: a.creatorId, provider }, piece);
     expect(copy.title).toBeTruthy();
     await setAutonomy(db(a), a.creatorId, "publishing", "observe");

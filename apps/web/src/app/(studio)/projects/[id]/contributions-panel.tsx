@@ -38,7 +38,7 @@ export interface Summary {
 
 const SOURCE_LABEL: Record<Entry["source"], string> = {
   version: "From a version they wrote",
-  shared_item: "Shared into the project",
+  shared_item: "Shared into the Creative Room",
   task: "Completed a task",
   manual: "Recorded",
 };
@@ -193,7 +193,7 @@ function EditDialog({ projectId, entry, people, manages, onOpenChange, onSaved }
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent title={entry ? "Contribution" : "Record a contribution"} description={entry ? `${entry.contributor.name} · ${entry.kindLabel}` : "For someone in this project."} wide>
+      <DialogContent title={entry ? "Contribution" : "Record a contribution"} description={entry ? `${entry.contributor.name} · ${entry.kindLabel}` : "For someone in this Creative Room."} wide>
         <form
           className="space-y-4"
           onSubmit={async (e) => {

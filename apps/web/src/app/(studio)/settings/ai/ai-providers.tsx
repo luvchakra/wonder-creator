@@ -42,7 +42,7 @@ export function AiProviders(props: {
     <div className="space-y-6">
       <section aria-label="Status" className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-border-soft bg-surface p-4">
-          <p className="text-sm text-ink-muted">CreatorBrain uses</p>
+          <p className="text-sm text-ink-muted">CreativeMind uses</p>
           <p className="mt-1 text-lg font-semibold text-ink">{inUseName.charAt(0).toUpperCase() + inUseName.slice(1)}</p>
         </div>
         <div className="rounded-2xl border border-border-soft bg-surface p-4">
@@ -62,7 +62,7 @@ export function AiProviders(props: {
 
       <p className="flex items-start gap-2 rounded-2xl bg-surface-muted p-4 text-sm text-ink-muted">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-        Keys are stored encrypted and are never shown again after you save them — only their last four characters. They&apos;re used only to run CreatorBrain for you, never
+        Keys are stored encrypted and are never shown again after you save them — only their last four characters. They&apos;re used only to run CreativeMind for you, never
         logged, and you can rotate or remove them any time. Search indexing always uses Wonder Creator&apos;s provider.
       </p>
 
@@ -129,14 +129,14 @@ function ProviderCard({ p, k, disabled, onSaved, onRemoved }: { p: Provider; k: 
         <div className="mt-4 space-y-3">
           <div className="flex min-h-11 items-center justify-between gap-4">
             <label htmlFor={`use-${p.id}`} className="text-[15px] text-ink">
-              Use this key for CreatorBrain
+              Use this key for CreativeMind
             </label>
             <Switch
               id={`use-${p.id}`}
               checked={k.useForBrain}
               disabled={!!busy || k.status === "invalid"}
               onCheckedChange={(v) => act("use", async () => onSaved((await api<{ key: Key }>(`/api/v1/ai/keys/${p.id}`, { method: "PATCH", json: { useForBrain: v } })).key))}
-              label="Use this key for CreatorBrain"
+              label="Use this key for CreativeMind"
             />
           </div>
           {k.models.length ? (
@@ -223,7 +223,7 @@ function ProviderCard({ p, k, disabled, onSaved, onRemoved }: { p: Provider; k: 
         onOpenChange={setRemoveOpen}
         destructive
         title={`Remove your ${p.name} key?`}
-        body="The key is deleted from Wonder Creator. CreatorBrain goes back to Wonder Creator's provider."
+        body="The key is deleted from Wonder Creator. CreativeMind goes back to Wonder Creator's provider."
         confirmLabel="Remove key"
         busy={busy === "remove"}
         onConfirm={() =>

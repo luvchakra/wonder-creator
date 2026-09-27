@@ -71,7 +71,7 @@ describe("project rights policy", () => {
         publicationSignoff: false,
         attribution: "credit_all",
       }),
-    ).rejects.toThrow(/Only the project's owner/);
+    ).rejects.toThrow(/Only the Creative Room's owner/);
     expectDenied(await ivy.client.from("project_rights_policies").insert({ project_id: projectId, updated_by: ivy.creatorId }));
 
     await saveRightsPolicy(db(owner), owner.creatorId, projectId, {
@@ -120,14 +120,14 @@ describe("ownership assertions", () => {
         claim: "sole_owner",
         statement: "Mine",
       }),
-    ).rejects.toThrow(/worked on a piece/);
+    ).rejects.toThrow(/worked on a Creation/);
     await expect(
       assertOwnership(db(out), projectId, {
         artifactId: piece,
         claim: "sole_owner",
         statement: "Mine",
       }),
-    ).rejects.toThrow(/people in the project/);
+    ).rejects.toThrow(/people in the Creative Room/);
     // The server checks the share too, not just the form.
     const bad = await ivy.client.rpc("assert_ownership", {
       p_project: projectId,

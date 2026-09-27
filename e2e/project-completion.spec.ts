@@ -25,9 +25,9 @@ test.describe("Project completion", () => {
     // With a crew, the status menu can't complete or archive; the checklist does.
     await a.goto(`/projects/${project.id}`);
     await expect(a.getByLabel("Status").locator("option", { hasText: "Completed" })).toHaveCount(0);
-    await a.getByRole("button", { name: "More project actions" }).click();
+    await a.getByRole("button", { name: "More Creative Room actions" }).click();
     await a.getByRole("menuitem", { name: /Complete, archive or dissolve crew/ }).click();
-    await expect(a.getByRole("heading", { name: "Complete this project", level: 1 })).toBeVisible();
+    await expect(a.getByRole("heading", { name: "Complete this Creative Room", level: 1 })).toBeVisible();
 
     const tasks = a.getByRole("region", { name: "Unresolved tasks" });
     await expect(tasks).toContainText("Needs attention");
@@ -41,15 +41,15 @@ test.describe("Project completion", () => {
         .first(),
     ).toBeVisible();
 
-    const close = a.getByRole("region", { name: "Close the project" });
-    const submit = close.getByRole("button", { name: "Complete project" });
+    const close = a.getByRole("region", { name: "Close the Creative Room" });
+    const submit = close.getByRole("button", { name: "Complete Creative Room" });
     await expect(close.getByLabel(/Dissolve/)).toBeChecked();
     await close.getByLabel(`Type “${title}” to confirm`).fill(title);
     await expect(submit).toBeDisabled(); // one task is still open
     await close.getByLabel(/still open/).check();
     await close.getByLabel("Closing note (optional)").fill("Printed 200 copies.");
     await submit.click();
-    await expect(a.getByRole("heading", { name: "Project closed", level: 1 })).toBeVisible();
+    await expect(a.getByRole("heading", { name: "Creative Room closed", level: 1 })).toBeVisible();
     await expect(a.getByRole("region", { name: "Completion history" })).toContainText("crew dissolved");
 
     // Ro still sees the project, its tasks and the crew, now completed.
@@ -59,9 +59,9 @@ test.describe("Project completion", () => {
     await expect(b.getByText("Completed").first()).toBeVisible();
 
     // Reopen.
-    await a.getByRole("button", { name: "Reopen project" }).click();
-    await a.getByRole("dialog", { name: "Reopen this project?" }).getByRole("button", { name: "Reopen" }).click();
-    await expect(a.getByRole("heading", { name: "Complete this project", level: 1 })).toBeVisible();
+    await a.getByRole("button", { name: "Reopen Creative Room" }).click();
+    await a.getByRole("dialog", { name: "Reopen this Creative Room?" }).getByRole("button", { name: "Reopen" }).click();
+    await expect(a.getByRole("heading", { name: "Complete this Creative Room", level: 1 })).toBeVisible();
     await expect(a.getByRole("region", { name: "Completion history" })).toContainText("Reopened by");
   });
 });

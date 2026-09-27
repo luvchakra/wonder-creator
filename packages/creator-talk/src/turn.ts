@@ -114,7 +114,7 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
     const required = p.intent.consequentialAssumptions.map((c) => c.key);
     const missing = required.filter((k) => !input.clarified!.acknowledged.includes(k as "publish"));
     if (missing.length) throw new DomainError("validation", "Please confirm each point before I start.");
-    if (!isKnownArtifactType(input.clarified.brief.format)) throw new DomainError("validation", "I don't know how to make that kind of piece yet.");
+    if (!isKnownArtifactType(input.clarified.brief.format)) throw new DomainError("validation", "I don't know how to make that kind of Creation yet.");
     const emphasis = input.clarified.brief.emphasisMaterialId;
     if (emphasis && !(p.materialIds ?? []).includes(emphasis)) throw new DomainError("validation", "Choose one of the pieces you shared.");
     clarification = { pendingMessage: p.pendingMessage, materialIds: p.materialIds ?? [], consequential: required, brief: input.clarified.brief, acknowledged: input.clarified.acknowledged };
@@ -185,7 +185,7 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
       }
       case "remember": {
         const statement = input.message.replace(/^(please )?(remember|keep in mind|note)( that)?\s*/i, "").trim();
-        const m = await addMemory(db, creatorId, { category: "creative_fact", statement: statement.charAt(0).toUpperCase() + statement.slice(1), sourceKind: "creator", sourceId: creatorMsg.id, sourceLabel: "You told CreatorBrain" });
+        const m = await addMemory(db, creatorId, { category: "creative_fact", statement: statement.charAt(0).toUpperCase() + statement.slice(1), sourceKind: "creator", sourceId: creatorMsg.id, sourceLabel: "You told CreativeMind" });
         await reply({ role: "brain", content: m ? "I'll remember that. You can edit or remove it anytime in Creative Memory." : "I already had that noted.", payload: { memory: { added: m?.statement ?? null } } });
         break;
       }
@@ -231,7 +231,7 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
           break;
         }
         if (resolution.kind === "none") {
-          await reply({ role: "brain", kind: "question", content: "Which piece should I work on? Open it in the Studio or pick it here.", payload: { options: [], pendingMessage: input.message } });
+          await reply({ role: "brain", kind: "question", content: "Which Creation should I work on? Open it in the Creative Studio or pick it here.", payload: { options: [], pendingMessage: input.message } });
           break;
         }
         if (intent.intent === "transform" && intent.artifactType) {
@@ -239,7 +239,7 @@ export async function handleTurn(outer: BrainDeps, raw: unknown): Promise<TurnRe
           await reply({
             role: "brain",
             kind: "artifact",
-            content: `Here's a ${artifactType(intent.artifactType).label.toLowerCase()} adapted from your piece. The original is unchanged, and the new one records where it came from.`,
+            content: `Here's a ${artifactType(intent.artifactType).label.toLowerCase()} adapted from your Creation. The original is unchanged, and the new one records where it came from.`,
             payload: { artifactId: res.artifact.id, title: res.artifact.title, artifactType: res.artifact.artifact_type, offline: res.offline },
             aiRunId: res.runId,
             artifactIds: [res.artifact.id],
@@ -331,8 +331,8 @@ async function replyForCreate(res: Awaited<ReturnType<typeof create>>, reply: (m
     role: "brain",
     kind: "artifact",
     content: res.offline
-      ? "Here's a first draft from the offline development model (a deterministic placeholder, not real AI writing). Open it in the Studio to shape it."
-      : `Here's a first draft of “${res.artifact.title}”.${attention.length ? ` I noticed ${attention.length} thing${attention.length === 1 ? "" : "s"} worth a look.` : ""} Open it in the Studio to refine it.`,
+      ? "Here's a first draft from the offline development model (a deterministic placeholder, not real AI writing). Open it in the Creative Studio to shape it."
+      : `Here's a first draft of “${res.artifact.title}”.${attention.length ? ` I noticed ${attention.length} thing${attention.length === 1 ? "" : "s"} worth a look.` : ""} Open it in the Creative Studio to refine it.`,
     payload: {
       artifactId: res.artifact.id,
       title: res.artifact.title,
@@ -373,9 +373,9 @@ export async function retryRun(outer: BrainDeps, id: string): Promise<TurnResult
   const { db, creatorId } = outer;
   const run = must(await db.from("ai_runs").select("*").eq("id", id).maybeSingle(), "We couldn't find that run.");
   const stale = run.status === "running" && Date.now() - new Date(run.started_at).getTime() > RUN_STALE_MS;
-  if (run.artifact_id || run.status === "succeeded") throw new DomainError("conflict", "That run already finished — its piece is saved.");
+  if (run.artifact_id || run.status === "succeeded") throw new DomainError("conflict", "That run already finished — its Creation is saved.");
   if (run.status === "running" && !stale) throw new DomainError("conflict", "That run is still going.");
-  if (run.intent !== "create" || !run.request) throw new DomainError("validation", "This run can't be retried. Ask CreatorBrain again instead.");
+  if (run.intent !== "create" || !run.request) throw new DomainError("validation", "This run can't be retried. Ask CreativeMind again instead.");
   if (stale) await db.from("ai_runs").update({ status: "failed", failure_code: "interrupted", completed_at: new Date().toISOString() }).eq("id", run.id);
   const request = run.request as unknown as CreateInput;
 

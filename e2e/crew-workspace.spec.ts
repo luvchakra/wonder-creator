@@ -20,7 +20,7 @@ test.describe("Crew workspace", () => {
     await expect(b.getByRole("region", { name: "Shared by the crew" })).not.toContainText(note);
 
     await a.goto(`/projects/${project.id}?tab=work`);
-    await expect(a.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Work" })).toHaveAttribute("aria-current", "page");
+    await expect(a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Work" })).toHaveAttribute("aria-current", "page");
     const material = a.getByRole("region", { name: "Material & references" });
     await material.getByRole("button", { name: `Options for ${note}` }).click();
     await a.getByRole("menuitem", { name: "Share with crew" }).click();

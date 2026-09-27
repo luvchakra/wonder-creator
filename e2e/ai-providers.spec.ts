@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 test.describe("AI providers & BYOK", () => {
-  test("shows what CreatorBrain uses, explains data use, and never saves a rejected key", async ({ page, creator, consoleGuard }) => {
+  test("shows what CreativeMind uses, explains data use, and never saves a rejected key", async ({ page, creator, consoleGuard }) => {
     void creator;
     // The rejected key answers 422 on purpose.
     consoleGuard.allow(/api\/v1\/ai\/keys.*422|422.*api\/v1\/ai\/keys/);
@@ -9,13 +9,13 @@ test.describe("AI providers & BYOK", () => {
     await page.getByRole("link", { name: "AI Providers" }).click();
     await expect(page).toHaveURL(/\/settings\/ai$/);
     const status = page.getByRole("region", { name: "Status" });
-    await expect(status).toContainText("CreatorBrain uses");
+    await expect(status).toContainText("CreativeMind uses");
     await expect(status).toContainText("Wonder Creator's provider");
     await expect(page.getByText(/never shown again after you save them/)).toBeVisible();
 
     const gemini = page.getByRole("region", { name: "Google Gemini" });
     await expect(gemini).toContainText("Not connected");
-    await expect(gemini).toContainText("sends the material and pieces you work on");
+    await expect(gemini).toContainText("sends the material and Creations you work on");
     const field = gemini.getByLabel("Gemini API key");
     await expect(field).toHaveAttribute("type", "password");
     await field.fill("short");

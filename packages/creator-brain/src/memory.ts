@@ -23,7 +23,7 @@ export const CATEGORY_LABEL: Record<MemoryCategory, string> = {
   creative_fact: "Fact",
   creative_history: "Creative history",
   relationship_context: "People",
-  project_context: "Project",
+  project_context: "Creative Room",
   recurring_theme: "Theme",
 };
 
@@ -133,7 +133,7 @@ export async function applyCorrection(db: Db, creatorId: string, message: string
     await removeMemory(db, creatorId, m.id, `Creator correction: ${message.slice(0, 200)}`);
     removed.push(m.statement);
   }
-  const added = await addMemory(db, creatorId, { category: "creative_voice", statement: `In your words: “${message.trim().slice(0, 300)}”`, sourceKind: "creator", sourceId: messageId, sourceLabel: "Your correction in CreatorTalk" });
+  const added = await addMemory(db, creatorId, { category: "creative_voice", statement: `In your words: “${message.trim().slice(0, 300)}”`, sourceKind: "creator", sourceId: messageId, sourceLabel: "Your correction in meTalk" });
   return { removed, added };
 }
 

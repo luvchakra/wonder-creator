@@ -12,7 +12,7 @@ export default async function SharedWithMePage() {
   const items = await sharedWithMe(db);
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle title="Shared with you" subtitle="Pieces other creators shared with you directly. You can read them; they stay theirs." />
+      <PageTitle title="Shared with you" subtitle="Creations other creators shared with you directly. You can read them; they stay theirs." />
       {items.length ? (
         <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
           {items.map((s) => (
@@ -30,7 +30,7 @@ export default async function SharedWithMePage() {
           ))}
         </ul>
       ) : (
-        <EmptyState title="Nothing shared with you yet" body="When a creator shares a piece with you, it appears here." />
+        <EmptyState title="Nothing shared with you yet" body="When a creator shares a Creation with you, it appears here." />
       )}
     </div>
   );

@@ -41,7 +41,7 @@ export async function createPost(db: Db, creatorId: string, raw: unknown): Promi
     const res = await db.from("scrapbook_attachments").insert(rows);
     if (res.error) {
       await db.from("scrapbook_posts").delete().eq("id", post.id);
-      throw res.error.code === "42501" ? new DomainError("validation", "You can attach only your own material and pieces (and only files that passed checks).") : fromDbError(res.error);
+      throw res.error.code === "42501" ? new DomainError("validation", "You can attach only your own material and Creations (and only files that passed checks).") : fromDbError(res.error);
     }
   }
   return post.id;

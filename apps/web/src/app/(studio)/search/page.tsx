@@ -134,7 +134,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       prefetch={false}
                       className={buttonClasses({ variant: "soft", size: "sm" })}
                     >
-                      <MessageCircle className="size-4" aria-hidden /> Ask CreatorBrain about these
+                      <MessageCircle className="size-4" aria-hidden /> Ask CreativeMind about these
                     </Link>
                   ) : null}
                 </GroupHeader>

@@ -162,13 +162,13 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
                     <strong className="font-medium">Bring anything</strong> — notes, files, voice and more
                   </li>
                   <li>
-                    <strong className="font-medium">Create with CreatorBrain</strong> — turn ideas into beautiful work
+                    <strong className="font-medium">Create with CreativeMind</strong> — turn ideas into beautiful work
                   </li>
                   <li>
                     <strong className="font-medium">Organize & share</strong> — your creations, your way
                   </li>
                 </ul>
-                <p className="mt-6 text-sm text-ink-muted">A few quick questions help CreatorBrain work in your voice. Only your name and handle are required.</p>
+                <p className="mt-6 text-sm text-ink-muted">A few quick questions help CreativeMind work in your voice. Only your name and handle are required.</p>
                 <Button size="lg" className="mt-8" onClick={() => setStep("about")}>
                   Let&apos;s begin <ArrowRight className="size-4" aria-hidden />
                 </Button>
@@ -177,7 +177,7 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
           ) : null}
 
           {step === "about" ? (
-            <StepShell title="Tell us about you" subtitle="This helps CreatorBrain understand you better." headingRef={headingRef}>
+            <StepShell title="Tell us about you" subtitle="This helps CreativeMind understand you better." headingRef={headingRef}>
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="Name" htmlFor="displayName">
                   <Input id="displayName" value={s.displayName} onChange={(e) => set("displayName", e.target.value)} maxLength={80} autoComplete="name" />
@@ -303,7 +303,7 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
           ) : null}
 
           {step === "boundaries" ? (
-            <StepShell title="Make it yours" subtitle="Tell CreatorBrain what to protect and what to steer away from." headingRef={headingRef}>
+            <StepShell title="Make it yours" subtitle="Tell CreativeMind what to protect and what to steer away from." headingRef={headingRef}>
               <div className="grid gap-6 sm:grid-cols-2">
                 <Field label="Things to preserve" htmlFor="preserve">
                   <TagInput id="preserve" value={s.preserve} onChange={(v) => set("preserve", v)} suggestions={SUGGESTED_PRESERVE} placeholder="Add your own…" />
@@ -311,7 +311,7 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
                 <Field label="Things to avoid" htmlFor="avoid">
                   <TagInput id="avoid" value={s.avoid} onChange={(v) => set("avoid", v)} suggestions={SUGGESTED_AVOID} placeholder="Add your own…" />
                 </Field>
-                <Field label="Handle with care (sensitive subjects)" htmlFor="sensitive" className="sm:col-span-2" hint="CreatorBrain will approach these gently and never invent details about them.">
+                <Field label="Handle with care (sensitive subjects)" htmlFor="sensitive" className="sm:col-span-2" hint="CreativeMind will approach these gently and never invent details about them.">
                   <TagInput id="sensitive" value={s.sensitive} onChange={(v) => set("sensitive", v)} placeholder="e.g. my father's illness" />
                 </Field>
               </div>

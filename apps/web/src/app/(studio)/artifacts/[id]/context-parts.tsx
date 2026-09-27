@@ -46,7 +46,7 @@ export function Lineage({ nodes, edges }: { nodes: GraphNode[]; edges: Array<{ f
   const byDepth = new Map<number, GraphNode[]>();
   for (const n of nodes.filter((x) => x.type !== "artifact_version")) byDepth.set(n.depth, [...(byDepth.get(n.depth) ?? []), n]);
   const depths = [...byDepth.keys()].sort((a, b) => a - b);
-  if (nodes.length <= 1) return <p className="rounded-2xl border border-dashed border-border bg-surface/60 px-5 py-6 text-center text-ink-muted">This piece started from a blank page. Anything derived from it will appear here.</p>;
+  if (nodes.length <= 1) return <p className="rounded-2xl border border-dashed border-border bg-surface/60 px-5 py-6 text-center text-ink-muted">This Creation started from a blank page. Anything derived from it will appear here.</p>;
   return (
     <ol className="mx-auto max-w-xl space-y-2" aria-label="Creative lineage, from sources to derivatives">
       {depths.map((d, i) => (

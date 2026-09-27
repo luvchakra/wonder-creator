@@ -137,7 +137,7 @@ export class RunTracker {
 export const RUN_STAGES: Array<{ step: StepName; label: string }> = [
   { step: "understand", label: "Understanding your material" },
   { step: "research", label: "Gathering references" },
-  { step: "plan", label: "Planning the piece" },
+  { step: "plan", label: "Planning the Creation" },
   { step: "generate", label: "Creating" },
   { step: "critique", label: "Checking quality" },
   { step: "refine", label: "Refining" },
