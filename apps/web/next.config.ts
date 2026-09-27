@@ -52,6 +52,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        // Vector Kit files: content-hashed too.
+        source: "/brand/kit/:file",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Everything except embeds: never framed.
         source: "/:path((?!embed/).*)",
         headers: [

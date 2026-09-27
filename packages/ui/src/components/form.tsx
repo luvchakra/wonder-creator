@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "../cn";
 
 const fieldBase =
-  "w-full rounded-xl border border-border bg-surface px-3.5 text-[15px] text-ink placeholder:text-ink-subtle/80 " +
+  "w-full rounded-2xl border border-border bg-surface px-4 text-[15px] text-ink shadow-[0_2px_8px_-4px_rgb(107_91_149/0.10)] placeholder:text-ink-subtle/80 " +
   "focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/15 disabled:opacity-60 aria-[invalid=true]:border-danger";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {

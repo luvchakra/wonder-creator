@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../cn";
+import { KIT, type KitAsset } from "../brand/kit";
 import { type BrandImageVariant, WATERCOLOR, type WatercolorKey } from "../brand/watercolor";
 
 /**
@@ -27,13 +28,37 @@ export const BACKGROUNDS = {
   pastelClouds: "/brand/backgrounds/pastel-clouds.webp",
 } as const;
 
-export function Logo({ variant = "primary", height = 40, className }: { variant?: "primary" | "mark"; height?: number; className?: string }) {
-  const a = variant === "primary" ? BRAND_ASSETS.logoPrimary : BRAND_ASSETS.logoMark;
+/**
+ * The official Wonder Creator logo from the owner-supplied Vector Kit (SVG, never redrawn):
+ * `primary` — symbol + wordmark; `mark` — the symbol alone; `full` — with the tagline;
+ * `reversed` — for dark surfaces; `stacked` — symbol above the wordmark.
+ */
+export function Logo({ variant = "primary", height = 40, className }: { variant?: "primary" | "mark" | "full" | "reversed" | "stacked"; height?: number; className?: string }) {
+  const a = { primary: KIT.logo.logoNoTagline, mark: KIT.logo.symbol, full: KIT.logo.logoFull, reversed: KIT.logo.logoReversed, stacked: KIT.logo.logoStacked }[variant];
   const width = Math.round((a.width / a.height) * height);
   return (
-    // Plain <img>: exact supplied pixels, aspect ratio preserved, no processing.
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={a.src} width={width} height={height} alt="Wonder Creator" className={cn("block select-none", className)} draggable={false} />
+    <img src={a.svg} width={width} height={height} alt="Wonder Creator" className={cn("block select-none", className)} draggable={false} />
+  );
+}
+
+/**
+ * A piece of Vector Kit artwork: vectors as a plain <img>, painted pieces as a responsive AVIF/WebP <picture>.
+ * Decorative by default (empty alt, hidden from assistive tech), lazy unless `priority`.
+ */
+export function KitArt({ art, sizes = "(min-width: 640px) 16rem, 10rem", className, alt = "", priority = false }: { art: KitAsset; sizes?: string; className?: string; alt?: string; priority?: boolean }) {
+  const common = { "aria-hidden": alt ? undefined : true, loading: priority ? ("eager" as const) : ("lazy" as const), decoding: "async" as const, draggable: false, className: cn("select-none", className) };
+  if ("svg" in art) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={art.svg} alt={alt} width={art.width} height={art.height} {...common} />;
+  }
+  const set = (v: readonly BrandImageVariant[]) => v.map((x) => `${x.src} ${x.width}w`).join(", ");
+  const fallback = art.webp[art.webp.length - 1]?.src;
+  return (
+    <picture>
+      <source type="image/avif" srcSet={set(art.avif)} sizes={sizes} />
+      <img src={fallback} alt={alt} srcSet={set(art.webp)} sizes={sizes} width={art.width} height={art.height} fetchPriority={priority ? "high" : undefined} {...common} />
+    </picture>
   );
 }
 

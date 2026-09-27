@@ -1,5 +1,5 @@
-import { Sparkles } from "lucide-react";
 import * as React from "react";
+import { KIT } from "../brand/kit";
 import { cn } from "../cn";
 
 /**
@@ -20,9 +20,12 @@ export function CreativeMindInsight({
 }) {
   const label = kind === "insight" ? "CreativeMind insight" : kind === "waiting" ? "CreativeMind is waiting for you" : "Wonder noticed";
   return (
-    <section aria-label={label} className={cn("rounded-2xl border border-[#dcd6ff] bg-[linear-gradient(135deg,#f5f3ff_0%,#fff_70%)] px-4 py-3.5 shadow-[var(--shadow-card)]", className)}>
+    <section aria-label={label} className={cn("rounded-2xl border border-[#e2dbff] bg-[linear-gradient(135deg,#f3efff_0%,#fffdfa_70%)] px-4 py-3.5 shadow-[var(--shadow-card)]", className)}>
       <p className="flex items-center gap-1.5 text-sm font-medium text-accent-ink">
-        <Sparkles className="size-4" aria-hidden /> {label}
+        {/* Vector Kit sparkle: purple for CreativeMind, peach for a plain "noticed" fact. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={kind === "noticed" ? KIT.mark.sparklePeach.svg : KIT.mark.sparklePurple.svg} alt="" aria-hidden width={16} height={16} className="size-4" />
+        {label}
       </p>
       <div className="mt-1 text-[15px] leading-relaxed text-ink">{children}</div>
       {action ? <div className="mt-2">{action}</div> : null}

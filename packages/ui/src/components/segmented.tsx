@@ -14,7 +14,7 @@ export function Segmented<T extends string>({ label, value, options, onChange, c
     refs.current[(i + options.length) % options.length]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-border-soft bg-surface p-1 [scrollbar-width:none]", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface p-1 shadow-[0_3px_12px_-4px_rgb(107_91_149/0.16)] [scrollbar-width:none]", className)}>
       {options.map((o, i) => {
         const on = o.value === value;
         return (
@@ -39,7 +39,8 @@ export function Segmented<T extends string>({ label, value, options, onChange, c
             }}
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none",
-              on ? "bg-accent-soft text-accent-ink" : "text-ink-muted hover:text-ink",
+              // Vector Kit segmented tab: the chosen segment is a filled violet pill.
+              on ? "bg-[image:var(--gradient-primary)] text-white shadow-[var(--shadow-glow)]" : "text-accent-ink hover:bg-accent-softer",
             )}
           >
             {o.label}

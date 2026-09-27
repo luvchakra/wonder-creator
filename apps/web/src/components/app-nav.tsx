@@ -25,9 +25,9 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
     <>
       <header className="sticky top-0 z-40 border-b border-border-soft/70 bg-cream/85 backdrop-blur-md">
         <div className="mx-auto flex h-[var(--nav-height)] max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <Link href="/" className="shrink-0 rounded-xl bg-white px-1.5 py-1 focus-visible:outline-2" aria-label="Wonder Creator home">
-            <Logo height={40} className="hidden sm:block" />
-            <Logo variant="mark" height={32} className="sm:hidden" />
+          <Link href="/" className="inline-flex min-h-11 shrink-0 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-accent" aria-label="Wonder Creator home">
+            <Logo height={46} className="hidden sm:block" />
+            <Logo variant="mark" height={40} className="sm:hidden" />
           </Link>
           <div className="ml-auto flex items-center gap-1.5">
             <button
