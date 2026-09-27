@@ -394,6 +394,80 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"contribution_edits": {
+                  Row: {
+                    "changes": NonNullable<Json>,"contribution_id": string,"created_at": string,"editor_creator_id": string | null,"id": string
+                  }
+                  Insert: {
+                    "changes": NonNullable<Json>,"contribution_id": string,"created_at"?: string,"editor_creator_id"?: string | null,"id"?: string
+                  }
+                  Update: {
+                    "changes"?: NonNullable<Json>,"contribution_id"?: string,"created_at"?: string,"editor_creator_id"?: string | null,"id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contribution_edits_contribution_id_fkey"
+      columns: ["contribution_id"]
+isOneToOne: false
+      referencedRelation: "contributions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contribution_edits_editor_creator_id_fkey"
+      columns: ["editor_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"contributions": {
+                  Row: {
+                    "artifact_id": string | null,"attribution": string,"compensation_note": string | null,"contributor_creator_id": string,"created_at": string,"credit_line": string | null,"description": string,"id": string,"kind": string,"material_id": string | null,"project_id": string | null,"recorded_by": string | null,"retracted_at": string | null,"retracted_reason": string | null,"rights_relationship": string,"share_percent": number | null,"source": string,"source_id": string | null,"version_id": string | null
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"attribution"?: string,"compensation_note"?: string | null,"contributor_creator_id": string,"created_at"?: string,"credit_line"?: string | null,"description"?: string,"id"?: string,"kind": string,"material_id"?: string | null,"project_id"?: string | null,"recorded_by"?: string | null,"retracted_at"?: string | null,"retracted_reason"?: string | null,"rights_relationship"?: string,"share_percent"?: number | null,"source": string,"source_id"?: string | null,"version_id"?: string | null
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"attribution"?: string,"compensation_note"?: string | null,"contributor_creator_id"?: string,"created_at"?: string,"credit_line"?: string | null,"description"?: string,"id"?: string,"kind"?: string,"material_id"?: string | null,"project_id"?: string | null,"recorded_by"?: string | null,"retracted_at"?: string | null,"retracted_reason"?: string | null,"rights_relationship"?: string,"share_percent"?: number | null,"source"?: string,"source_id"?: string | null,"version_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contributions_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contributions_contributor_creator_id_fkey"
+      columns: ["contributor_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contributions_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contributions_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contributions_recorded_by_fkey"
+      columns: ["recorded_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contributions_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"conversation_attachments": {
                   Row: {
                     "artifact_id": string | null,"created_at": string,"creator_id": string,"id": string,"material_id": string | null,"message_id": string
@@ -2275,6 +2349,12 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"contribution_retract":
+{ Args: { "p_id": string,"p_reason": string }; Returns: undefined
+                           },
+"contribution_update":
+{ Args: { "p_attribution"?: string,"p_clear_share"?: boolean,"p_compensation"?: string,"p_credit_line"?: string,"p_description"?: string,"p_id": string,"p_rights"?: string,"p_share"?: number }; Returns: undefined
+                           },
 "create_artifact_version":
 { Args: { "p_ai_run_id"?: string,"p_artifact_id": string,"p_author_kind": string,"p_change_summary"?: string,"p_content": string,"p_generation_metadata"?: Json,"p_label": string,"p_restored_from"?: string,"p_structured_content"?: Json }; Returns: {
               "artifact_id": string,

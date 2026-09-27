@@ -33,9 +33,11 @@ interface Props {
     at: string;
   }>;
   comments: Array<{ id: string; body: string; quote: string | null; versionNumber: number | null; author: { id: string | null; name: string }; mine: boolean; resolved: boolean; at: string }>;
+  /** The piece's contribution ledger (live entries). */
+  credits: Array<{ id: string; name: string; kind: string; description: string; versionNumber: number | null }>;
 }
 
-export function CollaborateView({ viewerId, access, artifact, current, collaborators, versions, proposals, comments }: Props) {
+export function CollaborateView({ viewerId, access, artifact, current, collaborators, versions, proposals, comments, credits }: Props) {
   const router = useRouter();
   const owner = access === "owner";
   const [msg, setMsg] = useState<string | null>(null);
@@ -207,6 +209,28 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
             </li>
           ))}
         </ol>
+      </section>
+
+      <section aria-label="Credits">
+        <SectionHeader
+          title="Contributions"
+          action={
+            <a href={`/api/v1/artifacts/${artifact.id}/credits`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+              Export credits
+            </a>
+          }
+        />
+        {credits.length ? (
+          <ul className="space-y-1 text-[15px]">
+            {credits.map((c) => (
+              <li key={c.id} className="text-ink">
+                <span className="font-medium">{c.name}</span> <span className="text-ink-muted">· {c.kind}{c.versionNumber ? ` · v${c.versionNumber}` : ""} — {c.description}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[15px] text-ink-muted">Contributions by collaborators are recorded here automatically.</p>
+        )}
       </section>
 
       {adding ? <AddCollaboratorDialog artifactId={artifact.id} exclude={[artifact.ownerId, ...collaborators.map((c) => c.creatorId)]} onOpenChange={setAdding} onAdded={(n) => (setMsg(`${n} is now a collaborator.`), router.refresh())} /> : null}

@@ -57,3 +57,23 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = { todo: "To do", in_progress: "In progress", review: "Review", done: "Done", blocked: "Blocked" };
 /** Current and blocked work first (mobile guidelines: content priority). */
 export const TASK_GROUP_ORDER: TaskStatus[] = ["blocked", "in_progress", "review", "todo", "done"];
+
+export const CONTRIBUTION_KINDS = ["writing", "editing", "idea", "material", "direction", "design", "sound", "performance", "research", "production", "review", "task", "other"] as const;
+export type ContributionKind = (typeof CONTRIBUTION_KINDS)[number];
+export const CONTRIBUTION_KIND_LABEL: Record<ContributionKind, string> = {
+  writing: "Writing",
+  editing: "Editing",
+  idea: "Idea",
+  material: "Material",
+  direction: "Direction",
+  design: "Design",
+  sound: "Sound & music",
+  performance: "Performance",
+  research: "Research",
+  production: "Production",
+  review: "Review",
+  task: "Task",
+  other: "Other",
+};
+export const RIGHTS_RELATIONSHIP_LABEL = { contributor: "Contributor", co_owner: "Co-owner", licensed: "Licensed", work_for_hire: "Work for hire", none: "No rights" } as const;
+export const ATTRIBUTION_LABEL = { required: "Credit required", optional: "Credit optional", none: "No credit" } as const;
