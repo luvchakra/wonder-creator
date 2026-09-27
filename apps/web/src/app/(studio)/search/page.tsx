@@ -1,6 +1,6 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType } from "@wonder/creator-studio/types";
-import { BACKGROUNDS, EmptyState, Input, LiveBadge, PageTitle, buttonClasses, cn } from "@wonder/ui";
+import { BACKGROUNDS, EmptyState, Input, LiveBadge, PageTitle, buttonClasses, cn, KIT } from "@wonder/ui";
 import { BookMarked, Layers, MessageCircle, Search, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { MaterialCard } from "@/components/cards";
@@ -47,7 +47,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <>
       <PaletteScope context={{ page: "search", strip: searchable ? { count: [total, "result", "results"] } : undefined }} />
       <div>
-        <PageTitle title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
+        <PageTitle art={KIT.painted.blossomSprig} title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
 
         <form action="/search" role="search" className="relative">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />

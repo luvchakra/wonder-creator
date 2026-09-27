@@ -1,6 +1,6 @@
 import { collectionCards, listMaterials, MATERIAL_FILTERS, materialCounts, signedUrlsFor, type MaterialFilter } from "@wonder/creator-library";
 import { listArtifacts } from "@wonder/creator-studio";
-import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn } from "@wonder/ui";
+import { BACKGROUNDS, Badge, EmptyState, PageTitle, buttonClasses, cn, KIT } from "@wonder/ui";
 import { Layers, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { ArtifactCard, MaterialCard, MaterialWallCard } from "@/components/cards";
@@ -78,7 +78,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
     return (
       <div>
         <PaletteScope context={{ page: "materials", strip: counts && !q ? { count: [counts[mFilter], ...NOUN[mFilter]] } : undefined }} />
-        <PageTitle title="Materials" subtitle="Your visual memory — photos, notes, sounds, links and ideas." action={<SpaceSearch initial={q} />} />
+        <PageTitle art={KIT.painted.lavenderSprig} title="Materials" subtitle="Your visual memory — photos, notes, sounds, links and ideas." action={<SpaceSearch initial={q} />} />
         {counts ? (
           <nav aria-label="Material type" className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
             {MATERIAL_FILTERS.map((f) => (

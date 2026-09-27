@@ -1,5 +1,5 @@
 import { artifactType, sharedWithMe } from "@wonder/creator-studio";
-import { EmptyState, PageTitle } from "@wonder/ui";
+import { EmptyState, PageTitle, KIT } from "@wonder/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
@@ -12,7 +12,7 @@ export default async function SharedWithMePage() {
   const items = await sharedWithMe(db);
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle title="Shared with you" subtitle="Creations other creators shared with you directly. You can read them; they stay theirs." />
+      <PageTitle art={KIT.painted.leafSprigSage} title="Shared with you" subtitle="Creations other creators shared with you directly. You can read them; they stay theirs." />
       {items.length ? (
         <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
           {items.map((s) => (

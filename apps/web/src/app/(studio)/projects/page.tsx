@@ -1,6 +1,6 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { listProjects, myCrewInvites, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
-import { BACKGROUNDS, EmptyState, PageTitle, cn } from "@wonder/ui";
+import { BACKGROUNDS, EmptyState, PageTitle, cn, KIT } from "@wonder/ui";
 import Link from "next/link";
 import { LocalTime } from "@/components/client-time";
 import { ProjectCard } from "@/components/project-card";
@@ -20,7 +20,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageTitle title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
+      <PageTitle art={KIT.painted.flowerBranch} title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
       {invites.length ? (
         <section aria-label="Crew invitations" className="mb-6 space-y-2">
           {invites.map((i) => (
