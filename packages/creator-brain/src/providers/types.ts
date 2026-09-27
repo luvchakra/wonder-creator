@@ -15,7 +15,8 @@ export type TaskKind =
   | "collaborator_query" // turn "find three cinematographers in my network" into search filters
   | "message_draft" // draft a message for the creator to review and send (never sent automatically)
   | "publish_plan" // propose where/how/when to publish a piece (suggestions only; the creator approves)
-  | "describe_image";
+  | "describe_image"
+  | "context_line"; // one short navbar line about the current creative moment (presentation only, never stored)
 
 export type ContentPart =
   | { type: "text"; text: string }

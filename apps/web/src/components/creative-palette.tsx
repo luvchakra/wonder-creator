@@ -128,6 +128,28 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
     }, Math.max(0, next - Date.now()) + 20);
     return () => clearTimeout(t);
   }, [signals]);
+  // The Adaptive Context Line's AI layer (ai-context-line.md §14): the deterministic line renders at once; for the
+  // creator's own Creation, Material or Home, a short semantic line may crossfade in later. Never a loading state.
+  const semanticKey = context && (context.page === "creation" || context.page === "studio" || context.page === "material" || context.page === "home") ? `${context.page}:${context.ids?.artifactId ?? context.ids?.materialId ?? ""}` : null;
+  useEffect(() => {
+    if (!semanticKey) return;
+    const [page, id] = semanticKey.split(":");
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/v1/context-line?page=${page}${id ? `&id=${id}` : ""}`, { signal: ctrl.signal });
+        const body = res.ok ? ((await res.json()) as { text?: string | null }) : null;
+        if (body?.text) value.signal({ id: "semantic", text: body.text, tone: "neutral", priority: PRIORITY.semantic });
+      } catch {
+        // Offline, aborted or unavailable: the deterministic line stays.
+      }
+    }, 600);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+      value.signal(null, "semantic");
+    };
+  }, [semanticKey, value]);
   // Expired signals are pruned above, so the resolver sees only live ones. Screens clear their own signals on leave.
   const strip = useMemo(() => resolveContextStrip({ page: context?.page ?? null, lifecycle: context?.lifecycle, facts: context?.strip, signals, online, now: 0 }), [context, signals, online]);
   return (

@@ -185,6 +185,10 @@ export class OfflineProvider implements CreativeModelProvider {
       case "intent":
         value = { intent: "chat", artifactType: null };
         break;
+      case "context_line":
+        // No fake insight: the navbar keeps its deterministic line.
+        value = { text: null, reason: "none", sourceKeys: [], confidence: 0 };
+        break;
       default:
         throw new Error(`offline provider has no fixture for ${input.schemaName}`);
     }

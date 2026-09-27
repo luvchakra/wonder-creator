@@ -14,6 +14,31 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 * UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette) change in the presentation layer only — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
 * Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI redesign spec overrides them. Plan guardrails win over mockups (no like counts, platform-only analytics).
 
+## Creative Palette design (owner's standing instruction)
+
+The Palette is the product's signature control. It follows every rule in this file (minimalism, density, accessibility)
+and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementation: `packages/ui/src/components/palette.tsx`
+(layout) and `apps/web/src/lib/palette/` (what it offers).
+
+* **Fan, not a list.** Leaves open as a fan on a quarter-arc around the corner trigger: the leaf nearest the trigger sits
+  beside it, the furthest sits above it. **Leaves stay horizontal** — the arc is in their placement, never a tilt or
+  rotation of the leaf or its text. Never use icon-only leaves.
+* The trigger is the painted Vector Kit palette only — no disc or background behind it. The open state may show a small
+  surface behind the close icon so it stays legible.
+* **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
+  `docs/ui-redesign/ai-context-line.md`).
+* Contextual Palette: **3–4 primary actions**, then `More…` and `Go to…`; global Palette max **6** destinations (Home,
+  Create, Materials, Huddles, Explore, Me). Create opens New Creation · Bring Material · Capture · meTalk.
+* Deterministic and context-aware: page → lifecycle / media type → permissions → rank. Dangerous, rights, commerce and
+  destructive actions are never first level. It hides what the server would refuse; it is not a security boundary.
+* Don't repeat the page's visible primary action as a first-level leaf unless there's a strong reason.
+* Compact leaves: 36–40px visual pills inside ≥44px hit targets, 14px labels, 12px hints, content-sized (not full-width).
+* Motion: a soft fan-open from the trigger (slide + fade, no rotation) in 200–280ms with minimal stagger; nothing when
+  reduced motion is set.
+* Accessibility: focus moves to the first leaf on open and on each view change (More…, Go to…, Create); Escape, an
+  outside tap or the trigger closes it; the number of actions is announced; the trigger keeps its accessible name.
+* Every signed-in screen declares a `PaletteScope` context; screens without one get the global Palette.
+
 ## Interaction minimalism (owner's standing instruction)
 
 Wonder Creator must minimize UI transitions and visible controls. The detailed contract is `docs/ui-redesign/interaction-minimalism.md`.
