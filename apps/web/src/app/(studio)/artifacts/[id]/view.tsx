@@ -100,7 +100,6 @@ export function ArtifactView(props: {
   const [tab, setTab] = useState(["details", "material", "versions", "rights"].includes(props.initialTab ?? "") ? props.initialTab! : "details");
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [transformOpen, setTransformOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -234,7 +233,7 @@ export function ArtifactView(props: {
               <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/derivatives`)}>
                 <Layers className="size-4" aria-hidden /> Create from this
               </MenuItem>
-              <MenuItem onSelect={() => setTransformOpen(true)}>
+              <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/transform`)}>
                 <Wand2 className="size-4" aria-hidden /> Transform / create derivative
               </MenuItem>
               <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
@@ -330,13 +329,20 @@ export function ArtifactView(props: {
               )}
             </section>
             <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">What you can do next</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-semibold text-ink">What you can do next</h2>
+                {isOwner ? (
+                  <Link href={`/artifacts/${a.id}/transform`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                    Every form
+                  </Link>
+                ) : null}
+              </div>
               <ul className="mt-3 space-y-1">
                 {actionsFor(a.artifact_type)
                   .filter((x) => x.kind === "transform")
                   .map((x) => (
                     <li key={x.key}>
-                      <Link href={`/artifacts/${a.id}/studio?action=${x.key}`} className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-[15px] text-ink hover:bg-surface-muted">
+                      <Link href={`/artifacts/${a.id}/transform?type=${x.targetType}`} className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-[15px] text-ink hover:bg-surface-muted">
                         <Wand2 className="size-4 shrink-0 text-accent-ink" aria-hidden /> {x.label}
                         <span className="text-sm text-ink-subtle">— {x.hint}</span>
                       </Link>
@@ -409,20 +415,6 @@ export function ArtifactView(props: {
       {isOwner ? (
         <>
           <ShareDialog key={shareOpen ? "open" : "closed"} open={shareOpen} onOpenChange={setShareOpen} artifact={a} onSave={patch} />
-          <TransformDialog
-            open={transformOpen}
-            onOpenChange={setTransformOpen}
-            artifactId={a.id}
-            currentType={a.artifact_type}
-            source={{
-              title: a.title,
-              currentVersionId: a.current_version_id,
-              versions: props.versions.map((v) => ({ id: v.id, number: v.version_number, label: v.label })),
-              materials: props.materials.length,
-              contributors: props.contributors.map((c) => `${c.name} (${c.role})`),
-              rights: props.rights ? { ownershipKind: props.rights.ownership_kind, owners: props.rights.rights_owners.map((o) => o.owner_name), attributionRequired: props.rights.attribution_required } : null,
-            }}
-          />
           <ConfirmDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
@@ -630,6 +622,7 @@ export function TransformDialog({
   currentType,
   initialType,
   source,
+  focused = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -637,6 +630,8 @@ export function TransformDialog({
   currentType: string;
   initialType?: string;
   source?: TransformSource;
+  /** Focused configuration (UI redesign §17): the format was already chosen on the Transform screen. */
+  focused?: boolean;
 }) {
   const router = useRouter();
   const [type, setType] = useState(initialType ?? "");
@@ -669,7 +664,12 @@ export function TransformDialog({
           </div>
         ) : null}
 
-        <fieldset className="mt-4">
+        {focused && type ? (
+          <p className="mt-4 rounded-2xl border border-accent/30 bg-accent-softer px-4 py-3 text-sm text-ink">
+            Turning it into <span className="font-medium">{ARTIFACT_TYPES.find((t) => t.type === type)?.label ?? type}</span> — {artifactTypeLabel(type)}
+          </p>
+        ) : null}
+        <fieldset className={cn("mt-4", focused && "hidden")}>
           <legend className="mb-2 text-sm font-medium text-ink">Turn it into</legend>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {suggested.map((s) => (

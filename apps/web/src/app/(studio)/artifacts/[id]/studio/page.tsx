@@ -40,7 +40,7 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
         title="This Creation"
         actions={[
           { key: "refine", label: "Refine", hint: "CreativeMind suggestions", href: `${base}/studio#creativemind`, icon: "spark" },
-          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/derivatives`, icon: "pen" },
+          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/transform`, icon: "pen" },
           { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
           { key: "references", label: "References", href: `${base}/context?tab=references` },
           { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },

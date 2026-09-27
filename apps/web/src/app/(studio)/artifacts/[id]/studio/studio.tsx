@@ -327,7 +327,7 @@ export function Studio({
       </section>
 
       {transformType ? (
-        <TransformDialog open onOpenChange={(o) => !o && setTransformType(null)} artifactId={artifact.id} currentType={artifact.type} initialType={transformType} />
+        <TransformDialog open focused onOpenChange={(o) => !o && setTransformType(null)} artifactId={artifact.id} currentType={artifact.type} initialType={transformType} />
       ) : null}
     </div>
   );

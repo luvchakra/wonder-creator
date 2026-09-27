@@ -98,6 +98,7 @@ test.describe("mobile layout @mobile", () => {
       ["/space?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
       [`/artifacts/${art.id}`, (p) => expect(p.getByRole("button", { name: "Download" })).toBeVisible()],
       [`/artifacts/${art.id}/context?tab=people`, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
+      [`/artifacts/${art.id}/transform`, (p) => expect(p.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible()],
       [`/artifacts/${art.id}/studio`, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       [`/artifacts/${art.id}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
       [`/artifacts/${art.id}/publish`, (p) => expect(p.getByRole("button", { name: "Next" })).toBeVisible()],

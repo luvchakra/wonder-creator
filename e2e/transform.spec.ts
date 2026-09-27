@@ -12,14 +12,18 @@ test.describe("Artifact transformation", () => {
     await page.goto(`/artifacts/${artifactId}`);
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Transform / create derivative" }).click();
+    // The Transform screen: forms that suit a poem first, every other form after.
+    await expect(page.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Suits this poem" })).toBeVisible();
+    await page.getByRole("button", { name: /^Turn into lyrics/ }).click();
     const dialog = page.getByRole("dialog", { name: "Create a derivative" });
+    await expect(dialog.getByText(/Turning it into Lyrics/)).toBeVisible();
     await expect(dialog.getByText(`From “${art.title}”`)).toBeVisible();
     await dialog.getByLabel("Version to adapt").selectOption({ label: "v1 Initial draft" });
     const carries = dialog.getByRole("region", { name: "What carries over" });
     await expect(carries).toContainText("1 piece of material it was made from.");
     await expect(carries).toContainText("private draft");
 
-    await dialog.getByRole("button", { name: /Turn into lyrics/ }).click();
     await dialog.getByLabel("Anything to keep in mind? (optional)").fill("Make it singable.");
     await dialog.getByRole("button", { name: "Create derivative" }).click();
 
