@@ -2,7 +2,7 @@ import { DomainError, fromDbError, isDomainError, log, must } from "@wonder/core
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { z } from "zod";
 import { findCollaborators, stemTerm, type CollaboratorCard } from "@wonder/creator-identity";
-import { artifactType, createArtifact, createVersion, getArtifact, inheritFromSource, isKnownArtifactType, type LineageSource } from "@wonder/creator-studio";
+import { artifactType, createArtifact, createVersion, getArtifact, getPublishingPreferences, inheritFromSource, isKnownArtifactType, listDestinations, type LineageSource } from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
@@ -768,5 +768,100 @@ export async function draftMessage(
     });
     await run.finish({ outputCategory: "message_draft" });
     return { draft, offline: !deps.provider.live };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Publishing plan (P1-12): where, how and when — proposals only. The creator prepares and approves.
+// ---------------------------------------------------------------------------
+export const publishPlanSchema = z.object({
+  destinations: z.array(z.object({ key: z.string().min(1).max(60), why: z.string().max(300) })).max(10).default([]),
+  adaptations: z
+    .array(z.object({ key: z.string().min(1).max(60), caption: z.string().max(2200).nullable().optional(), tags: z.array(z.string().max(40)).max(10).optional() }))
+    .max(10)
+    .default([]),
+  schedule: z.array(z.object({ key: z.string().min(1).max(60), at: z.string().max(40).nullable(), why: z.string().max(300).optional() })).max(10).default([]),
+  notes: z.array(z.string().max(300)).max(3).default([]),
+});
+export type PublishPlan = z.infer<typeof publishPlanSchema>;
+
+/** The next occurrence of HH:MM in a time zone, at least `minAheadMs` from now (as an ISO string in UTC). */
+export function nextLocalTime(hhmm: string, timeZone: string, now = new Date(), minAheadMs = 10 * 60_000): string {
+  const [h, m] = hhmm.split(":").map(Number) as [number, number];
+  const parts = (d: Date) => Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d).map((p) => [p.type, p.value]));
+  for (let day = 0; day < 3; day++) {
+    const today = parts(new Date(now.getTime() + day * 86_400_000));
+    const guess = Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day), h, m);
+    const seen = parts(new Date(guess));
+    const offset = Date.UTC(Number(seen.year), Number(seen.month) - 1, Number(seen.day), Number(seen.hour), Number(seen.minute)) - guess;
+    const at = guess - offset;
+    if (at >= now.getTime() + minAheadMs) return new Date(at).toISOString();
+  }
+  return new Date(now.getTime() + 86_400_000).toISOString();
+}
+
+export async function planPublishing(deps: BrainDeps, artifactId: string): Promise<PublishPlan & { offline: boolean }> {
+  const owned = await deps.db.from("artifacts").select("creator_id").eq("id", artifactId).maybeSingle();
+  if (owned.data?.creator_id !== deps.creatorId) throw new DomainError("not_found", "We couldn't find that piece.");
+  const [destinations, prefs] = await Promise.all([listDestinations(deps.db), getPublishingPreferences(deps.db, deps.creatorId)]);
+  const available = new Map<string, string>([["profile", "Your Wonder Creator profile"], ...destinations.filter((d) => d.status === "active").map((d) => [d.id, d.name] as [string, string])]);
+  const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "question", instruction: "Plan publishing for this piece.", artifactIds: [artifactId] });
+  const art = ctx.selectedArtifacts[0];
+  if (!art || !art.content.trim()) throw new DomainError("validation", "Write something first — there's nothing to publish yet.");
+  const run = await startRun(deps, "publish_plan", { artifactId, inputCategory: "artifact" });
+  return runGuarded(run, async () => {
+    const decision = await authorizeTool(deps.db, deps.creatorId, "plan_publishing", run.id);
+    if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
+    const raw = await run.step("plan", async (): Promise<PublishPlan> => {
+      if (!deps.provider.live) {
+        // Offline: follow the creator's own preferences, nothing more.
+        const keys = prefs.defaultDestinations.filter((k) => available.has(k));
+        const chosen = keys.length ? keys : ["profile"];
+        const at = prefs.preferredTime && prefs.timeZone ? nextLocalTime(prefs.preferredTime, prefs.timeZone) : null;
+        return {
+          destinations: chosen.map((key) => ({ key, why: keys.length ? "One of your default destinations." : "Your profile is always available." })),
+          adaptations: prefs.defaultTags.length ? chosen.map((key) => ({ key, tags: prefs.defaultTags })) : [],
+          schedule: chosen.map((key) => ({ key, at, why: at ? `Your preferred time (${prefs.preferredTime}, ${prefs.timeZone}).` : "Now is fine." })),
+          notes: ["AI isn't connected, so this plan only uses your publishing preferences."],
+        };
+      }
+      const list = [...available].map(([key, name]) => `- ${key}: ${name}`).join("\n");
+      const pref = [
+        prefs.preferredTime && prefs.timeZone ? `Preferred time: ${prefs.preferredTime} (${prefs.timeZone}).` : null,
+        prefs.defaultTags.length ? `Usual tags: ${prefs.defaultTags.join(", ")}.` : null,
+        prefs.captionStyle ? `Caption style: ${prefs.captionStyle}` : null,
+        `Now: ${new Date().toISOString()}.`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const r = await deps.provider.structured({
+        task: "publish_plan",
+        system: systemPrompt(ctx, TASKS.publish_plan),
+        schema: publishPlanSchema,
+        schemaName: "publish_plan",
+        messages: [
+          {
+            role: "user",
+            content: `Destinations:\n${list}\n\n${pref}\n\n${artifactType(art.type).label}: “${art.title}”\n${fenceUntrusted("piece", art.content.slice(0, 12000))}`,
+          },
+        ],
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value;
+    });
+    // Keep only what can actually be used: known destinations, future times, clean tags.
+    const soon = Date.now() + 60_000;
+    const plan: PublishPlan = {
+      destinations: raw.destinations.filter((d) => available.has(d.key)),
+      adaptations: raw.adaptations
+        .filter((a) => available.has(a.key))
+        .map((a) => ({ ...a, tags: a.tags ? [...new Set(a.tags.map((t) => t.replace(/^#+/, "").trim()).filter(Boolean))].slice(0, 10) : undefined })),
+      schedule: raw.schedule
+        .filter((s) => available.has(s.key))
+        .map((s) => ({ ...s, at: s.at && !Number.isNaN(Date.parse(s.at)) && Date.parse(s.at) > soon ? new Date(Date.parse(s.at)).toISOString() : null })),
+      notes: raw.notes,
+    };
+    await run.finish({ outputCategory: "publish_plan", artifactId });
+    return { ...plan, offline: !deps.provider.live };
   });
 }

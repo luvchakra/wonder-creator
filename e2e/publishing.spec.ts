@@ -34,7 +34,7 @@ test.describe("publishing", () => {
     // 2. Details, drafted by CreatorBrain and editable.
     await page.getByRole("button", { name: "Draft with CreatorBrain" }).click();
     await expect(page.getByRole("status").filter({ hasText: "offline development mode" })).toBeVisible();
-    await page.getByLabel("Caption").fill("Out now.");
+    await page.getByLabel("Caption", { exact: true }).fill("Out now.");
     await page.getByRole("button", { name: "Next" }).click();
 
     // 3. Review: the final public representation.

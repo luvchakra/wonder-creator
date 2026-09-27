@@ -167,6 +167,9 @@ export class OfflineProvider implements CreativeModelProvider {
           missing: ["A date for the first review"],
         };
         break;
+      case "publish_plan":
+        value = { destinations: [], adaptations: [], schedule: [], notes: [] };
+        break;
       case "message_draft":
         value = { body: "Hi — a quick note about this. (AI isn't connected, so this is only a starting point: write what you want to say.)" };
         break;

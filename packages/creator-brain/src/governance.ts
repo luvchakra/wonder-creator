@@ -20,6 +20,7 @@ export const TOOLS = {
   invite_creator: { domain: "collaboration", action: "execute", label: "Invite a creator" },
   draft_message: { domain: "communication", action: "draft", label: "Draft a message" },
   draft_publication: { domain: "publishing", action: "draft", label: "Draft publishing copy" },
+  plan_publishing: { domain: "publishing", action: "suggest", label: "Suggest where and when to publish" },
   publish: { domain: "publishing", action: "execute", label: "Publish" },
   change_rights: { domain: "rights", action: "execute", label: "Change rights or licenses" },
   commerce: { domain: "commerce", action: "execute", label: "Sell or license commercially" },
