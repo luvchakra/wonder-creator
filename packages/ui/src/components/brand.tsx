@@ -30,15 +30,24 @@ export const BACKGROUNDS = {
 
 /**
  * The official Wonder Creator logo from the owner-supplied Vector Kit (SVG, never redrawn):
- * `primary` — symbol + wordmark; `mark` — the symbol alone; `full` — with the tagline;
- * `reversed` — for dark surfaces; `stacked` — symbol above the wordmark.
+ * `primary` — symbol + wordmark; `mark` — the symbol alone; `stacked` — symbol above the wordmark.
+ * The kit's tagline lock-ups (full, mono, reversed) aren't used: the owner chose "Ideas Become Real." (see <Tagline>).
  */
-export function Logo({ variant = "primary", height = 40, className }: { variant?: "primary" | "mark" | "full" | "reversed" | "stacked"; height?: number; className?: string }) {
-  const a = { primary: KIT.logo.logoNoTagline, mark: KIT.logo.symbol, full: KIT.logo.logoFull, reversed: KIT.logo.logoReversed, stacked: KIT.logo.logoStacked }[variant];
+export function Logo({ variant = "primary", height = 40, className }: { variant?: "primary" | "mark" | "stacked"; height?: number; className?: string }) {
+  const a = { primary: KIT.logo.logoNoTagline, mark: KIT.logo.symbol, stacked: KIT.logo.logoStacked }[variant];
   const width = Math.round((a.width / a.height) * height);
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={a.svg} width={width} height={height} alt="Wonder Creator" className={cn("block select-none", className)} draggable={false} />
+  );
+}
+
+/** The brand tagline, "Ideas Become Real." (owner's choice, 27 Sep 2026), as live Playfair text — no artwork exists for it. */
+export function Tagline({ className }: { className?: string }) {
+  return (
+    <p className={cn("font-display text-ink", className)}>
+      Ideas <span className="text-brand-gradient">Become</span> Real.
+    </p>
   );
 }
 
