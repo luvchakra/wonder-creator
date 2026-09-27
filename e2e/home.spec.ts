@@ -11,9 +11,9 @@ test.describe("Home Canvas", () => {
     // from assistive tech (the trigger keeps its own name).
     await expect(page.locator('main img[src*="/brand/watercolor/floral-corner"]')).toHaveAttribute("aria-hidden", "true");
     await expect(page.getByRole("button", { name: "Open Creative Palette" }).locator('img[src*="/brand/kit/palette-button-master"]')).toHaveAttribute("alt", "");
-    await page.getByRole("button", { name: "meTalk" }).click();
-    await expect(page.getByRole("dialog", { name: "meTalk" })).toBeVisible();
-    await page.keyboard.press("Escape");
+    // One primary way to begin and one secondary (interaction minimalism); the rest is in the Palette.
+    const begin = page.getByRole("region", { name: "What would you like to begin with?" });
+    await expect(begin.getByRole("link")).toHaveText([/New Creation/, /Bring Material/]);
 
     // A Creation in progress becomes the Canvas; new material since then is noticed plainly.
     const title = `Harbour lights ${uid()}`;
