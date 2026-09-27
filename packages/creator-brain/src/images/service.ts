@@ -378,3 +378,88 @@ export async function saveGeneratedAsset(deps: Pick<ImageDeps, "db" | "service" 
   }
   return { materialId };
 }
+
+/**
+ * Keep a slide visual with the creator's own words set on it. The words are laid out in the creator's browser (their
+ * fonts render every script, and the image model is never asked to draw text); the server only receives the finished
+ * picture. It is inspected like any upload, re-encoded, and kept as a derived Material whose provenance records the
+ * source image and the exact words, with lineage to the generated image and its Creation.
+ */
+export async function saveTextOverlay(
+  deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">,
+  generationId: string,
+  assetId: string,
+  input: { bytes: Uint8Array; text: string; useInCreation?: boolean },
+): Promise<{ materialId: string }> {
+  const text = input.text.trim().slice(0, 500);
+  if (!text) throw new DomainError("validation", "Add some words first.");
+  const { data: g } = await deps.db.from("image_generations").select("id, creator_id, artifact_id, purpose").eq("id", generationId).maybeSingle();
+  if (!g || g.creator_id !== deps.creatorId) throw new DomainError("not_found", "That isn't available.");
+  const { data: a } = await deps.db.from("image_generation_assets").select("id, sequence, direction_label, saved_material_id").eq("id", assetId).eq("generation_id", generationId).maybeSingle();
+  if (!a) throw new DomainError("not_found", "That image isn't available.");
+
+  const inspected = await inspectUpload(input.bytes, "slide.png");
+  if (!REFERENCE_TYPES.has(inspected.mime)) throw new DomainError("unsupported_media", "That isn't an image we can keep.");
+  let derived: Awaited<ReturnType<ImageDeps["derive"]>>;
+  try {
+    derived = await deps.derive(input.bytes);
+  } catch (e) {
+    throw new DomainError("unsupported_media", "That isn't an image we can keep.", { cause: e });
+  }
+
+  const key = crypto.randomUUID();
+  const store = async (bytes: Uint8Array, suffix: string) => {
+    const path = `${deps.creatorId}/generated/${g.id}/text-${key}-${suffix}.webp`;
+    const up = await deps.service.storage.from(GENERATED_BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: false });
+    if (up.error) throw new DomainError("internal", "Couldn't save that image.", { cause: up.error });
+    const insp = await inspectUpload(bytes);
+    const { data: obj, error } = await deps.service
+      .from("storage_objects")
+      .insert({ creator_id: deps.creatorId, bucket: GENERATED_BUCKET, path, mime_type: "image/webp", size_bytes: insp.size, sha256: insp.sha256, original_filename: `slide-${a.sequence + 1}.webp`, security_status: "clean" })
+      .select("id")
+      .single();
+    if (error || !obj) throw new DomainError("internal", "Couldn't save that image.", { cause: error });
+    return obj.id;
+  };
+  const master = await store(derived.master, "master");
+  await store(derived.thumbnail, "480");
+
+  const { data: prov, error: pErr } = await deps.service
+    .from("provenance_records")
+    .insert({
+      creator_id: deps.creatorId,
+      origin: "derived",
+      sha256: inspected.sha256,
+      details: { derivation: "text_overlay", generationId: g.id, assetId: a.id, sourceArtifactId: g.artifact_id, direction: a.direction_label, overlayText: text },
+    })
+    .select("id")
+    .single();
+  if (pErr || !prov) throw new DomainError("internal", "Couldn't save that image.", { cause: pErr });
+  const firstLine = text.split("\n")[0]!.slice(0, 60);
+  const { data: m, error: mErr } = await deps.service
+    .from("creative_materials")
+    .insert({
+      creator_id: deps.creatorId,
+      type: "image",
+      title: g.purpose === "carousel" ? `Slide ${a.sequence + 1} · ${firstLine}` : firstLine,
+      storage_object_id: master,
+      source_type: "generated",
+      security_status: "clean",
+      processing_state: "ready",
+      provenance_id: prov.id,
+      metadata: { generated: { generationId: g.id, assetId: a.id, textOverlay: true }, width: derived.width, height: derived.height },
+    })
+    .select("id")
+    .single();
+  if (mErr || !m) throw new DomainError("internal", "Couldn't save that image.", { cause: mErr });
+
+  const edges = [
+    ...(a.saved_material_id ? [{ source_type: "material", source_id: a.saved_material_id, target_type: "material", target_id: m.id, relationship: "derived_from" as const }] : []),
+    ...(g.artifact_id ? [{ source_type: "artifact", source_id: g.artifact_id, target_type: "material", target_id: m.id, relationship: "derived_from" as const }] : []),
+    ...(input.useInCreation && g.artifact_id ? [{ source_type: "material", source_id: m.id, target_type: "artifact", target_id: g.artifact_id, relationship: "references" as const }] : []),
+  ].map((e) => ({ ...e, creator_id: deps.creatorId }));
+  if (edges.length) await deps.service.from("lineage_edges").upsert(edges, { onConflict: "source_type,source_id,target_type,target_id,relationship", ignoreDuplicates: true });
+  await audit(deps.db, { action: "generated_image.text_saved", objectType: "material", objectId: m.id, metadata: { generationId: g.id, purpose: g.purpose } });
+  log("info", "image_text_overlay_saved", { purpose: g.purpose });
+  return { materialId: m.id };
+}

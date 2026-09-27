@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, saveGeneratedAsset, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
+import { generationView, regenerateImageGeneration, requestImageGeneration, runImageGeneration, saveGeneratedAsset, saveTextOverlay, selectGeneratedAsset, type ImageDeps, type ImageProvider } from "@wonder/creator-brain";
 import { DomainError } from "@wonder/core";
 import { addCollaborator, createArtifact, saveCreatorVersion } from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
@@ -146,6 +146,41 @@ describe("keeping a generated image", () => {
     );
     expect((await generationView(db(owner), admin, gen.view.id))!.assets[0]!.savedMaterialId).toBe(materialId);
     // It's the owner's Material, not a collaborator's.
+    expect(expectOk(await db(out).from("creative_materials").select("id").eq("id", materialId))).toEqual([]);
+  });
+});
+
+describe("words on a slide visual", () => {
+  it("keeps the composed image as a derived Material that records the words and its source image", async () => {
+    const provider = fakeProvider();
+    const gen = await requestImageGeneration(deps(owner, provider), { artifactId: piece, purpose: "carousel" });
+    if (gen.kind !== "generation") throw new Error(gen.kind);
+    await runImageGeneration({ service: admin, provider, derive }, gen.view.id);
+    const asset = (await generationView(db(owner), admin, gen.view.id))!.assets[1]!;
+    const composed = new Uint8Array(await sharp({ create: { width: 8, height: 10, channels: 3, background: "#203040" } }).jpeg().toBuffer());
+    const text = "बारिश की पहली बूँद";
+    const d = (x: TestCreator) => ({ db: db(x), service: admin, creatorId: x.creatorId, derive });
+
+    // Only the owner; only images; never empty words.
+    await expect(saveTextOverlay(d(pia), gen.view.id, asset.id, { bytes: composed, text })).rejects.toThrow(/isn't available/);
+    await expect(saveTextOverlay(d(owner), gen.view.id, asset.id, { bytes: new TextEncoder().encode("<svg onload=alert(1)>"), text })).rejects.toThrow(/can't|isn't an image/i);
+    await expect(saveTextOverlay(d(owner), gen.view.id, asset.id, { bytes: composed, text: "  " })).rejects.toThrow(/Add some words/);
+
+    const { materialId } = await saveTextOverlay(d(owner), gen.view.id, asset.id, { bytes: composed, text, useInCreation: true });
+    const m = expectOk(await db(owner).from("creative_materials").select("title, type, source_type, storage_object_id, provenance_records(origin, details)").eq("id", materialId).single());
+    expect(m).toMatchObject({ type: "image", source_type: "generated", title: `Slide 2 · ${text}` });
+    const prov = (m as unknown as { provenance_records: { origin: string; details: Record<string, unknown> } }).provenance_records;
+    expect(prov.origin).toBe("derived");
+    expect(prov.details).toMatchObject({ derivation: "text_overlay", generationId: gen.view.id, assetId: asset.id, overlayText: text, sourceArtifactId: piece });
+    const obj = expectOk(await admin.from("storage_objects").select("mime_type, creator_id").eq("id", (m as { storage_object_id: string }).storage_object_id).single());
+    expect(obj).toEqual({ mime_type: "image/webp", creator_id: owner.creatorId });
+    const edges = expectOk(await db(owner).from("lineage_edges").select("source_type, source_id, target_type, target_id, relationship").or(`target_id.eq.${materialId},source_id.eq.${materialId}`));
+    expect(edges).toEqual(
+      expect.arrayContaining([
+        { source_type: "artifact", source_id: piece, target_type: "material", target_id: materialId, relationship: "derived_from" },
+        { source_type: "material", source_id: materialId, target_type: "artifact", target_id: piece, relationship: "references" },
+      ]),
+    );
     expect(expectOk(await db(out).from("creative_materials").select("id").eq("id", materialId))).toEqual([]);
   });
 });

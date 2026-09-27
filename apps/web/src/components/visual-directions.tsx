@@ -1,8 +1,9 @@
 "use client";
 import { Button, cn } from "@wonder/ui";
-import { Check, ImageOff, RefreshCw } from "lucide-react";
+import { Check, ImageOff, RefreshCw, Type } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { SlideTextDialog } from "./slide-text-dialog";
 
 type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null };
 type Generation = { id: string; status: "queued" | "processing" | "complete" | "partial" | "failed" | "cancelled"; requestedCount: number; aspectRatio: string; assets: Asset[] };
@@ -13,7 +14,23 @@ type Reply = { state: "generation" | "none" | "unavailable" | "no_context"; gene
  * 3–5 concepts. It shows what's already stored for this context at once; it generates only when the creator asks; it
  * says plainly when image generation isn't connected. Small skeletons while creating, a short crossfade when ready.
  */
-export function VisualDirections({ creationId, materialIds, purpose = "explore", title = "Visual directions", className }: { creationId?: string; materialIds?: string[]; purpose?: "explore" | "carousel" | "transform-preview"; title?: string; className?: string }) {
+export function VisualDirections({
+  creationId,
+  materialIds,
+  purpose = "explore",
+  title = "Visual directions",
+  className,
+  slideTexts,
+}: {
+  creationId?: string;
+  materialIds?: string[];
+  purpose?: "explore" | "carousel" | "transform-preview";
+  title?: string;
+  className?: string;
+  /** A Carousel's words per slide, in order: the text editor starts each image with its slide's line. */
+  slideTexts?: string[];
+}) {
+  const [textAt, setTextAt] = useState<number | null>(null);
   const [reply, setReply] = useState<Reply | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -179,6 +196,9 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
             if (!chosen) return <p className="text-xs text-ink-subtle">Tap a direction to choose it.</p>;
             return (
               <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setTextAt(gen!.assets.indexOf(chosen))} className={purpose === "carousel" ? "order-first" : "order-last"}>
+                  <Type className="size-4" aria-hidden /> Add text
+                </Button>
                 {chosen.savedMaterialId ? (
                   <p role="status" className="text-sm text-ink-muted">
                     {savedTo === "creation" ? "Added to this Creation's references. " : "Saved to your Materials. "}
@@ -200,6 +220,18 @@ export function VisualDirections({ creationId, materialIds, purpose = "explore",
               </div>
             );
           })()}
+          {textAt !== null ? (
+            <SlideTextDialog
+              key={`${gen!.id}-${textAt}`}
+              open
+              onOpenChange={(o) => !o && setTextAt(null)}
+              generationId={gen!.id}
+              assets={gen!.assets}
+              startAt={textAt}
+              creationId={creationId}
+              prefill={(a) => (purpose === "carousel" ? (slideTexts?.[a.sequence] ?? "") : "")}
+            />
+          ) : null}
           {gen!.status === "partial" ? (
             <p className="text-xs text-ink-subtle">
               {gen!.assets.length} of {gen!.requestedCount} ready.

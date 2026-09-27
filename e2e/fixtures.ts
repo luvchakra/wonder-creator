@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -352,4 +352,42 @@ export async function expireCrewInvite(crewId: string, creatorId: string): Promi
     body: JSON.stringify({ expires_at: new Date(Date.now() - 60_000).toISOString() }),
   });
   if (!res.ok) throw new Error(`expireCrewInvite failed: ${res.status} ${await res.text()}`);
+}
+
+/**
+ * Test-only: stored slide visuals for a Creation, as the image pipeline would leave them (e2e has no image model).
+ * Returns the generation id; the images are small real PNGs in the creator's storage.
+ */
+export async function seedSlideVisuals(userId: string, artifactId: string, count = 3, size = 64): Promise<string> {
+  const h = { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json", prefer: "return=representation" };
+  const rest = async <T>(table: string, body: unknown, query = ""): Promise<T> => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, { method: body === undefined ? "GET" : "POST", headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
+    if (!res.ok) throw new Error(`seedSlideVisuals ${table}: ${res.status} ${await res.text()}`);
+    return (await res.json()) as T;
+  };
+  const [creator] = await rest<Array<{ id: string }>>("creators", undefined, `?user_id=eq.${userId}&select=id`);
+  const creatorId = creator!.id;
+  const [gen] = await rest<Array<{ id: string }>>("image_generations", {
+    creator_id: creatorId,
+    artifact_id: artifactId,
+    purpose: "carousel",
+    aspect_ratio: "4:5",
+    quality_intent: "preview",
+    context_hash: createHash("sha256").update(uid()).digest("hex"),
+    provider: "test",
+    model: "test",
+    prompt_version: "test",
+    routing_version: "test",
+    status: "complete",
+    requested_count: count,
+  });
+  for (let i = 0; i < count; i++) {
+    const path = `${creatorId}/generated/${gen!.id}/${i}-master.png`;
+    const bytes = pngBytes(size);
+    const up = await fetch(`${SUPABASE_URL}/storage/v1/object/creator-media/${path}`, { method: "POST", headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "image/png" }, body: new Blob([new Uint8Array(bytes)]) });
+    if (!up.ok) throw new Error(`seedSlideVisuals upload: ${up.status} ${await up.text()}`);
+    const [obj] = await rest<Array<{ id: string }>>("storage_objects", { creator_id: creatorId, bucket: "creator-media", path, mime_type: "image/png", size_bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), original_filename: `${i}.png`, security_status: "clean" });
+    await rest("image_generation_assets", { generation_id: gen!.id, creator_id: creatorId, storage_object_id: obj!.id, sequence: i, direction_label: ["Quiet", "Bold", "Warm", "Night"][i % 4], width: size, height: size });
+  }
+  return gen!.id;
 }
