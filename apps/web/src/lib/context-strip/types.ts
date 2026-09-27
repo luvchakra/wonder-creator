@@ -13,6 +13,8 @@ export const PRIORITY = {
   live: 4,
   pending: 5,
   save: 6,
+  /** The AI-phrased creative context line (ai-context-line.md P6): below every operational state, above lifecycle. */
+  semantic: 6.5,
   lifecycle: 7,
   presence: 8,
   metadata: 9,

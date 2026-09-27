@@ -37,4 +37,17 @@ test.describe("navbar Context Strip", () => {
     await expect(page.getByRole("heading", { name: "Nothing waiting" })).toBeVisible();
     await expect(strip).toHaveCount(0);
   });
+
+  test("the AI context line never guesses: without a live model it stays quiet, and it only takes known pages", async ({ page }) => {
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Quiet ${uid()}` } })).json()).artifact as { id: string };
+    const ok = await page.request.get(`/api/v1/context-line?page=creation&id=${art.id}`);
+    expect(ok.status()).toBe(200);
+    expect(await ok.json()).toEqual({ text: null });
+    expect((await page.request.get("/api/v1/context-line?page=settings")).status()).toBe(422);
+    expect((await page.request.get("/api/v1/context-line?page=creation&id=not-an-id")).status()).toBe(422);
+    // The deterministic line is still there.
+    await page.goto(`/artifacts/${art.id}`);
+    await expect(page.getByRole("banner").getByRole("status")).toHaveAttribute("aria-label", /^v1 · Draft/);
+  });
 });
+
