@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
-import { Brain, FolderKanban, LogOut, MessageCircle, Search, Send, Settings, UserRound } from "lucide-react";
+import { Brain, FolderKanban, LogOut, MessageCircle, NotebookPen, Search, Send, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -60,6 +60,9 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/messages")}>
                   <MessageCircle className="size-4" aria-hidden /> Messages
+                </MenuItem>
+                <MenuItem onSelect={() => router.push("/scrapbook")}>
+                  <NotebookPen className="size-4" aria-hidden /> Scrapbook
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/memory")}>
                   <Brain className="size-4" aria-hidden /> Creative Memory

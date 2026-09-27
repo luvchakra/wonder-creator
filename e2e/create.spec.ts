@@ -4,9 +4,13 @@ test.describe("creating with CreatorBrain", () => {
   test.beforeEach(({ creator }) => void creator);
 
   test("universal composer on Home: text + attachment lands in CreatorTalk with a draft", async ({ page }) => {
+    // meTalk is a transient sheet from the Palette, not a chat screen.
     await page.goto("/");
-    const composer = page.getByLabel("What are you thinking about?");
-    await expect(page.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /meTalk/ }).click();
+    const sheet = page.getByRole("dialog", { name: "meTalk" });
+    const composer = sheet.getByLabel("What are you thinking about?");
+    await expect(sheet.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
     await composer.fill("Write a poem about the lighthouse at dawn.");
 
     const file = `lighthouse-${uid()}`;
@@ -39,9 +43,7 @@ test.describe("creating with CreatorBrain", () => {
 
   test("Creative Discovery: directions → Create this direction", async ({ page }) => {
     await saveNote(page, `Monsoon on the terrace ${uid()}\nMother's radio, the smell of wet earth.`);
-    await page.goto("/");
-    await page.getByRole("link", { name: "Surprise me" }).click();
-    await expect(page).toHaveURL(/\/create\/discover$/);
+    await page.goto("/create/discover");
     await expect(page.getByRole("heading", { name: "Here are some directions you can explore" })).toBeVisible();
     const choose = page.getByRole("region", { name: "Choose material" });
     await expect(choose.getByRole("heading", { name: "Your material (1 selected)" })).toBeVisible();

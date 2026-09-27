@@ -32,7 +32,7 @@ test.describe("mobile layout @mobile", () => {
     const material = `/space/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
 
     const screens: Array<[string, (p: Page) => Promise<void>]> = [
-      ["/", (p) => expect(p.getByLabel("What are you thinking about?")).toBeVisible()],
+      ["/", (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible()],
       ["/create", (p) => expect(p.getByRole("region", { name: "CreatorTalk" })).toBeVisible()],
       ["/space", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
       ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
@@ -92,7 +92,7 @@ test.describe("mobile layout @mobile", () => {
 
     const crew = `/crews/${((await (await page.request.post(`/api/v1${project}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
     const routes: Array<[string, (p: Page) => Promise<unknown>]> = [
-      ["/", (p) => expect(p.getByLabel("What are you thinking about?")).toBeVisible()],
+      ["/", (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible()],
       [`/create?c=${conversation}`, (p) => expect(p.getByRole("region", { name: "CreatorTalk" })).toBeVisible()],
       [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
       ["/space?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],

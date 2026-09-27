@@ -9,9 +9,10 @@ test.describe("Projects", () => {
     const note = `Monsoon on the balcony ${uid()}`;
     const noteId = await saveNote(page, note);
 
-    // From Home to an empty project list, then a new project.
+    // From the account menu to an empty project list, then a new project.
     await page.goto("/");
-    await page.getByRole("link", { name: "Start a project" }).click();
+    await page.getByRole("button", { name: "Your account" }).click();
+    await page.getByRole("menuitem", { name: "Projects" }).click();
     await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByRole("heading", { name: "No projects yet" })).toBeVisible();
     await page.getByRole("button", { name: "New project" }).first().click();
