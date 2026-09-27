@@ -2,10 +2,11 @@ import { signedUrlsFor } from "@wonder/creator-library";
 import { actionsFor, artifactType } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { findingsOf, providerReadiness } from "@wonder/creator-brain";
+import { PaletteActions } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { Studio } from "./studio";
 
-export const metadata = { title: "Studio" };
+export const metadata = { title: "Creative Studio" };
 
 export default async function StudioPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ action?: string }> }) {
   const { id } = await params;
@@ -22,29 +23,51 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
     db.from("ai_proposals").select("id, payload, created_at").eq("status", "pending").eq("action", "apply_revision").order("created_at", { ascending: false }).limit(10),
   ]);
   const matIds = (edges ?? []).map((e) => e.source_id);
-  const { data: mats } = matIds.length ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", matIds) : { data: [] };
-  const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id));
+  const { data: mats } = matIds.length
+    ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", matIds)
+    : { data: [] };
+  const urls = await signedUrlsFor(
+    db,
+    (mats ?? []).map((m) => m.storage_object_id),
+  );
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
   const def = artifactType(a.artifact_type);
+  const base = `/artifacts/${id}`;
   return (
-    <Studio
-      artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status }}
-      version={version ? { id: version.id, number: version.version_number, content: version.content } : null}
-      actions={actionsFor(a.artifact_type)}
-      initialAction={action ?? null}
-      materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? urls[m.storage_object_id] ?? null : null }))}
-      quality={quality ? { reportId: quality.id, versionId: quality.version_id, checks: quality.checks as never, findings: findingsOf(quality) } : null}
-      pendingProposal={
-        proposal
-          ? {
-              id: proposal.id,
-              preview: String((proposal.payload as { content?: string }).content ?? ""),
-              baseVersionId: String((proposal.payload as { baseVersionId?: string }).baseVersionId ?? ""),
-              quality: (proposal.payload as { quality?: { reportId: string; keys: string[]; titles: string[] } }).quality,
-            }
-          : null
-      }
-      offline={!providerReadiness().live}
-    />
+    <>
+      {/* The Creation Palette during active work (UI redesign §7.3). */}
+      <PaletteActions
+        title="This Creation"
+        actions={[
+          { key: "refine", label: "Refine", hint: "CreativeMind suggestions", href: `${base}/studio#creativemind`, icon: "spark" },
+          { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/derivatives`, icon: "pen" },
+          { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
+          { key: "references", label: "References", href: `${base}/context?tab=references` },
+          { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
+          { key: "versions", label: "Versions", href: `${base}?tab=versions` },
+          { key: "share", label: "Share", href: `${base}/share` },
+          { key: "publish", label: "Publish", href: `${base}/publish` },
+        ]}
+      />
+      <Studio
+        artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status }}
+        version={version ? { id: version.id, number: version.version_number, content: version.content } : null}
+        actions={actionsFor(a.artifact_type)}
+        initialAction={action ?? null}
+        materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null }))}
+        quality={quality ? { reportId: quality.id, versionId: quality.version_id, checks: quality.checks as never, findings: findingsOf(quality) } : null}
+        pendingProposal={
+          proposal
+            ? {
+                id: proposal.id,
+                preview: String((proposal.payload as { content?: string }).content ?? ""),
+                baseVersionId: String((proposal.payload as { baseVersionId?: string }).baseVersionId ?? ""),
+                quality: (proposal.payload as { quality?: { reportId: string; keys: string[]; titles: string[] } }).quality,
+              }
+            : null
+        }
+        offline={!providerReadiness().live}
+      />
+    </>
   );
 }

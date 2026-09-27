@@ -15,8 +15,8 @@ test.describe("Studio, versions and lineage", () => {
     const before = await page.getByLabel("Poem text").inputValue();
     expect(before.length).toBeGreaterThan(0);
 
-    await page.getByRole("complementary", { name: "CreatorBrain" }).getByRole("button", { name: /Improve this/ }).click();
-    await expect(page.getByText("CreatorBrain suggested a revision. Your current version stays in history either way.")).toBeVisible({ timeout: 45_000 });
+    await page.getByRole("region", { name: "Refine with CreativeMind" }).getByRole("button", { name: /Improve this/ }).click();
+    await expect(page.getByText("CreativeMind suggested a revision. Your current version stays in history either way.")).toBeVisible({ timeout: 45_000 });
     // The proposal shows what would be added.
     await expect(page.getByRole("region", { name: "Editor" }).getByText("(Revised offline: improve.)")).toBeVisible();
     await page.getByRole("button", { name: "Keep revision" }).click();
@@ -31,7 +31,7 @@ test.describe("Studio, versions and lineage", () => {
     const history = page.getByRole("list", { name: "Version history" });
     await expect(history.getByRole("listitem")).toHaveCount(2);
     await expect(history.getByRole("listitem").first()).toContainText("Current");
-    await expect(history.getByRole("listitem").first()).toContainText("CreatorBrain");
+    await expect(history.getByRole("listitem").first()).toContainText("CreativeMind");
   });
 
   test("a discarded proposal changes nothing", async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe("Studio, versions and lineage", () => {
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText(/Poem · v2 · saved/)).toBeVisible();
 
-    await page.getByRole("link", { name: "Back to artifact" }).click();
+    await page.getByRole("link", { name: "Back to Creation" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Harbour Psalm" })).toBeVisible();
     await expect(page.getByRole("article")).toContainText(added);
     await page.getByRole("tab", { name: "Versions (2)" }).click();
