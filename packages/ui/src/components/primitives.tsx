@@ -97,8 +97,8 @@ export function ErrorState({ title = "Something didn't load", body, onRetry, cla
 
 export function SectionHeader({ title, action, className, as: As = "h2" }: { title: string; action?: React.ReactNode; className?: string; as?: "h2" | "h3" }) {
   return (
-    <div className={cn("mb-3 flex items-center justify-between gap-3", className)}>
-      <As className="text-lg font-semibold text-ink sm:text-xl">{title}</As>
+    <div className={cn("mb-2 flex items-center justify-between gap-3", className)}>
+      <As className="text-base font-semibold text-ink sm:text-lg">{title}</As>
       {action}
     </div>
   );

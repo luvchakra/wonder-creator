@@ -19,6 +19,10 @@ const SECTIONS = [
   { key: "privacy", label: "Privacy & Security", icon: Shield },
 ];
 
+// Compact section chips: a 32px pill inside a 44px hit target; full-width rows on desktop.
+const NAV_ITEM = "flex min-h-11 shrink-0 items-center text-left text-sm lg:w-full";
+const NAV_PILL = "flex h-8 items-center gap-2 rounded-full px-3 lg:h-9 lg:w-full lg:rounded-xl";
+
 const toggle = (list: string[], v: string, max = 12) => (list.includes(v) ? list.filter((x) => x !== v) : list.length >= max ? list : [...list, v]);
 
 type Props = {
@@ -64,30 +68,39 @@ type Props = {
 export function SettingsView(props: Props) {
   const [section, setSection] = useState(SECTIONS.some((s) => s.key === props.section) ? props.section : "profile");
   return (
-    <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[240px_1fr]">
-      <nav aria-label="Settings sections" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:block lg:space-y-1 lg:px-0">
+    <div className="grid gap-3 [&>*]:min-w-0 lg:grid-cols-[220px_1fr] lg:gap-6">
+      <nav aria-label="Settings sections" className="-mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:block lg:space-y-0.5 lg:px-0">
         {SECTIONS.map((s) => (
           <button
             key={s.key}
             type="button"
             onClick={() => setSection(s.key)}
             aria-current={section === s.key ? "page" : undefined}
-            className={cn("flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-left text-[15px] lg:w-full", section === s.key ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}
+            ref={section === s.key ? (el) => el?.scrollIntoView({ block: "nearest", inline: "nearest" }) : undefined}
+            className={cn(NAV_ITEM, section === s.key ? "font-medium text-accent-ink [&>span]:bg-accent-soft" : "text-ink-muted [&>span]:hover:bg-black/[0.04]")}
           >
-            <s.icon className="size-4" aria-hidden /> {s.label}
+            <span className={NAV_PILL}>
+              <s.icon className="size-4" aria-hidden /> {s.label}
+            </span>
           </button>
         ))}
-        <Link href="/memory" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
-          <Brain className="size-4" aria-hidden /> Creative Memory
+        <Link href="/memory" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>
+          <span className={NAV_PILL}>
+            <Brain className="size-4" aria-hidden /> Creative Memory
+          </span>
         </Link>
-        <Link href="/settings/ai" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
-          <KeyRound className="size-4" aria-hidden /> AI Providers
+        <Link href="/settings/ai" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>
+          <span className={NAV_PILL}>
+            <KeyRound className="size-4" aria-hidden /> AI Providers
+          </span>
         </Link>
-        <Link href="/publishing" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[15px] text-ink-muted hover:bg-black/[0.04]">
-          <Plug className="size-4" aria-hidden /> Connected apps
+        <Link href="/publishing" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>
+          <span className={NAV_PILL}>
+            <Plug className="size-4" aria-hidden /> Connected apps
+          </span>
         </Link>
       </nav>
-      <div className="min-w-0 rounded-2xl border border-border-soft bg-surface p-4 sm:p-6">
+      <div className="min-w-0 rounded-2xl border border-border-soft bg-surface p-3.5 sm:p-5">
         {section === "profile" ? <ProfileSection {...props} /> : null}
         {section === "identity" ? <IdentitySection {...props} /> : null}
         {section === "preferences" ? <PreferencesSection {...props} /> : null}
@@ -247,7 +260,7 @@ function PreferencesSection({ voice, boundaries }: Props) {
   const [b, setB] = useState(boundaries);
   const { busy, save, status } = useSaver();
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <h2 className="text-base font-semibold text-ink">Creative Preferences</h2>
       <div>
         <p className="mb-2 text-sm font-medium text-ink">Tone</p>
@@ -259,7 +272,7 @@ function PreferencesSection({ voice, boundaries }: Props) {
           ))}
         </div>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <p className="mb-2 text-sm font-medium text-ink">Writing style</p>
           <div className="flex flex-wrap gap-2">
@@ -433,95 +446,90 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
   const { busy, save, status } = useSaver();
   const [deleteOpen, setDeleteOpen] = useState(false);
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h2 className="text-base font-semibold text-ink">Privacy & Security</h2>
-      <Link href="/settings/audit" className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border-soft px-4 py-3 hover:bg-black/[0.02]">
-        <span>
-          <span className="block font-medium text-ink">Security & activity</span>
-          <span className="text-sm text-ink-muted">Sign-ins, sharing, publishing, approvals and other changes to your account.</span>
-        </span>
-        <span aria-hidden className="text-ink-muted">›</span>
-      </Link>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Your content", "You own your materials and Creations."],
-          ["Private by default", "Only you can see your content unless you share it."],
-          ["No hidden AI", "CreativeMind works only on what you choose, within your autonomy settings."],
-        ].map(([t, b]) => (
-          <div key={t} className="rounded-2xl bg-surface-muted p-4">
-            <p className="font-medium text-ink">{t}</p>
-            <p className="mt-1 text-sm text-ink-muted">{b}</p>
-          </div>
-        ))}
-      </div>
+      <p className="text-[13px] text-ink-muted">You own your materials and Creations. They&apos;re private unless you share them, and CreativeMind works only on what you choose.</p>
       <fieldset>
-        <legend className="font-medium text-ink">Profile visibility</legend>
-        <div className="mt-2 space-y-2">
+        <legend className="text-sm font-medium text-ink">Profile visibility</legend>
+        <div className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft">
           {[
             ["public", "Public", "Anyone can see your profile and public work."],
             ["creators_only", "Creators only", "Signed-in creators can see your profile."],
             ["private", "Private (only me)", "Your profile is hidden; your Huddle presence shows no name."],
           ].map(([v, label, hint]) => (
-            <label key={v} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-soft p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-softer">
-              <input type="radio" name="visibility" value={v} checked={visibility === v} onChange={() => setVisibility(v)} className="mt-1 size-4 accent-[var(--color-accent)]" />
-              <span>
-                <span className="block text-[15px] text-ink">{label}</span>
-                <span className="text-sm text-ink-muted">{hint}</span>
+            <label key={v} className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2 first:rounded-t-xl last:rounded-b-xl has-[:checked]:bg-accent-softer">
+              <input type="radio" name="visibility" value={v} checked={visibility === v} onChange={() => setVisibility(v)} className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]" />
+              <span className="min-w-0">
+                <span className="block text-sm text-ink">{label}</span>
+                <span className="text-[13px] text-ink-muted">{hint}</span>
               </span>
             </label>
           ))}
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <Button loading={busy} onClick={() => save(() => api("/api/v1/creators/me", { method: "PATCH", json: { displayName: profile.displayName, handle: profile.handle, bio: profile.bio, location: profile.location, showLocation: profile.showLocation, collaborationAvailability: profile.collaborationAvailability, visibility } }))}>
-            Save visibility
-          </Button>
-          {status}
-        </div>
+        {visibility !== profile.visibility || status ? (
+          <div className="mt-2 flex items-center gap-3">
+            <Button size="sm" loading={busy} onClick={() => save(() => api("/api/v1/creators/me", { method: "PATCH", json: { displayName: profile.displayName, handle: profile.handle, bio: profile.bio, location: profile.location, showLocation: profile.showLocation, collaborationAvailability: profile.collaborationAvailability, visibility } }))}>
+              Save visibility
+            </Button>
+            {status}
+          </div>
+        ) : null}
       </fieldset>
 
       <section>
-        <h3 className="font-medium text-ink">Connected services</h3>
-        <ul className="mt-2 space-y-2 text-sm">
-          <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-soft p-3">
-            <span>CreativeMind (AI)</span>
+        <h3 className="text-sm font-medium text-ink">Account</h3>
+        <ul className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft text-sm">
+          <li>
+            <Link href="/settings/audit" className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.02]">
+              <span className="min-w-0">
+                <span className="block text-ink">Security & activity</span>
+                <span className="text-[13px] text-ink-muted">Sign-ins, sharing, publishing, approvals and other changes.</span>
+              </span>
+              <span aria-hidden className="text-ink-muted">›</span>
+            </Link>
+          </li>
+          <li className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
+            <span className="text-ink">CreativeMind (AI)</span>
             <Badge tone={readiness.ai.live ? "success" : "warning"}>{readiness.ai.live ? "Connected" : readiness.ai.provider === "offline" ? "Offline development model" : "Not connected"}</Badge>
           </li>
-          <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-soft p-3">
-            <span>Huddle voice & video</span>
+          <li className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
+            <span className="text-ink">Huddle voice & video</span>
             <Badge tone={readiness.mediaConfigured ? "success" : "neutral"}>{readiness.mediaConfigured ? "Connected" : "Not connected (text chat only)"}</Badge>
           </li>
+          <li>
+            <a href="/api/v1/account/export" className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.02]">
+              <span className="min-w-0">
+                <span className="block text-ink">Export my data</span>
+                <span className="text-[13px] text-ink-muted">Materials, Creations, conversations and account data.</span>
+              </span>
+              <Download className="size-4 shrink-0 text-ink-muted" aria-hidden />
+            </a>
+          </li>
         </ul>
-        <p className="mt-2 text-xs text-ink-subtle">Your material is never used to train AI models. Imported content is treated as data and can never change your settings.</p>
+        <p className="mt-1.5 text-xs text-ink-subtle">Your material is never used to train AI models. Imported content is treated as data and can never change your settings.</p>
       </section>
 
       <section>
-        <h3 className="font-medium text-ink">Blocked creators</h3>
+        <h3 className="text-sm font-medium text-ink">Blocked creators</h3>
         {blocked.length ? (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft">
             {blocked.map((b) => (
               <BlockedRow key={b.id} b={b} />
             ))}
           </ul>
         ) : (
-          <p className="mt-1 text-sm text-ink-muted">You haven&apos;t blocked anyone.</p>
+          <p className="mt-1 text-[13px] text-ink-muted">You haven&apos;t blocked anyone.</p>
         )}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border-soft p-4">
-          <p className="font-medium text-ink">Data export</p>
-          <p className="mt-1 text-sm text-ink-muted">Download your materials, Creations, conversations and account data.</p>
-          <a href="/api/v1/account/export" className={buttonClasses({ variant: "secondary", size: "sm", className: "mt-3" })}>
-            <Download className="size-4" aria-hidden /> Export my data
-          </a>
-        </div>
-        <div className="rounded-2xl border border-[#f5d0d0] bg-danger-soft/40 p-4">
-          <p className="font-medium text-ink">Delete account</p>
-          <p className="mt-1 text-sm text-ink-muted">Permanently delete your account and all your data.</p>
-          <Button variant="danger" size="sm" className="mt-3" onClick={() => setDeleteOpen(true)}>
-            Delete my account
-          </Button>
-        </div>
+      <section className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-[#f5d0d0] bg-danger-soft/40 px-3 py-2">
+        <span className="min-w-0 text-sm">
+          <span className="block font-medium text-ink">Delete account</span>
+          <span className="text-[13px] text-ink-muted">Permanently delete your account and all your data.</span>
+        </span>
+        <Button variant="danger" size="sm" onClick={() => setDeleteOpen(true)}>
+          Delete my account
+        </Button>
       </section>
       <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
     </div>
@@ -532,7 +540,7 @@ function BlockedRow({ b }: { b: { id: string; name: string; handle: string | nul
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
   return (
-    <li className="flex items-center justify-between gap-2 rounded-xl border border-border-soft p-3 text-sm">
+    <li className="flex min-h-11 items-center justify-between gap-2 px-3 py-1 text-sm">
       <span>
         {b.name} {b.handle ? <span className="text-ink-subtle">@{b.handle}</span> : null}
       </span>
@@ -607,7 +615,7 @@ function CollaborationSection({ collaboration, profile }: Props) {
   const availability = profile.collaborationAvailability === "open" ? "Open to collaborations" : profile.collaborationAvailability === "selective" ? "Selective" : "Not taking collaborations";
   return (
     <form
-      className="space-y-6"
+      className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
         void save(() => api("/api/v1/creators/collaboration", { method: "PUT", json: c }), "Collaboration profile saved.");
@@ -619,7 +627,7 @@ function CollaborationSection({ collaboration, profile }: Props) {
           How you like to work with others. Availability is <span className="font-medium text-ink">{availability}</span> — change it under Account &amp; Profile. Your disciplines and languages come from your profile too.
         </p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Project types you'd like" htmlFor="co-types" hint="e.g. short film, podcast, photo essay">
           <TagInput id="co-types" value={c.projectTypes} onChange={(v) => setC({ ...c, projectTypes: v })} max={12} />
         </Field>
@@ -667,7 +675,7 @@ function CollaborationSection({ collaboration, profile }: Props) {
       <Field label="Rights preferences (optional)" htmlFor="co-rights" hint="e.g. keeping authorship credit, how you like usage licensed">
         <Textarea id="co-rights" value={c.rightsPreferences ?? ""} maxLength={1000} onChange={(e) => setC({ ...c, rightsPreferences: e.target.value })} />
       </Field>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Rate guidance (optional)" htmlFor="co-rate" hint="A range or a starting point — never required">
           <Input id="co-rate" value={c.rateGuidance ?? ""} maxLength={300} onChange={(e) => setC({ ...c, rateGuidance: e.target.value })} />
         </Field>
@@ -702,7 +710,7 @@ function BrandSection({ brand }: Props) {
   );
   return (
     <form
-      className="space-y-6"
+      className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
         void save(() => api("/api/v1/creators/brand", { method: "PUT", json: b }), "Brand-work profile saved.");
@@ -715,7 +723,7 @@ function BrandSection({ brand }: Props) {
         </p>
       </div>
       <Switch id="br-open" checked={b.openToBrands} onCheckedChange={(v) => setB({ ...b, openToBrands: v })} label="Open to brand work" />
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {tags("niches", "Niches", "e.g. travel, food, slow living")}
         {tags("industries", "Industries", "e.g. hospitality, outdoor gear")}
         {tags("platforms", "Platforms", "Where you publish, e.g. YouTube, Instagram")}
@@ -724,7 +732,7 @@ function BrandSection({ brand }: Props) {
         {tags("regions", "Regions", "Where you can work")}
       </div>
       {tags("priorCollaborations", "Prior brand collaborations (private)", "Only you see these for now", 20)}
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Typical turnaround (optional)" htmlFor="br-turn">
           <Input id="br-turn" value={b.turnaround ?? ""} maxLength={120} onChange={(e) => setB({ ...b, turnaround: e.target.value })} />
         </Field>

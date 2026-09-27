@@ -1,6 +1,6 @@
 "use client";
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
-import { Avatar, AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn, chipBase } from "@wonder/ui";
+import { AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn, chipBase } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
@@ -173,8 +173,8 @@ export function ProjectView({
   }
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="space-y-5">
+      <div className="-mb-2">
         <Link href="/projects" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
         </Link>
@@ -182,12 +182,12 @@ export function ProjectView({
 
       <section aria-labelledby="project-title" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
         {showOverview ? (
-          <div className="relative h-32 sm:h-48">
+          <div className="relative h-24 sm:h-40">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={project.coverUrl ?? BACKGROUNDS.botanicalLeaves} alt="" className={cn("size-full object-cover", !project.coverUrl && "opacity-60")} />
           </div>
         ) : null}
-        <div className="space-y-4 p-5 sm:p-6">
+        <div className="space-y-3 p-4 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 id="project-title" className="break-words font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -371,16 +371,33 @@ export function ProjectView({
               ))}
             </ul>
           ) : (
-            <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+            <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-3.5 py-3 text-[13px] text-ink-muted">
               When someone in the crew shares their material or Creations, they appear here. You can open them, not change them.
             </p>
           )}
         </section>
       ) : null}
 
+      {showWork && canEdit && SECTIONS.some((s) => !items.some((i) => s.kind.includes(i.kind))) ? (
+        // Empty kinds are one compact row each, together on one surface, instead of a card per empty section.
+        <div className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
+          {SECTIONS.filter((s) => !items.some((i) => s.kind.includes(i.kind))).map((s) => (
+            <section key={s.title} aria-label={s.title} className="flex min-h-12 items-center gap-3 py-1 pl-3.5 pr-1">
+              <span className="min-w-0 flex-1">
+                <h2 className="text-[15px] font-medium text-ink">{s.title}</h2>
+                <p className="line-clamp-2 text-[13px] text-ink-muted">{s.empty}</p>
+              </span>
+              <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setAdding(s.add)}>
+                <Plus className="size-4" aria-hidden /> Add
+              </Button>
+            </section>
+          ))}
+        </div>
+      ) : null}
+
       {showWork && SECTIONS.map((s) => {
         const list = items.filter((i) => s.kind.includes(i.kind));
-        if (!canEdit && !list.length) return null;
+        if (!list.length) return null;
         return (
           <section key={s.title} aria-label={s.title}>
             <SectionHeader
@@ -393,10 +410,8 @@ export function ProjectView({
                 ) : undefined
               }
             />
-            {!list.length ? (
-              <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">{s.empty}</p>
-            ) : s.kind[0] === "artifact" || s.kind[0] === "material" ? (
-              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {s.kind[0] === "artifact" || s.kind[0] === "material" ? (
+              <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {list.map((i) => (
                   <li key={i.id} className="relative">
                     {i.artifact ? <ArtifactCard a={i.artifact} /> : i.material ? <MaterialCard m={i.material} href={i.href ?? undefined} /> : <Unavailable title={i.title} />}
@@ -460,7 +475,7 @@ export function ProjectView({
             ) : undefined
           }
         />
-        <p className="rounded-2xl border border-border-soft bg-surface px-5 py-4 text-[15px] leading-relaxed text-ink-muted">
+        <p className="rounded-2xl border border-border-soft bg-surface px-3.5 py-3 text-sm text-ink-muted">
           {project.rightsNote || "Each Creation keeps its own rights and licences. Note anything that applies to the whole Creative Room here — for example, who owns what, or what a collaborator agreed to."}
         </p>
       </section>
@@ -470,9 +485,9 @@ export function ProjectView({
       {showOverview && project.budget.enabled ? (
         <section aria-label="Budget">
           <SectionHeader title="Budget" />
-          <div className="rounded-2xl border border-border-soft bg-surface px-5 py-4 text-[15px] text-ink-muted">
+          <div className="rounded-2xl border border-border-soft bg-surface px-3.5 py-3 text-sm text-ink-muted">
             {project.budget.amount != null ? (
-              <p className="text-lg font-medium text-ink">{new Intl.NumberFormat(undefined, { style: "currency", currency: project.budget.currency || "USD" }).format(project.budget.amount)}</p>
+              <p className="text-base font-medium text-ink">{new Intl.NumberFormat(undefined, { style: "currency", currency: project.budget.currency || "USD" }).format(project.budget.amount)}</p>
             ) : (
               <p>No amount set.</p>
             )}
@@ -787,7 +802,7 @@ function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: stri
     <section aria-label="Crew">
       <SectionHeader title="Crew" action={crew ? <Link href={`/crews/${crew.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">Open crew</Link> : undefined} />
       {crew ? (
-        <Link href={`/crews/${crew.id}`} className="flex items-center gap-4 rounded-2xl border border-border-soft bg-surface px-4 py-3 hover:bg-black/[0.02]">
+        <Link href={`/crews/${crew.id}`} className="flex items-center gap-3 rounded-2xl border border-border-soft bg-surface px-3.5 py-2.5 hover:bg-black/[0.02]">
           <AvatarStack people={crew.members.map((m) => ({ name: m.name, src: m.avatarUrl }))} size={36} max={5} />
           <span className="min-w-0 flex-1">
             <span className="block font-medium text-ink">
@@ -800,10 +815,9 @@ function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: stri
           </span>
         </Link>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-4">
-          <Avatar name="+" size={36} />
-          <p className="min-w-0 flex-1 text-[15px] text-ink-muted">Bring people in: a crew is the team for this Creative Room, with whatever roles it needs.</p>
-          <Button variant="secondary" onClick={() => setOpen(true)}>
+        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/70 py-1.5 pl-3.5 pr-1.5">
+          <p className="min-w-0 flex-1 text-[13px] text-ink-muted">Bring people in: a crew is this room&rsquo;s team, with whatever roles it needs.</p>
+          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setOpen(true)}>
             <Users className="size-4" aria-hidden /> Start a crew
           </Button>
         </div>
@@ -868,47 +882,47 @@ function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 6);
   return (
-    <section aria-label="Now in this room" className="space-y-5">
+    <section aria-label="Now in this room" className="space-y-3">
       {current ? (
         <Link href={`/artifacts/${current.id}`} aria-label={`Continue ${current.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
           {current.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={current.coverUrl} alt="" className="aspect-[16/9] w-full object-cover sm:aspect-[21/9]" />
+            <img src={current.coverUrl} alt="" className="aspect-[2/1] w-full object-cover sm:aspect-[21/9]" />
           ) : (
-            <div aria-hidden className="relative aspect-[16/9] w-full overflow-hidden bg-[linear-gradient(135deg,#efe9ff_0%,#fdf2e6_100%)] sm:aspect-[21/9]">
+            <div aria-hidden className="relative aspect-[2/1] w-full overflow-hidden bg-[linear-gradient(135deg,#efe9ff_0%,#fdf2e6_100%)] sm:aspect-[21/9]">
               <KitArt art={KIT.painted.flowerBranch} sizes="18rem" className="absolute -bottom-6 -right-4 h-4/5 w-auto opacity-90" />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/70 via-[#1e1b4b]/10 to-transparent" aria-hidden />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-            <p className="text-sm text-white/85">Current Creation</p>
-            <p className="font-display text-2xl leading-tight sm:text-3xl">{current.title}</p>
+          <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+            <p className="text-[13px] text-white/85">Current Creation</p>
+            <p className="font-display text-xl leading-tight sm:text-2xl">{current.title}</p>
           </div>
         </Link>
       ) : canEdit ? (
-        <button type="button" onClick={onCreate} className="flex w-full items-center gap-4 rounded-3xl border border-dashed border-border bg-[image:var(--gradient-card)] p-5 text-left hover:border-accent">
-          <KitArt art={KIT.painted.blossomSprig} sizes="4rem" className="h-16 w-auto shrink-0" />
+        <button type="button" onClick={onCreate} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-[image:var(--gradient-card)] px-3.5 py-2.5 text-left hover:border-accent">
+          <KitArt art={KIT.painted.blossomSprig} sizes="2.5rem" className="h-10 w-auto shrink-0" />
           <span>
-            <span className="block font-display text-xl text-ink">Nothing in progress here yet</span>
-            <span className="block text-[15px] text-ink-muted">Start a Creation in this room — it keeps the brief and goals in mind.</span>
+            <span className="block text-[15px] font-medium text-ink">Nothing in progress here yet</span>
+            <span className="block text-[13px] text-ink-muted">Start a Creation in this room — it keeps the brief and goals in mind.</span>
           </span>
         </button>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-4 shadow-[var(--shadow-card)]">
+      <div className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface sm:grid sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+        <div className="px-3.5 pb-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-ink">Next steps</h2>
+            <h2 className="text-[15px] font-semibold text-ink">Next steps</h2>
             <Link href={`/projects/${projectId}?tab=tasks`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
               All tasks
             </Link>
           </div>
           {nextSteps.length ? (
-            <ul className="mt-1 space-y-2">
+            <ul className="space-y-1.5">
               {nextSteps.map((t) => (
-                <li key={t.id} className="flex items-start justify-between gap-3 text-[15px]">
+                <li key={t.id} className="flex items-start justify-between gap-3 text-sm">
                   <span className="min-w-0 text-ink">{t.title}</span>
-                  <span className="shrink-0 text-sm text-ink-subtle">
+                  <span className="shrink-0 text-[12.5px] text-ink-subtle">
                     {TASK_STATUS[t.status] ?? t.status}
                     {t.dueOn ? ` · ${new Date(`${t.dueOn}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}
                   </span>
@@ -916,12 +930,12 @@ function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-[15px] text-ink-muted">No open tasks. Add one when there&rsquo;s something to hand off or remember.</p>
+            <p className="text-[13px] text-ink-muted">No open tasks. Add one when there&rsquo;s something to hand off or remember.</p>
           )}
         </div>
-        <div className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-4 shadow-[var(--shadow-card)]">
-          <h2 className="font-semibold text-ink">Recent Materials</h2>
-          {materials.length ? (
+        {materials.length ? (
+        <div className="px-3.5 py-3">
+          <h2 className="text-[15px] font-semibold text-ink">Recent Materials</h2>
             <ul className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
               {materials.map((i) => (
                 <li key={i.id} className="w-24 shrink-0">
@@ -929,10 +943,8 @@ function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-1 text-[15px] text-ink-muted">Materials you add to this room show up here.</p>
-          )}
         </div>
+        ) : null}
       </div>
     </section>
   );
