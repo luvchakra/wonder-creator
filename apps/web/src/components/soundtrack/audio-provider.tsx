@@ -3,7 +3,8 @@ import { buildQueue, moreLikeThis, previousAction, type MoodFilter, type Track }
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * The Soundtrack engine (docs/ui-redesign/music-player.md §18–23). One <audio> element lives here, above every route, so
+ * The CreativeRadio engine (docs/ui-redesign/music-player.md §18–23; presentation name only — code, tables and APIs keep
+ * "soundtrack"). One <audio> element lives here, above every route, so
  * music keeps playing across navigation. Track, mood, queue, history, volume and position are saved locally and
  * restored after a reload (paused — browsers need a tap before sound).
  */

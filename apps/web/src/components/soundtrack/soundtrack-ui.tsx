@@ -81,7 +81,7 @@ function Progress({ s, className }: { s: Soundtrack; className?: string }) {
 const iconBtn = "inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40";
 
 /**
- * The persistent mini player (§2): shown once music has started, in the shell (not a page), clear of the Palette.
+ * The CreativeRadio mini player (§2): shown once music has started, in the shell (not a page), clear of the Palette.
  * On phones it keeps title, previous / play / next and the queue; the rest waits for wider screens.
  */
 export function MiniPlayer() {
@@ -92,11 +92,11 @@ export function MiniPlayer() {
   return (
     <div
       role="region"
-      aria-label="Soundtrack"
+      aria-label="CreativeRadio"
       className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-3 right-[calc(1rem+4.25rem)] z-30 rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)] backdrop-blur sm:left-auto sm:w-[30rem]"
     >
       <div className="flex h-14 items-center gap-1 pl-1.5 pr-1">
-        <button type="button" onClick={() => s.openPanel("songs")} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 text-left focus-visible:outline-2 focus-visible:outline-accent" aria-label={`Open Soundtrack — ${t.title}`}>
+        <button type="button" onClick={() => s.openPanel("songs")} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 text-left focus-visible:outline-2 focus-visible:outline-accent" aria-label={`Open CreativeRadio — ${t.title}`}>
           <Art t={t} size="size-9" />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-medium text-ink">{t.title}</span>
@@ -296,7 +296,7 @@ function Details({ s, id }: { s: Soundtrack; id: string }) {
   );
 }
 
-/** The Soundtrack panel (§3–17): mood chips, songs for the mood, now playing, details and the queue. */
+/** The CreativeRadio panel (music-player §3–17; "Soundtrack" in the spec): mood chips, songs for the mood, now playing, details and the queue. */
 export function SoundtrackPanel() {
   const s = useSoundtrack();
   if (!s) return null;
@@ -305,7 +305,7 @@ export function SoundtrackPanel() {
   const queue = s.state.queue.map((id) => s.byId(id)).filter((t): t is LibraryTrack => !!t);
   return (
     <Dialog open={s.panel.open} onOpenChange={(o) => (o ? s.openPanel(s.panel.view) : s.closePanel())}>
-      <DialogContent title="Soundtrack" description="Music for your creativity" wide>
+      <DialogContent title="CreativeRadio" description="Music for your creativity" wide>
         {s.error ? (
           <p role="alert" className="text-sm text-danger">
             {s.error}
@@ -346,7 +346,7 @@ export function SoundtrackPanel() {
               </p>
             ) : null}
 
-            <div role="tablist" aria-label="Soundtrack view" className="flex gap-1 border-b border-border-soft">
+            <div role="tablist" aria-label="CreativeRadio view" className="flex gap-1 border-b border-border-soft">
               {(["songs", "queue"] as const).map((v) => (
                 <button key={v} role="tab" type="button" aria-selected={s.panel.view === v} onClick={() => s.openPanel(v)} className={cn("-mb-px min-h-11 border-b-2 px-3 text-[13px] font-medium", s.panel.view === v ? "border-accent text-accent-ink" : "border-transparent text-ink-muted")}>
                   {v === "songs" ? `Songs for ${MOOD_LABEL[mood]}` : `Up next${queue.length ? ` · ${queue.length}` : ""}`}

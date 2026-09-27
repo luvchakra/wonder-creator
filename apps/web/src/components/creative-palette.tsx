@@ -219,7 +219,7 @@ function CreativePalette({ context, onMeTalk }: { context: PaletteContext | null
         {
           key: "music",
           label: sound.current ? `${MOOD_LABEL[sound.state.mood]} · ${sound.current.title}` : "Set the mood",
-          hint: sound.current ? "Change mood, pause or skip" : "Music for your creativity",
+          hint: sound.current ? "CreativeRadio · change mood, pause or skip" : "CreativeRadio · music for your creativity",
           quiet: true,
           icon: <Music2 className="size-5" />,
           onSelect: () => sound.openPanel("songs"),

@@ -11,7 +11,7 @@ export default async function StudioLayout({ children }: { children: React.React
   const avatars = await avatarUrls(s.db, [s.creator.id]);
   preloadPaletteButton();
   return (
-    // The Soundtrack lives above every route so music keeps playing while the creator moves around (music-player §18).
+    // CreativeRadio lives above every route so music keeps playing while the creator moves around (music-player §18).
     <AudioProvider>
       <PaletteProvider>
         <AppNav me={{ name: s.creator.display_name || "You", handle: s.creator.handle, avatarUrl: avatars[s.creator.id] ?? null }} />

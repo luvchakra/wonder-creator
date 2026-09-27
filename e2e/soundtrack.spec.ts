@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 
-test.describe("Soundtrack", () => {
+test.describe("CreativeRadio", () => {
   test.beforeEach(async ({ page, creator }) => {
     void creator;
     // No real audio in tests: play() resolves and nothing is fetched (the licensed files are exercised in the DB suite).
@@ -29,7 +29,7 @@ test.describe("Soundtrack", () => {
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
 
-    const panel = page.getByRole("dialog", { name: "Soundtrack" });
+    const panel = page.getByRole("dialog", { name: "CreativeRadio" });
     await expect(panel.getByRole("radiogroup", { name: "Mood" }).getByRole("radio", { name: /Calm/ })).toHaveAttribute("aria-checked", "true");
     const calm = panel.getByRole("list", { name: "Songs for Calm" });
     await expect(calm.getByRole("listitem").first()).toBeVisible();
@@ -46,7 +46,7 @@ test.describe("Soundtrack", () => {
     await expect(panel.getByRole("region", { name: "Song details" })).toContainText(/CC BY 4\.0|CC0/);
     await page.keyboard.press("Escape");
 
-    const mini = page.getByRole("region", { name: "Soundtrack" });
+    const mini = page.getByRole("region", { name: "CreativeRadio" });
     await expect(mini).toContainText(title);
     await expect(mini.getByRole("button", { name: `Pause ${title}` })).toBeVisible();
 
