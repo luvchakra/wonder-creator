@@ -1,7 +1,7 @@
 "use client";
 import type { ApprovalView } from "@wonder/creator-brain";
 import { ARTIFACT_TYPES } from "@wonder/creator-studio/types";
-import { Button, Dialog, DialogContent, Field, Select, Textarea } from "@wonder/ui";
+import { Button, Dialog, DialogContent, Field, Select, StickyActions, Textarea } from "@wonder/ui";
 import { Clock, Scale, ShieldCheck, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -142,7 +142,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
             Approving runs exactly what&apos;s shown, once. It doesn&apos;t change your autonomy settings. To change anything, edit it: that makes a new request.
           </p>
-          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <StickyActions className="mt-4 flex flex-wrap justify-end gap-2">
             <Button variant="ghost" onClick={() => setDeclineOpen(true)} disabled={!!busy}>
               Decline
             </Button>
@@ -154,7 +154,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
             <Button onClick={() => decide("approve")} loading={busy === "approve"} disabled={!!busy}>
               Approve once
             </Button>
-          </div>
+          </StickyActions>
         </>
       ) : null}
 

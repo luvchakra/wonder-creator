@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, Logo, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
-import { Brain, Home, LogOut, PenLine, Search, Settings, Sparkles, UserRound, Users } from "lucide-react";
+import { Brain, Home, LibraryBig, LogOut, PenLine, Search, Settings, Sparkles, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +14,9 @@ const NAV = [
   { href: "/huddles", label: "Huddles", icon: Users, match: (p: string) => p.startsWith("/huddles") },
   { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") || p.startsWith("/creators") || p.startsWith("/settings") || p.startsWith("/memory") || p.startsWith("/scrapbook") },
 ];
+
+/** Mobile bottom navigation: five human destinations (guidelines §3): Home · Create · Huddles · Library · Profile. */
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[3], { ...NAV[2], label: "Library", icon: LibraryBig }, NAV[4]];
 
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
   const pathname = usePathname();
@@ -91,7 +94,7 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
       {/* Mobile: a few human concepts, not a module list. */}
       <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         <ul className="mx-auto grid h-[var(--bottom-nav-height)] max-w-lg grid-cols-5">
-          {NAV.map((n) => {
+          {MOBILE_NAV.map((n) => {
             const active = n.match(pathname);
             return (
               <li key={n.href}>

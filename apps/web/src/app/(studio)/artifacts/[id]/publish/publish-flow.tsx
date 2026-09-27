@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, StickyActions, Textarea, cn } from "@wonder/ui";
 import { ArrowUpRight, Check, CircleAlert, Globe, Loader, Sparkles, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -282,7 +282,7 @@ export function PublishFlow(props: {
           ) : null}
 
           {step < 3 ? (
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <StickyActions className="mt-6 flex justify-between gap-2">
               <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
                 Back
               </Button>
@@ -295,7 +295,7 @@ export function PublishFlow(props: {
                   {when === "later" ? "Approve and schedule" : "Approve and publish"}
                 </Button>
               )}
-            </div>
+            </StickyActions>
           ) : !busy ? (
             <div className="mt-6 flex justify-end">
               <Button
