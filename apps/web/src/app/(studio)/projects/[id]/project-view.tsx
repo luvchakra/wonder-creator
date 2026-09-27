@@ -3,6 +3,7 @@ import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJ
 import { Avatar, AvatarStack, BACKGROUNDS, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
+import { ContributionsPanel } from "./contributions-panel";
 import { TasksPanel } from "./tasks-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -50,7 +51,7 @@ export interface SharedSummary {
   mine: boolean;
 }
 
-export type ProjectTab = "overview" | "work" | "tasks" | "chat";
+export type ProjectTab = "overview" | "work" | "tasks" | "chat" | "contributions";
 const SHAREABLE: ProjectItemKind[] = ["material", "reference", "artifact"];
 
 /** Sections in the order the work matters: what's being made, what it's made from, then how it's being made. */
@@ -82,6 +83,7 @@ export function ProjectView({
   shared,
   chat,
   tasks,
+  contributions,
 }: {
   project: Project;
   items: Item[];
@@ -96,6 +98,7 @@ export function ProjectView({
   shared: SharedSummary[];
   chat: { messages: ChatMessage[]; olderBefore: string | null } | null;
   tasks: Omit<React.ComponentProps<typeof TasksPanel>, "projectId" | "viewerId"> | null;
+  contributions: Omit<React.ComponentProps<typeof ContributionsPanel>, "projectId"> | null;
 }) {
   // Your own links here; work others shared with the crew is listed separately (and opened read-only).
   const items = allItems.filter((i) => i.linkedBy === viewerId && (canEdit || i.available));
@@ -263,6 +266,7 @@ export function ProjectView({
                 ...(crew ? ([["work", "Work", `/projects/${project.id}?tab=work`]] as const) : []),
                 ["tasks", "Tasks", `/projects/${project.id}?tab=tasks`],
                 ...(crew ? ([["chat", "Chat", `/projects/${project.id}?tab=chat`]] as const) : []),
+                ["contributions", "Contributions", `/projects/${project.id}?tab=contributions`],
               ] as const
             ).map(([key, label, href]) => (
               <li key={key}>
@@ -415,6 +419,7 @@ export function ProjectView({
         );
       })}
 
+      {tab === "contributions" && contributions ? <ContributionsPanel projectId={project.id} {...contributions} /> : null}
       {tab === "tasks" && tasks ? <TasksPanel projectId={project.id} viewerId={viewerId} {...tasks} /> : null}
 
       {crew && tab === "chat" && chat ? <CrewChat crewId={crew.id} projectId={project.id} viewerId={viewerId} canModerate={canEdit} initial={chat} shared={shared} /> : null}
