@@ -1908,6 +1908,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"market_listings": {
+                  Row: {
+                    "artifact_id": string,"attribution_required": boolean,"available_from": string | null,"available_until": string | null,"created_at": string,"creator_id": string,"currency": string | null,"derivatives_allowed": boolean,"duration_days": number | null,"edition_size": number | null,"editions_taken": number,"exclusive": boolean,"id": string,"license_type": string,"listed_at": string | null,"price_amount": number | null,"state": string,"summary": string | null,"territory": string,"title": string,"updated_at": string,"usage_channels": (string)[]
+                  }
+                  Insert: {
+                    "artifact_id": string,"attribution_required"?: boolean,"available_from"?: string | null,"available_until"?: string | null,"created_at"?: string,"creator_id": string,"currency"?: string | null,"derivatives_allowed"?: boolean,"duration_days"?: number | null,"edition_size"?: number | null,"editions_taken"?: number,"exclusive"?: boolean,"id"?: string,"license_type": string,"listed_at"?: string | null,"price_amount"?: number | null,"state"?: string,"summary"?: string | null,"territory"?: string,"title": string,"updated_at"?: string,"usage_channels"?: (string)[]
+                  }
+                  Update: {
+                    "artifact_id"?: string,"attribution_required"?: boolean,"available_from"?: string | null,"available_until"?: string | null,"created_at"?: string,"creator_id"?: string,"currency"?: string | null,"derivatives_allowed"?: boolean,"duration_days"?: number | null,"edition_size"?: number | null,"editions_taken"?: number,"exclusive"?: boolean,"id"?: string,"license_type"?: string,"listed_at"?: string | null,"price_amount"?: number | null,"state"?: string,"summary"?: string | null,"territory"?: string,"title"?: string,"updated_at"?: string,"usage_channels"?: (string)[]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "market_listings_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "market_listings_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"material_collection_items": {
                   Row: {
                     "added_at": string,"collection_id": string,"creator_id": string,"material_id": string,"position": number | null
@@ -3248,6 +3273,40 @@ isOneToOne: false
               "huddle_id": string,"participant_count": number,"participant_ids": (string)[],"participant_names": (string)[],"started_at": string,"topic": string,"viewer_state": string
             }[]
                            },
+"market_listing_readiness":
+{ Args: { "p_listing": string }; Returns: (string)[]
+                           },
+"market_set_listing_state":
+{ Args: { "p_listing": string,"p_state": string }; Returns: {
+              "artifact_id": string,
+"attribution_required": boolean,
+"available_from": string | null,
+"available_until": string | null,
+"created_at": string,
+"creator_id": string,
+"currency": string | null,
+"derivatives_allowed": boolean,
+"duration_days": number | null,
+"edition_size": number | null,
+"editions_taken": number,
+"exclusive": boolean,
+"id": string,
+"license_type": string,
+"listed_at": string | null,
+"price_amount": number | null,
+"state": string,
+"summary": string | null,
+"territory": string,
+"title": string,
+"updated_at": string,
+"usage_channels": (string)[]
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "market_listings"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "open_creator_share":
 { Args: { "p_share": string }; Returns: Json
                            },
