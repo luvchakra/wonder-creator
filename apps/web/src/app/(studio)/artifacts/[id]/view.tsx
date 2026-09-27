@@ -7,6 +7,7 @@ import {
   Avatar,
   Badge,
   Button,
+  CreativeMindInsight,
   ConfirmDialog,
   Dialog,
   DialogContent,
@@ -26,11 +27,12 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, Layers, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Users, Wand2 } from "lucide-react";
+import { Check, ChevronRight, CircleAlert, Compass, Download, GitBranch, History, Layers, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Users, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { MaterialVisual, type MaterialCardData } from "@/components/cards";
+import { type MaterialCardData } from "@/components/cards";
+import { MaterialGrid, type GraphNode } from "./context-parts";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
@@ -43,14 +45,6 @@ interface Version {
   change_summary: string | null;
   author_kind: string;
   created_at: string;
-}
-interface GraphNode {
-  key: string;
-  type: string;
-  id: string;
-  title: string;
-  subtitle: string;
-  depth: number;
 }
 interface Rights {
   id: string;
@@ -103,7 +97,7 @@ export function ArtifactView(props: {
   const { artifact: a, isOwner } = props;
   const router = useRouter();
   const current = props.versions.find((v) => v.id === a.current_version_id) ?? props.versions[0];
-  const [tab, setTab] = useState(["details", "material", "versions", "lineage", "references", "rights"].includes(props.initialTab ?? "") ? props.initialTab! : "details");
+  const [tab, setTab] = useState(["details", "material", "versions", "rights"].includes(props.initialTab ?? "") ? props.initialTab! : "details");
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [transformOpen, setTransformOpen] = useState(false);
@@ -125,167 +119,184 @@ export function ArtifactView(props: {
     }
   }
 
+  const statusLabel = a.status === "draft" ? "In Progress" : a.status === "in_review" ? "In Review" : a.status === "final" ? "Completed" : a.status === "published" ? "Published" : a.status === "archived" ? "Archived" : a.status;
+  const suggestion = props.quality?.suggestions.find((x) => x.title || x.detail);
+  const isScript = /Film|Script|Screenplay|Trailer|Dialogue/.test(props.typeLabel);
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.5fr_1fr]">
-        <section aria-label="Preview" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-          {props.coverUrl ? (
-            <div className="relative aspect-[16/8]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={props.coverUrl} alt="" className="size-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-navy/70 to-transparent" />
-              <h1 className="absolute bottom-5 left-6 right-6 font-display text-3xl italic text-white sm:text-4xl">{a.title}</h1>
-            </div>
-          ) : null}
-          <div className="p-5 sm:p-7">
-            {!props.coverUrl ? <h1 className="font-display text-3xl text-ink sm:text-4xl">{a.title}</h1> : null}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge>{props.typeLabel}</Badge>
-              <Badge tone={a.status === "final" || a.status === "published" ? "success" : "neutral"}>
-                {current ? `v${current.version_number} ` : ""}
-                {a.status === "draft" ? "Draft" : a.status === "in_review" ? "In review" : a.status === "final" ? "Final" : a.status}
-              </Badge>
-              <Badge tone={a.privacy === "public" ? "accent" : "neutral"}>{a.privacy === "public" ? "Public" : a.privacy === "shared" ? "Shared" : "Private"}</Badge>
-            </div>
-            <article className={cn("mt-5 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-5 leading-relaxed text-ink", props.typeLabel.match(/Film|Script|Screenplay|Trailer|Dialogue/) ? "font-mono text-[13.5px]" : "font-display text-[17px]")}>
-              {current?.content || "This piece is empty. Open the Studio to start writing."}
-            </article>
+    <div className="mx-auto max-w-3xl space-y-6">
+      {/* 1–2. Hero preview and title (UI redesign §14). */}
+      <section aria-label="Preview" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
+        {props.coverUrl ? (
+          <div className="relative aspect-[4/5] sm:aspect-[16/9]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={props.coverUrl} alt="" className="size-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-navy/75 via-navy/10 to-transparent" />
+            <h1 className="absolute bottom-5 left-5 right-5 break-words font-display text-3xl italic text-white sm:left-7 sm:text-4xl">{a.title}</h1>
           </div>
-        </section>
+        ) : (
+          <h1 className="break-words px-5 pt-6 font-display text-3xl text-ink sm:px-7 sm:text-4xl">{a.title}</h1>
+        )}
+        <article
+          aria-label="Current version"
+          className={cn("m-4 max-h-[26rem] overflow-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-5 leading-relaxed text-ink sm:m-6", isScript ? "font-mono text-[13.5px]" : "font-display text-[17px]")}
+        >
+          {current?.content || "This Creation is empty. Open the Creative Studio to begin."}
+        </article>
+      </section>
 
-        <aside className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {isOwner ? (
-              <>
-                <Link href={`/artifacts/${a.id}/studio`} className={buttonClasses({})}>
-                  <PenLine className="size-4" aria-hidden /> Edit
-                </Link>
-                <Button variant="secondary" onClick={() => setShareOpen(true)}>
-                  <Share2 className="size-4" aria-hidden /> Share
-                </Button>
-                <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary" })}>
-                  <Send className="size-4" aria-hidden /> Publish
-                </Link>
-                <Link href={`/artifacts/${a.id}/derivatives`} className={buttonClasses({ variant: "secondary" })}>
-                  <Layers className="size-4" aria-hidden /> Derivatives
-                </Link>
-              </>
-            ) : null}
-            <Menu>
-              <MenuTrigger className={buttonClasses({ variant: "secondary" })}>
-                <Download className="size-4" aria-hidden /> Download
-              </MenuTrigger>
-              <MenuContent align="start">
-                {exportFormatsFor(a.artifact_type).map((f) => (
-                  <MenuItem key={f} onSelect={() => downloadFile(`/api/v1/artifacts/${a.id}/export?format=${f}`)}>
-                    {EXPORT_FORMATS[f].label} (.{EXPORT_FORMATS[f].ext})
-                  </MenuItem>
-                ))}
-              </MenuContent>
-            </Menu>
-            {props.canCollaborate ? (
-              <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "secondary" })}>
-                <Users className="size-4" aria-hidden /> Collaborate
-              </Link>
-            ) : null}
-            {isOwner ? (
-              <Menu>
-                <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More actions">
-                  <MoreHorizontal className="size-5" aria-hidden />
-                </MenuTrigger>
-                <MenuContent>
-                  <MenuItem onSelect={() => setTransformOpen(true)}>
-                    <Wand2 className="size-4" aria-hidden /> Transform / create derivative
-                  </MenuItem>
-                  <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
-                    <Sparkles className="size-4" aria-hidden /> Talk about this piece
-                  </MenuItem>
-                  <MenuItem onSelect={() => router.push(`/huddles?artifact=${a.id}`)}>
-                    <Radio className="size-4" aria-hidden /> Start a Huddle about this
-                  </MenuItem>
-                  {a.status !== "archived" ? (
-                    <MenuItem onSelect={() => patch({ status: "archived" })}>
-                      <History className="size-4" aria-hidden /> Archive
-                    </MenuItem>
-                  ) : (
-                    <MenuItem onSelect={() => patch({ status: "draft" })}>
-                      <History className="size-4" aria-hidden /> Restore from archive
-                    </MenuItem>
-                  )}
-                  <MenuItem destructive onSelect={() => setDeleteOpen(true)}>
-                    <Trash2 className="size-4" aria-hidden /> Delete permanently
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
-            ) : null}
+      {/* 3–5. Type and status, a short description, key metadata. */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>{props.typeLabel}</Badge>
+          <Badge tone={a.status === "final" || a.status === "published" ? "success" : "neutral"}>
+            {current ? `v${current.version_number} ` : ""}
+            {statusLabel}
+          </Badge>
+          <Badge tone={a.privacy === "public" ? "accent" : "neutral"}>{a.privacy === "public" ? "Public" : a.privacy === "shared" ? "Shared" : "Private"}</Badge>
+        </div>
+        {a.description ? <p className="text-[15px] text-ink-muted">{a.description}</p> : null}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-ink-subtle">By</dt>
+            <dd className="flex items-center gap-1.5 text-ink">
+              <Avatar name={props.owner.name} src={props.owner.avatarUrl} size={20} />
+              <span className="truncate">{props.owner.name}</span>
+            </dd>
           </div>
+          <div>
+            <dt className="text-ink-subtle">Created from</dt>
+            <dd className="text-ink">
+              {derivedFrom.length ? (
+                <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
+                  “{derivedFrom[0].title}”
+                </Link>
+              ) : createdFrom.length ? (
+                `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}`
+              ) : (
+                "A blank page"
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">Version</dt>
+            <dd className="text-ink">
+              v{current?.version_number ?? 1} · {props.versions.length} total
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">Rights</dt>
+            <dd className="text-ink">{props.rights ? (props.rights.ownership_kind === "joint" ? "Joint ownership" : "All rights reserved") : "—"}</dd>
+          </div>
+        </dl>
+      </div>
 
-          <section className="rounded-2xl border border-border-soft bg-surface p-5">
-            <h2 className="font-semibold text-ink">About this artifact</h2>
-            <p className="mt-1.5 text-[15px] text-ink-muted">{a.description || "No description yet."}</p>
-            <h3 className="mt-4 text-sm font-medium text-ink-subtle">Created by</h3>
-            <div className="mt-1.5 flex items-center gap-2.5">
-              <Avatar name={props.owner.name} src={props.owner.avatarUrl} size={36} />
-              <div>
-                <p className="text-[15px] font-medium text-ink">{props.owner.name}</p>
-                <p className="text-xs text-ink-subtle">{new Date(a.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</p>
+      <div className="flex flex-wrap gap-2">
+        {isOwner ? (
+          <>
+            <Link href={`/artifacts/${a.id}/studio`} className={buttonClasses({})}>
+              <PenLine className="size-4" aria-hidden /> Creative Studio
+            </Link>
+            <Button variant="secondary" onClick={() => setShareOpen(true)}>
+              <Share2 className="size-4" aria-hidden /> Share
+            </Button>
+            <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary" })}>
+              <Send className="size-4" aria-hidden /> Publish
+            </Link>
+          </>
+        ) : null}
+        <Menu>
+          <MenuTrigger className={buttonClasses({ variant: "secondary" })}>
+            <Download className="size-4" aria-hidden /> Download
+          </MenuTrigger>
+          <MenuContent align="start">
+            {exportFormatsFor(a.artifact_type).map((f) => (
+              <MenuItem key={f} onSelect={() => downloadFile(`/api/v1/artifacts/${a.id}/export?format=${f}`)}>
+                {EXPORT_FORMATS[f].label} (.{EXPORT_FORMATS[f].ext})
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
+        {props.canCollaborate ? (
+          <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "secondary" })}>
+            <Users className="size-4" aria-hidden /> Collaborate
+          </Link>
+        ) : null}
+        <Link href={`/artifacts/${a.id}/context`} className={buttonClasses({ variant: "ghost" })}>
+          <Compass className="size-4" aria-hidden /> Context
+        </Link>
+        {isOwner ? (
+          <Menu>
+            <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More actions">
+              <MoreHorizontal className="size-5" aria-hidden />
+            </MenuTrigger>
+            <MenuContent>
+              <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/derivatives`)}>
+                <Layers className="size-4" aria-hidden /> Create from this
+              </MenuItem>
+              <MenuItem onSelect={() => setTransformOpen(true)}>
+                <Wand2 className="size-4" aria-hidden /> Transform / create derivative
+              </MenuItem>
+              <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
+                <Sparkles className="size-4" aria-hidden /> meTalk about this
+              </MenuItem>
+              <MenuItem onSelect={() => router.push(`/huddles?artifact=${a.id}`)}>
+                <Radio className="size-4" aria-hidden /> Start a Huddle about this
+              </MenuItem>
+              {a.status !== "archived" ? (
+                <MenuItem onSelect={() => patch({ status: "archived" })}>
+                  <History className="size-4" aria-hidden /> Archive
+                </MenuItem>
+              ) : (
+                <MenuItem onSelect={() => patch({ status: "draft" })}>
+                  <History className="size-4" aria-hidden /> Restore from archive
+                </MenuItem>
+              )}
+              <MenuItem destructive onSelect={() => setDeleteOpen(true)}>
+                <Trash2 className="size-4" aria-hidden /> Delete permanently
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+        ) : null}
+      </div>
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+
+      {/* 6. A few contextual sections — lineage and references live in the Context view. */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabList label="Creation sections">
+          <Tab value="details">About</Tab>
+          <Tab value="material">Materials ({createdFrom.length})</Tab>
+          <Tab value="versions">Versions ({props.versions.length})</Tab>
+          <Tab value="rights">Rights</Tab>
+        </TabList>
+
+        <TabPanel value="details">
+          <div className="space-y-4">
+            <section aria-labelledby="about-people" className="rounded-2xl border border-border-soft bg-surface p-5">
+              <h2 id="about-people" className="font-semibold text-ink">
+                People
+              </h2>
+              <div className="mt-2 flex items-center gap-2.5">
+                <Avatar name={props.owner.name} src={props.owner.avatarUrl} size={36} />
+                <div>
+                  <p className="text-[15px] font-medium text-ink">{props.owner.name}</p>
+                  <p className="text-xs text-ink-subtle">Started {new Date(a.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</p>
+                </div>
               </div>
-            </div>
-            {props.contributors.length ? (
-              <>
-                <h3 className="mt-4 text-sm font-medium text-ink-subtle">Collaborators</h3>
-                <ul className="mt-1 space-y-1 text-sm text-ink">
+              {props.contributors.length ? (
+                <ul className="mt-3 space-y-1 text-sm text-ink" aria-label="Collaborators">
                   {props.contributors.map((c) => (
                     <li key={`${c.name}${c.role}`}>
                       {c.name} <span className="text-ink-subtle">· {c.role}</span>
                     </li>
                   ))}
                 </ul>
-              </>
-            ) : null}
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-ink-subtle">Created from</dt>
-              <dd className="text-ink">
-                {derivedFrom.length ? (
-                  <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
-                    “{derivedFrom[0].title}”
-                  </Link>
-                ) : createdFrom.length ? (
-                  `${createdFrom.length} material${createdFrom.length === 1 ? "" : "s"}`
-                ) : (
-                  "A blank page"
-                )}
-              </dd>
-              <dt className="text-ink-subtle">Version</dt>
-              <dd className="text-ink">
-                v{current?.version_number ?? 1} · {props.versions.length} total
-              </dd>
-              <dt className="text-ink-subtle">Visibility</dt>
-              <dd className="text-ink">{a.privacy === "public" ? "Public" : "Private"}</dd>
-              <dt className="text-ink-subtle">Rights</dt>
-              <dd className="text-ink">{props.rights ? (props.rights.ownership_kind === "joint" ? "Joint ownership" : "All rights reserved") : "—"}</dd>
-            </dl>
-          </section>
-          {error ? (
-            <p role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          ) : null}
-        </aside>
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabList label="Artifact sections">
-          <Tab value="details">Details</Tab>
-          <Tab value="material">Material ({createdFrom.length})</Tab>
-          <Tab value="versions">Versions ({props.versions.length})</Tab>
-          <Tab value="lineage">Lineage</Tab>
-          <Tab value="references">References ({references.length})</Tab>
-          <Tab value="rights">Rights</Tab>
-        </TabList>
-
-        <TabPanel value="details">
-          <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
+              ) : null}
+            </section>
             <section className="rounded-2xl border border-border-soft bg-surface p-5">
               <h2 className="font-semibold text-ink">Quality</h2>
               {props.quality ? (
@@ -315,7 +326,7 @@ export function ArtifactView(props: {
                   <p className="mt-3 text-xs text-ink-subtle">Suggestions only — nothing was rewritten. Checked <RelativeTime iso={props.quality.createdAt} />.</p>
                 </>
               ) : (
-                <p className="mt-2 text-sm text-ink-muted">No quality review yet. Run one from the Studio.</p>
+                <p className="mt-2 text-sm text-ink-muted">No quality review yet. Run one from the Creative Studio.</p>
               )}
             </section>
             <section className="rounded-2xl border border-border-soft bg-surface p-5">
@@ -326,14 +337,14 @@ export function ArtifactView(props: {
                   .map((x) => (
                     <li key={x.key}>
                       <Link href={`/artifacts/${a.id}/studio?action=${x.key}`} className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-[15px] text-ink hover:bg-surface-muted">
-                        <Wand2 className="size-4 text-accent-ink" aria-hidden /> {x.label}
+                        <Wand2 className="size-4 shrink-0 text-accent-ink" aria-hidden /> {x.label}
                         <span className="text-sm text-ink-subtle">— {x.hint}</span>
                       </Link>
                     </li>
                   ))}
                 {derivatives.length ? (
                   <li className="pt-2 text-sm text-ink-muted">
-                    Derived pieces:{" "}
+                    Made from this:{" "}
                     {derivatives.map((d, i) => (
                       <span key={d.key}>
                         {i ? ", " : ""}
@@ -350,19 +361,18 @@ export function ArtifactView(props: {
         </TabPanel>
 
         <TabPanel value="material">
-          <MaterialGrid items={createdFrom} empty="This piece wasn't made from saved material." />
+          <MaterialGrid items={createdFrom} empty="This Creation wasn't made from saved Materials." />
+          <p className="mt-3 text-sm text-ink-muted">
+            References, people and related Creations are in the{" "}
+            <Link href={`/artifacts/${a.id}/context`} className="font-medium text-accent-ink hover:underline">
+              Context view
+            </Link>
+            .
+          </p>
         </TabPanel>
 
         <TabPanel value="versions">
           <Versions artifactId={a.id} versions={props.versions} currentId={a.current_version_id} isOwner={isOwner} />
-        </TabPanel>
-
-        <TabPanel value="lineage">
-          <Lineage nodes={props.graph.nodes} edges={props.graph.edges} />
-        </TabPanel>
-
-        <TabPanel value="references">
-          <MaterialGrid items={references} empty="No references were attached when this was created. Attach references from your Reference Shelf in CreatorTalk." />
         </TabPanel>
 
         <TabPanel value="rights">
@@ -378,6 +388,23 @@ export function ArtifactView(props: {
           />
         </TabPanel>
       </Tabs>
+
+      {/* 7. One CreativeMind insight, only when CreativeMind actually said something. */}
+      {suggestion ? (
+        <CreativeMindInsight
+          kind="insight"
+          action={
+            isOwner ? (
+              <Link href={`/artifacts/${a.id}/studio`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                Refine in the Creative Studio
+              </Link>
+            ) : undefined
+          }
+        >
+          {suggestion.title ? <span className="font-medium">{suggestion.title}. </span> : null}
+          {suggestion.detail}
+        </CreativeMindInsight>
+      ) : null}
 
       {isOwner ? (
         <>
@@ -419,24 +446,6 @@ export function ArtifactView(props: {
         </>
       ) : null}
     </div>
-  );
-}
-
-function MaterialGrid({ items, empty }: { items: MaterialCardData[]; empty: string }) {
-  if (!items.length) return <p className="rounded-2xl border border-dashed border-border bg-surface/60 px-5 py-6 text-center text-ink-muted">{empty}</p>;
-  return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-      {items.map((m) => (
-        <li key={m.id}>
-          <Link href={`/space/materials/${m.id}`} className="block">
-            <div className="aspect-square overflow-hidden rounded-xl border border-border-soft">
-              <MaterialVisual m={m} />
-            </div>
-            <p className="mt-1 line-clamp-2 text-sm text-ink">{m.title || "Untitled"}</p>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -531,74 +540,6 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
         </div>
       </section>
     </div>
-  );
-}
-
-const REL_LABEL: Record<string, string> = {
-  created_from: "created from",
-  derived_from: "derived from",
-  adapted_from: "adapted from",
-  references: "references",
-  contains_material: "contains",
-  inspired_by: "inspired by",
-  version_of: "version of",
-};
-
-function Lineage({ nodes, edges }: { nodes: GraphNode[]; edges: Array<{ from: string; to: string; relationship: string }> }) {
-  const byDepth = new Map<number, GraphNode[]>();
-  for (const n of nodes.filter((x) => x.type !== "artifact_version")) byDepth.set(n.depth, [...(byDepth.get(n.depth) ?? []), n]);
-  const depths = [...byDepth.keys()].sort((a, b) => a - b);
-  if (nodes.length <= 1) return <p className="rounded-2xl border border-dashed border-border bg-surface/60 px-5 py-6 text-center text-ink-muted">This piece started from a blank page. Anything derived from it will appear here.</p>;
-  return (
-    <ol className="mx-auto max-w-xl space-y-2" aria-label="Creative lineage, from sources to derivatives">
-      {depths.map((d, i) => (
-        <li key={d}>
-          {i > 0 ? (
-            <div className="flex justify-center py-1 text-ink-subtle" aria-hidden>
-              <ArrowDown className="size-5" />
-            </div>
-          ) : null}
-          <ul className="flex flex-wrap justify-center gap-2">
-            {byDepth.get(d)!.map((n) => {
-              const rel = edges.find((e) => e.from === n.key || e.to === n.key)?.relationship;
-              const inner = (
-                <>
-                  <p className="text-xs text-ink-subtle">
-                    {n.subtitle}
-                    {d !== 0 && rel ? ` · ${REL_LABEL[rel] ?? rel}` : ""}
-                  </p>
-                  <p className="font-medium text-ink">{n.title}</p>
-                </>
-              );
-              const cls = cn("block min-w-44 rounded-2xl border px-4 py-2.5 text-left", d === 0 ? "border-accent bg-accent-softer" : "border-border-soft bg-surface");
-              return (
-                <li key={n.key}>
-                  {n.type === "artifact" && d !== 0 ? (
-                    <Link href={`/artifacts/${n.id}`} className={cn(cls, "hover:border-accent")}>
-                      {inner}
-                    </Link>
-                  ) : n.type === "material" ? (
-                    <Link href={`/space/materials/${n.id}`} className={cn(cls, "hover:border-accent")}>
-                      {inner}
-                    </Link>
-                  ) : n.type === "conversation" ? (
-                    <Link href={`/create?c=${n.id}`} className={cn(cls, "hover:border-accent")}>
-                      {inner}
-                    </Link>
-                  ) : n.type === "collection" && n.subtitle === "Collection" ? (
-                    <Link href={`/space/collections/${n.id}`} className={cn(cls, "hover:border-accent")}>
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div className={cls}>{inner}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </li>
-      ))}
-    </ol>
   );
 }
 

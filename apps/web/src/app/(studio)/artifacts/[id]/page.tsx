@@ -1,6 +1,6 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PaletteActions, type ContextAction } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -11,13 +11,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const { db } = await requireSession();
   const { data } = /^[0-9a-f-]{36}$/i.test(id) ? await db.from("artifacts").select("title").eq("id", id).maybeSingle() : { data: null };
-  return { title: data?.title ?? "Artifact" };
+  return { title: data?.title ?? "Creation" };
 }
 
 export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
   const { tab } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  // Lineage and references moved to the Context view (UI redesign §16); old links keep working.
+  if (tab === "lineage" || tab === "references") redirect(`/artifacts/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
   const { db, creator } = await requireSession();
   const { data: artifact } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
   if (!artifact) notFound();
@@ -53,6 +55,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     ? [
         { key: "people", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
         { key: "versions", label: "Versions", href: `${base}?tab=versions` },
+        { key: "context", label: "Context", hint: "Materials, people, related", href: `${base}/context`, icon: "compass" },
       ]
     : finished
       ? [
@@ -62,13 +65,13 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
           { key: "license", label: "License", href: `${base}?tab=rights` },
           { key: "collaborate", label: "Collaborate", href: `${base}/collaborate`, icon: "people" },
           { key: "versions", label: "Versions", href: `${base}?tab=versions` },
-          { key: "lineage", label: "Lineage", href: `${base}?tab=lineage` },
+          { key: "context", label: "Context", hint: "Materials, people, lineage", href: `${base}/context`, icon: "compass" },
         ]
       : [
           { key: "refine", label: "Refine", hint: "Open the Creative Studio", href: `${base}/studio`, icon: "pen" },
           { key: "transform", label: "Transform", hint: "Make it into something new", href: `${base}/derivatives`, icon: "spark" },
           { key: "bring", label: "Bring Material", href: `/create?artifact=${id}`, icon: "add" },
-          { key: "references", label: "References", href: `${base}?tab=references` },
+          { key: "references", label: "References", href: `${base}/context?tab=references` },
           { key: "people", label: "People", href: `${base}/collaborate`, icon: "people" },
           { key: "versions", label: "Versions", href: `${base}?tab=versions` },
           { key: "rights", label: "Rights", href: `${base}?tab=rights` },

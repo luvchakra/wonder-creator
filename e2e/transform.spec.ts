@@ -27,12 +27,13 @@ test.describe("Artifact transformation", () => {
     const source = page.getByRole("link", { name: `“${art.title}”` });
     await expect(source).toHaveAttribute("href", `/artifacts/${artifactId}`);
 
-    // Lineage: source piece, the version it came from, and the material.
-    await page.getByRole("tab", { name: "Lineage" }).click();
+    await page.getByRole("tab", { name: "Rights" }).click();
+    await expect(page.getByText(/Derived from “.*” \(v1\)/)).toBeVisible();
+    // Lineage, in the Context view: source piece, the version it came from, and the material.
+    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     const lineage = page.getByRole("list", { name: "Creative lineage, from sources to derivatives" });
     await expect(lineage).toContainText(art.title);
     await expect(lineage).toContainText(noteTitle);
-    await page.getByRole("tab", { name: "Rights" }).click();
-    await expect(page.getByText(/Derived from “.*” \(v1\)/)).toBeVisible();
   });
 });
