@@ -32,7 +32,8 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { placeClear, type Box } from "@/lib/mini-player-placement";
 import { useSoundtrack, useSoundtrackTime, type LibraryTrack, type Soundtrack } from "./audio-provider";
 
 const MOOD_ICON: Record<MoodFilter, React.ComponentType<{ className?: string }>> = {
@@ -105,6 +106,57 @@ function Bars({ playing }: { playing: boolean }) {
   );
 }
 
+/** Visible primary actions: primary buttons (by their style) and anything marked `data-primary-action`. */
+function primaryObstacles(exclude: HTMLElement | null): Box[] {
+  const vh = window.innerHeight;
+  const out: Box[] = [];
+  document.querySelectorAll<HTMLElement>('[data-primary-action], [class*="gradient-primary"]').forEach((el) => {
+    if (exclude?.contains(el) || el.closest('[role="dialog"]')) return;
+    const r = el.getBoundingClientRect();
+    if (r.height > 0 && r.width > 0 && r.bottom > 0 && r.top < vh) out.push({ top: r.top, bottom: r.bottom, left: r.left, right: r.right });
+  });
+  return out;
+}
+
+/**
+ * Where the expanded panel can sit without covering a primary action, recomputed on scroll, resize and page changes.
+ * `dy` is the vertical shift from its natural right-middle spot; null = nowhere clear right now.
+ */
+function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDivElement | null>) {
+  const [dy, setDy] = useState<number | null>(0);
+  const height = useRef(188);
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (panel.current) height.current = panel.current.offsetHeight || height.current;
+        const width = Math.min(320, vw - 16);
+        const centre = Math.min(vh / 2, vh - 240);
+        const box: Box = { top: centre - height.current / 2, bottom: centre + height.current / 2, right: vw - 8, left: vw - 8 - width };
+        const navBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 72;
+        // Clear of the navbar, and >=72px above the Palette trigger (60px, 1rem from the bottom).
+        const next = placeClear(box, primaryObstacles(panel.current), { min: Math.max(8, navBottom + 8), max: vh - 148 });
+        setDy((cur) => (cur === next ? cur : next));
+      });
+    };
+    measure();
+    window.addEventListener("scroll", measure, { passive: true, capture: true });
+    window.addEventListener("resize", measure);
+    const poll = setInterval(measure, 1000); // pages change under a persistent player
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", measure, { capture: true });
+      window.removeEventListener("resize", measure);
+      clearInterval(poll);
+    };
+  }, [active, panel]);
+  return { dy: active ? dy : 0 };
+}
+
 /**
  * The CreativeRadio mini player (docs/ui-redesign/mini-player.md): docked to the right edge around the vertical middle.
  * Collapsed, it's a slim tab (art, a playing indicator, ‹) whose only job is awareness + expand. Expanded, a compact
@@ -116,13 +168,21 @@ export function MiniPlayer() {
   const s = useSoundtrack();
   const panel = useRef<HTMLDivElement>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
-  const expanded = s?.playerUi === "expanded" && !s.forceCollapsed;
+  const wantExpanded = s?.playerUi === "expanded" && !s.forceCollapsed;
+  const [override, setOverride] = useState(false);
+  const place = useClearOfPrimaryActions(wantExpanded && !!s?.current, panel);
+  // Never cover a primary action (§15): shift vertically, or show the tab until there's room — unless the creator
+  // just tapped the tab to open it anyway.
+  const expanded = wantExpanded && (place.dy !== null || override);
   useEffect(() => {
     if (expanded) panel.current?.focus();
   }, [expanded]);
   if (!s?.current) return null;
   const t = s.current;
-  const collapse = () => s.setPlayerUi("collapsed");
+  const collapse = () => {
+    setOverride(false);
+    s.setPlayerUi("collapsed");
+  };
   // Centre on the viewport's middle, but never within 72px of the Palette trigger (60px, 1rem from the bottom).
   const anchor = expanded ? "top-[min(50%,calc(100dvh-15rem))]" : "top-[min(50%,calc(100dvh-12.75rem))]";
   const status = s.state.interruption ?? (s.state.playing ? null : "Paused");
@@ -131,7 +191,10 @@ export function MiniPlayer() {
     return (
       <button
         type="button"
-        onClick={() => s.setPlayerUi("expanded")}
+        onClick={() => {
+          if (wantExpanded) setOverride(true);
+          else s.setPlayerUi("expanded");
+        }}
         aria-label={`Open audio player — ${s.state.playing ? "playing" : "paused"}: ${t.title}`}
         aria-expanded={false}
         className={cn(
@@ -155,6 +218,7 @@ export function MiniPlayer() {
       role="region"
       aria-label="CreativeRadio"
       tabIndex={-1}
+      style={place.dy ? { translate: `0 calc(-50% + ${place.dy}px)` } : undefined}
       onKeyDown={(e) => {
         if (e.key === "Escape") collapse();
         if (e.key === " " && e.target === e.currentTarget) {

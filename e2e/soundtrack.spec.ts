@@ -89,4 +89,23 @@ test.describe("CreativeRadio", () => {
     await expect(page.getByRole("button", { name: /^Open audio player — paused: / })).toBeVisible();
     await expect(mini).toHaveCount(0);
   });
+
+  test("the open player never covers the page's primary action, and keeps clear of the Palette", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    await page.getByRole("dialog", { name: "CreativeRadio" }).getByRole("button", { name: /^Play / }).first().click();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: /^Open audio player/ }).click();
+    const mini = page.getByRole("region", { name: "CreativeRadio" });
+    await expect(mini).toBeVisible();
+    await page.waitForTimeout(400); // placement settles on the next frame
+    const p = (await mini.boundingBox())!;
+    const cta = (await page.getByRole("link", { name: "New Creation" }).boundingBox())!;
+    const overlaps = p.x < cta.x + cta.width && p.x + p.width > cta.x && p.y < cta.y + cta.height && p.y + p.height > cta.y;
+    expect(overlaps).toBe(false);
+    const palette = (await page.getByRole("button", { name: "Open Creative Palette" }).boundingBox())!;
+    expect(palette.y - (p.y + p.height)).toBeGreaterThanOrEqual(72);
+  });
 });
