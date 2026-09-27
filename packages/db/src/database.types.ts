@@ -1037,15 +1037,40 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"crew_messages": {
+                },"crew_message_reads": {
                   Row: {
-                    "body": string,"created_at": string,"creator_id": string | null,"crew_id": string,"id": string,"item_id": string | null
+                    "creator_id": string,"crew_id": string,"last_read_at": string
                   }
                   Insert: {
-                    "body": string,"created_at"?: string,"creator_id"?: string | null,"crew_id": string,"id"?: string,"item_id"?: string | null
+                    "creator_id": string,"crew_id": string,"last_read_at"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"creator_id"?: string | null,"crew_id"?: string,"id"?: string,"item_id"?: string | null
+                    "creator_id"?: string,"crew_id"?: string,"last_read_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_message_reads_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_message_reads_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crew_messages": {
+                  Row: {
+                    "body": string,"context_id": string | null,"context_kind": string | null,"created_at": string,"creator_id": string | null,"crew_id": string,"drafted_by_ai": boolean,"huddle_id": string | null,"id": string,"item_id": string | null
+                  }
+                  Insert: {
+                    "body": string,"context_id"?: string | null,"context_kind"?: string | null,"created_at"?: string,"creator_id"?: string | null,"crew_id": string,"drafted_by_ai"?: boolean,"huddle_id"?: string | null,"id"?: string,"item_id"?: string | null
+                  }
+                  Update: {
+                    "body"?: string,"context_id"?: string | null,"context_kind"?: string | null,"created_at"?: string,"creator_id"?: string | null,"crew_id"?: string,"drafted_by_ai"?: boolean,"huddle_id"?: string | null,"id"?: string,"item_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1059,6 +1084,12 @@ isOneToOne: false
       columns: ["crew_id"]
 isOneToOne: false
       referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_messages_huddle_id_fkey"
+      columns: ["huddle_id"]
+isOneToOne: false
+      referencedRelation: "huddles"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "crew_messages_item_id_fkey"
@@ -1090,6 +1121,93 @@ isOneToOne: false
       columns: ["project_id"]
 isOneToOne: true
       referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"direct_messages": {
+                  Row: {
+                    "artifact_id": string | null,"body": string,"created_at": string,"creator_id": string | null,"drafted_by_ai": boolean,"id": string,"project_id": string | null,"thread_id": string
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"body": string,"created_at"?: string,"creator_id"?: string | null,"drafted_by_ai"?: boolean,"id"?: string,"project_id"?: string | null,"thread_id": string
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"body"?: string,"created_at"?: string,"creator_id"?: string | null,"drafted_by_ai"?: boolean,"id"?: string,"project_id"?: string | null,"thread_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_messages_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_messages_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_messages_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_messages_thread_id_fkey"
+      columns: ["thread_id"]
+isOneToOne: false
+      referencedRelation: "direct_threads"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"direct_thread_reads": {
+                  Row: {
+                    "creator_id": string,"last_read_at": string,"thread_id": string
+                  }
+                  Insert: {
+                    "creator_id": string,"last_read_at"?: string,"thread_id": string
+                  }
+                  Update: {
+                    "creator_id"?: string,"last_read_at"?: string,"thread_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_thread_reads_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_thread_reads_thread_id_fkey"
+      columns: ["thread_id"]
+isOneToOne: false
+      referencedRelation: "direct_threads"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"direct_threads": {
+                  Row: {
+                    "created_at": string,"creator_a": string,"creator_b": string,"id": string,"last_message_at": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_a": string,"creator_b": string,"id"?: string,"last_message_at"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_a"?: string,"creator_b"?: string,"id"?: string,"last_message_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_threads_creator_a_fkey"
+      columns: ["creator_a"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_threads_creator_b_fkey"
+      columns: ["creator_b"]
+isOneToOne: false
+      referencedRelation: "creators"
       referencedColumns: ["id"]
     }
                   ]
@@ -2477,6 +2595,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"can_message_creator":
+{ Args: { "p_other": string }; Returns: boolean
+                           },
 "cancel_publication":
 { Args: { "p_publication": string }; Returns: {
               "approved_at": string | null,
@@ -2680,6 +2801,9 @@ isOneToOne: false
 "open_creator_share":
 { Args: { "p_share": string }; Returns: Json
                            },
+"open_direct_thread":
+{ Args: { "p_other": string }; Returns: string
+                           },
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
                            },
@@ -2796,6 +2920,11 @@ isOneToOne: false
 "stale_search_subjects":
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
               "creator_id": string,"subject_id": string,"subject_type": string
+            }[]
+                           },
+"unread_messages":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "id": string,"kind": string,"latest_at": string,"latest_author": string,"project_id": string,"title": string,"unread": number
             }[]
                            },
 "withdraw_artifact_proposal":

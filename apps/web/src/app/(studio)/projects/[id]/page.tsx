@@ -42,6 +42,24 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     tab === "contributions" ? listContributions(db, creator.id, { projectId: id }) : Promise.resolve(null),
     tab === "rights" ? getProjectRights(db, creator.id, id) : Promise.resolve(null),
   ]);
+  // What the crew can point a chat message at: pieces, open tasks, open change proposals and ownership claims.
+  const chatContexts =
+    tab === "chat" && chat
+      ? await (async () => {
+          const pieceIds = items.filter((i) => i.kind === "artifact").map((i) => i.itemId);
+          const [openTasks, proposals, claims] = await Promise.all([
+            db.from("project_tasks").select("id, title").eq("project_id", id).neq("status", "done").order("created_at", { ascending: false }).limit(50),
+            pieceIds.length ? db.from("artifact_change_proposals").select("id, summary").in("artifact_id", pieceIds).eq("status", "open").limit(30) : Promise.resolve({ data: [] as Array<{ id: string; summary: string }> }),
+            db.from("ownership_assertions").select("id, claim, artifacts(title)").eq("project_id", id).in("status", ["asserted", "disputed"]).limit(30),
+          ]);
+          return [
+            ...items.filter((i) => i.kind === "artifact" && i.available).map((i) => ({ kind: "artifact" as const, id: i.itemId, label: `Piece: ${i.title}` })),
+            ...(openTasks.data ?? []).map((t) => ({ kind: "task" as const, id: t.id, label: `Task: ${t.title}` })),
+            ...(proposals.data ?? []).map((p) => ({ kind: "proposal" as const, id: p.id, label: `Proposed change: ${p.summary.slice(0, 60)}` })),
+            ...(claims.data ?? []).map((c) => ({ kind: "claim" as const, id: c.id, label: `Ownership claim on ${(c.artifacts as { title: string } | null)?.title ?? "a piece"}` })),
+          ];
+        })()
+      : [];
   const [avatars, owner] = await Promise.all([
     avatarUrls(db, (crew?.active ?? []).map((m) => m.creatorId)),
     canEdit ? Promise.resolve({ data: { display_name: creator.display_name } }) : db.from("creators").select("display_name").eq("id", p.creator_id).maybeSingle(),
@@ -81,6 +99,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
       tab={tab}
       shared={shared}
       chat={chat}
+      chatContexts={chatContexts}
       tasks={
         taskData && role
           ? {

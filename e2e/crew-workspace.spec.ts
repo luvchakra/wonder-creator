@@ -50,7 +50,7 @@ test.describe("Crew workspace", () => {
     // Crew chat, pointing at shared work.
     await b.goto(`/projects/${project.id}?tab=chat`);
     await b.getByLabel("Message the crew").fill("Sunrise at the fort works for me.");
-    await b.getByLabel("Point to shared work").selectOption({ label: note });
+    await b.getByLabel("Point to", { exact: true }).selectOption({ label: `Shared: ${note}` });
     await b.getByRole("button", { name: "Send" }).click();
     const messages = b.getByRole("list", { name: "Messages" });
     await expect(messages).toContainText("Sunrise at the fort works for me.");

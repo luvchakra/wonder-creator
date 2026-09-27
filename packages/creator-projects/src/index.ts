@@ -5,3 +5,4 @@ export * from "./tasks";
 export * from "./contributions";
 export * from "./rights";
 export * from "./completion";
+export * from "./messaging";

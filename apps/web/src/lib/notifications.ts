@@ -1,10 +1,10 @@
 import "server-only";
 import { TOOLS } from "@wonder/creator-brain";
 import { liveCards } from "@wonder/creator-huddle";
-import { inviteThreadsWaiting, myCrewInvites } from "@wonder/creator-projects";
+import { inviteThreadsWaiting, myCrewInvites, unreadMessages } from "@wonder/creator-projects";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim" | "message";
 
 export interface Notification {
   id: string;
@@ -26,7 +26,7 @@ const RUN_STALE_MS = 10 * 60 * 1000;
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
-  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads, toReview, decided, addedAs, claims] = await Promise.all([
+  const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads, toReview, decided, addedAs, claims, unread] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
     db
       .from("huddle_join_requests")
@@ -90,6 +90,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       .eq("artifacts.creator_id", creatorId)
       .order("created_at", { ascending: false })
       .limit(10),
+    unreadMessages(db).catch(() => []),
   ]);
 
   const out: Notification[] = [];
@@ -151,6 +152,14 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const c of addedAs.data ?? []) {
     out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a piece"}”`, detail: null, href: `/artifacts/${c.artifact_id}/collaborate`, at: c.created_at });
+  }
+  for (const u of unread) {
+    const n = `${u.unread} new ${u.unread === 1 ? "message" : "messages"}`;
+    out.push(
+      u.kind === "crew"
+        ? { id: `crew-chat:${u.id}`, kind: "message", title: `${n} in ${u.title}`, detail: u.latestAuthor ? `Latest from ${u.latestAuthor}` : null, href: `/projects/${u.projectId}?tab=chat`, at: u.latestAt }
+        : { id: `dm:${u.id}`, kind: "message", title: `${u.title} sent you ${u.unread === 1 ? "a message" : n}`, detail: null, href: `/messages/${u.id}`, at: u.latestAt },
+    );
   }
   for (const c of claims.data ?? []) {
     const who = (c.creators as { display_name: string } | null)?.display_name || "A collaborator";

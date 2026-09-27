@@ -13,6 +13,7 @@ export type TaskKind =
   | "publish_copy" // draft titles and captions for publishing
   | "task_plan" // suggest tasks and missing steps for a project (suggestions only)
   | "collaborator_query" // turn "find three cinematographers in my network" into search filters
+  | "message_draft" // draft a message for the creator to review and send (never sent automatically)
   | "describe_image";
 
 export type ContentPart =

@@ -18,6 +18,7 @@ export const TOOLS = {
   research: { domain: "research", action: "execute", label: "Research references" },
   find_collaborators: { domain: "collaboration", action: "suggest", label: "Suggest collaborators" },
   invite_creator: { domain: "collaboration", action: "execute", label: "Invite a creator" },
+  draft_message: { domain: "communication", action: "draft", label: "Draft a message" },
   draft_publication: { domain: "publishing", action: "draft", label: "Draft publishing copy" },
   publish: { domain: "publishing", action: "execute", label: "Publish" },
   change_rights: { domain: "rights", action: "execute", label: "Change rights or licenses" },
