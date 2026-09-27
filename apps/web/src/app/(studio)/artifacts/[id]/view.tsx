@@ -26,7 +26,7 @@ import {
   buttonClasses,
   cn,
 } from "@wonder/ui";
-import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, CircleAlert, Download, GitBranch, History, MoreHorizontal, PenLine, Radio, RotateCcw, Send, Share2, Shield, Sparkles, Trash2, Users, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -86,6 +86,8 @@ export function ArtifactView(props: {
   artifact: { id: string; title: string; description: string | null; status: string; privacy: string; artifact_type: string; current_version_id: string | null; created_at: string; updated_at: string; featured_on_profile: boolean };
   typeLabel: string;
   isOwner: boolean;
+  /** The owner or a collaborator (comment, propose or edit). */
+  canCollaborate: boolean;
   owner: { name: string; handle: string | null; avatarUrl: string | null };
   coverUrl: string | null;
   versions: Version[];
@@ -178,6 +180,11 @@ export function ArtifactView(props: {
                 ))}
               </MenuContent>
             </Menu>
+            {props.canCollaborate ? (
+              <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "secondary" })}>
+                <Users className="size-4" aria-hidden /> Collaborate
+              </Link>
+            ) : null}
             {isOwner ? (
               <Menu>
                 <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More actions">

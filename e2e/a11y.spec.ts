@@ -36,6 +36,7 @@ test.describe("accessibility", () => {
       `/artifacts/${art.id}/studio`,
       `/artifacts/${art.id}/share`,
       `/artifacts/${art.id}/publish`,
+      `/artifacts/${art.id}/collaborate`,
       "/approvals",
       "/huddles",
       "/scrapbook",

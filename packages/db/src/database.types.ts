@@ -147,15 +147,95 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"artifact_contributors": {
+                },"artifact_change_proposals": {
                   Row: {
-                    "added_by_creator_id": string,"artifact_id": string,"contributor_creator_id": string,"created_at": string,"role": string
+                    "artifact_id": string,"base_version_id": string,"content": string,"created_at": string,"creator_id": string | null,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"id": string,"resulting_version_id": string | null,"status": string,"summary": string
                   }
                   Insert: {
-                    "added_by_creator_id": string,"artifact_id": string,"contributor_creator_id": string,"created_at"?: string,"role": string
+                    "artifact_id": string,"base_version_id": string,"content": string,"created_at"?: string,"creator_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"resulting_version_id"?: string | null,"status"?: string,"summary": string
                   }
                   Update: {
-                    "added_by_creator_id"?: string,"artifact_id"?: string,"contributor_creator_id"?: string,"created_at"?: string,"role"?: string
+                    "artifact_id"?: string,"base_version_id"?: string,"content"?: string,"created_at"?: string,"creator_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"resulting_version_id"?: string | null,"status"?: string,"summary"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "artifact_change_proposals_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_change_proposals_base_version_id_fkey"
+      columns: ["base_version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_change_proposals_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_change_proposals_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_change_proposals_resulting_version_id_fkey"
+      columns: ["resulting_version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"artifact_comments": {
+                  Row: {
+                    "artifact_id": string,"body": string,"created_at": string,"creator_id": string | null,"id": string,"quote": string | null,"resolved_at": string | null,"resolved_by": string | null,"version_id": string | null
+                  }
+                  Insert: {
+                    "artifact_id": string,"body": string,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"quote"?: string | null,"resolved_at"?: string | null,"resolved_by"?: string | null,"version_id"?: string | null
+                  }
+                  Update: {
+                    "artifact_id"?: string,"body"?: string,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"quote"?: string | null,"resolved_at"?: string | null,"resolved_by"?: string | null,"version_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "artifact_comments_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_comments_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_comments_resolved_by_fkey"
+      columns: ["resolved_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_comments_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"artifact_contributors": {
+                  Row: {
+                    "access": string,"added_by_creator_id": string,"artifact_id": string,"contributor_creator_id": string,"created_at": string,"role": string
+                  }
+                  Insert: {
+                    "access"?: string,"added_by_creator_id": string,"artifact_id": string,"contributor_creator_id": string,"created_at"?: string,"role": string
+                  }
+                  Update: {
+                    "access"?: string,"added_by_creator_id"?: string,"artifact_id"?: string,"contributor_creator_id"?: string,"created_at"?: string,"role"?: string
                   }
                   Relationships: [
                     {
@@ -2012,7 +2092,31 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "act_on_license_request":
+            "accept_artifact_proposal":
+{ Args: { "p_confirm_stale"?: boolean,"p_proposal": string }; Returns: {
+              "artifact_id": string,
+"author_kind": string,
+"change_summary": string | null,
+"content": string,
+"created_at": string,
+"created_by_ai_run_id": string | null,
+"created_by_creator_id": string | null,
+"creator_id": string,
+"generation_metadata": Json | null,
+"id": string,
+"label": string,
+"parent_version_id": string | null,
+"restored_from_version_id": string | null,
+"structured_content": Json | null,
+"version_number": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "artifact_versions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"act_on_license_request":
 { Args: { "p_action": string,"p_request": string }; Returns: {
               "artifact_id": string,
 "counter_terms": Json | null,
@@ -2065,6 +2169,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"artifact_access_of":
+{ Args: { "p_artifact": string }; Returns: string
+                           },
 "byok_remove":
 { Args: { "p_creator": string,"p_provider": string }; Returns: undefined
                            },
@@ -2144,6 +2251,30 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"collaborator_save_version":
+{ Args: { "p_artifact": string,"p_base_version": string,"p_content": string,"p_summary"?: string }; Returns: {
+              "artifact_id": string,
+"author_kind": string,
+"change_summary": string | null,
+"content": string,
+"created_at": string,
+"created_by_ai_run_id": string | null,
+"created_by_creator_id": string | null,
+"creator_id": string,
+"generation_metadata": Json | null,
+"id": string,
+"label": string,
+"parent_version_id": string | null,
+"restored_from_version_id": string | null,
+"structured_content": Json | null,
+"version_number": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "artifact_versions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "create_artifact_version":
 { Args: { "p_ai_run_id"?: string,"p_artifact_id": string,"p_author_kind": string,"p_change_summary"?: string,"p_content": string,"p_generation_metadata"?: Json,"p_label": string,"p_restored_from"?: string,"p_structured_content"?: Json }; Returns: {
               "artifact_id": string,
@@ -2168,6 +2299,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"creator_reachable":
+{ Args: { "p_creator": string }; Returns: boolean
+                           },
 "crew_invite":
 { Args: { "p_access"?: string,"p_compensation"?: string,"p_creator": string,"p_crew": string,"p_expires_in_days"?: number,"p_note"?: string,"p_rights"?: string,"p_role_title"?: string,"p_scope"?: string }; Returns: undefined
                            },
@@ -2194,6 +2328,9 @@ isOneToOne: false
                            },
 "crew_set_role":
 { Args: { "p_access"?: string,"p_clear_title"?: boolean,"p_creator": string,"p_crew": string,"p_role_title"?: string }; Returns: undefined
+                           },
+"decline_artifact_proposal":
+{ Args: { "p_note"?: string,"p_proposal": string }; Returns: undefined
                            },
 "handle_available":
 { Args: { "p_handle": string }; Returns: boolean
@@ -2364,6 +2501,9 @@ isOneToOne: false
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
               "creator_id": string,"subject_id": string,"subject_type": string
             }[]
+                           },
+"withdraw_artifact_proposal":
+{ Args: { "p_proposal": string }; Returns: undefined
                            }
           }
           Enums: {

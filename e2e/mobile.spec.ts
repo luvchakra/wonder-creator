@@ -89,6 +89,7 @@ test.describe("mobile layout @mobile", () => {
       [`/artifacts/${art.id}/studio`, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       [`/artifacts/${art.id}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
       [`/artifacts/${art.id}/publish`, (p) => expect(p.getByRole("button", { name: "Next" })).toBeVisible()],
+      [`/artifacts/${art.id}/collaborate`, (p) => expect(p.getByRole("button", { name: "Add a collaborator" })).toBeVisible()],
       ["/approvals", (p) => expect(p.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible()],
       [approval, (p) => expect(p.getByRole("button", { name: "Approve once" })).toBeInViewport()],
       ["/huddles", (p) => expect(p.getByRole("button", { name: "Start a Huddle" })).toBeVisible()],
