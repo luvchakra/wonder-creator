@@ -28,9 +28,18 @@ export function tracksForMood<T extends Track>(tracks: readonly T[], mood: MoodF
   return mood === "all" ? [...tracks] : tracks.filter((t) => t.moods.includes(mood));
 }
 
+/** A track *is* a mood when that's its primary mood (listed first); a secondary tag only means it also fits. */
+export function isMood(t: Pick<Track, "moods">, mood: MoodFilter): boolean {
+  return mood === "all" || t.moods[0] === mood;
+}
+
+/** Below this many tracks of a mood, the queue borrows tracks that also fit it. */
+const MIN_MOOD_POOL = 3;
+
 /**
- * score = moodMatch + preference + freshness − recentlyPlayed (§5). Focus prefers calm, instrumental tracks; the
- * primary mood (listed first on a track) counts a little more than a secondary one.
+ * score = moodMatch + preference + freshness − recentlyPlayed (§5). Focus prefers calm, instrumental tracks. Tracks
+ * whose primary mood is the chosen one always rank before tracks that only also fit it (owner: a set mood must not
+ * drift into other moods).
  */
 export function rankTracks<T extends Track>(tracks: readonly T[], input: RankInput): T[] {
   const history = input.history ?? [];
@@ -39,7 +48,7 @@ export function rankTracks<T extends Track>(tracks: readonly T[], input: RankInp
   const seed = input.seed ?? 0;
   const score = (t: T) => {
     let s = 0;
-    if (input.mood !== "all") s += t.moods[0] === input.mood ? 3 : 2;
+    if (input.mood !== "all") s += t.moods[0] === input.mood ? 20 : 2;
     if (input.mood === "focus") s += (t.energy === "low" ? 1 : t.energy === "medium" ? 0.5 : -1) + (t.instrumental ? 0.5 : -1);
     if (fav.has(t.id)) s += 0.75;
     const recent = history.indexOf(t.id);
@@ -55,7 +64,10 @@ export function rankTracks<T extends Track>(tracks: readonly T[], input: RankInp
 
 /** An upcoming queue for a mood that keeps energy coherent (no low → high → low whiplash). */
 export function buildQueue(tracks: readonly Track[], input: RankInput & { length?: number }): string[] {
-  const ranked = rankTracks(tracks, input);
+  const all = rankTracks(tracks, input);
+  // Only the mood's own tracks, unless there are too few of them.
+  const own = all.filter((t) => isMood(t, input.mood));
+  const ranked = own.length >= MIN_MOOD_POOL ? own : all;
   const length = input.length ?? 12;
   const out: Track[] = [];
   const pool = [...ranked];
