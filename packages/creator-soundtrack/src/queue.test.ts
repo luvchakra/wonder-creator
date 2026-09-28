@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TRACKS } from "./catalog";
-import { buildQueue, formatDuration, moreLikeThis, previousAction, rankTracks, tracksForMood } from "./queue";
+import { buildQueue, isMood, formatDuration, moreLikeThis, previousAction, rankTracks, tracksForMood } from "./queue";
 import { MOODS } from "./types";
 
 describe("soundtrack catalogue", () => {
@@ -22,8 +22,23 @@ describe("queues", () => {
     expect(calm.every((t) => t.moods.includes("calm"))).toBe(true);
     const top = calm[0]!.id;
     expect(rankTracks(TRACKS, { mood: "calm", history: [top] })[0]!.id).not.toBe(top);
-    const last = calm[calm.length - 1]!.id;
-    expect(rankTracks(TRACKS, { mood: "calm", favorites: [last] }).findIndex((t) => t.id === last)).toBeLessThan(calm.length - 1);
+    // Favourites move up among the mood's own tracks.
+    const own = calm.filter((t) => isMood(t, "calm"));
+    const last = own[own.length - 1]!.id;
+    expect(rankTracks(TRACKS, { mood: "calm", favorites: [last] }).findIndex((t) => t.id === last)).toBeLessThan(own.length - 1);
+  });
+
+  it("a mood's queue plays only that mood's own tracks; its song list puts them first", () => {
+    for (const mood of ["calm", "dreamy", "focus", "creative", "energy", "cinematic", "nature"] as const) {
+      for (const seed of [1, 2, 3, 7, 11]) {
+        const q = buildQueue(TRACKS, { mood, seed }).map((id) => TRACKS.find((t) => t.id === id)!);
+        expect(q.length).toBeGreaterThan(0);
+        expect(q.every((t) => isMood(t, mood))).toBe(true);
+      }
+      const list = rankTracks(TRACKS, { mood, seed: 5 });
+      const firstOther = list.findIndex((t) => !isMood(t, mood));
+      if (firstOther >= 0) expect(list.slice(firstOther).every((t) => !isMood(t, mood))).toBe(true);
+    }
   });
 
   it("focus prefers calm instrumental tracks; the queue keeps energy coherent", () => {

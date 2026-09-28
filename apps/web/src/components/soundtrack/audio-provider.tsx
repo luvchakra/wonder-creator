@@ -1,5 +1,5 @@
 "use client";
-import { buildQueue, moreLikeThis, previousAction, type MoodFilter, type Track } from "@wonder/creator-soundtrack";
+import { buildQueue, isMood, moreLikeThis, previousAction, type MoodFilter, type Track } from "@wonder/creator-soundtrack";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -23,6 +23,8 @@ interface Persisted {
   shuffle: boolean;
   repeat: Repeat;
   seed: number;
+  /** Songs the creator queued themselves (Play next, Add to queue, More like this): kept whatever the mood. */
+  pinned: string[];
 }
 
 const KEY = "wc.soundtrack.v1";
@@ -32,7 +34,7 @@ export type PlayerUi = "collapsed" | "expanded";
 export interface MiniPlayerConstraint {
   forceCollapsed?: boolean;
 }
-const DEFAULTS: Persisted = { trackId: null, mood: "calm", queue: [], history: [], volume: 0.7, position: 0, shuffle: false, repeat: "off", seed: 1 };
+const DEFAULTS: Persisted = { trackId: null, mood: "calm", queue: [], history: [], volume: 0.7, position: 0, shuffle: false, repeat: "off", seed: 1, pinned: [] };
 
 function load(): Persisted {
   try {
@@ -70,7 +72,8 @@ export interface Soundtrack {
   previous: () => void;
   seek: (t: number) => void;
   setVolume: (v: number) => void;
-  setMood: (m: MoodFilter, switchNow?: boolean) => void;
+  /** Up next becomes this mood at once; a song of another mood gives way to one of this mood. */
+  setMood: (m: MoodFilter) => void;
   refreshMix: () => void;
   playNext: (id: string) => void;
   addToQueue: (id: string) => void;
@@ -244,18 +247,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const freshQueue = useCallback((s: Persisted, mood: MoodFilter, seed: number, exclude: string[] = []) => buildQueue(tracks, { mood, history: s.history, favorites, exclude: [...exclude, ...(s.trackId ? [s.trackId] : [])], seed }), [tracks, favorites]);
 
+  // What's left in Up next for this mood: its own songs and the ones the creator queued themselves (a queue saved under
+  // another mood, or an older catalogue, never plays other moods behind the creator's back).
+  const moodQueue = useCallback(
+    (s: Persisted) => s.queue.filter((id) => s.pinned.includes(id) || (() => { const t = tracks.find((x) => x.id === id); return !!t && isMood(t, s.mood); })()),
+    [tracks],
+  );
+
   const next = useCallback(() => {
     setP((s) => {
-      let queue = s.queue.length ? s.queue : freshQueue(s, s.mood, s.seed + 1);
+      const kept = tracks.length ? moodQueue(s) : s.queue;
+      let queue = kept.length ? kept : freshQueue(s, s.mood, s.seed + 1);
       if (!queue.length) return s;
       const i = s.shuffle ? Math.floor(Math.random() * queue.length) : 0;
       const id = queue[i]!;
       queue = queue.filter((_, j) => j !== i);
       requestAnimationFrame(startPlayback);
-      return { ...s, trackId: id, queue, history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history, seed: s.queue.length ? s.seed : s.seed + 1 };
+      return { ...s, trackId: id, queue, pinned: s.pinned.filter((x) => x !== id && queue.includes(x)), history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history, seed: kept.length ? s.seed : s.seed + 1 };
     });
     setTime(0);
-  }, [freshQueue, startPlayback]);
+  }, [freshQueue, moodQueue, startPlayback, tracks.length]);
 
   // Honour a play that was asked for while the library was loading.
   const playRef = useRef<() => void>(() => undefined);
@@ -354,15 +365,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setTime(t);
       },
       setVolume: (v) => setP((s) => ({ ...s, volume: Math.min(1, Math.max(0, v)) })),
-      // Changing mood never stops the current song (§11): the queue changes; "Switch now" moves on immediately.
-      setMood: (m, switchNow = false) => {
-        setP((s) => ({ ...s, mood: m, queue: freshQueue(s, m, s.seed) }));
-        if (switchNow) requestAnimationFrame(next);
+      // Choosing a mood is respected at once (owner): Up next becomes that mood (keeping songs the creator queued
+      // themselves), and a song of another mood gives way to one of the new mood — playing on if it was playing.
+      setMood: (m) => {
+        const cur = current;
+        const moveOn = !!cur && !isMood(cur, m) && tracks.length > 0;
+        setP((s) => {
+          const mine = s.queue.filter((id) => s.pinned.includes(id));
+          const fresh = freshQueue(s, m, s.seed, mine);
+          if (!moveOn || !fresh.length) return { ...s, mood: m, queue: [...mine, ...fresh] };
+          const [first, ...rest] = fresh;
+          return { ...s, mood: m, trackId: first!, queue: [...mine, ...rest], history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history };
+        });
+        if (moveOn) {
+          setTime(0);
+          if (playing) requestAnimationFrame(startPlayback);
+        }
       },
       refreshMix: () => setP((s) => ({ ...s, seed: s.seed + 1, queue: freshQueue(s, s.mood, s.seed + 1) })),
-      playNext: (id) => setP((s) => ({ ...s, queue: [id, ...s.queue.filter((q) => q !== id)] })),
-      addToQueue: (id) => setP((s) => ({ ...s, queue: [...s.queue.filter((q) => q !== id), id] })),
-      removeFromQueue: (i) => setP((s) => ({ ...s, queue: s.queue.filter((_, j) => j !== i) })),
+      playNext: (id) => setP((s) => ({ ...s, queue: [id, ...s.queue.filter((q) => q !== id)], pinned: [...new Set([...s.pinned, id])] })),
+      addToQueue: (id) => setP((s) => ({ ...s, queue: [...s.queue.filter((q) => q !== id), id], pinned: [...new Set([...s.pinned, id])] })),
+      removeFromQueue: (i) => setP((s) => ({ ...s, queue: s.queue.filter((_, j) => j !== i), pinned: s.pinned.filter((x) => x !== s.queue[i]) })),
       moveInQueue: (i, dir) =>
         setP((s) => {
           const j = i + dir;
@@ -371,11 +394,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           [q[i], q[j]] = [q[j]!, q[i]!];
           return { ...s, queue: q };
         }),
-      clearQueue: () => setP((s) => ({ ...s, queue: [] })),
+      clearQueue: () => setP((s) => ({ ...s, queue: [], pinned: [] })),
       playMoreLikeThis: (id) => {
         const of = byId(id);
         if (!of) return;
         const like = moreLikeThis(tracks, of, { history: p.history, seed: p.seed });
+        // Asked for explicitly, so these play even across moods.
+        setP((s) => ({ ...s, pinned: [...new Set([...s.pinned, ...like])] }));
         goTo(id, like);
       },
       toggleFavorite: (id) => {

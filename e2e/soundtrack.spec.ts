@@ -169,4 +169,35 @@ test.describe("CreativeRadio", () => {
     await page.reload();
     await expect(page.getByRole("button", { name: /^Open audio player/ })).toHaveAttribute("data-dock-side", "left");
   });
+
+  test("a chosen mood sticks: the current song and everything up next belong to it, across reloads", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    const panel = page.getByRole("dialog", { name: "CreativeRadio" });
+    await panel.getByRole("list", { name: "Songs for Calm" }).getByRole("button", { name: /^Play / }).first().click();
+
+    // Moods of every track, and what the player has saved.
+    const library = (await (await page.request.get("/api/v1/soundtrack")).json()) as { tracks: Array<{ id: string; moods: string[] }> };
+    const moodOf = (id: string) => library.tracks.find((t) => t.id === id)!.moods[0];
+    const saved = async () => (await page.evaluate(() => JSON.parse(localStorage.getItem("wc.soundtrack.v1") ?? "{}"))) as { trackId: string; mood: string; queue: string[] };
+
+    await expect.poll(async () => moodOf((await saved()).trackId)).toBe("calm");
+    // Choosing Nature while a Calm song plays: it moves to a Nature song now, and Up next is all Nature.
+    await panel.getByRole("radio", { name: /Nature/ }).click();
+    await expect.poll(async () => (await saved()).mood).toBe("nature");
+    await expect.poll(async () => moodOf((await saved()).trackId)).toBe("nature");
+    let s = await saved();
+    expect(s.queue.length).toBeGreaterThan(0);
+    expect(s.queue.every((id) => moodOf(id) === "nature")).toBe(true);
+
+    // Next keeps to the mood, and so does a reload.
+    await panel.getByRole("button", { name: "Next" }).first().click();
+    await expect.poll(async () => moodOf((await saved()).trackId)).toBe("nature");
+    await page.reload();
+    s = await saved();
+    expect(s.mood).toBe("nature");
+    expect(moodOf(s.trackId)).toBe("nature");
+    expect(s.queue.every((id) => moodOf(id) === "nature")).toBe(true);
+  });
 });

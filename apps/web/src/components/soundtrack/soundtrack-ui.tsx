@@ -541,14 +541,6 @@ export function SoundtrackPanel() {
                 );
               })}
             </div>
-            {s.current && !s.current.moods.includes(mood as never) && mood !== "all" ? (
-              <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                Up next is {MOOD_LABEL[mood]}.{" "}
-                <button type="button" onClick={() => s.setMood(mood, true)} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
-                  Switch now
-                </button>
-              </p>
-            ) : null}
 
             <div role="tablist" aria-label="CreativeRadio view" className="flex gap-1 border-b border-border-soft">
               {(["songs", "queue"] as const).map((v) => (
