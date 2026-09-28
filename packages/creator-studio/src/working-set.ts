@@ -7,6 +7,8 @@ import {
   SOURCE_STATES,
   SOURCE_TYPES,
   OUTPUT_MODES,
+  USAGE_INTENTS,
+  type UsageIntent,
   type BringInResult,
   type Fragment,
   type SourceRole,
@@ -122,7 +124,12 @@ type Sign = (objectIds: string[]) => Promise<Record<string, string>>;
 export async function workingSetView(db: Db, sessionId: string, sign: Sign = async () => ({})): Promise<WorkingSetView> {
   const s = await session(db, sessionId);
   const rows = must(
-    await db.from("studio_sources").select("id, source_type, source_id, state, roles, fragment, added_at").eq("session_id", sessionId).order("added_at", { ascending: false }).limit(200),
+    await db
+      .from("studio_sources")
+      .select("id, source_type, source_id, state, roles, fragment, added_at, usage_intent, usage_note")
+      .eq("session_id", sessionId)
+      .order("added_at", { ascending: false })
+      .limit(200),
   );
   const ids = (t: SourceType) => [...new Set(rows.filter((r) => r.source_type === t).map((r) => r.source_id))];
   const [mats, arts, cols, comments, moments] = await Promise.all([
@@ -159,7 +166,17 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
   const urls = await sign(thumbs.filter((x): x is string => !!x));
   const sources: WorkingSource[] = rows.map((r) => {
     const fragment = (r.fragment as Fragment | null) ?? null;
-    const base = { id: r.id, sourceType: r.source_type as SourceType, sourceId: r.source_id, state: r.state as WorkingSource["state"], roles: r.roles as SourceRole[], fragment, addedAt: r.added_at };
+    const base = {
+      id: r.id,
+      sourceType: r.source_type as SourceType,
+      sourceId: r.source_id,
+      state: r.state as WorkingSource["state"],
+      roles: r.roles as SourceRole[],
+      fragment,
+      addedAt: r.added_at,
+      usageIntent: (r.usage_intent as UsageIntent | null) ?? null,
+      usageNote: r.usage_note ?? null,
+    };
     const withFragment = (v: WorkingSource): WorkingSource =>
       fragment ? { ...v, title: fragment.text ? `“${fragment.text.length > 90 ? `${fragment.text.slice(0, 88)}…` : fragment.text}”` : v.title, kind: `${fragmentLabel(fragment)} · ${v.kind}` } : v;
     if (r.source_type === "material") {
@@ -297,15 +314,22 @@ export const updateSourceSchema = z
   .object({
     state: z.enum(SOURCE_STATES).optional(),
     roles: z.array(z.enum(SOURCE_ROLES)).max(4).optional(),
+    usageIntent: z.enum(USAGE_INTENTS).nullable().optional(),
+    usageNote: z.string().trim().max(300).nullable().optional(),
   })
-  .refine((v) => v.state !== undefined || v.roles !== undefined, { message: "Nothing to change." });
+  .refine((v) => v.state !== undefined || v.roles !== undefined || v.usageIntent !== undefined || v.usageNote !== undefined, { message: "Nothing to change." });
 
 /** Available ⇄ In use ⇄ Pinned, or correct its roles. Routine: no version, no audit (§47, §73). */
 export async function updateSource(db: Db, sourceRowId: string, raw: unknown): Promise<void> {
   const v = updateSourceSchema.parse(raw);
   const res = await db
     .from("studio_sources")
-    .update({ ...(v.state ? { state: v.state } : {}), ...(v.roles ? { roles: v.roles } : {}) })
+    .update({
+      ...(v.state ? { state: v.state } : {}),
+      ...(v.roles ? { roles: v.roles } : {}),
+      ...(v.usageIntent !== undefined ? { usage_intent: v.usageIntent } : {}),
+      ...(v.usageNote !== undefined ? { usage_note: v.usageNote || null } : {}),
+    })
     .eq("id", sourceRowId)
     .select("id, session_id");
   if (res.error) throw fromDbError(res.error);

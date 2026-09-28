@@ -1,5 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { activeStudioSession, addSources, copyWorkingSet, openStudioSession, patchStudioSession, removeSource, searchBringIn, setSourceStates, sourceDetail, updateSource, workingSetView, createArtifact } from "@wonder/creator-studio";
+import {
+  activeStudioSession,
+  addSources,
+  copyWorkingSet,
+  openStudioSession,
+  patchStudioSession,
+  removeSource,
+  searchBringIn,
+  setSourceStates,
+  sourceDetail,
+  updateSource,
+  workingSetView,
+  createArtifact,
+} from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createTestCreator, type TestCreator } from "./helpers";
@@ -42,9 +55,20 @@ describe("CreativeStudio Working Set", () => {
     const s = await openStudioSession(db(owner), owner.creatorId, piece);
     const found = await searchBringIn(db(owner), owner.creatorId, s.id, "railway");
     expect(found.map((r) => r.title)).toEqual(["Dad railway story"]);
-    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note }, { type: "creation", id: poem }, { type: "material", id: note }])).toBe(2);
+    expect(
+      await addSources(db(owner), owner.creatorId, s.id, [
+        { type: "material", id: note },
+        { type: "creation", id: poem },
+        { type: "material", id: note },
+      ]),
+    ).toBe(2);
     // Adding again changes nothing; the Creation itself isn't its own source.
-    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note }, { type: "creation", id: piece }])).toBe(0);
+    expect(
+      await addSources(db(owner), owner.creatorId, s.id, [
+        { type: "material", id: note },
+        { type: "creation", id: piece },
+      ]),
+    ).toBe(0);
     let v = await workingSetView(db(owner), s.id);
     const voice = v.sources.find((x) => x.sourceId === note)!;
     expect(voice).toMatchObject({ state: "available", roles: ["voice", "story"], kind: "Voice note" });
@@ -93,7 +117,9 @@ describe("CreativeStudio Working Set", () => {
     const whole = (await workingSetView(db(owner), s.id)).sources.find((x) => x.sourceId === note && !x.fragment)!;
     const d = await sourceDetail(db(owner), whole.id);
     expect(d.text).toContain("Platform 3");
-    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note, fragment: { kind: "text_range", start: 0, end: 24, text: "He waited at Platform 3." } }], "in_use")).toBe(1);
+    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note, fragment: { kind: "text_range", start: 0, end: 24, text: "He waited at Platform 3." } }], "in_use")).toBe(
+      1,
+    );
     v = await workingSetView(db(owner), s.id);
     const frag = v.sources.find((x) => x.fragment)!;
     expect(frag).toMatchObject({ state: "in_use", roles: ["quote"], title: "“He waited at Platform 3.”", kind: "Passage · Voice note" });
@@ -112,7 +138,9 @@ describe("CreativeStudio Working Set", () => {
     expect(await activeStudioSession(db(owner), owner.creatorId)).toMatchObject({ artifactId: piece });
 
     // Format switch keeps the ingredients (§24–25): the new Creation's table has the same rows, plus its source.
-    const next = (await createArtifact(db(owner), owner.creatorId, { artifactType: "carousel", title: "Platform 3 (carousel)", content: "Slides", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const next = (
+      await createArtifact(db(owner), owner.creatorId, { artifactType: "carousel", title: "Platform 3 (carousel)", content: "Slides", authorKind: "creator", provenance: { origin: "typed" } })
+    ).id;
     const copied = await copyWorkingSet(db(owner), owner.creatorId, s.id, next);
     const cv = await workingSetView(db(owner), copied);
     expect(cv.outputMode).toBe("carousel");
@@ -123,5 +151,25 @@ describe("CreativeStudio Working Set", () => {
     const theirs = (await createArtifact(db(other), other.creatorId, { artifactType: "poem", title: "Theirs", content: "x", authorKind: "creator", provenance: { origin: "typed" } })).id;
     const { data: tc } = await admin.from("artifact_comments").insert({ artifact_id: theirs, creator_id: other.creatorId, body: "private" }).select("id").single();
     await expect(addSources(db(owner), owner.creatorId, s.id, [{ type: "comment", id: tc!.id }])).rejects.toThrow(/isn't available/);
+  });
+  it("records how a source is used — a choice or the creator's own words — and nobody else can set it", async () => {
+    const s = await openStudioSession(db(owner), owner.creatorId, piece);
+    await addSources(db(owner), owner.creatorId, s.id, [{ type: "creation", id: poem }]);
+    let row = (await workingSetView(db(owner), s.id)).sources.find((x) => x.sourceId === poem)!;
+    await updateSource(db(owner), row.id, { state: "in_use", usageIntent: "structure", usageNote: null });
+    row = (await workingSetView(db(owner), s.id)).sources.find((x) => x.id === row.id)!;
+    expect(row).toMatchObject({ state: "in_use", usageIntent: "structure", usageNote: null });
+    await updateSource(db(owner), row.id, { usageIntent: null, usageNote: "only the last stanza's rhythm" });
+    row = (await workingSetView(db(owner), s.id)).sources.find((x) => x.id === row.id)!;
+    expect(row).toMatchObject({ usageIntent: null, usageNote: "only the last stanza's rhythm" });
+    // Unknown uses and long notes are refused; another creator can't touch the row (RLS).
+    await expect(updateSource(db(owner), row.id, { usageIntent: "anything" })).rejects.toThrow();
+    await expect(updateSource(db(owner), row.id, { usageNote: "x".repeat(301) })).rejects.toThrow();
+    await expect(updateSource(db(other), row.id, { usageIntent: "mood" })).rejects.toThrow(/isn't in your Working Set/);
+    const { error } = await admin
+      .from("studio_sources")
+      .update({ usage_note: "y".repeat(301) })
+      .eq("id", row.id);
+    expect(error?.code).toBe("23514");
   });
 });

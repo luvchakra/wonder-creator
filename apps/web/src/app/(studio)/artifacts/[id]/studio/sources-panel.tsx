@@ -1,5 +1,5 @@
 "use client";
-import { groupSources, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
+import { USAGE_LABEL, groupSources, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import { cn } from "@wonder/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -105,7 +105,8 @@ export function SourcesPanel({ set, artifactId, onSeeAll, onUsePart }: { set: Wo
       <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
         {rows.map((row) => {
           const open = row.id === openId;
-          const where = usedIn(usage[row.id]) ?? STATE_LABEL[row.state];
+          const how = row.usageNote ? `“${row.usageNote}”` : row.usageIntent ? USAGE_LABEL[row.usageIntent] : null;
+          const where = [how, usedIn(usage[row.id]) ?? (how ? null : STATE_LABEL[row.state])].filter(Boolean).join(" · ");
           return (
             <li key={row.id}>
               <button
