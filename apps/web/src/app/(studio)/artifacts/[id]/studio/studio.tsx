@@ -3,7 +3,7 @@ import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, ChevronDown, MoreHorizontal, PenLine, Plus, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,7 +18,7 @@ import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSet
 
 /**
  * The Creative Studio canvas (creative-studio-working-set.md §5–7, §44–47, §64–68): the Creation is the screen. One
- * compact "Sources N · M in use" pill and a "+" (Bring in) sit at the bottom; the top bar names the Creation, says
+ * compact "Sources N · M in use" pill (Bring in is inside it) sits at the bottom; the top bar names the Creation, says
  * "Autosaved", and shows who's on it. Writing autosaves as a draft; a version is made only at a checkpoint the creator
  * chooses ("Save as new version"). CreativeMind shows at most one quiet bubble at a time.
  */
@@ -654,7 +654,7 @@ export function Studio({
         </div>
       ) : null}
 
-      {/* Bottom bar (§7, §64): pen · Sources N · M in use · + */}
+      {/* Bottom bar (§7, §64): pen · Sources N · M in use */}
       <div className="pointer-events-none fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-3xl items-center gap-2">
         {!isCarousel && !proposal ? (
           <button
@@ -688,15 +688,7 @@ export function Studio({
           </span>
         </button>
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setSheet("bring")}
-          aria-label="Bring in"
-          data-primary-action
-          className="pointer-events-auto mr-[4.5rem] inline-flex size-12 items-center justify-center rounded-full bg-[image:var(--gradient-primary)] text-white shadow-[var(--shadow-glow)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <Plus className="size-5" aria-hidden />
-        </button>
+        {/* No separate "+": Bring in lives inside Sources (owner, 28 Sep 2026), so there's one way in. */}
       </div>
 
       {/* Sheets */}
