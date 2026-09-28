@@ -66,6 +66,12 @@ const THINKING: Record<TaskKind, "low" | "medium" | "high"> = {
   transform: "high",
 };
 
+/**
+ * Gemini counts thinking against maxOutputTokens, so a small cap is spent before the answer is written (the reply
+ * comes back cut off mid-JSON). Whatever a caller asks for, leave at least this much for the thinking level.
+ */
+const THINKING_FLOOR: Record<"low" | "medium" | "high", number> = { low: 2000, medium: 8000, high: 16000 };
+
 const MAX_TOKENS: Record<TaskKind, number> = {
   intent: 2000,
   memory: 4000,
@@ -207,7 +213,7 @@ export class GeminiProvider implements CreativeModelProvider {
       contents: toContents(input.messages),
       ...(input.system ? { systemInstruction: { parts: [{ text: input.system }] } } : {}),
       generationConfig: {
-        maxOutputTokens: input.maxTokens ?? MAX_TOKENS[input.task],
+        maxOutputTokens: Math.max(input.maxTokens ?? MAX_TOKENS[input.task], THINKING_FLOOR[THINKING[input.task]]),
         thinkingConfig: { thinkingLevel: THINKING[input.task] },
         ...extra,
       },

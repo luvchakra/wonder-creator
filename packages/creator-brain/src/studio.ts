@@ -69,7 +69,6 @@ export async function findStudioConnections(
     ],
     schema: connectionsSchema,
     schemaName: "studio_connections",
-    maxTokens: 600,
   });
   const ids = new Set(input.sources.map((s) => s.id));
   return { live: true, connections: r.value.connections.filter((c) => c.sourceIds.every((id) => ids.has(id))).slice(0, 3) };
@@ -87,7 +86,6 @@ export async function useTogetherIdea(
     messages: [{ role: "user", content: `Sources:\n${summarise(input.sources)}${input.instruction ? `\n\nThe creator says: ${fenceUntrusted("instruction", input.instruction, 300)}` : ""}` }],
     schema: useTogetherSchema,
     schemaName: "studio_use_together",
-    maxTokens: 400,
   });
   const roles: Record<string, string[]> = {};
   for (const x of r.value.roles) roles[x.id] = x.roles.map((role) => role.toLowerCase());
@@ -113,7 +111,6 @@ export async function refineSlideWords(deps: BrainDeps, input: { creationTitle: 
         content: `Current words:\n${fenceUntrusted("words", input.words, 1500)}\n\nThey come from this passage:\n${fenceUntrusted("source", input.sourceText, 1500)}\n\nWhat to do: ${fenceUntrusted("instruction", input.instruction, 300)}`,
       },
     ],
-    maxTokens: 400,
     hints: { action: "refine_slide", title: input.creationTitle.slice(0, 80) },
   });
   return { live: deps.provider.live, text: out.text.trim() };
