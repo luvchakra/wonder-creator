@@ -50,7 +50,14 @@ test.describe("CreativeStudio Working Set", () => {
     const n2 = await saveNote(page, `Station at dusk, lamps and steam ${tag}`);
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform 3 ${tag}` } })).json()).artifact as { id: string };
     const s = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()).workingSet as { sessionId: string };
-    await page.request.post(`/api/v1/studio-sessions/${s.sessionId}/sources`, { data: { items: [{ type: "material", id: n1 }, { type: "material", id: n2 }] } });
+    await page.request.post(`/api/v1/studio-sessions/${s.sessionId}/sources`, {
+      data: {
+        items: [
+          { type: "material", id: n1 },
+          { type: "material", id: n2 },
+        ],
+      },
+    });
     // A collaborator's comment → "Use in Studio" lands it on the table, In use.
     const c = (await (await page.request.post(`/api/v1/artifacts/${art.id}/comments`, { data: { body: "The opening should feel emptier." } })).json()) as { comment?: { id: string }; id?: string };
     const commentId = c.comment?.id ?? c.id!;
@@ -78,5 +85,44 @@ test.describe("CreativeStudio Working Set", () => {
     await page.waitForURL((u) => /\/artifacts\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
     await expect(page.getByRole("button", { name: /^Working Set: 4 sources · 4 in use/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
+  });
+
+  test("every source shows under the canvas, collapsed but for the last one opened — and the device remembers which", async ({ page }) => {
+    const tag = uid();
+    const a = await saveNote(page, `Rain on the platform roof ${tag}\nA slow drip into the puddles.`);
+    const b = await saveNote(page, `The chai seller's radio ${tag}\nOld film songs, half heard.`);
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${tag}` } })).json()).artifact as { id: string };
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, {
+      data: {
+        items: [
+          { type: "material", id: a },
+          { type: "material", id: b },
+        ],
+      },
+    });
+
+    await page.goto(`/artifacts/${art.id}/studio`);
+    const panel = page.getByRole("region", { name: /^Used materials/ });
+    const rows = panel.getByRole("button", { expanded: undefined }).filter({ has: page.locator("[aria-expanded]") });
+    void rows;
+    const all = panel.locator("button[aria-expanded]");
+    await expect(all).toHaveCount(2);
+    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
+
+    // Opening another closes the first and shows what it holds; the choice survives a reload.
+    const radio = panel.locator("button[aria-expanded]").filter({ hasText: "The chai seller's radio" });
+    if ((await radio.getAttribute("aria-expanded")) !== "true") await radio.click();
+    await expect(radio).toHaveAttribute("aria-expanded", "true");
+    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
+    await expect(panel.getByText("Old film songs, half heard.")).toBeVisible();
+    await page.reload();
+    await expect(
+      page
+        .getByRole("region", { name: /^Used materials/ })
+        .locator("button[aria-expanded]")
+        .filter({ hasText: "The chai seller's radio" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(1);
   });
 });

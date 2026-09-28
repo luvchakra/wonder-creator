@@ -64,14 +64,23 @@ test.describe("Carousel Composer", () => {
 
   test("Studio canvas: one slide fills the canvas with its words, the strip moves between slides, and a tap opens the editor", async ({ page, creator }) => {
     const id = await carousel(page);
-    const [first] = await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
+    const [, second] = await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
     await page.goto(`/artifacts/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: First light/ })).toBeVisible();
     await expect(editor.getByText("1 / 3")).toBeVisible();
-    // Nothing else competes on the canvas: no slide list, no Continue Creating, one "+" to make one more.
+    // Nothing else competes on the canvas: no slide list, no Continue Creating, no Reorder pill; one dashed "Add slide".
     await expect(page.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
-    await expect(editor.getByRole("button", { name: "Generate one more" })).toBeVisible();
+    await expect(editor.getByRole("button", { name: "Reorder" })).toHaveCount(0);
+    await expect(editor.getByRole("button", { name: "Add slide" })).toBeVisible();
+    // "Refine text" on the slide: one suggestion at a time, the creator's choice; offline it's labelled as a placeholder.
+    await editor.getByRole("button", { name: /Refine text/ }).click();
+    await page.getByRole("menuitem", { name: "Shorten" }).click();
+    const newWords = editor.getByRole("region", { name: "New words for this slide" });
+    await expect(newWords).toContainText("offline placeholder");
+    await expect(newWords.getByRole("button", { name: "Use new" })).toBeVisible();
+    await newWords.getByRole("button", { name: "Keep current" }).click();
+    await expect(newWords).toHaveCount(0);
     await editor.getByRole("button", { name: "Next slide" }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ })).toBeVisible();
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 3 of 3" }).click();
@@ -86,10 +95,17 @@ test.describe("Carousel Composer", () => {
     await order.getByRole("button", { name: "Move slide 1 down" }).click();
     await page.getByRole("button", { name: "Done" }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Second wind/ })).toBeVisible();
-    // Tapping the slide opens the focused editor (slide 2 is now the original first).
+    // Shift + arrow moves a slide without a drag: the first (Second wind) goes right, so First light leads again.
+    await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await expect(editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ })).toBeVisible();
+    await page.reload();
+    await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).click();
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: First light/ })).toBeVisible();
+    // Tapping the slide opens the focused editor (slide 2 is Second wind again).
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 2 of 3" }).click();
-    await editor.getByRole("link", { name: /^Edit slide 2 of 3: First light/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/slides/${first}$`));
+    await editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/slides/${second}$`));
   });
 
   test("slide editor: edit words, place and style them on the image, split, and it all autosaves", async ({ page, creator }) => {

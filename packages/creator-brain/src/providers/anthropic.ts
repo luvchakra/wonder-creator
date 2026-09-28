@@ -79,6 +79,10 @@ function mapError(e: unknown): DomainError {
     return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause: e });
   }
   if (e instanceof Anthropic.BadRequestError) {
+    // Anthropic answers an empty credit balance with a 400 that says so; only a top-up fixes it.
+    if (/credit balance|billing/i.test(e.message)) {
+      return new DomainError("provider_unavailable", "CreativeMind is paused: the AI provider's credit has run out. Top it up in the Anthropic Console to continue.", { cause: e });
+    }
     return new DomainError("provider_failed", "CreativeMind couldn't work with that request.", { cause: e });
   }
   if (e instanceof Anthropic.APIConnectionError || e instanceof Anthropic.InternalServerError || e instanceof Anthropic.APIError) {

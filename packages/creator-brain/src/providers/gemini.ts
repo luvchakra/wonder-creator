@@ -165,6 +165,10 @@ async function errorFor(res: Response, at: string): Promise<DomainError> {
   // service (model not found, internal error) rather than echoing any part of the request; never creative content.
   log("warn", "provider.http_error", { provider: "gemini", where: at, status: res.status, reason, ...(res.status !== 400 ? { message: message.slice(0, 160) } : {}) });
   const cause = new Error(`Gemini API ${res.status}: ${detail.slice(0, 500)}`);
+  // Out of credit (402, or RESOURCE_EXHAUSTED about credits/billing rather than a rate limit): only a top-up fixes it.
+  if (res.status === 402 || (reason === "RESOURCE_EXHAUSTED" && /credit|billing|prepay/i.test(message))) {
+    return new DomainError("provider_unavailable", "CreativeMind is paused: the AI provider's credit has run out. Top it up in Google AI Studio to continue.", { cause });
+  }
   if (res.status === 429) return new DomainError("provider_unavailable", "CreativeMind is busy right now. Please try again in a moment.", { cause });
   if (res.status === 401 || res.status === 403 || detail.includes("API_KEY_INVALID")) {
     return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause });

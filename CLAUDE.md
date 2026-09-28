@@ -20,9 +20,10 @@ The Palette is the product's signature control. It follows every rule in this fi
 and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementation: `packages/ui/src/components/palette.tsx`
 (layout) and `apps/web/src/lib/palette/` (what it offers).
 
-* **Fan, not a list.** Leaves open as a fan on a quarter-arc around the corner trigger: the leaf nearest the trigger sits
-  beside it, the furthest sits above it. **Leaves stay horizontal** — the arc is in their placement, never a tilt or
-  rotation of the leaf or its text. Never use icon-only leaves.
+* **Fan, not a list.** Leaves stack above the corner trigger (below it when the trigger sits high) and the **start of
+  each leaf** — icon and first letter — sits on a quarter-arc around the trigger: the nearest leaf starts closest to the
+  trigger's column, the furthest starts furthest away; their ends are free (owner, 28 Sep 2026). **Leaves stay
+  horizontal** — the arc is in their placement, never a tilt or rotation of the leaf or its text. Never use icon-only leaves.
 * The trigger is the painted Vector Kit palette only — no disc or background behind it. The open state may show a small
   surface behind the close icon so it stays legible.
 * **Movable (owner, 28 Sep 2026):** the creator can drag the trigger anywhere and leave it. It docks to the nearest left

@@ -125,6 +125,19 @@ describe("GeminiProvider contract", () => {
     });
   });
 
+  it("says plainly when the provider's credit has run out, without retrying", async () => {
+    let calls = 0;
+    const f = (async () => {
+      calls++;
+      return json({ error: { code: 402, status: "RESOURCE_EXHAUSTED", message: "Your prepayment credits are depleted. Please go to AI Studio to manage your project and billing." } }, 402);
+    }) as typeof fetch;
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f, retryDelays: [0, 0] }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_unavailable",
+      message: /credit has run out/,
+    });
+    expect(calls).toBe(1);
+  });
+
   it("maps network failures to provider_failed after retrying", async () => {
     let calls = 0;
     const f = (async () => {
