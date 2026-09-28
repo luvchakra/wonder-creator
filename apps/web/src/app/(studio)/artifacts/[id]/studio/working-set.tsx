@@ -382,7 +382,11 @@ function UseTogether({ set, chosen, onClose, onDone }: { set: WorkingSetView; ch
                   </p>
                 ) : (
                   <p className="text-[12.5px] text-ink-muted">
-                    {r.live ? "No single idea stood out; here are directions from what's on the table." : "CreativeMind isn't connected, so these directions come from what the sources are."}
+                    {r.live
+                      ? "No single idea stood out; here are directions from what's on the table."
+                      : error
+                        ? "Meanwhile, these directions come from what the sources are."
+                        : "CreativeMind isn't connected, so these directions come from what the sources are."}
                   </p>
                 )}
                 <ul role="radiogroup" aria-label="Directions" className="divide-y divide-border-soft rounded-2xl border border-border-soft">

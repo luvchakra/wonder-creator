@@ -104,6 +104,12 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
   const image = slide.image?.url ?? slide.pending?.url ?? null;
   const words = slide.displayText || slide.sourceText;
   const go = (to: number) => setCurrent(((to % n) + n) % n);
+  // On phones the slide shrinks so the strip below it stays above the bottom bar on the first screen: its width follows
+  // the height left after the app's chrome (header, top bar, format chip, strip, bottom bar; more with a caption),
+  // never below 9rem, and never wider than the canvas. Larger screens have room and use the full width.
+  const [aw, ah] = view.settings.aspectRatio.split(":").map(Number) as [number, number];
+  const caption = !slide.overlay.enabled && !!words.trim();
+  const phoneWidth = `max(9rem, calc((100dvh - ${caption ? "25.5rem" : "21rem"} - var(--canvas-extra, 0rem)) * ${(aw && ah ? aw / ah : 0.8).toFixed(3)}))`;
 
   return (
     <div
@@ -115,42 +121,48 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
       }}
     >
       {/* The slide, big, as it will be seen. Tapping it opens the Slide Editor. */}
-      <div className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-        <Link
-          href={`/artifacts/${artifactId}/slides/${slide.id}`}
-          className="block focus-visible:outline-2 focus-visible:outline-accent"
-          aria-label={`Edit slide ${idx + 1} of ${n}: ${words.slice(0, 60)}`}
-        >
-          <SlideFrame image={image} overlay={slide.overlay} text={words} transform={slide.transform} aspect={view.settings.aspectRatio} className="max-h-[70dvh] w-full" />
-        </Link>
-        {!slide.overlay.enabled && words.trim() ? <p className="whitespace-pre-line px-4 py-3 pr-36 font-display text-[15px] leading-snug text-ink">{words}</p> : null}
-        <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[11.5px] font-medium text-white backdrop-blur" aria-hidden>
-          {idx + 1} / {n}
-        </span>
-        <p className="sr-only" aria-live="polite">
-          Slide {idx + 1} of {n}
-        </p>
-        {n > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={() => go(idx - 1)}
-              aria-label="Previous slide"
-              className="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur hover:bg-black/50"
-            >
-              <ChevronLeft className="size-5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(idx + 1)}
-              aria-label="Next slide"
-              className="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur hover:bg-black/50"
-            >
-              <ChevronRight className="size-5" aria-hidden />
-            </button>
-          </>
-        ) : null}
-        {view.canEdit ? <RefineText key={slide.id} artifactId={artifactId} slideId={slide.id} words={words} onChanged={refresh} /> : null}
+      <div
+        style={{ ["--slide-w" as string]: phoneWidth }}
+        className="mx-auto w-full max-w-[var(--slide-w)] overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)] sm:max-w-none"
+      >
+        <div className="relative">
+          <Link
+            href={`/artifacts/${artifactId}/slides/${slide.id}`}
+            className="block focus-visible:outline-2 focus-visible:outline-accent"
+            aria-label={`Edit slide ${idx + 1} of ${n}: ${words.slice(0, 60)}`}
+          >
+            <SlideFrame image={image} overlay={slide.overlay} text={words} transform={slide.transform} aspect={view.settings.aspectRatio} className="w-full" />
+          </Link>
+          <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[11.5px] font-medium text-white backdrop-blur" aria-hidden>
+            {idx + 1} / {n}
+          </span>
+          <p className="sr-only" aria-live="polite">
+            Slide {idx + 1} of {n}
+          </p>
+          {n > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => go(idx - 1)}
+                aria-label="Previous slide"
+                className="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur hover:bg-black/50"
+              >
+                <ChevronLeft className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(idx + 1)}
+                aria-label="Next slide"
+                className="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur hover:bg-black/50"
+              >
+                <ChevronRight className="size-5" aria-hidden />
+              </button>
+            </>
+          ) : null}
+          {view.canEdit ? <RefineText key={slide.id} artifactId={artifactId} slideId={slide.id} words={words} onChanged={refresh} /> : null}
+        </div>
+        {/* Words that aren't on the image: two lines on a phone (the slide editor has them all), under the frame. */}
+        {caption ? <p className="line-clamp-2 whitespace-pre-line px-4 py-3 font-display text-[15px] leading-snug text-ink sm:line-clamp-none">{words}</p> : null}
       </div>
 
       {/* Every slide at a glance: numbered, with a grip to drag; "+" makes exactly one more (§7). */}

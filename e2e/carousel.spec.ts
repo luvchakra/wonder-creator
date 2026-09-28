@@ -108,6 +108,25 @@ test.describe("Carousel Composer", () => {
     await expect(page).toHaveURL(new RegExp(`/slides/${second}$`));
   });
 
+  test("Studio canvas on a short phone @mobile: the slide shrinks so the strip stays visible above the bottom bar", async ({ page, creator }) => {
+    const id = await carousel(page);
+    await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
+    await page.setViewportSize({ width: 360, height: 640 });
+    await page.goto(`/artifacts/${id}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3/ })).toBeVisible();
+    const thumb = editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" });
+    await expect(thumb).toBeInViewport({ ratio: 1 });
+    // Nothing fixed (the Sources pill, the "+") sits over it.
+    const b = (await thumb.boundingBox())!;
+    const hit = await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest("[data-slide-thumb]"), [b.x + b.width / 2, b.y + b.height / 2]);
+    expect(hit).toBe(true);
+    // The slide kept its shape: narrower, not cropped.
+    const frame = (await editor.getByRole("link", { name: /^Edit slide 1 of 3/ }).boundingBox())!;
+    expect(frame.width).toBeLessThan(330);
+    expect(Math.abs(frame.height / frame.width - 1.25)).toBeLessThan(0.05);
+  });
+
   test("slide editor: edit words, place and style them on the image, split, and it all autosaves", async ({ page, creator }) => {
     const id = await carousel(page);
     const [, second] = await seedCarousel(creator.id, id, ["First light", "In the mirror—\nonly loneliness.", "Third act"]);

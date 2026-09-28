@@ -315,7 +315,8 @@ export function Studio({
   const saveLabel = saving ? "Saving…" : savedAt ? "Autosaved" : dirty ? "Unsaved" : "Saved";
 
   return (
-    <div className="mx-auto max-w-3xl pb-24">
+    // --canvas-extra: what else takes height above the canvas (the offline notice), so the carousel canvas can size itself.
+    <div className="mx-auto max-w-3xl pb-24" style={{ ["--canvas-extra" as string]: offline ? "4rem" : "0rem" }}>
       {/* Top bar (§6, §65): back · the Creation and its version · autosaved · who's on it · more. */}
       <header className="mb-2 flex items-center gap-1.5">
         <Link href={`/artifacts/${artifact.id}`} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-black/5" aria-label="Back to Creation">

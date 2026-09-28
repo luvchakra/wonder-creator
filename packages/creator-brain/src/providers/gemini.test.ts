@@ -125,6 +125,16 @@ describe("GeminiProvider contract", () => {
     });
   });
 
+  it("never caps output below what the thinking level needs (a small cap came back cut off mid-JSON)", async () => {
+    let body: { generationConfig?: { maxOutputTokens?: number } } = {};
+    const f = (async (_u: unknown, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return json({ candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }] });
+    }) as typeof fetch;
+    await new GeminiProvider({ apiKey: "k", fetch: f }).generate({ task: "discover", system: "", messages: [{ role: "user", content: "x" }], maxTokens: 400 });
+    expect(body.generationConfig?.maxOutputTokens).toBe(8000);
+  });
+
   it("says plainly when the provider's credit has run out, without retrying", async () => {
     let calls = 0;
     const f = (async () => {
