@@ -14,8 +14,33 @@ import { aspectClass } from "@/components/carousel/slide-render";
  * setup → "Generate N images" · generating → progress only · slides → "Continue Creating" with two quiet actions
  * (Generate one more, Arrange). Everything else is in a slide's ⋯, the Palette or Details.
  */
-export function CarouselComposer({ artifactId, title, meta, source, initial, hideHeader = false }: { artifactId: string; title: string; meta: string; source: string | null; initial: CarouselView; /** Inside the Creative Studio, whose own bar names the Creation. */ hideHeader?: boolean }) {
-  const [view, setView] = useState(initial);
+export function CarouselComposer({
+  artifactId,
+  title,
+  meta,
+  source,
+  initial,
+  hideHeader = false,
+  onView,
+}: {
+  artifactId: string;
+  title: string;
+  meta: string;
+  source: string | null;
+  initial: CarouselView;
+  /** Inside the Creative Studio, whose own bar names the Creation. */
+  hideHeader?: boolean;
+  /** Tells the Studio canvas what the Composer now knows (e.g. the first slides are ready). */
+  onView?: (v: CarouselView) => void;
+}) {
+  const [view, setViewState] = useState(initial);
+  const setView = useCallback(
+    (v: CarouselView) => {
+      setViewState(v);
+      onView?.(v);
+    },
+    [onView],
+  );
   const [error, setError] = useState<string | null>(null);
   const strip = useStripSignal();
   const refresh = useCallback(async () => {
@@ -24,7 +49,7 @@ export function CarouselComposer({ artifactId, title, meta, source, initial, hid
     } catch (e) {
       setError(errorMessage(e));
     }
-  }, [artifactId]);
+  }, [artifactId, setView]);
 
   // Follow anything in flight (the first set, one more, a slide's new image). The page never waits on it.
   const busy = !!view.generating || view.adding > 0 || view.slides.some((s) => s.change && s.change.status !== "failed");
@@ -61,7 +86,11 @@ export function CarouselComposer({ artifactId, title, meta, source, initial, hid
     return (
       <div className="mx-auto max-w-xl space-y-4">
         {header}
-        {view.isOwner ? <Setup artifactId={artifactId} sourceText={view.sourceText} existing={view.existing} onStarted={refresh} /> : <p className="text-sm text-ink-muted">The creator hasn&apos;t made this Carousel&apos;s images yet.</p>}
+        {view.isOwner ? (
+          <Setup artifactId={artifactId} sourceText={view.sourceText} existing={view.existing} onStarted={refresh} />
+        ) : (
+          <p className="text-sm text-ink-muted">The creator hasn&apos;t made this Carousel&apos;s images yet.</p>
+        )}
         <DetailsLink artifactId={artifactId} />
       </div>
     );
@@ -81,7 +110,15 @@ export function CarouselComposer({ artifactId, title, meta, source, initial, hid
     <div className="mx-auto max-w-xl space-y-3">
       {header}
       {arranging ? (
-        <Arrange artifactId={artifactId} slides={view.slides} aspect={view.settings.aspectRatio} onDone={async () => { setArranging(false); await refresh(); }} />
+        <Arrange
+          artifactId={artifactId}
+          slides={view.slides}
+          aspect={view.settings.aspectRatio}
+          onDone={async () => {
+            setArranging(false);
+            await refresh();
+          }}
+        />
       ) : (
         <>
           <section aria-labelledby="slides-h" className="space-y-2">
@@ -93,7 +130,18 @@ export function CarouselComposer({ artifactId, title, meta, source, initial, hid
             </div>
             <ol aria-label="Slides" className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
               {view.slides.map((s, i) => (
-                <SlideRow key={s.id} artifactId={artifactId} slide={s} index={i} total={view.slides.length} aspect={view.settings!.aspectRatio} canEdit={view.canEdit} isOwner={view.isOwner} onChanged={refresh} onError={setError} />
+                <SlideRow
+                  key={s.id}
+                  artifactId={artifactId}
+                  slide={s}
+                  index={i}
+                  total={view.slides.length}
+                  aspect={view.settings!.aspectRatio}
+                  canEdit={view.canEdit}
+                  isOwner={view.isOwner}
+                  onChanged={refresh}
+                  onError={setError}
+                />
               ))}
               {view.adding > 0 ? (
                 <li className="flex items-center gap-3 p-2" role="status">
@@ -138,7 +186,10 @@ export function CarouselComposer({ artifactId, title, meta, source, initial, hid
 
 /** The first two lines of the source, for a compact reminder of what the images come from. */
 function preview(text: string) {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   return lines.slice(0, 2).join("\n") + (lines.length > 2 ? " …" : "");
 }
 
@@ -155,7 +206,14 @@ function Chips<T extends string | number>({ label, value, options, onChange }: {
   return (
     <div role="radiogroup" aria-label={label} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
       {options.map(([v, text]) => (
-        <button key={String(v)} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)} className={cn(chipBase, value === v ? "bg-navy text-white" : "bg-surface-muted text-ink-muted hover:text-ink")}>
+        <button
+          key={String(v)}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          onClick={() => onChange(v)}
+          className={cn(chipBase, value === v ? "bg-navy text-white" : "bg-surface-muted text-ink-muted hover:text-ink")}
+        >
           {text}
         </button>
       ))}
@@ -225,7 +283,14 @@ function Setup({ artifactId, sourceText, existing, onStarted }: { artifactId: st
         {count === "custom" ? (
           <label className="flex items-center gap-2 text-sm text-ink">
             Slides
-            <input type="number" min={1} max={CAROUSEL_MAX_SLIDES} value={custom} onChange={(e) => setCustom(Number(e.target.value) || 1)} className="h-11 w-20 rounded-xl border border-border bg-surface px-3" />
+            <input
+              type="number"
+              min={1}
+              max={CAROUSEL_MAX_SLIDES}
+              value={custom}
+              onChange={(e) => setCustom(Number(e.target.value) || 1)}
+              className="h-11 w-20 rounded-xl border border-border bg-surface px-3"
+            />
             <span className="text-xs text-ink-subtle">up to {CAROUSEL_MAX_SLIDES}</span>
           </label>
         ) : null}
@@ -253,7 +318,10 @@ function Setup({ artifactId, sourceText, existing, onStarted }: { artifactId: st
           setError(null);
           try {
             key.current ??= crypto.randomUUID();
-            const r = await api<{ state: string }>(`/api/v1/carousels/${artifactId}/start`, { method: "POST", json: { count: n, visualStyle: style, aspectRatio: aspect, idempotencyKey: key.current } });
+            const r = await api<{ state: string }>(`/api/v1/carousels/${artifactId}/start`, {
+              method: "POST",
+              json: { count: n, visualStyle: style, aspectRatio: aspect, idempotencyKey: key.current },
+            });
             if (r.state === "unavailable") setError("Image generation isn't connected.");
             else onStarted();
           } catch (e) {
@@ -276,9 +344,7 @@ function Generating({ g, aspect }: { g: { ready: number; requested: number }; as
     <section aria-busy="true" className="space-y-3">
       <div>
         <h2 className="text-base font-semibold text-ink">Creating your carousel…</h2>
-        <p className="text-[13px] text-ink-muted">
-          Generating {g.requested} images and matching text
-        </p>
+        <p className="text-[13px] text-ink-muted">Generating {g.requested} images and matching text</p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-valuemin={0} aria-valuemax={g.requested} aria-valuenow={g.ready} aria-label="Images ready">
         <div className="h-full rounded-full bg-accent transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${Math.max(4, (g.ready / g.requested) * 100)}%` }} />
@@ -318,7 +384,10 @@ function FailedStart({ artifactId, settings, onRetry }: { artifactId: string; se
           setBusy(true);
           setError(null);
           try {
-            const r = await api<{ state: string }>(`/api/v1/carousels/${artifactId}/start`, { method: "POST", json: { count: settings.requestedCount, visualStyle: settings.visualStyle, aspectRatio: settings.aspectRatio, retry: true } });
+            const r = await api<{ state: string }>(`/api/v1/carousels/${artifactId}/start`, {
+              method: "POST",
+              json: { count: settings.requestedCount, visualStyle: settings.visualStyle, aspectRatio: settings.aspectRatio, retry: true },
+            });
             if (r.state === "unavailable") setError("Image generation isn't connected.");
             else onRetry();
           } catch (e) {
@@ -334,7 +403,27 @@ function FailedStart({ artifactId, settings, onRetry }: { artifactId: string; se
   );
 }
 
-function SlideRow({ artifactId, slide, index, total, aspect, canEdit, isOwner, onChanged, onError }: { artifactId: string; slide: SlideView; index: number; total: number; aspect: string; canEdit: boolean; isOwner: boolean; onChanged: () => void; onError: (m: string | null) => void }) {
+function SlideRow({
+  artifactId,
+  slide,
+  index,
+  total,
+  aspect,
+  canEdit,
+  isOwner,
+  onChanged,
+  onError,
+}: {
+  artifactId: string;
+  slide: SlideView;
+  index: number;
+  total: number;
+  aspect: string;
+  canEdit: boolean;
+  isOwner: boolean;
+  onChanged: () => void;
+  onError: (m: string | null) => void;
+}) {
   const [regen, setRegen] = useState(false);
   const act = async (path: string, init: RequestInit & { json?: unknown } = { method: "POST" }) => {
     onError(null);
@@ -351,7 +440,11 @@ function SlideRow({ artifactId, slide, index, total, aspect, canEdit, isOwner, o
       <span className="w-5 shrink-0 text-center text-[12.5px] font-semibold text-ink-subtle" aria-hidden>
         {index + 1}
       </span>
-      <Link href={`/artifacts/${artifactId}/slides/${slide.id}`} className="flex min-w-0 flex-1 items-center gap-3 after:absolute after:inset-0 after:content-['']" aria-label={`Slide ${index + 1} of ${total}: ${slide.displayText || "no words yet"}`}>
+      <Link
+        href={`/artifacts/${artifactId}/slides/${slide.id}`}
+        className="flex min-w-0 flex-1 items-center gap-3 after:absolute after:inset-0 after:content-['']"
+        aria-label={`Slide ${index + 1} of ${total}: ${slide.displayText || "no words yet"}`}
+      >
         <span className={cn("relative w-14 shrink-0 overflow-hidden rounded-lg bg-surface-muted", aspectClass(aspect))}>
           {slide.image?.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -362,7 +455,9 @@ function SlideRow({ artifactId, slide, index, total, aspect, canEdit, isOwner, o
           {slide.change && slide.change.status !== "failed" ? <span className="absolute inset-0 bg-surface-muted/70 motion-safe:animate-pulse" /> : null}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-3 whitespace-pre-line font-display text-[14px] leading-snug text-ink">{slide.displayText || <span className="font-sans text-ink-subtle">No words yet</span>}</span>
+          <span className="line-clamp-3 whitespace-pre-line font-display text-[14px] leading-snug text-ink">
+            {slide.displayText || <span className="font-sans text-ink-subtle">No words yet</span>}
+          </span>
           {status ? <span className={cn("mt-0.5 block text-[12px]", slide.pending ? "font-medium text-accent-ink" : "text-ink-subtle")}>{status}</span> : null}
         </span>
       </Link>
@@ -397,7 +492,25 @@ function SlideRow({ artifactId, slide, index, total, aspect, canEdit, isOwner, o
 }
 
 /** Instruction sheet shared by "Regenerate this image" and "Generate one more" (§11, §26). */
-function InstructionSheet({ title, description, cta, placeholder, required, onSubmit, onClose, children }: { title: string; description: string; cta: string; placeholder: string; required?: boolean; onSubmit: (instruction: string, key: string) => Promise<{ state: string }>; onClose: () => void; children?: React.ReactNode }) {
+function InstructionSheet({
+  title,
+  description,
+  cta,
+  placeholder,
+  required,
+  onSubmit,
+  onClose,
+  children,
+}: {
+  title: string;
+  description: string;
+  cta: string;
+  placeholder: string;
+  required?: boolean;
+  onSubmit: (instruction: string, key: string) => Promise<{ state: string }>;
+  onClose: () => void;
+  children?: React.ReactNode;
+}) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -477,7 +590,7 @@ export function RegenerateSheet({ slide, index, onClose, onQueued }: { slide: Sl
   );
 }
 
-function AddOneSheet({ artifactId, onClose, onQueued }: { artifactId: string; onClose: () => void; onQueued: () => void }) {
+export function AddOneSheet({ artifactId, onClose, onQueued }: { artifactId: string; onClose: () => void; onQueued: () => void }) {
   return (
     <InstructionSheet
       title="Add one more slide"
@@ -498,7 +611,7 @@ function AddOneSheet({ artifactId, onClose, onQueued }: { artifactId: string; on
  * Arrange (§28): drag rows by their handle, or use Move up / Move down (keyboard and precision-free, §42).
  * Nothing else is shown while arranging; nothing is generated. Done saves the order.
  */
-function Arrange({ artifactId, slides, aspect, onDone }: { artifactId: string; slides: SlideView[]; aspect: string; onDone: () => void }) {
+export function Arrange({ artifactId, slides, aspect, onDone }: { artifactId: string; slides: SlideView[]; aspect: string; onDone: () => void }) {
   const [order, setOrder] = useState(slides);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -536,7 +649,14 @@ function Arrange({ artifactId, slides, aspect, onDone }: { artifactId: string; s
       <p className="sr-only" aria-live="polite">
         {announce}
       </p>
-      <ol ref={list} aria-label="Slide order" className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface" onPointerMove={onPointerMove} onPointerUp={() => setDragging(null)} onPointerCancel={() => setDragging(null)}>
+      <ol
+        ref={list}
+        aria-label="Slide order"
+        className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface"
+        onPointerMove={onPointerMove}
+        onPointerUp={() => setDragging(null)}
+        onPointerCancel={() => setDragging(null)}
+      >
         {order.map((s, i) => (
           <li key={s.id} data-id={s.id} className={cn("flex items-center gap-2 p-2", dragging === s.id && "bg-accent-softer")}>
             <span

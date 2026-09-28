@@ -11,7 +11,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
-import { CarouselComposer } from "../carousel/composer";
+import { CarouselCanvas } from "./carousel-canvas";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 
@@ -309,6 +309,8 @@ export function Studio({
   const modeLabel = OUTPUT_MODES.find((m) => m.key === outputModeOf(artifact.type))?.label ?? "Writing";
   const editorFont = artifact.format === "screenplay" ? "font-mono text-[14px] leading-7" : artifact.format === "verse" ? "font-display text-[19px] leading-8" : "font-display text-[18px] leading-8";
   const isCarousel = artifact.type === "carousel" && carousel;
+  // "Arrange slides" (More sheet) asks the carousel canvas to open Arrange; each ask is a new number.
+  const [arrangeReq, setArrangeReq] = useState(0);
   const saveLabel = saving ? "Saving…" : savedAt ? "Autosaved" : dirty ? "Unsaved" : "Saved";
 
   return (
@@ -402,7 +404,7 @@ export function Studio({
       {/* The canvas */}
       {isCarousel ? (
         <section aria-label="Editor">
-          <CarouselComposer artifactId={artifact.id} title={artifact.title} meta="" source={null} initial={carousel} hideHeader />
+          <CarouselCanvas artifactId={artifact.id} initial={carousel} arrangeRequest={arrangeReq} />
         </section>
       ) : (
         <section aria-label="Editor" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
@@ -719,6 +721,18 @@ export function Studio({
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
             {[
               ...(!isCarousel ? [{ label: "Save version", hint: `v${(base?.number ?? 0) + 1} – ${artifact.typeLabel} (${title || "Untitled"})`, act: () => setSheet("save") }] : []),
+              ...(isCarousel
+                ? [
+                    {
+                      label: "Arrange slides",
+                      hint: "Reorder without regenerating",
+                      act: () => {
+                        setSheet(null);
+                        setArrangeReq((x) => x + 1);
+                      },
+                    },
+                  ]
+                : []),
               { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
               { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/artifacts/${artifact.id}?tab=versions`) },
               { label: "Transform / Derive", hint: "Make a carousel, video, etc.", act: () => setSheet("format") },

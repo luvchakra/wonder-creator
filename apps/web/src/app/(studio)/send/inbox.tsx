@@ -1,20 +1,32 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
 import { Button, Card, Input, Textarea, cn } from "@wonder/ui";
-import { Camera, Check, CircleAlert, CloudUpload, FileText, Link2, Loader2, Mic, ShieldAlert } from "lucide-react";
+import { Camera, Check, CircleAlert, CloudUpload, FileText, Link2, Loader2, Mic, PenLine, ShieldAlert, Video } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import type { IntakeView } from "@/lib/intake-view";
 import { sendToCreator } from "@/lib/send";
 
-interface Item {
-  id: string;
-  state: string;
-  kind: string;
-  error: string | null;
-  createdAt: string;
-  material: { id: string; title: string | null; type: string } | null;
-}
+type Item = IntakeView;
+
+/** Plain words for how it came in. */
+const KIND_LABEL: Record<string, string> = {
+  camera: "Photo",
+  image: "Image",
+  voice: "Voice note",
+  audio: "Audio",
+  video: "Video",
+  text: "Note",
+  url: "Link",
+  youtube: "YouTube",
+  document: "Document",
+  pdf: "PDF",
+  file: "File",
+};
+const kindLabel = (k: string) => KIND_LABEL[k] ?? k.charAt(0).toUpperCase() + k.slice(1);
+/** Camera and share-sheet names ("1000159585", "IMG_2041", "file_00000000a448…") say nothing; the preview does. */
+const machineName = (t: string) => /^\d{5,}$/.test(t) || /^(img|pxl|dsc|dcim|photo|image|file|screenshot)[_ -]?[0-9a-f_ -]{4,}$/i.test(t);
 
 const STEPS = [
   { label: "Ingest", states: ["received", "validating"] },
@@ -38,8 +50,8 @@ export function SendInbox({ initial }: { initial: Item[] }) {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await api<{ items: Array<{ id: string; state: string; input_kind: string; error_message: string | null; created_at: string; creative_materials: Item["material"] }> }>("/api/v1/send");
-      setItems(r.items.map((i) => ({ id: i.id, state: i.state, kind: i.input_kind, error: i.error_message, createdAt: i.created_at, material: i.creative_materials })));
+      const r = await api<{ items: Item[] }>("/api/v1/send");
+      setItems(r.items);
     } catch {
       /* keep last known state */
     }
@@ -81,7 +93,10 @@ export function SendInbox({ initial }: { initial: Item[] }) {
             const files = Array.from(e.dataTransfer.files);
             if (files.length) void send({ files });
           }}
-          className={cn("flex flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-12 text-center transition-colors", drag ? "border-accent bg-accent-softer" : "border-[#d9d2c8] bg-surface")}
+          className={cn(
+            "flex flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-12 text-center transition-colors",
+            drag ? "border-accent bg-accent-softer" : "border-[#d9d2c8] bg-surface",
+          )}
         >
           <CloudUpload className="size-10 text-accent-ink" aria-hidden />
           <p className="mt-3 font-medium text-ink">Drop files here, or choose them</p>
@@ -94,7 +109,14 @@ export function SendInbox({ initial }: { initial: Item[] }) {
               <Camera className="size-4" aria-hidden /> Camera
             </Button>
           </div>
-          <input ref={fileRef} type="file" multiple hidden accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx" onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files) })} />
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            hidden
+            accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx"
+            onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files) })}
+          />
           <input ref={cameraRef} type="file" hidden accept="image/*" capture="environment" onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files), kind: "camera" })} />
         </div>
 
@@ -157,44 +179,59 @@ export function SendInbox({ initial }: { initial: Item[] }) {
       <section aria-label="Recent sends" className="min-w-0">
         <h2 className="mb-3 text-lg font-semibold text-ink">Recent sends</h2>
         {items.length ? (
-          <ul className="space-y-2" aria-live="polite">
+          // One surface, compact rows (density spec): what it is at a glance, and progress only while it's moving.
+          <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface px-3" aria-live="polite">
             {items.map((i) => {
               const step = stepOf(i.state);
               const failed = i.state === "failed" || i.state === "quarantined";
+              const ready = !failed && (step === STEPS.length - 1 || i.state === "understood");
+              const title = i.material?.title && !machineName(i.material.title) ? i.material.title : i.material ? kindLabel(i.kind) : i.kind === "url" || i.kind === "youtube" ? "Link" : "File";
+              const meta = i.preview.domain && (i.kind === "url" || i.kind === "youtube") ? i.preview.domain : null;
               return (
-                <li key={i.id} className="rounded-2xl border border-border-soft bg-surface p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      {i.material ? (
-                        <Link href={`/space/materials/${i.material.id}`} className="block truncate font-medium text-ink hover:text-accent-ink">
-                          {i.material.title || "Untitled"}
-                        </Link>
-                      ) : (
-                        <p className="truncate font-medium text-ink">{i.kind === "url" || i.kind === "youtube" ? "Link" : "File"}</p>
-                      )}
-                      <p className="text-xs text-ink-subtle">
-                        {i.kind} · <RelativeTime iso={i.createdAt} />
-                      </p>
-                    </div>
-                    {failed ? (
-                      <CircleAlert className="size-5 shrink-0 text-warning-ink" aria-label={i.state === "quarantined" ? "Held for safety" : "Needs attention"} />
-                    ) : step === STEPS.length - 1 || i.state === "understood" ? (
-                      <Check className="size-5 shrink-0 text-success-ink" aria-label="Ready" />
+                <li key={i.id} className="flex items-center gap-3 py-2.5">
+                  <SendPreview item={i} />
+                  <div className="min-w-0 flex-1">
+                    {i.material ? (
+                      <Link href={`/space/materials/${i.material.id}`} className="block truncate text-[14px] font-medium text-ink hover:text-accent-ink">
+                        {title}
+                      </Link>
                     ) : (
-                      <Loader2 className="size-5 shrink-0 text-accent-ink motion-safe:animate-spin" aria-label="Processing" />
+                      <p className="truncate text-[14px] font-medium text-ink">{title}</p>
                     )}
+                    <p className="truncate text-xs text-ink-subtle">
+                      {kindLabel(i.kind)} · <RelativeTime iso={i.createdAt} />
+                      {meta ? ` · ${meta}` : ""}
+                    </p>
+                    {i.preview.snippet && !failed ? <p className="mt-0.5 line-clamp-1 text-[12.5px] italic text-ink-muted">{i.preview.snippet}</p> : null}
+                    {failed ? (
+                      <p className="mt-0.5 text-[12.5px] text-warning-ink">
+                        {i.error ?? (i.state === "quarantined" ? "This file was held for safety and wasn't stored." : "Processing didn't finish. Your original is safe.")}
+                      </p>
+                    ) : !ready ? (
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span
+                          role="progressbar"
+                          aria-label="Progress"
+                          aria-valuemin={0}
+                          aria-valuemax={STEPS.length - 1}
+                          aria-valuenow={Math.max(step, 0)}
+                          aria-valuetext={STEPS[Math.max(step, 0)]!.label}
+                          className="flex h-1 max-w-40 flex-1 gap-0.5"
+                        >
+                          {STEPS.map((x, idx) => (
+                            <span key={x.label} className={cn("h-1 flex-1 rounded-full", idx <= step ? "bg-accent" : "bg-light-gray")} />
+                          ))}
+                        </span>
+                        <span className="text-[11.5px] text-ink-subtle">{STEPS[Math.max(step, 0)]!.label}…</span>
+                      </div>
+                    ) : null}
                   </div>
-                  {!failed ? (
-                    <ol className="mt-2 flex gap-1" aria-label="Progress">
-                      {STEPS.map((s, idx) => (
-                        <li key={s.label} className="flex-1">
-                          <span className={cn("block h-1.5 rounded-full", idx <= step ? "bg-accent" : "bg-light-gray")} />
-                          <span className={cn("mt-1 block text-[11px]", idx === step ? "font-medium text-ink" : "text-ink-subtle")}>{s.label}</span>
-                        </li>
-                      ))}
-                    </ol>
+                  {failed ? (
+                    <CircleAlert className="size-5 shrink-0 text-warning-ink" aria-label={i.state === "quarantined" ? "Held for safety" : "Needs attention"} />
+                  ) : ready ? (
+                    <Check className="size-4 shrink-0 text-success-ink" aria-label="Ready" />
                   ) : (
-                    <p className="mt-1.5 text-sm text-warning-ink">{i.error ?? (i.state === "quarantined" ? "This file was held for safety and wasn't stored." : "Processing didn't finish. Your original is safe.")}</p>
+                    <Loader2 className="size-4 shrink-0 text-accent-ink motion-safe:animate-spin" aria-label="Processing" />
                   )}
                 </li>
               );
@@ -205,5 +242,39 @@ export function SendInbox({ initial }: { initial: Item[] }) {
         )}
       </section>
     </div>
+  );
+}
+
+/** A 48px look at the item itself: the photo, the note's paper, a voice or video mark, a link. */
+function SendPreview({ item }: { item: Item }) {
+  const box = "flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl";
+  const type = item.material?.type ?? item.kind;
+  if (item.preview.imageUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={item.preview.imageUrl} alt="" loading="lazy" decoding="async" className={cn(box, "border border-border-soft object-cover")} />;
+  }
+  if (["text", "note", "idea"].includes(type)) {
+    return (
+      <span aria-hidden className={cn(box, "items-start justify-start bg-[#f8f1e7] p-1.5")}>
+        <span className="line-clamp-3 font-display text-[9.5px] italic leading-[1.15] text-ink-muted">{item.preview.snippet ?? item.material?.title ?? ""}</span>
+      </span>
+    );
+  }
+  const Icon =
+    type === "voice" || type === "audio"
+      ? Mic
+      : type === "video"
+        ? Video
+        : type === "url" || type === "youtube" || type === "link" || type === "reference"
+          ? Link2
+          : type === "camera" || type === "image"
+            ? Camera
+            : item.material
+              ? FileText
+              : PenLine;
+  return (
+    <span aria-hidden className={cn(box, "bg-accent-softer text-accent-ink")}>
+      <Icon className="size-5" />
+    </span>
   );
 }

@@ -62,6 +62,36 @@ test.describe("Carousel Composer", () => {
     await expect(sheet.getByRole("alert")).toHaveText("Image generation isn't connected.");
   });
 
+  test("Studio canvas: one slide fills the canvas with its words, the strip moves between slides, and a tap opens the editor", async ({ page, creator }) => {
+    const id = await carousel(page);
+    const [first] = await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
+    await page.goto(`/artifacts/${id}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: First light/ })).toBeVisible();
+    await expect(editor.getByText("1 / 3")).toBeVisible();
+    // Nothing else competes on the canvas: no slide list, no Continue Creating, one "+" to make one more.
+    await expect(page.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
+    await expect(editor.getByRole("button", { name: "Generate one more" })).toBeVisible();
+    await editor.getByRole("button", { name: "Next slide" }).click();
+    await expect(editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ })).toBeVisible();
+    await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 3 of 3" }).click();
+    await expect(editor.getByText("3 / 3")).toBeVisible();
+    // Arrange lives under More; the order is kept.
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "Save, version and publish" })
+      .getByRole("button", { name: /Arrange slides/ })
+      .click();
+    const order = page.getByRole("list", { name: "Slide order" });
+    await order.getByRole("button", { name: "Move slide 1 down" }).click();
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Second wind/ })).toBeVisible();
+    // Tapping the slide opens the focused editor (slide 2 is now the original first).
+    await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 2 of 3" }).click();
+    await editor.getByRole("link", { name: /^Edit slide 2 of 3: First light/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/slides/${first}$`));
+  });
+
   test("slide editor: edit words, place and style them on the image, split, and it all autosaves", async ({ page, creator }) => {
     const id = await carousel(page);
     const [, second] = await seedCarousel(creator.id, id, ["First light", "In the mirror—\nonly loneliness.", "Third act"]);
@@ -89,7 +119,10 @@ test.describe("Carousel Composer", () => {
 
     // Style: a font and a preset position.
     await page.getByRole("toolbar", { name: "Edit slide" }).getByRole("button", { name: "Style" }).click();
-    await page.getByRole("radiogroup", { name: "Font" }).getByRole("radio", { name: /Modern/ }).click();
+    await page
+      .getByRole("radiogroup", { name: "Font" })
+      .getByRole("radio", { name: /Modern/ })
+      .click();
     await page.getByRole("group", { name: "Position" }).getByRole("button", { name: "Top centre" }).click();
     await expect(page.getByRole("banner").getByText("Saved")).toBeVisible();
 
