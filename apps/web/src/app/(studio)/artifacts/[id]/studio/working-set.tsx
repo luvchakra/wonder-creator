@@ -16,6 +16,8 @@ import {
   type WorkingSetView,
   type WorkingSource,
   directionsFor,
+  usageOptionsFor,
+  type UsageOption,
 } from "@wonder/creator-studio/working-set";
 import { Button, Dialog, DialogContent, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
 import { ArrowLeft, ArrowRight, Check, MoreHorizontal, Pin, Plus, Scissors, Search, Sparkles, Trash2 } from "lucide-react";
@@ -162,7 +164,24 @@ function WorkingSetBody({
           ) : null}
         </div>
       )}
-      {set && together ? (
+      {set && together && chosen.length === 1 ? (
+        <UseThis
+          set={set}
+          row={chosen[0]!}
+          onClose={() => setTogether(false)}
+          onPart={(row) => {
+            setTogether(false);
+            onFragments(row);
+          }}
+          onDone={(next) => {
+            onSet(next);
+            setTogether(false);
+            setPicked(new Set());
+            onClose();
+          }}
+        />
+      ) : null}
+      {set && together && chosen.length > 1 ? (
         <UseTogether
           set={set}
           chosen={chosen}
@@ -265,6 +284,104 @@ function SourceRow({ s, picked, onPick, onChange, onFragments }: { s: WorkingSou
         </MenuContent>
       </Menu>
     </li>
+  );
+}
+
+/* ---------------------------------------------------------------- Use this */
+
+/**
+ * "How do you want to use this?" (owner, 28 Sep 2026): for one source, 3–4 options from what it is and what the
+ * Creation is becoming, then "Something else…" in the creator's own words. Choosing puts it In use with that intent;
+ * a "part" option opens Fragments first. No model involved, nothing invented.
+ */
+function UseThis({
+  set,
+  row,
+  onClose,
+  onPart,
+  onDone,
+}: {
+  set: WorkingSetView;
+  row: WorkingSource;
+  onClose: () => void;
+  onPart: (row: WorkingSource) => void;
+  onDone: (next: WorkingSetView) => void;
+}) {
+  const options = usageOptionsFor(row, currentType(set));
+  const [pick, setPick] = useState<string>(row.usageNote ? "other" : (options.find((o) => o.intent === row.usageIntent)?.key ?? options[0]!.key));
+  const [other, setOther] = useState(row.usageNote ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const chosen: UsageOption | null = pick === "other" ? null : (options.find((o) => o.key === pick) ?? null);
+  async function use() {
+    if (chosen?.part) return onPart(row);
+    if (!chosen && !other.trim()) return setError("Say how you'd like to use it.");
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}/sources/${row.id}`, {
+        method: "PATCH",
+        json: { state: row.state === "pinned" ? "pinned" : "in_use", usageIntent: chosen?.intent ?? null, usageNote: chosen ? null : other.trim() },
+      });
+      onDone(r.workingSet);
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title="How do you want to use this?" description={row.title} art={KIT.mark.sparklePurple}>
+        <div className="space-y-3">
+          <div role="radiogroup" aria-label="Ways to use it" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft">
+            {options.map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                role="radio"
+                aria-checked={pick === o.key}
+                onClick={() => setPick(o.key)}
+                className={cn("flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left", pick === o.key ? "bg-accent-softer" : "hover:bg-black/[0.02]")}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-ink">
+                    {o.label}
+                    {o.part ? "…" : ""}
+                  </span>
+                  <span className="block text-[12.5px] text-ink-muted">{o.hint}</span>
+                </span>
+                {pick === o.key ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
+              </button>
+            ))}
+            <div className={cn("px-3 py-2", pick === "other" && "bg-accent-softer")}>
+              <button type="button" role="radio" aria-checked={pick === "other"} onClick={() => setPick("other")} className="min-h-9 text-left text-sm font-medium text-ink">
+                Something else…
+              </button>
+              <Input
+                aria-label="How you'd like to use it"
+                value={other}
+                maxLength={300}
+                onFocus={() => setPick("other")}
+                onChange={(e) => {
+                  setPick("other");
+                  setOther(e.target.value);
+                }}
+                placeholder="e.g. only the colours of the sky, for the last slide"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+          <Button className="w-full" loading={busy} onClick={use}>
+            {chosen?.part ? "Choose the part" : "Use it"} <ArrowRight className="size-4" aria-hidden />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -2944,13 +2944,13 @@ isOneToOne: false
                   ]
                 },"studio_sources": {
                   Row: {
-                    "added_at": string,"added_by": string,"creator_id": string,"fragment": Json | null,"fragment_key": string,"id": string,"roles": (string)[],"session_id": string,"source_id": string,"source_type": string,"state": string,"usage_intent": string | null
+                    "added_at": string,"added_by": string,"creator_id": string,"fragment": Json | null,"fragment_key": string,"id": string,"roles": (string)[],"session_id": string,"source_id": string,"source_type": string,"state": string,"usage_intent": string | null,"usage_note": string | null
                   }
                   Insert: {
-                    "added_at"?: string,"added_by": string,"creator_id": string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id": string,"source_id": string,"source_type": string,"state"?: string,"usage_intent"?: string | null
+                    "added_at"?: string,"added_by": string,"creator_id": string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id": string,"source_id": string,"source_type": string,"state"?: string,"usage_intent"?: string | null,"usage_note"?: string | null
                   }
                   Update: {
-                    "added_at"?: string,"added_by"?: string,"creator_id"?: string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id"?: string,"source_id"?: string,"source_type"?: string,"state"?: string,"usage_intent"?: string | null
+                    "added_at"?: string,"added_by"?: string,"creator_id"?: string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id"?: string,"source_id"?: string,"source_type"?: string,"state"?: string,"usage_intent"?: string | null,"usage_note"?: string | null
                   }
                   Relationships: [
                     {

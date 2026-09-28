@@ -125,4 +125,38 @@ test.describe("CreativeStudio Working Set", () => {
     ).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(1);
   });
+  test("Use this asks how: options from what the source is, or the creator's own words, and the row says so", async ({ page }) => {
+    const tag = uid();
+    const a = await saveNote(page, `Rain on the platform roof ${tag}\nA slow drip into the puddles.`);
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${tag}` } })).json()).artifact as { id: string };
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: a }] } });
+    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    const sheet = page.getByRole("dialog", { name: "Working Set" });
+    await sheet.getByRole("checkbox", { name: /^Select Rain on the platform roof/ }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+
+    const how = page.getByRole("dialog", { name: "How do you want to use this?" });
+    const ways = how.getByRole("radiogroup", { name: "Ways to use it" });
+    await expect(ways.getByRole("radio", { name: /Use its words/ })).toHaveAttribute("aria-checked", "true");
+    await expect(ways.getByRole("radio", { name: /Follow its shape/ })).toBeVisible();
+    // Nothing fits? Say it in your own words.
+    await how.getByLabel("How you'd like to use it").fill("only the sound of the rain, for the opening");
+    await expect(ways.getByRole("radio", { name: "Something else…" })).toHaveAttribute("aria-checked", "true");
+    await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(how).toHaveCount(0);
+    const panel = page.getByRole("region", { name: /^Used materials/ });
+    await expect(panel).toContainText("“only the sound of the rain, for the opening”");
+
+    // Back again: a listed option replaces the note.
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await sheet.getByRole("checkbox", { name: /^Select Rain on the platform roof/ }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+    await ways.getByRole("radio", { name: /Follow its shape/ }).click();
+    await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(panel).toContainText("Its shape");
+    await page.reload();
+    await expect(page.getByRole("region", { name: /^Used materials/ })).toContainText("Its shape");
+  });
 });

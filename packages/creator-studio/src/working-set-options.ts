@@ -7,6 +7,23 @@ export const SOURCE_STATES = ["pinned", "in_use", "available"] as const;
 export type SourceState = (typeof SOURCE_STATES)[number];
 export const STATE_LABEL: Record<SourceState, string> = { pinned: "Pinned", in_use: "In use", available: "Available" };
 
+/** How a source is used in the piece (studio_sources.usage_intent). */
+export const USAGE_INTENTS = ["content", "style", "structure", "mood", "reference", "fact", "quote", "visual", "sound", "constraint"] as const;
+export type UsageIntent = (typeof USAGE_INTENTS)[number];
+/** Short words for a chosen use, shown on the source's row. */
+export const USAGE_LABEL: Record<UsageIntent, string> = {
+  content: "Its words",
+  style: "Its look and tone",
+  structure: "Its shape",
+  mood: "Its mood",
+  reference: "For reference",
+  fact: "Its facts",
+  quote: "A part of it",
+  visual: "The picture itself",
+  sound: "The recording",
+  constraint: "Feedback to apply",
+};
+
 export const SOURCE_ROLES = ["story", "visual", "mood", "reference", "fact", "voice", "style", "constraint", "character", "structure", "sound", "quote"] as const;
 export type SourceRole = (typeof SOURCE_ROLES)[number];
 export const ROLE_LABEL: Record<SourceRole, string> = {
@@ -55,6 +72,9 @@ export interface WorkingSource {
   mediaType: string | null;
   href: string | null;
   thumbnailUrl: string | null;
+  /** How the creator chose to use it ("Use this"), and their own words when no option fit. */
+  usageIntent?: UsageIntent | null;
+  usageNote?: string | null;
 }
 
 export interface StudioIntent {
@@ -77,7 +97,35 @@ export interface WorkingSetView {
 }
 
 export const OUTPUT_MODES = [
-  { key: "writing", label: "Writing", hint: "Article, story, poem", types: ["article", "essay", "story", "poem", "lyrics", "spoken_word", "blog_post", "script", "screenplay", "dialogue", "copy", "newsletter", "biography", "artist_statement", "narration", "film_treatment", "documentary", "social_post", "professional_post", "video_description", "media_kit", "proposal"] },
+  {
+    key: "writing",
+    label: "Writing",
+    hint: "Article, story, poem",
+    types: [
+      "article",
+      "essay",
+      "story",
+      "poem",
+      "lyrics",
+      "spoken_word",
+      "blog_post",
+      "script",
+      "screenplay",
+      "dialogue",
+      "copy",
+      "newsletter",
+      "biography",
+      "artist_statement",
+      "narration",
+      "film_treatment",
+      "documentary",
+      "social_post",
+      "professional_post",
+      "video_description",
+      "media_kit",
+      "proposal",
+    ],
+  },
   { key: "carousel", label: "Carousel", hint: "Social media", types: ["carousel", "social_series"] },
   { key: "image", label: "Images", hint: "Visual series", types: ["visual_concept", "poster", "album_art", "moodboard", "photo_essay", "art_series", "visual_post", "thumbnail_concept"] },
   { key: "video", label: "Video", hint: "Reel, short film", types: ["short_film", "storyboard", "shot_list", "trailer", "reel_concept"] },
@@ -92,7 +140,14 @@ export function outputModeOf(artifactType: string): OutputMode {
 }
 
 /** The Creation type a mode switch makes — the mode's first, most general type. */
-export const MODE_DEFAULT_TYPE: Record<OutputMode, string> = { writing: "story", carousel: "carousel", image: "photo_essay", video: "short_film", audio: "podcast_concept", presentation: "presentation" };
+export const MODE_DEFAULT_TYPE: Record<OutputMode, string> = {
+  writing: "story",
+  carousel: "carousel",
+  image: "photo_essay",
+  video: "short_film",
+  audio: "podcast_concept",
+  presentation: "presentation",
+};
 
 /** One creative direction for a set of sources (§16–17). */
 export interface Direction {
@@ -183,4 +238,77 @@ export function suggestFragments(text: string, max = 5): Array<Fragment & { text
     if (out.length >= max) break;
   }
   return out;
+}
+
+/** One way to use a source, offered by "Use this". `part` = pick a passage or moment first (Fragments). */
+export interface UsageOption {
+  key: string;
+  intent: UsageIntent;
+  label: string;
+  hint: string;
+  part?: boolean;
+}
+
+const IMAGE_TYPES = new Set(["image", "sketch", "photo", "photo_essay"]);
+const SOUND_TYPES = new Set(["voice", "audio"]);
+const DOC_TYPES = new Set(["pdf", "document", "research", "url", "reference", "link"]);
+
+/**
+ * "How do you want to use this?" — 3–4 plain options from what the source is and what the Creation is becoming
+ * (owner, 28 Sep 2026). Deterministic: no model, nothing invented. The sheet always adds "Something else…".
+ */
+export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "fragment">, creationType: string): UsageOption[] {
+  const mode = outputModeOf(creationType);
+  const visualOut = mode === "carousel" || mode === "image" || mode === "video" || mode === "presentation";
+  const t = s.mediaType ?? "";
+  if (s.sourceType === "comment") {
+    return [
+      { key: "apply", intent: "constraint", label: "Apply this feedback", hint: "Keep it in mind as you shape the piece" },
+      { key: "idea", intent: "content", label: "Take the idea in it", hint: "Build on what it suggests" },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  if (s.sourceType === "collection") {
+    return [
+      { key: "mood", intent: "mood", label: "Set the mood from it", hint: "Its overall feeling" },
+      { key: "style", intent: "style", label: "Take its look", hint: "Colours, textures, style" },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  if (IMAGE_TYPES.has(t)) {
+    return [
+      mode === "carousel"
+        ? { key: "slide", intent: "visual", label: "Use it as a slide image", hint: "The picture itself, on a slide" }
+        : visualOut
+          ? { key: "visual", intent: "visual", label: "Use the picture itself", hint: "As it is, in the piece" }
+          : { key: "describe", intent: "content", label: "Write from what's in it", hint: "What it shows becomes words" },
+      { key: "style", intent: "style", label: "Take its look", hint: "Light, colour and texture for the visuals" },
+      { key: "mood", intent: "mood", label: "Take its mood", hint: "The feeling, not the picture" },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  if (SOUND_TYPES.has(t)) {
+    return [
+      { key: "words", intent: "content", label: mode === "carousel" ? "Use its words on the slides" : "Use its words", hint: "What's said, as text" },
+      { key: "moment", intent: "quote", label: "Use one moment of it", hint: "Pick where it starts and ends", part: true },
+      { key: "mood", intent: "mood", label: "Take its mood", hint: "The feeling in the voice" },
+      mode === "audio" || mode === "video"
+        ? { key: "sound", intent: "sound", label: "Use the recording itself", hint: "The sound, in the piece" }
+        : { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  if (DOC_TYPES.has(t)) {
+    return [
+      { key: "facts", intent: "fact", label: "Use its facts", hint: "Details and specifics to get right" },
+      { key: "quote", intent: "quote", label: "Quote a passage", hint: "Pick the part to use", part: true },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  // Words: a note, an idea, a previous Creation, a Huddle moment.
+  return [
+    { key: "words", intent: "content", label: mode === "carousel" ? "Use its words on the slides" : "Use its words", hint: "As the text of this piece" },
+    { key: "part", intent: "quote", label: "Use only a part", hint: "A line or passage you choose", part: true },
+    { key: "structure", intent: "structure", label: "Follow its shape", hint: "Its order, sections or rhythm" },
+    { key: "tone", intent: "style", label: "Take its tone and voice", hint: "How it sounds, not what it says" },
+  ];
 }

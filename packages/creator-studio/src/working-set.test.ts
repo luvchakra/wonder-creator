@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { directionsFor, groupSources, outputModeOf, suggestFragments, unusedNudge, workingSetSummary, type WorkingSource } from "./working-set-options";
+import { directionsFor, groupSources, outputModeOf, suggestFragments, unusedNudge, usageOptionsFor, workingSetSummary, type WorkingSource } from "./working-set-options";
 
-const src = (over: Partial<WorkingSource>): WorkingSource => ({ id: "x", sourceType: "material", sourceId: "m", state: "available", roles: [], fragment: null, addedAt: "", available: true, title: "T", kind: "Photo", mediaType: "image", href: null, thumbnailUrl: null, ...over });
+const src = (over: Partial<WorkingSource>): WorkingSource => ({
+  id: "x",
+  sourceType: "material",
+  sourceId: "m",
+  state: "available",
+  roles: [],
+  fragment: null,
+  addedAt: "",
+  available: true,
+  title: "T",
+  kind: "Photo",
+  mediaType: "image",
+  href: null,
+  thumbnailUrl: null,
+  ...over,
+});
 
 describe("Working Set rules", () => {
   it("summarises the table the way the Studio pill does", () => {
@@ -41,5 +56,17 @@ describe("Working Set rules", () => {
     expect(outputModeOf("poem")).toBe("writing");
     expect(outputModeOf("photo_essay")).toBe("image");
     expect(outputModeOf("unknown_type")).toBe("writing");
+  });
+  it("asks how to use a source with options from what it is and what the Creation is becoming", () => {
+    const photo = usageOptionsFor(src({ mediaType: "image" }), "carousel");
+    expect(photo[0]).toMatchObject({ intent: "visual", label: "Use it as a slide image" });
+    expect(photo.map((o) => o.intent)).toEqual(["visual", "style", "mood", "reference"]);
+    expect(usageOptionsFor(src({ mediaType: "image" }), "poem")[0]).toMatchObject({ intent: "content", label: "Write from what's in it" });
+    const voice = usageOptionsFor(src({ mediaType: "voice" }), "carousel");
+    expect(voice[0]!.label).toBe("Use its words on the slides");
+    expect(voice.find((o) => o.part)?.intent).toBe("quote");
+    expect(usageOptionsFor(src({ sourceType: "creation", mediaType: "poem" }), "carousel").map((o) => o.intent)).toEqual(["content", "quote", "structure", "style"]);
+    expect(usageOptionsFor(src({ sourceType: "comment", mediaType: null }), "poem")[0]!.intent).toBe("constraint");
+    for (const t of ["image", "voice", "pdf", "note"]) expect(usageOptionsFor(src({ mediaType: t }), "carousel").length).toBeLessThanOrEqual(4);
   });
 });
