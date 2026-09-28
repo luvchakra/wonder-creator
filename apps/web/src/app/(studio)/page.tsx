@@ -105,7 +105,7 @@ export default async function HomePage() {
                 {version ? `v${version} · ` : ""}
                 {type!.label} · Edited <RelativeTime iso={creation.updated_at} />
               </p>
-              <Link href={`/artifacts/${creation.id}`} data-primary-action className={buttonClasses({ className: "mt-2.5 w-full" })}>
+              <Link href={`/artifacts/${creation.id}/studio`} data-primary-action className={buttonClasses({ className: "mt-2.5 w-full" })}>
                 Continue Creating <ArrowRight className="size-4" aria-hidden />
               </Link>
             </div>

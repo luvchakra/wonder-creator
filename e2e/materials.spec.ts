@@ -13,7 +13,7 @@ test.describe("CreatorSend & material", () => {
 
     const item = sendItem(page, name);
     await expect(item).toBeVisible();
-    await expect(item.getByText(/^image ·/)).toBeVisible();
+    await expect(item.getByText(/^Image ·/)).toBeVisible();
     await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
 
     // Palette → Materials shows it as an image card.
@@ -43,7 +43,7 @@ test.describe("CreatorSend & material", () => {
     const name = `voice-${uid()}`;
     await uploadViaInbox(page, [{ name: `${name}.wav`, mimeType: "audio/wav", buffer: wavBytes() }]);
     const item = sendItem(page, name);
-    await expect(item.getByText(/^audio ·/)).toBeVisible();
+    await expect(item.getByText(/^Audio ·/)).toBeVisible();
     await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
 
     await page.goto("/space?tab=ideas&type=audio");

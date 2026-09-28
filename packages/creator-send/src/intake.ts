@@ -374,7 +374,7 @@ export async function processIntake(deps: IntakeDeps, intakeId: string): Promise
 export async function listIntake(db: Db, opts: { limit?: number; batchId?: string } = {}) {
   let q = db
     .from("intake_items")
-    .select("*, creative_materials(id, title, type, storage_object_id, source_url, metadata)")
+    .select("*, creative_materials(id, title, type, storage_object_id, source_url, metadata, text_content, extracted_text)")
     .order("created_at", { ascending: false })
     .limit(Math.min(opts.limit ?? 30, 100));
   if (opts.batchId) q = q.eq("batch_id", opts.batchId);
