@@ -6,11 +6,11 @@ import { cn } from "../cn";
 import { KIT } from "../brand/kit";
 import { dockStyle, useEdgeDock } from "./edge-dock";
 
-/** How far (rem) the leaf beside the trigger sits from the edge. Leaves stay horizontal (owner's direction). */
+/** How far (rem) the arc of leaf starts sweeps: the leaf nearest the trigger starts this much closer to it. */
 const FAN_REACH = 4.5;
 const TRIGGER = 60;
-/** Half a leaf's hit target: the leaf beside the trigger lines up with the trigger's centre. */
-const LEAF_HALF = 22;
+/** Space between the trigger and the nearest leaf. */
+const FAN_GAP = 8;
 
 const navBottom = () => (typeof document === "undefined" ? 64 : (document.querySelector("header")?.getBoundingClientRect().bottom ?? 64));
 
@@ -81,16 +81,21 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
   const down = anchorY < vh * 0.42;
   let index = 0;
   const total = groups.reduce((n, g) => n + g.items.length, 0);
-  // The fan (CLAUDE.md → Creative Palette): leaves sit on a quarter-arc around the trigger. The leaf nearest the trigger
-  // sits beside it, the furthest right above (or below) it. Leaves stay level. Labels stay horizontal enough to read.
-  const reach = (i: number) => (total > 1 ? (down ? i : total - 1 - i) / (total - 1) : 0); // 0 = beside the trigger, 1 = above/below it
+  // The fan (CLAUDE.md → Creative Palette; owner, 28 Sep 2026: "keep the start of each leaf aligned in an arc"): the
+  // leaves stack above (or below) the trigger and the *start* of each one — icon and first letter — sits on a quarter-arc
+  // around it: the nearest leaf starts closest to the trigger's column, the furthest starts furthest away. Their ends are
+  // free, so labels of any length read the same way. Leaves stay level.
+  const reach = (i: number) => (total > 1 ? (down ? i : total - 1 - i) / (total - 1) : 0); // 0 = nearest the trigger, 1 = furthest
   const inset = (i: number) => FAN_REACH * Math.cos(reach(i) * (Math.PI / 2));
+  // Where a leaf starts, from the container's left edge: on the trigger's side for the right dock, mirrored for the left.
+  const start = (i: number) => (left ? FAN_REACH - inset(i) : inset(i));
   const edge = left ? "calc(1rem + env(safe-area-inset-left))" : "calc(1rem + env(safe-area-inset-right))";
   const contentStyle: React.CSSProperties = {
     [left ? "left" : "right"]: edge,
+    // The whole fan sits clear of the trigger: below it when it opens downward, above it otherwise.
     ...(down
-      ? { top: anchorY - LEAF_HALF, maxHeight: `calc(100dvh - ${Math.round(anchorY - LEAF_HALF)}px - 1rem)` }
-      : { bottom: `calc(100dvh - ${Math.round(anchorY + LEAF_HALF)}px)`, maxHeight: Math.max(160, anchorY + LEAF_HALF - navBottom() - 12) }),
+      ? { top: anchorY + TRIGGER / 2 + FAN_GAP, maxHeight: `calc(100dvh - ${Math.round(anchorY + TRIGGER / 2 + FAN_GAP)}px - 1rem)` }
+      : { bottom: `calc(100dvh - ${Math.round(anchorY - TRIGGER / 2 - FAN_GAP)}px)`, maxHeight: Math.max(160, anchorY - TRIGGER / 2 - FAN_GAP - navBottom() - 12) }),
     // The leaf fan-in comes from the trigger's side (globals.css `palette-leaf`).
     ["--fan-dx" as string]: left ? "-0.75rem" : "0.75rem",
     ["--fan-dy" as string]: down ? "-0.5rem" : "0.5rem",
@@ -150,12 +155,7 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
           onPointerDownCapture={() => {
             keyboard.current = false;
           }}
-          className={cn(
-            // The leaf beside the trigger lines up with the trigger's centre.
-            "fixed z-50 flex w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto overflow-x-hidden overscroll-contain focus:outline-none",
-            left ? "items-start" : "items-end",
-            down ? "pb-3" : "pt-3",
-          )}
+          className={cn("fixed z-50 flex w-max max-w-[min(20rem,calc(100vw-2rem))] flex-col items-start overflow-y-auto overflow-x-hidden overscroll-contain focus:outline-none", down ? "pb-3" : "pt-3")}
         >
           <D.Title className="sr-only">Creative Palette</D.Title>
           {/* The close X sits exactly where the trigger is. It lives inside the dialog, so it always takes a tap and
@@ -172,17 +172,17 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
           </p>
           {preview ? <PreviewBubble preview={preview} item={groups.flatMap((g) => g.items).find((x) => x.key === preview.key) ?? null} left={left} down={down} edge={edge} /> : null}
           {groups.map((g, gi) => (
-            <nav key={g.key} aria-label={g.label ?? g.srLabel ?? "Destinations"} className={cn("flex w-full flex-col", left ? "items-start" : "items-end", gi > 0 && "mt-1")}>
+            <nav key={g.key} aria-label={g.label ?? g.srLabel ?? "Destinations"} className={cn("flex w-full flex-col items-start", gi > 0 && "mt-1")}>
               {g.label ? (
-                <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-subtle" style={{ [left ? "marginLeft" : "marginRight"]: `${(inset(index) + 0.75).toFixed(2)}rem` }}>
+                <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-subtle" style={{ marginLeft: `${(start(index) + 0.75).toFixed(2)}rem` }}>
                   {g.label}
                 </p>
               ) : null}
-              <ul className={cn("flex w-full flex-col", left ? "items-start" : "items-end")}>
+              <ul className="flex w-full flex-col items-start">
                 {g.items.map((item) => {
                   const i = index++;
                   return (
-                    <li key={item.key} className={cn("flex w-full", left ? "justify-start" : "justify-end")} style={{ [left ? "paddingLeft" : "paddingRight"]: `${inset(i).toFixed(2)}rem` }}>
+                    <li key={item.key} className="flex w-full justify-start" style={{ paddingLeft: `${start(i).toFixed(2)}rem` }}>
                       <button
                         type="button"
                         data-palette-item
@@ -286,7 +286,12 @@ function PreviewBubble({ preview, item, left, down, edge }: { preview: { top: nu
     ...(down ? { top: preview.bottom + 6 } : { bottom: vh - preview.top + 6 }),
   };
   return (
-    <div aria-hidden data-palette-preview="" style={style} className={cn("pointer-events-none fixed z-[52] w-[min(17rem,calc(100vw-2rem))] motion-safe:animate-[fade-in_150ms_ease-out]", left ? "text-left" : "text-right")}>
+    <div
+      aria-hidden
+      data-palette-preview=""
+      style={style}
+      className={cn("pointer-events-none fixed z-[52] w-[min(17rem,calc(100vw-2rem))] motion-safe:animate-[fade-in_150ms_ease-out]", left ? "text-left" : "text-right")}
+    >
       <div
         className={cn(
           "inline-flex max-w-full items-start gap-2.5 rounded-2xl border border-accent/25 bg-surface/95 px-3 py-2.5 text-left shadow-[var(--shadow-lift)] backdrop-blur",

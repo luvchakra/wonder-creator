@@ -223,6 +223,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  /** Play the current source again from the top. */
+  const restart = useCallback(() => {
+    const el = audio.current;
+    if (el) el.currentTime = 0;
+    startPlayback();
+  }, [startPlayback]);
+
   // Point the element at the current track.
   useEffect(() => {
     const el = audio.current;
@@ -238,23 +245,43 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [current]);
   const goTo = useCallback(
     (id: string, rest?: string[]) => {
-      setP((s) => ({ ...s, trackId: id, queue: rest ?? s.queue.filter((q) => q !== id), history: s.trackId && s.trackId !== id ? [s.trackId, ...s.history].slice(0, 30) : s.history }));
+      wantPlay.current = true;
+      setP((s) => {
+        if (id === s.trackId) queueMicrotask(restart);
+        return { ...s, trackId: id, queue: rest ?? s.queue.filter((q) => q !== id), history: s.trackId && s.trackId !== id ? [s.trackId, ...s.history].slice(0, 30) : s.history };
+      });
       setTime(0);
-      requestAnimationFrame(startPlayback);
     },
-    [startPlayback],
+    [restart],
   );
 
-  const freshQueue = useCallback((s: Persisted, mood: MoodFilter, seed: number, exclude: string[] = []) => buildQueue(tracks, { mood, history: s.history, favorites, exclude: [...exclude, ...(s.trackId ? [s.trackId] : [])], seed }), [tracks, favorites]);
+  const freshQueue = useCallback(
+    (s: Persisted, mood: MoodFilter, seed: number, exclude: string[] = []) =>
+      buildQueue(tracks, { mood, history: s.history, favorites, exclude: [...exclude, ...(s.trackId ? [s.trackId] : [])], seed }),
+    [tracks, favorites],
+  );
 
   // What's left in Up next for this mood: its own songs and the ones the creator queued themselves (a queue saved under
   // another mood, or an older catalogue, never plays other moods behind the creator's back).
   const moodQueue = useCallback(
-    (s: Persisted) => s.queue.filter((id) => s.pinned.includes(id) || (() => { const t = tracks.find((x) => x.id === id); return !!t && isMood(t, s.mood); })()),
+    (s: Persisted) =>
+      s.queue.filter(
+        (id) =>
+          s.pinned.includes(id) ||
+          (() => {
+            const t = tracks.find((x) => x.id === id);
+            return !!t && isMood(t, s.mood);
+          })(),
+      ),
     [tracks],
   );
 
+  // The next track starts from the source effect once its src is set. That has to be decided now, synchronously: a
+  // requestAnimationFrame never fires while the tab is hidden or the phone is locked, which is exactly when a song ends
+  // unattended — so the music stopped after one song. Playing from the `ended` handler's own turn also keeps the
+  // browser's permission to continue without a tap.
   const next = useCallback(() => {
+    wantPlay.current = true;
     setP((s) => {
       const kept = tracks.length ? moodQueue(s) : s.queue;
       let queue = kept.length ? kept : freshQueue(s, s.mood, s.seed + 1);
@@ -262,11 +289,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const i = s.shuffle ? Math.floor(Math.random() * queue.length) : 0;
       const id = queue[i]!;
       queue = queue.filter((_, j) => j !== i);
-      requestAnimationFrame(startPlayback);
-      return { ...s, trackId: id, queue, pinned: s.pinned.filter((x) => x !== id && queue.includes(x)), history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history, seed: kept.length ? s.seed : s.seed + 1 };
+      // The same track again (a one-song mood): the source doesn't change, so restart it here.
+      if (id === s.trackId) queueMicrotask(restart);
+      return {
+        ...s,
+        trackId: id,
+        queue,
+        pinned: s.pinned.filter((x) => x !== id && queue.includes(x)),
+        history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history,
+        seed: kept.length ? s.seed : s.seed + 1,
+      };
     });
     setTime(0);
-  }, [freshQueue, moodQueue, startPlayback, tracks.length]);
+  }, [freshQueue, moodQueue, restart, tracks.length]);
 
   // Honour a play that was asked for while the library was loading.
   const playRef = useRef<() => void>(() => undefined);
@@ -356,9 +391,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           if (audio.current) audio.current.currentTime = 0;
           return;
         }
-        setP((s) => ({ ...s, trackId: a.id, history: s.history.slice(1), queue: s.trackId ? [s.trackId, ...s.queue] : s.queue }));
+        wantPlay.current = true;
+        setP((s) => {
+          if (a.id === s.trackId) queueMicrotask(restart);
+          return { ...s, trackId: a.id, history: s.history.slice(1), queue: s.trackId ? [s.trackId, ...s.queue] : s.queue };
+        });
         setTime(0);
-        requestAnimationFrame(startPlayback);
       },
       seek: (t) => {
         if (audio.current) audio.current.currentTime = t;
@@ -375,12 +413,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           const fresh = freshQueue(s, m, s.seed, mine);
           if (!moveOn || !fresh.length) return { ...s, mood: m, queue: [...mine, ...fresh] };
           const [first, ...rest] = fresh;
+          if (playing) {
+            wantPlay.current = true;
+            if (first === s.trackId) queueMicrotask(restart);
+          }
           return { ...s, mood: m, trackId: first!, queue: [...mine, ...rest], history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history };
         });
-        if (moveOn) {
-          setTime(0);
-          if (playing) requestAnimationFrame(startPlayback);
-        }
+        if (moveOn) setTime(0);
       },
       refreshMix: () => setP((s) => ({ ...s, seed: s.seed + 1, queue: freshQueue(s, s.mood, s.seed + 1) })),
       playNext: (id) => setP((s) => ({ ...s, queue: [id, ...s.queue.filter((q) => q !== id)], pinned: [...new Set([...s.pinned, id])] })),
@@ -411,7 +450,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setShuffle: (on) => setP((s) => ({ ...s, shuffle: on })),
       cycleRepeat: () => setP((s) => ({ ...s, repeat: s.repeat === "off" ? "all" : s.repeat === "all" ? "one" : "off" })),
     }),
-    [ready, error, tracks, byId, current, p, playing, favorites, notice, interruption, panel, playerUi, setPlayerUi, forceCollapsed, constrain, ensureLibrary, goTo, freshQueue, startPlayback, next],
+    [ready, error, tracks, byId, current, p, playing, favorites, notice, interruption, panel, playerUi, setPlayerUi, forceCollapsed, constrain, ensureLibrary, goTo, freshQueue, startPlayback, next, restart],
   );
 
   useEffect(() => {

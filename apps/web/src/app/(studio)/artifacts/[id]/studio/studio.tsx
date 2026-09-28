@@ -13,6 +13,7 @@ import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { CarouselCanvas } from "./carousel-canvas";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
+import { SourcesPanel } from "./sources-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 
 /**
@@ -511,6 +512,9 @@ export function Studio({
           )}
         </section>
       )}
+
+      {/* Every source on the table, collapsed but for the last one opened (owner, 28 Sep 2026). */}
+      {!proposal ? <SourcesPanel set={set} artifactId={artifact.id} onSeeAll={() => setSheet("set")} onUsePart={(row) => setFragmentsFor(row)} /> : null}
 
       {/* Refine + quality stay contextual to the canvas, below it (§15.2), never a pane. */}
       {!isCarousel ? (

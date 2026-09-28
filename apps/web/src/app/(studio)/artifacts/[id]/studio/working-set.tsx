@@ -15,6 +15,7 @@ import {
   type SourceType,
   type WorkingSetView,
   type WorkingSource,
+  directionsFor,
 } from "@wonder/creator-studio/working-set";
 import { Button, Dialog, DialogContent, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
 import { ArrowLeft, ArrowRight, Check, MoreHorizontal, Pin, Plus, Scissors, Search, Sparkles, Trash2 } from "lucide-react";
@@ -285,7 +286,15 @@ function UseTogether({ set, chosen, onClose, onDone }: { set: WorkingSetView; ch
         setR(x);
         setPick(x.directions[0]?.key ?? null);
       })
-      .catch((e) => live && setError(errorMessage(e)));
+      .catch((e) => {
+        if (!live) return;
+        // CreativeMind couldn't add its idea (provider down, out of credit): the directions from the sources' roles
+        // still stand, so the creator can go on. The reason shows as a quiet note, not a dead end.
+        setError(errorMessage(e));
+        const directions = directionsFor(chosen);
+        setR({ live: false, idea: null, suggestedFormat: null, directions });
+        setPick(directions[0]?.key ?? null);
+      });
     return () => {
       live = false;
     };

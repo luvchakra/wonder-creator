@@ -1894,6 +1894,7 @@ which opens the 6-item global Palette.
 
 ## 18.1 Preview bubble (owner board "Fan + Preview Bubble — Combined state", 28 Sep 2026)
 
+* **Arc of starts (owner, 28 Sep 2026: "keep the starting of each menu aligned in an arc").** The fan stacks clear of the trigger (above it; below when it sits high). The *start* of each leaf — icon and first letter — sits on a quarter-arc around the trigger: the nearest leaf starts closest to the trigger's column, the furthest starts furthest away (mirrored on the left dock). Ends are free, so a long label never breaks the arc.
 * Leaves are label-only pills. What an action does lives in a **preview bubble**: a compact card (icon, label, one plain sentence) floating just above the previewed leaf — below it when the fan opens downward — on the trigger's side.
 * One leaf is previewed at a time: on hover (mouse), on keyboard focus, or after a **long press** (~420ms) on touch. A long press never activates the leaf; the next tap does. The previewed leaf takes the selected (accent-soft) tint.
 * The trigger stays in front of every page surface (z 44: above the header, the mini player and the Studio bars); only modal sheets and the open Palette sit above it.

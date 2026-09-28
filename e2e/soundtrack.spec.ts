@@ -27,7 +27,10 @@ test.describe("CreativeRadio", () => {
   test("set the mood from the Palette, play, and keep playing across pages", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    await page
+      .getByRole("dialog", { name: "Creative Palette" })
+      .getByRole("button", { name: /Set the mood/ })
+      .click();
 
     const panel = page.getByRole("dialog", { name: "CreativeRadio" });
     await expect(panel.getByRole("radiogroup", { name: "Mood" }).getByRole("radio", { name: /Calm/ })).toHaveAttribute("aria-checked", "true");
@@ -73,7 +76,10 @@ test.describe("CreativeRadio", () => {
     await page.getByRole("menuitem", { name: "Up next" }).click();
     await expect(panel.getByRole("tab", { name: /Up next/ })).toHaveAttribute("aria-selected", "true");
     await panel.getByRole("tab", { name: /Songs for/ }).click();
-    await panel.getByRole("button", { name: `Favourite ${title}` }).first().click();
+    await panel
+      .getByRole("button", { name: `Favourite ${title}` })
+      .first()
+      .click();
     await expect.poll(async () => ((await (await page.request.get("/api/v1/soundtrack")).json()) as { favorites: string[] }).favorites.length).toBe(1);
     await page.keyboard.press("Escape");
 
@@ -94,8 +100,15 @@ test.describe("CreativeRadio", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
-    await page.getByRole("dialog", { name: "CreativeRadio" }).getByRole("button", { name: /^Play / }).first().click();
+    await page
+      .getByRole("dialog", { name: "Creative Palette" })
+      .getByRole("button", { name: /Set the mood/ })
+      .click();
+    await page
+      .getByRole("dialog", { name: "CreativeRadio" })
+      .getByRole("button", { name: /^Play / })
+      .first()
+      .click();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: /^Open audio player/ }).click();
     const mini = page.getByRole("region", { name: "CreativeRadio" });
@@ -130,15 +143,16 @@ test.describe("CreativeRadio", () => {
     // A drag isn't a tap: the Palette didn't open.
     await expect(page.getByRole("dialog", { name: "Creative Palette" })).toHaveCount(0);
 
-    // It stays there across pages and reloads, and the fan opens on its right, downward from up here.
+    // It stays there across pages and reloads, and from up here the fan opens downward, below the trigger, its nearest
+    // leaf starting in the trigger's column (the arc of starts, mirrored for the left dock).
     await page.reload();
     b = (await trigger.boundingBox())!;
     expect(b.x).toBeLessThan(24);
     await trigger.click();
     const first = page.getByRole("dialog", { name: "Creative Palette" }).locator("[data-palette-item]").first();
     const f = (await first.boundingBox())!;
-    expect(f.x).toBeGreaterThan(b.x + b.width - 4);
-    expect(f.y).toBeGreaterThanOrEqual(b.y - 8);
+    expect(f.y).toBeGreaterThanOrEqual(b.y + b.height - 2);
+    expect(Math.abs(f.x - b.x)).toBeLessThanOrEqual(12);
     // The X closes it (and doesn't reopen it).
     await page.getByRole("button", { name: "Close Creative Palette" }).click();
     await expect(page.getByRole("dialog", { name: "Creative Palette" })).toHaveCount(0);
@@ -152,8 +166,15 @@ test.describe("CreativeRadio", () => {
 
     // The player tab moves the same way and opens away from its edge.
     await trigger.click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
-    await page.getByRole("dialog", { name: "CreativeRadio" }).getByRole("button", { name: /^Play / }).first().click();
+    await page
+      .getByRole("dialog", { name: "Creative Palette" })
+      .getByRole("button", { name: /Set the mood/ })
+      .click();
+    await page
+      .getByRole("dialog", { name: "CreativeRadio" })
+      .getByRole("button", { name: /^Play / })
+      .first()
+      .click();
     await page.keyboard.press("Escape");
     const tab = page.getByRole("button", { name: /^Open audio player/ });
     await drag(tab, { x: 60, y: 560 });
@@ -173,9 +194,16 @@ test.describe("CreativeRadio", () => {
   test("a chosen mood sticks: the current song and everything up next belong to it, across reloads", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    await page
+      .getByRole("dialog", { name: "Creative Palette" })
+      .getByRole("button", { name: /Set the mood/ })
+      .click();
     const panel = page.getByRole("dialog", { name: "CreativeRadio" });
-    await panel.getByRole("list", { name: "Songs for Calm" }).getByRole("button", { name: /^Play / }).first().click();
+    await panel
+      .getByRole("list", { name: "Songs for Calm" })
+      .getByRole("button", { name: /^Play / })
+      .first()
+      .click();
 
     // Moods of every track, and what the player has saved.
     const library = (await (await page.request.get("/api/v1/soundtrack")).json()) as { tracks: Array<{ id: string; moods: string[] }> };
