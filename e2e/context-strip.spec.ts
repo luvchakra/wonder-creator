@@ -19,10 +19,11 @@ test.describe("navbar Context Strip", () => {
 
     // In the Studio the strip carries the save state, then returns to the version.
     await page.goto(`/artifacts/${art.id}/studio`);
+    // Typing autosaves a draft; Save turns it into a version and the strip says which.
     await page.getByLabel("Poem text").fill("The harbour keeps its lights.");
-    await expect(strip).toHaveAttribute("aria-label", /^Unsaved changes/);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(strip).toHaveAttribute("aria-label", /^Saved/);
+    await page.getByRole("dialog", { name: "Save as new version" }).getByRole("button", { name: "Save version" }).click();
+    await expect(strip).toHaveAttribute("aria-label", /^Saved · v2/);
     await expect(strip).toHaveAttribute("aria-label", /^v2 · In progress/);
 
     // Home now points at the Creation in progress.
@@ -50,4 +51,3 @@ test.describe("navbar Context Strip", () => {
     await expect(page.getByRole("banner").getByRole("status")).toHaveAttribute("aria-label", /^v1 · Draft/);
   });
 });
-

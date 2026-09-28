@@ -34,7 +34,13 @@ describe("GeminiProvider contract", () => {
       task: "generate",
       system: "sys",
       messages: [
-        { role: "user", content: [{ type: "text", text: "Write" }, { type: "image", mediaType: "image/png", dataBase64: "AAAA" }] },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Write" },
+            { type: "image", mediaType: "image/png", dataBase64: "AAAA" },
+          ],
+        },
         { role: "assistant", content: "Draft" },
       ],
     });
@@ -74,7 +80,9 @@ describe("GeminiProvider contract", () => {
   it("rejects schema-invalid structured output with a creator-readable error", async () => {
     const { f } = recorder(() => reply(JSON.stringify({ title: 5 })));
     const p = new GeminiProvider({ apiKey: "k", fetch: f });
-    await expect(p.structured({ task: "plan", system: "", messages: [{ role: "user", content: "x" }], schema: z.object({ title: z.string() }), schemaName: "plan" })).rejects.toMatchObject({ code: "provider_failed" });
+    await expect(p.structured({ task: "plan", system: "", messages: [{ role: "user", content: "x" }], schema: z.object({ title: z.string() }), schemaName: "plan" })).rejects.toMatchObject({
+      code: "provider_failed",
+    });
   });
 
   it("streams text chunks and finishes with usage", async () => {
@@ -88,29 +96,68 @@ describe("GeminiProvider contract", () => {
     const chunks = [];
     for await (const c of new GeminiProvider({ apiKey: "k", fetch: f }).stream({ task: "refine", system: "", messages: [{ role: "user", content: "x" }] })) chunks.push(c);
     expect(calls[0].url).toContain(":streamGenerateContent?alt=sse");
-    expect(chunks.slice(0, 2)).toEqual([{ type: "text", text: "Hello " }, { type: "text", text: "world" }]);
+    expect(chunks.slice(0, 2)).toEqual([
+      { type: "text", text: "Hello " },
+      { type: "text", text: "world" },
+    ]);
     expect(chunks[2]).toMatchObject({ type: "done", output: { text: "Hello world", usage: { inputTokens: 12, outputTokens: 7 } } });
   });
 
   it("maps blocked prompts and safety stops to a calm, recoverable error", async () => {
     const blockedPrompt = recorder(() => json({ promptFeedback: { blockReason: "SAFETY" } }));
-    await expect(new GeminiProvider({ apiKey: "k", fetch: blockedPrompt.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_failed" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: blockedPrompt.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_failed",
+    });
     const safetyStop = recorder(() => reply("", "SAFETY"));
-    await expect(new GeminiProvider({ apiKey: "k", fetch: safetyStop.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_failed" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: safetyStop.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_failed",
+    });
   });
 
   it("maps rate limits and bad keys to provider_unavailable", async () => {
     const limited = recorder(() => json({ error: { code: 429, status: "RESOURCE_EXHAUSTED" } }, 429));
-    await expect(new GeminiProvider({ apiKey: "k", fetch: limited.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_unavailable" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: limited.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_unavailable",
+    });
     const badKey = recorder(() => json({ error: { code: 400, status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }] } }, 400));
-    await expect(new GeminiProvider({ apiKey: "k", fetch: badKey.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_unavailable" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: badKey.f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_unavailable",
+    });
   });
 
-  it("maps network failures to provider_failed", async () => {
+  it("maps network failures to provider_failed after retrying", async () => {
+    let calls = 0;
     const f = (async () => {
+      calls++;
       throw new TypeError("fetch failed");
     }) as typeof fetch;
-    await expect(new GeminiProvider({ apiKey: "k", fetch: f }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({ code: "provider_failed" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f, retryDelays: [0, 0] }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_failed",
+    });
+    expect(calls).toBe(3);
+  });
+
+  it("retries a temporary server error and succeeds without the creator seeing it", async () => {
+    let calls = 0;
+    const f = (async () => {
+      calls++;
+      return calls === 1 ? json({ error: { code: 503, status: "UNAVAILABLE" } }, 503) : json({ candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }] });
+    }) as typeof fetch;
+    const out = await new GeminiProvider({ apiKey: "k", fetch: f, retryDelays: [0, 0] }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] });
+    expect(out.text).toBe("ok");
+    expect(calls).toBe(2);
+  });
+
+  it("doesn't retry a missing model and says so honestly", async () => {
+    let calls = 0;
+    const f = (async () => {
+      calls++;
+      return json({ error: { code: 404, status: "NOT_FOUND", message: "models/x is not found" } }, 404);
+    }) as typeof fetch;
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f, retryDelays: [0, 0] }).generate({ task: "generate", system: "", messages: [{ role: "user", content: "x" }] })).rejects.toMatchObject({
+      code: "provider_unavailable",
+    });
+    expect(calls).toBe(1);
   });
 });
 
@@ -160,7 +207,9 @@ describe("GeminiProvider transcription", () => {
 
   it("rejects an upload URL on a foreign host", async () => {
     const f = (async () => new Response("{}", { status: 200, headers: { "x-goog-upload-url": "https://evil.example/upload" } })) as typeof fetch;
-    await expect(new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "video", mimeType: "video/mp4", bytes: new Uint8Array(15 * 1024 * 1024) })).rejects.toMatchObject({ code: "provider_failed" });
+    await expect(new GeminiProvider({ apiKey: "k", fetch: f }).transcribe({ kind: "video", mimeType: "video/mp4", bytes: new Uint8Array(15 * 1024 * 1024) })).rejects.toMatchObject({
+      code: "provider_failed",
+    });
   });
 });
 

@@ -1,4 +1,4 @@
-import { DomainError } from "@wonder/core";
+import { DomainError, log } from "@wonder/core";
 import { z } from "zod";
 import type {
   ContentPart,
@@ -38,11 +38,11 @@ const MEDIA_MIME: Record<string, string> = { "audio/webm": "video/webm", "audio/
 
 const TRANSCRIBE_PROMPT = {
   audio:
-    "Transcribe this recording verbatim in its original language(s). Mark speaker changes as \"Speaker 1:\", \"Speaker 2:\" when there is more than one voice. " +
+    'Transcribe this recording verbatim in its original language(s). Mark speaker changes as "Speaker 1:", "Speaker 2:" when there is more than one voice. ' +
     "Write [inaudible] for unclear parts. Output only the transcript, with no introduction or commentary. If there is no speech, output exactly: [no speech]",
   video:
-    "Transcribe the speech in this video verbatim in its original language(s). Mark speaker changes as \"Speaker 1:\", \"Speaker 2:\" when there is more than one voice. " +
-    "After the transcript, add a line \"Visual notes:\" followed by up to five short lines on what is shown (setting, people, on-screen text). " +
+    'Transcribe the speech in this video verbatim in its original language(s). Mark speaker changes as "Speaker 1:", "Speaker 2:" when there is more than one voice. ' +
+    'After the transcript, add a line "Visual notes:" followed by up to five short lines on what is shown (setting, people, on-screen text). ' +
     "Output nothing else. If there is no speech, write [no speech] in place of the transcript.",
 };
 
@@ -90,8 +90,22 @@ const BLOCKED = new Set(["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTEN
 
 /** JSON Schema keywords Gemini's responseJsonSchema accepts; others are dropped (zod still validates them). */
 const SCHEMA_KEYS = new Set([
-  "type", "title", "description", "properties", "required", "additionalProperties",
-  "enum", "format", "minimum", "maximum", "items", "prefixItems", "minItems", "maxItems", "anyOf", "nullable",
+  "type",
+  "title",
+  "description",
+  "properties",
+  "required",
+  "additionalProperties",
+  "enum",
+  "format",
+  "minimum",
+  "maximum",
+  "items",
+  "prefixItems",
+  "minItems",
+  "maxItems",
+  "anyOf",
+  "nullable",
 ]);
 
 type GeminiPart = { text?: string; thought?: boolean; inlineData?: { mimeType: string; data: string } };
@@ -131,21 +145,38 @@ const unexpected = (cause?: unknown) => new DomainError("provider_failed", "Crea
 const noResponse = (cause?: unknown) => new DomainError("provider_failed", "CreativeMind didn't respond. Nothing was changed; please try again.", { cause });
 const declined = () => new DomainError("provider_failed", "CreativeMind can't help with that particular request. Try rephrasing or choosing different material.");
 
-async function errorFor(res: Response): Promise<DomainError> {
+/** Temporary on Google's side (or the network's): worth one or two more tries before telling the creator. */
+const RETRYABLE = new Set([500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [400, 1200];
+
+async function errorFor(res: Response, at: string): Promise<DomainError> {
   let detail = "";
+  let reason = "";
+  let message = "";
   try {
-    detail = JSON.stringify(await res.json());
+    const j = (await res.json()) as { error?: { status?: string; message?: string } };
+    detail = JSON.stringify(j);
+    reason = j.error?.status ?? "";
+    message = j.error?.message ?? "";
   } catch {
     /* body is not JSON */
   }
+  // Why it failed, for operators: Google's HTTP and error status. The message only for non-400s, which describe the
+  // service (model not found, internal error) rather than echoing any part of the request; never creative content.
+  log("warn", "provider.http_error", { provider: "gemini", where: at, status: res.status, reason, ...(res.status !== 400 ? { message: message.slice(0, 160) } : {}) });
   const cause = new Error(`Gemini API ${res.status}: ${detail.slice(0, 500)}`);
   if (res.status === 429) return new DomainError("provider_unavailable", "CreativeMind is busy right now. Please try again in a moment.", { cause });
   if (res.status === 401 || res.status === 403 || detail.includes("API_KEY_INVALID")) {
     return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause });
   }
+  // The configured model or method doesn't exist (renamed or retired): not something a retry fixes.
+  if (res.status === 404) return new DomainError("provider_unavailable", "CreativeMind isn't available right now.", { cause });
   if (res.status === 400) return new DomainError("provider_failed", "CreativeMind couldn't work with that request.", { cause });
   return noResponse(cause);
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const where = (path: string) => path.replace(/^models\//, "").replace(/\?.*$/, "");
 
 /** Google Gemini via the Generative Language REST API (server-side only; the key never reaches the browser). */
 export class GeminiProvider implements CreativeModelProvider {
@@ -154,11 +185,13 @@ export class GeminiProvider implements CreativeModelProvider {
   private apiKey: string;
   private model: string;
   private fetch: typeof fetch;
+  private retryDelays: number[];
 
-  constructor(opts: { apiKey: string; model?: string; fetch?: typeof fetch }) {
+  constructor(opts: { apiKey: string; model?: string; fetch?: typeof fetch; retryDelays?: number[] }) {
     this.apiKey = opts.apiKey;
     this.model = opts.model || DEFAULT_MODEL;
     this.fetch = opts.fetch ?? fetch;
+    this.retryDelays = opts.retryDelays ?? RETRY_DELAYS_MS;
   }
 
   modelFor(): string {
@@ -182,20 +215,35 @@ export class GeminiProvider implements CreativeModelProvider {
     return this.postTo(`models/${encodeURIComponent(this.model)}:${method}${query}`, body);
   }
 
+  /** One request, retried on temporary failures (5xx, no connection) — nothing has been written yet, so it's safe. */
   private async postTo(path: string, body: unknown): Promise<Response> {
-    let res: Response;
-    try {
-      // Key in a header, not the URL, so it never lands in request logs.
-      res = await this.fetch(`${API_BASE}/${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
-        body: JSON.stringify(body),
-      });
-    } catch (e) {
-      throw noResponse(e);
+    const payload = JSON.stringify(body);
+    for (let attempt = 0; ; attempt++) {
+      const last = attempt >= this.retryDelays.length;
+      let res: Response;
+      try {
+        // Key in a header, not the URL, so it never lands in request logs.
+        res = await this.fetch(`${API_BASE}/${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
+          body: payload,
+        });
+      } catch (e) {
+        const cause = e as { name?: string; cause?: { code?: string } };
+        log("warn", "provider.network_error", { provider: "gemini", where: where(path), attempt, error: cause?.name ?? "unknown", code: cause?.cause?.code ?? null });
+        if (last) throw noResponse(e);
+        await sleep(this.retryDelays[attempt]!);
+        continue;
+      }
+      if (res.ok) return res;
+      if (!last && RETRYABLE.has(res.status)) {
+        log("warn", "provider.retry", { provider: "gemini", where: where(path), attempt, status: res.status });
+        await res.body?.cancel().catch(() => undefined);
+        await sleep(this.retryDelays[attempt]!);
+        continue;
+      }
+      throw await errorFor(res, where(path));
     }
-    if (!res.ok) throw await errorFor(res);
-    return res;
   }
 
   /** Visible text of a response chunk; throws when the prompt or answer was blocked. */
@@ -203,7 +251,10 @@ export class GeminiProvider implements CreativeModelProvider {
     if (r.promptFeedback?.blockReason) throw declined();
     const c = r.candidates?.[0];
     if (c?.finishReason && BLOCKED.has(c.finishReason)) throw declined();
-    return (c?.content?.parts ?? []).filter((p) => !p.thought && typeof p.text === "string").map((p) => p.text).join("");
+    return (c?.content?.parts ?? [])
+      .filter((p) => !p.thought && typeof p.text === "string")
+      .map((p) => p.text)
+      .join("");
   }
 
   private output(text: string, r: GeminiResponse): GenerateOutput {
@@ -329,7 +380,7 @@ export class GeminiProvider implements CreativeModelProvider {
     } catch (e) {
       throw noResponse(e);
     }
-    if (!start.ok) throw await errorFor(start);
+    if (!start.ok) throw await errorFor(start, "files.upload");
     const uploadUrl = start.headers.get("x-goog-upload-url");
     if (!uploadUrl?.startsWith(`${API_ORIGIN}/`)) throw unexpected(new Error("missing or foreign upload URL"));
 
@@ -343,7 +394,7 @@ export class GeminiProvider implements CreativeModelProvider {
     } catch (e) {
       throw noResponse(e);
     }
-    if (!done.ok) throw await errorFor(done);
+    if (!done.ok) throw await errorFor(done, "files.upload");
     let file = ((await done.json()) as { file?: GeminiFile }).file;
     if (!file?.name || !file.uri) throw unexpected(new Error("upload returned no file"));
 
@@ -356,7 +407,7 @@ export class GeminiProvider implements CreativeModelProvider {
       }
       await new Promise((r) => setTimeout(r, FILE_POLL_MS));
       const res = await this.fetch(`${API_BASE}/${file.name}`, { headers });
-      if (!res.ok) throw await errorFor(res);
+      if (!res.ok) throw await errorFor(res, "files.get");
       file = (await res.json()) as GeminiFile;
     }
     if (file.state === "FAILED") {

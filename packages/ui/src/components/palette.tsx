@@ -223,7 +223,12 @@ export function Palette({ groups, open, onOpenChange, className, announce }: { g
                         onFocus={(e) => {
                           if (item.hint && keyboard.current) show(item.key, e.currentTarget);
                         }}
-                        onBlur={() => setPreview((p) => (p?.key === item.key ? null : p))}
+                        onBlur={() => {
+                          // After focus settles: removing the bubble mid-transition (focus briefly on <body>) makes the
+                          // dialog's focus trap pull focus back to its container, so Tab would never reach the next leaf.
+                          const key = item.key;
+                          setTimeout(() => setPreview((p) => (p?.key === key ? null : p)), 0);
+                        }}
                         // Palette reveal (interaction-minimalism §6.3): a soft fan with minimal stagger, finished within 280ms.
                         style={{ animationDelay: `${Math.min(i * 10, 80)}ms` }}
                         className={cn(

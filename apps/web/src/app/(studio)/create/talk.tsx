@@ -32,6 +32,9 @@ interface Direction {
   materialIds: string[];
 }
 
+/** Starters on the empty state; tapping one fills the composer. */
+const EXAMPLES = ["Turn these notes into a poem.", "Use these photographs and create a visual treatment.", "I don't know what this should become.", "Take the poem we made yesterday and make lyrics."];
+
 export function Talk({
   conversations,
   conversation,
@@ -69,6 +72,8 @@ export function Talk({
   const [stopping, setStopping] = useState(false);
   const [retried, setRetried] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // A tapped example, put into the composer (a new key each tap so the same one can be picked again).
+  const [seed, setSeed] = useState<{ text: string; key: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<string[]>([]);
   const [attached, setAttached] = useState<string[]>(preselectedMaterialIds);
@@ -91,7 +96,10 @@ export function Talk({
       setActiveRun(null);
       setStopping(false);
       if (optimistic) {
-        setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "creator", kind: "text", content: optimistic.content, payload: {}, createdAt: new Date().toISOString(), materialIds: optimistic.materialIds }]);
+        setMessages((m) => [
+          ...m,
+          { id: `tmp-${Date.now()}`, role: "creator", kind: "text", content: optimistic.content, payload: {}, createdAt: new Date().toISOString(), materialIds: optimistic.materialIds },
+        ]);
       }
       try {
         const res = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId, ...body }) });
@@ -110,7 +118,14 @@ export function Talk({
           buf = lines.pop() ?? "";
           for (const line of lines) {
             if (!line.trim()) continue;
-            const ev = JSON.parse(line) as { type: string; label?: string; message?: string; runId?: string; conversationId?: string; messages?: Array<{ id: string; role: "creator" | "brain"; kind: string; content: string; payload: Record<string, unknown>; created_at: string }> };
+            const ev = JSON.parse(line) as {
+              type: string;
+              label?: string;
+              message?: string;
+              runId?: string;
+              conversationId?: string;
+              messages?: Array<{ id: string; role: "creator" | "brain"; kind: string; content: string; payload: Record<string, unknown>; created_at: string }>;
+            };
             if (ev.type === "progress" && ev.label) setProgress((p) => (p.at(-1) === ev.label ? p : [...p, ev.label!]));
             if (ev.type === "run" && ev.runId) setActiveRun(ev.runId);
             if (ev.type === "error") throw new Error(ev.message);
@@ -119,7 +134,15 @@ export function Talk({
               setConversationId(ev.conversationId);
               setMessages((m) => [
                 ...m.filter((x) => !x.id.startsWith("tmp-")),
-                ...(ev.messages ?? []).map((x) => ({ id: x.id, role: x.role, kind: x.kind, content: x.content, payload: x.payload, createdAt: x.created_at, materialIds: x.role === "creator" ? optimistic?.materialIds ?? [] : [] })),
+                ...(ev.messages ?? []).map((x) => ({
+                  id: x.id,
+                  role: x.role,
+                  kind: x.kind,
+                  content: x.content,
+                  payload: x.payload,
+                  createdAt: x.created_at,
+                  materialIds: x.role === "creator" ? (optimistic?.materialIds ?? []) : [],
+                })),
               ]);
               if (!params.get("c") || params.get("c") !== ev.conversationId) router.replace(`/create?c=${ev.conversationId}`, { scroll: false });
             }
@@ -149,7 +172,12 @@ export function Talk({
       if (p.rejected?.length) setNotices(p.rejected.map((r) => `${r.name}: ${r.message}`));
     });
     if (!p.message && !p.materialIds.length) return;
-    void refreshMaterials(p.materialIds).then(() => runTurn({ message: p.message, materialIds: p.materialIds, inputMode: p.inputMode }, { content: p.message || `Shared ${p.materialIds.length} piece${p.materialIds.length === 1 ? "" : "s"} of material`, materialIds: p.materialIds }));
+    void refreshMaterials(p.materialIds).then(() =>
+      runTurn(
+        { message: p.message, materialIds: p.materialIds, inputMode: p.inputMode },
+        { content: p.message || `Shared ${p.materialIds.length} piece${p.materialIds.length === 1 ? "" : "s"} of material`, materialIds: p.materialIds },
+      ),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -191,7 +219,14 @@ export function Talk({
     await refreshMaterials(ids);
     setAttached([]);
     await runTurn(
-      { message: p.message, materialIds: ids, inputMode: p.inputMode, artifactId: artifactCtx?.id ?? null, collectionId: conversationId ? null : (collectionCtx?.id ?? null), projectId: conversationId ? null : (projectCtx?.id ?? null) },
+      {
+        message: p.message,
+        materialIds: ids,
+        inputMode: p.inputMode,
+        artifactId: artifactCtx?.id ?? null,
+        collectionId: conversationId ? null : (collectionCtx?.id ?? null),
+        projectId: conversationId ? null : (projectCtx?.id ?? null),
+      },
       { content: p.message || `Shared ${ids.length} piece${ids.length === 1 ? "" : "s"} of material`, materialIds: ids },
     );
   }
@@ -220,7 +255,9 @@ export function Talk({
                 className={cn("block rounded-xl px-3 py-2 text-sm leading-snug", c.id === conversationId ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}
               >
                 {c.title}
-                <span className="block text-xs font-normal text-ink-subtle"><RelativeTime iso={c.updatedAt} /></span>
+                <span className="block text-xs font-normal text-ink-subtle">
+                  <RelativeTime iso={c.updatedAt} />
+                </span>
               </Link>
             </li>
           ))}
@@ -250,11 +287,25 @@ export function Talk({
           {empty ? (
             <li className="rounded-3xl border border-border-soft bg-surface p-6 sm:p-8">
               <p className="font-display text-2xl text-ink">What would you like to create today, {creatorName.split(" ")[0] || "creator"}?</p>
-              <p className="mt-2 text-ink-muted">Bring what you have — a note, photos, a voice memo, a few links — and tell me what you&apos;re trying to express. If you don&apos;t know yet, I&apos;ll suggest directions.</p>
-              <ul className="mt-4 grid gap-2 text-sm text-ink-muted sm:grid-cols-2">
-                {["“Turn these notes into a poem.”", "“Use these photographs and create a visual treatment.”", "“I don't know what this should become.”", "“Take the poem we made yesterday and make lyrics.”"].map((x) => (
-                  <li key={x} className="flex items-start gap-2 rounded-xl bg-surface-muted px-3 py-2">
-                    <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden /> {x}
+              <p className="mt-2 text-ink-muted">
+                Bring what you have — a note, photos, a voice memo, a few links — and tell me what you&apos;re trying to express. If you don&apos;t know yet, I&apos;ll suggest directions.
+              </p>
+              {/* Examples are starters: tapping one puts it in the composer to send as-is or finish in your own words. */}
+              <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2" aria-label="Examples to start from">
+                {EXAMPLES.map((x) => (
+                  <li key={x}>
+                    <button
+                      type="button"
+                      aria-pressed={seed?.text === x}
+                      onClick={() => setSeed({ text: x, key: Date.now() })}
+                      className={cn(
+                        "flex min-h-11 w-full items-start gap-2 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                        seed?.text === x ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-transparent bg-surface-muted text-ink-muted hover:bg-accent-softer hover:text-ink",
+                      )}
+                    >
+                      <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden />
+                      <span>“{x}”</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -293,7 +344,11 @@ export function Talk({
                 <ul className="mt-1 space-y-0.5">
                   {(progress.length ? progress : ["Reading what you shared"]).map((p, i, arr) => (
                     <li key={p} className="flex items-center gap-2">
-                      {i < arr.length - 1 ? <Check className="size-3.5 text-success-ink" aria-hidden /> : <span className="size-3.5 rounded-full border-2 border-accent/30 border-t-accent motion-safe:animate-spin" aria-hidden />}
+                      {i < arr.length - 1 ? (
+                        <Check className="size-3.5 text-success-ink" aria-hidden />
+                      ) : (
+                        <span className="size-3.5 rounded-full border-2 border-accent/30 border-t-accent motion-safe:animate-spin" aria-hidden />
+                      )}
                       {p}
                     </li>
                   ))}
@@ -347,7 +402,12 @@ export function Talk({
               ) : projectCtx ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
                   In Creative Room: {projectCtx.title}
-                  <button type="button" onClick={() => setProjectCtx(null)} aria-label="Don't add this conversation to the Creative Room" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                  <button
+                    type="button"
+                    onClick={() => setProjectCtx(null)}
+                    aria-label="Don't add this conversation to the Creative Room"
+                    className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70"
+                  >
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
@@ -355,7 +415,12 @@ export function Talk({
               {artifactCtx ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
                   Working on: {artifactCtx.title}
-                  <button type="button" onClick={() => setArtifactCtx(null)} aria-label="Stop working on this Creation" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                  <button
+                    type="button"
+                    onClick={() => setArtifactCtx(null)}
+                    aria-label="Stop working on this Creation"
+                    className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70"
+                  >
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
@@ -363,7 +428,12 @@ export function Talk({
               {collectionCtx && !conversationId ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-accent-ink">
                   From collection: {collectionCtx.name}
-                  <button type="button" onClick={() => setCollectionCtx(null)} aria-label="Don't start from this collection" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70">
+                  <button
+                    type="button"
+                    onClick={() => setCollectionCtx(null)}
+                    aria-label="Don't start from this collection"
+                    className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white/70"
+                  >
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
@@ -371,14 +441,19 @@ export function Talk({
               {attached.map((id) => (
                 <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-accent-softer py-1 pl-3 pr-1 text-ink-muted">
                   {materials[id]?.title ?? "Material"}
-                  <button type="button" onClick={() => setAttached((a) => a.filter((x) => x !== id))} aria-label="Remove attachment" className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setAttached((a) => a.filter((x) => x !== id))}
+                    aria-label="Remove attachment"
+                    className="inline-flex size-7 items-center justify-center rounded-full hover:bg-white"
+                  >
                     <X className="size-3.5" aria-hidden />
                   </button>
                 </span>
               ))}
             </div>
           ) : null}
-          <Composer onSubmit={submit} busy={busy} compact placeholder="Tell me what you'd like to explore…" prompt={prompt} />
+          <Composer onSubmit={submit} busy={busy} compact placeholder="Tell me what you'd like to explore…" prompt={prompt} seed={seed} />
         </div>
       </section>
     </div>
@@ -508,7 +583,11 @@ function MessageView({
               <ul className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
                 {(p.checks as Array<{ key: string; label: string; status: string; note: string }>).map((c) => (
                   <li key={c.key} className="flex items-start gap-2">
-                    {c.status === "good" ? <Check className="mt-0.5 size-4 shrink-0 text-success-ink" aria-label="Good" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-label="Worth a look" />}
+                    {c.status === "good" ? (
+                      <Check className="mt-0.5 size-4 shrink-0 text-success-ink" aria-label="Good" />
+                    ) : (
+                      <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-label="Worth a look" />
+                    )}
                     <span>
                       <span className="font-medium text-ink">{c.label}</span> <span className="text-ink-muted">— {c.note}</span>
                     </span>
@@ -542,9 +621,7 @@ function MessageView({
         {m.kind === "question" && p.intent ? (
           <IntentCard id={m.id} intent={p.intent as IntentPayload} materialIds={(p.materialIds as string[]) ?? []} materials={materials} busy={busy} answered={answered} onConfirm={onClarify} />
         ) : null}
-        {Array.isArray(p.assumptions) && (p.assumptions as string[]).length ? (
-          <p className="mt-2 text-xs text-ink-subtle">I assumed: {(p.assumptions as string[]).join(" ")}</p>
-        ) : null}
+        {Array.isArray(p.assumptions) && (p.assumptions as string[]).length ? <p className="mt-2 text-xs text-ink-subtle">I assumed: {(p.assumptions as string[]).join(" ")}</p> : null}
         {m.kind === "question" && Array.isArray(p.options) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {(p.options as Array<{ id: string; title: string; type: string }>).map((o) => (
