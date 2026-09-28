@@ -14,3 +14,4 @@ export * from "./material-understanding";
 export * from "./semantic";
 export * from "./context-line";
 export * from "./images";
+export * from "./studio";

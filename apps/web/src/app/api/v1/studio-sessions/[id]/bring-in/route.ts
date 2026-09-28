@@ -1,4 +1,4 @@
-import { searchBringIn } from "@wonder/creator-studio";
+import { SOURCE_TYPES, searchBringIn, type SourceType } from "@wonder/creator-studio";
 import { withApi } from "@/lib/api";
 import { assertUuid, studioSigner } from "@/lib/studio";
 
@@ -7,7 +7,8 @@ export const GET = withApi<{ id: string }>(
   async ({ db, creatorId, req }, { id }) => {
     assertUuid(id);
     const q = req.nextUrl.searchParams.get("q") ?? "";
-    return { results: await searchBringIn(db, creatorId, id, q, studioSigner(db)) };
+    const only = req.nextUrl.searchParams.get("only");
+    return { results: await searchBringIn(db, creatorId, id, q, studioSigner(db), only && (SOURCE_TYPES as readonly string[]).includes(only) ? [only as SourceType] : undefined) };
   },
   { rateLimit: 120 },
 );

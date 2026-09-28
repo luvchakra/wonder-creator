@@ -14,7 +14,7 @@ import { aspectClass } from "@/components/carousel/slide-render";
  * setup → "Generate N images" · generating → progress only · slides → "Continue Creating" with two quiet actions
  * (Generate one more, Arrange). Everything else is in a slide's ⋯, the Palette or Details.
  */
-export function CarouselComposer({ artifactId, title, meta, source, initial }: { artifactId: string; title: string; meta: string; source: string | null; initial: CarouselView }) {
+export function CarouselComposer({ artifactId, title, meta, source, initial, hideHeader = false }: { artifactId: string; title: string; meta: string; source: string | null; initial: CarouselView; /** Inside the Creative Studio, whose own bar names the Creation. */ hideHeader?: boolean }) {
   const [view, setView] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const strip = useStripSignal();
@@ -47,7 +47,7 @@ export function CarouselComposer({ artifactId, title, meta, source, initial }: {
   const [arranging, setArranging] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  const header = (
+  const header = hideHeader ? null : (
     <header className="space-y-1">
       <h1 className="break-words font-display text-[22px] leading-tight text-ink sm:text-[26px]">{title}</h1>
       <p className="text-[12.5px] text-ink-subtle">

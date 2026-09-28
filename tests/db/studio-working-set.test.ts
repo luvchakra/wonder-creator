@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { addSources, openStudioSession, removeSource, searchBringIn, updateSource, workingSetView, createArtifact } from "@wonder/creator-studio";
+import { activeStudioSession, addSources, copyWorkingSet, openStudioSession, patchStudioSession, removeSource, searchBringIn, setSourceStates, sourceDetail, updateSource, workingSetView, createArtifact } from "@wonder/creator-studio";
 import { createMaterial } from "@wonder/creator-library";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createTestCreator, type TestCreator } from "./helpers";
@@ -76,5 +76,52 @@ describe("CreativeStudio Working Set", () => {
     await admin.from("creative_materials").delete().eq("id", temp);
     const gone = (await workingSetView(db(owner), s.id)).sources.find((x) => x.sourceId === temp)!;
     expect(gone).toMatchObject({ available: false, title: "This source is no longer available", href: null });
+  });
+
+  it("takes comments and fragments onto the table, autosaves a draft without a version, and carries the set into a new format", async () => {
+    const s = await openStudioSession(db(owner), owner.creatorId, piece);
+    // A collaborator's comment becomes a constraint (§35).
+    const { data: c } = await admin.from("artifact_comments").insert({ artifact_id: piece, creator_id: other.creatorId, body: "The opening should feel emptier." }).select("id").single();
+    await admin.from("artifact_contributors").insert({ artifact_id: piece, contributor_creator_id: other.creatorId, added_by_creator_id: owner.creatorId, role: "Editor", access: "comment" });
+    expect((await searchBringIn(db(owner), owner.creatorId, s.id, "emptier")).map((r) => [r.sourceType, r.kind.startsWith("Comment · ")])).toEqual([["comment", true]]);
+    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "comment", id: c!.id }])).toBe(1);
+    let v = await workingSetView(db(owner), s.id);
+    expect(v.sources.find((x) => x.sourceType === "comment")).toMatchObject({ roles: ["constraint"], title: "“The opening should feel emptier.”" });
+
+    // A passage of a note is its own row beside the whole note (§19–21).
+    await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note }]);
+    const whole = (await workingSetView(db(owner), s.id)).sources.find((x) => x.sourceId === note && !x.fragment)!;
+    const d = await sourceDetail(db(owner), whole.id);
+    expect(d.text).toContain("Platform 3");
+    expect(await addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note, fragment: { kind: "text_range", start: 0, end: 24, text: "He waited at Platform 3." } }], "in_use")).toBe(1);
+    v = await workingSetView(db(owner), s.id);
+    const frag = v.sources.find((x) => x.fragment)!;
+    expect(frag).toMatchObject({ state: "in_use", roles: ["quote"], title: "“He waited at Platform 3.”", kind: "Passage · Voice note" });
+    await expect(addSources(db(owner), owner.creatorId, s.id, [{ type: "material", id: note, fragment: { kind: "audio_range", start: 10, end: 5 } }])).rejects.toThrow(/starts and ends/);
+    await setSourceStates(db(owner), s.id, [whole.id, frag.id], "available");
+    expect((await workingSetView(db(owner), s.id)).sources.filter((x) => x.sourceId === note).every((x) => x.state === "available")).toBe(true);
+
+    // The canvas draft autosaves on the session, never as a version (§46–47).
+    await patchStudioSession(db(owner), s.id, { draft: { text: "Every Sunday…", baseVersionId: null }, intent: { goal: "A visual spoken-word piece", format: "spoken_word" } });
+    v = await workingSetView(db(owner), s.id);
+    expect(v.draft?.text).toBe("Every Sunday…");
+    expect(v.intent).toEqual({ goal: "A visual spoken-word piece", format: "spoken_word" });
+    expect((await admin.from("artifact_versions").select("id", { count: "exact", head: true }).eq("artifact_id", piece)).count).toBe(1);
+    await patchStudioSession(db(owner), s.id, { draft: null });
+    expect((await workingSetView(db(owner), s.id)).draft).toBeNull();
+    expect(await activeStudioSession(db(owner), owner.creatorId)).toMatchObject({ artifactId: piece });
+
+    // Format switch keeps the ingredients (§24–25): the new Creation's table has the same rows, plus its source.
+    const next = (await createArtifact(db(owner), owner.creatorId, { artifactType: "carousel", title: "Platform 3 (carousel)", content: "Slides", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const copied = await copyWorkingSet(db(owner), owner.creatorId, s.id, next);
+    const cv = await workingSetView(db(owner), copied);
+    expect(cv.outputMode).toBe("carousel");
+    expect(cv.intent).toEqual({ goal: "A visual spoken-word piece", format: "spoken_word" });
+    expect(cv.sources.filter((x) => x.sourceId === note)).toHaveLength(2);
+    expect(cv.sources.find((x) => x.sourceType === "creation" && x.sourceId === piece)).toMatchObject({ state: "in_use" });
+    // Another creator's comments on their own Creation can't be pulled onto this table.
+    const theirs = (await createArtifact(db(other), other.creatorId, { artifactType: "poem", title: "Theirs", content: "x", authorKind: "creator", provenance: { origin: "typed" } })).id;
+    const { data: tc } = await admin.from("artifact_comments").insert({ artifact_id: theirs, creator_id: other.creatorId, body: "private" }).select("id").single();
+    await expect(addSources(db(owner), owner.creatorId, s.id, [{ type: "comment", id: tc!.id }])).rejects.toThrow(/isn't available/);
   });
 });

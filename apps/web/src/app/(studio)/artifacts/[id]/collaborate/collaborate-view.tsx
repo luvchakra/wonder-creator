@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
+import { Badge, Button, buttonClasses, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowLeft, Bot, MoreHorizontal, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -302,6 +302,11 @@ function Comments({ artifactId, versionId, comments, owner, onChanged, onError }
       </p>
       {c.quote ? <blockquote className="mt-1 border-l-2 border-accent pl-2 text-sm italic text-ink-muted">{c.quote}</blockquote> : null}
       <p className="mt-1 whitespace-pre-line text-[15px] text-ink">{c.body}</p>
+      {owner && !c.resolved ? (
+        <Link href={`/artifacts/${artifactId}/studio?add=comment:${c.id}`} className={buttonClasses({ variant: "ghost", size: "sm", className: "mt-1 -ml-3" })}>
+          Use in Studio
+        </Link>
+      ) : null}
       {owner || c.mine ? (
         <Button
           variant="ghost"

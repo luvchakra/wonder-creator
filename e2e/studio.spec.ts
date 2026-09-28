@@ -3,6 +3,9 @@ import { expect, poemFromNote, test, type Page } from "./fixtures";
 async function openStudio(page: Page, artifactId: string) {
   await page.goto(`/artifacts/${artifactId}/studio`);
   await expect(page.getByRole("region", { name: "Editor" })).toBeVisible();
+  // The Studio opens reading over the cover; the pen opens the text.
+  const pen = page.getByRole("button", { name: "Edit the text" }).first();
+  if (await pen.isVisible()) await pen.click();
 }
 
 test.describe("Studio, versions and lineage", () => {
@@ -11,7 +14,7 @@ test.describe("Studio, versions and lineage", () => {
   test("refine with CreativeMind: Improve → proposal → Keep revision adds a version", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
     await openStudio(page, artifactId);
-    await expect(page.getByText("Poem · v1")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Version 1 — see versions" })).toBeVisible();
     const before = await page.getByLabel("Poem text").inputValue();
     expect(before.length).toBeGreaterThan(0);
 
@@ -21,7 +24,7 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("region", { name: "Editor" }).getByText("(Revised offline: improve.)")).toBeVisible();
     await page.getByRole("button", { name: "Keep revision" }).click();
 
-    await expect(page.getByText("Poem · v2")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
     await expect(page.getByLabel("Poem text")).toHaveValue(/\(Revised offline: improve\.\)/);
 
     await page.goto(`/artifacts/${artifactId}`);
@@ -41,7 +44,7 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("button", { name: "Discard" })).toBeVisible({ timeout: 45_000 });
     await page.getByRole("button", { name: "Discard" }).click();
     await expect(page.getByLabel("Poem text")).toBeVisible();
-    await expect(page.getByText("Poem · v1")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Version 1 — see versions" })).toBeVisible();
     await page.goto(`/artifacts/${artifactId}`);
     await expect(page.getByRole("tab", { name: "Versions (1)" })).toBeVisible();
   });
@@ -53,10 +56,20 @@ test.describe("Studio, versions and lineage", () => {
     const original = await editor.inputValue();
     const added = "And the harbour answers in its own slow tongue.";
     await editor.fill(`${original}\n${added}`);
-    await expect(page.getByText("Poem · v1 · unsaved changes")).toBeVisible();
+    // Edits autosave as a draft (no version yet) and survive a reload.
+    await expect(page.getByText("Autosaved").first()).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Editor" })).toContainText(added);
+    expect(((await (await page.request.get(`/api/v1/artifacts/${artifactId}/versions`)).json()) as { versions: unknown[] }).versions).toHaveLength(1);
     await page.getByLabel("Title").fill("Harbour Psalm");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText(/Poem · v2 · saved/)).toBeVisible();
+    await page.getByLabel("Title").blur();
+    // A version is a checkpoint the creator chooses.
+    await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /^Save version/ }).click();
+    const sheet = page.getByRole("dialog", { name: "Save as new version" });
+    await expect(sheet.getByLabel("Version name")).toHaveValue("Poem (Harbour Psalm)");
+    await sheet.getByRole("button", { name: "Save version" }).click();
+    await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
 
     await page.getByRole("link", { name: "Back to Creation" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Harbour Psalm" })).toBeVisible();
@@ -81,7 +94,7 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("article")).not.toContainText(added);
 
     // Compare the saved edit (v2) with the restored version (v3): the line is removed.
-    await compare.getByLabel("Compare").selectOption({ label: "v2 Revised" });
+    await compare.getByLabel("Compare").selectOption({ label: "v2 Poem (Harbour Psalm)" });
     await compare.getByLabel("with").selectOption({ index: 0 });
     await expect(compare.getByText(`Removed: ${added}`)).toBeVisible();
 

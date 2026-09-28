@@ -24,8 +24,19 @@ export const ROLE_LABEL: Record<SourceRole, string> = {
   quote: "Quote",
 };
 
-export const SOURCE_TYPES = ["material", "creation", "collection"] as const;
+export const SOURCE_TYPES = ["material", "creation", "collection", "comment", "huddle_moment"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
+
+/** A usable piece of a source (§19–21, §42). */
+export interface Fragment {
+  kind: "text_range" | "audio_range" | "video_range" | "section";
+  /** Seconds for audio/video, character offsets for text. */
+  start?: number;
+  end?: number;
+  label?: string;
+  /** The words themselves (a quote, a passage) — what CreativeMind and the creator see. */
+  text?: string;
+}
 
 /** A Working Set row, resolved for the viewer (details only while they can still open the source, §70). */
 export interface WorkingSource {
@@ -34,6 +45,7 @@ export interface WorkingSource {
   sourceId: string;
   state: SourceState;
   roles: SourceRole[];
+  fragment: Fragment | null;
   addedAt: string;
   available: boolean;
   title: string;
@@ -45,14 +57,88 @@ export interface WorkingSource {
   thumbnailUrl: string | null;
 }
 
+export interface StudioIntent {
+  goal?: string;
+  format?: string;
+  mood?: string[];
+  style?: string[];
+  preserve?: string[];
+  avoid?: string[];
+}
+
 export interface WorkingSetView {
   sessionId: string;
   artifactId: string;
   outputMode: string;
+  intent: StudioIntent;
+  /** The autosaved canvas draft, if it differs from the current version (§44–46). */
+  draft: { text: string; baseVersionId: string | null; savedAt: string } | null;
   sources: WorkingSource[];
 }
 
+export const OUTPUT_MODES = [
+  { key: "writing", label: "Writing", hint: "Article, story, poem", types: ["article", "essay", "story", "poem", "lyrics", "spoken_word", "blog_post", "script", "screenplay", "dialogue", "copy", "newsletter", "biography", "artist_statement", "narration", "film_treatment", "documentary", "social_post", "professional_post", "video_description", "media_kit", "proposal"] },
+  { key: "carousel", label: "Carousel", hint: "Social media", types: ["carousel", "social_series"] },
+  { key: "image", label: "Images", hint: "Visual series", types: ["visual_concept", "poster", "album_art", "moodboard", "photo_essay", "art_series", "visual_post", "thumbnail_concept"] },
+  { key: "video", label: "Video", hint: "Reel, short film", types: ["short_film", "storyboard", "shot_list", "trailer", "reel_concept"] },
+  { key: "audio", label: "Audio", hint: "Voice, podcast, song", types: ["podcast_concept", "song_concept", "sound_design"] },
+  { key: "presentation", label: "Presentation", hint: "Deck, proposal", types: ["presentation", "pitch_deck"] },
+] as const;
+export type OutputMode = (typeof OUTPUT_MODES)[number]["key"];
+
+/** The output mode a Creation type belongs to. */
+export function outputModeOf(artifactType: string): OutputMode {
+  return OUTPUT_MODES.find((m) => (m.types as readonly string[]).includes(artifactType))?.key ?? "writing";
+}
+
+/** The Creation type a mode switch makes — the mode's first, most general type. */
+export const MODE_DEFAULT_TYPE: Record<OutputMode, string> = { writing: "story", carousel: "carousel", image: "photo_essay", video: "short_film", audio: "podcast_concept", presentation: "presentation" };
+
+/** One creative direction for a set of sources (§16–17). */
+export interface Direction {
+  key: string;
+  title: string;
+  hint: string;
+  artifactType: string;
+}
+
+/**
+ * Directions that follow from what's on the table — from the sources' roles, deterministically (§17 leaves the one-line
+ * idea to CreativeMind; these are the honest options underneath it, live model or not).
+ */
+export function directionsFor(sources: Array<Pick<WorkingSource, "roles" | "sourceType" | "mediaType">>): Direction[] {
+  const roles = new Set(sources.flatMap((s) => s.roles));
+  const visuals = sources.filter((s) => s.roles.includes("visual")).length;
+  const out: Direction[] = [];
+  if (roles.has("voice") && visuals) out.push({ key: "spoken", title: "Visual spoken-word piece", hint: "Combine the story, photos and words with voice.", artifactType: "spoken_word" });
+  if (visuals >= 2 && roles.has("story")) out.push({ key: "essay", title: "Photo essay", hint: "Turn this into a narrative photo essay.", artifactType: "photo_essay" });
+  if (visuals >= 1) out.push({ key: "carousel", title: "Carousel", hint: "A short visual story for social media.", artifactType: "carousel" });
+  if (roles.has("story") || roles.has("quote")) out.push({ key: "film", title: "Short film concept", hint: "A 1–2 minute film idea.", artifactType: "short_film" });
+  if (roles.has("mood") || roles.has("sound")) out.push({ key: "song", title: "Song concept", hint: "Lyrics and a feeling to score.", artifactType: "song_concept" });
+  if (!out.length || roles.has("story")) out.push({ key: "poem", title: "Poem", hint: "The heart of it in a few stanzas.", artifactType: "poem" });
+  return out.slice(0, 4);
+}
+
+/** "2 sources still unused" — a quiet, deterministic nudge (§32); null when there's nothing to say. */
+export function unusedNudge(sources: Array<Pick<WorkingSource, "state" | "title" | "available">>): { count: number; text: string } | null {
+  const unused = sources.filter((s) => s.state === "available" && s.available);
+  if (!unused.length) return null;
+  if (unused.length === 1) return { count: 1, text: `You haven't used “${unused[0]!.title}” yet.` };
+  return { count: unused.length, text: `${unused.length} sources are still unused.` };
+}
+
 /** One "Bring in" search result. */
+export const BRING_IN_KINDS = [
+  { key: "material", label: "Materials", hint: "Photos, videos, docs…" },
+  { key: "creation", label: "My Creations", hint: "Reuse and remix" },
+  { key: "capture", label: "Capture", hint: "Photo, video, voice" },
+  { key: "link", label: "Link / YouTube", hint: "URLs and web" },
+  { key: "collection", label: "Collection", hint: "Saved references" },
+  { key: "huddle_moment", label: "Huddle moment", hint: "Ideas and discussions" },
+  { key: "comment", label: "Person / Comment", hint: "Use feedback" },
+  { key: "browse", label: "Browse", hint: "Explore and discover" },
+] as const;
+
 export interface BringInResult {
   sourceType: SourceType;
   sourceId: string;
@@ -68,11 +154,33 @@ export function groupSources(sources: WorkingSource[]): Array<{ state: SourceSta
   return SOURCE_STATES.map((state) => ({ state, sources: sources.filter((s) => s.state === state) })).filter((g) => g.sources.length);
 }
 
-/** "4 sources" · "4 sources · 1 pinned" · "2 still unused" — the Studio's quiet summary (§45, §65). */
+/** "5 sources · 3 in use" — the Studio's quiet summary (§7, §45, §65). */
 export function workingSetSummary(sources: Pick<WorkingSource, "state">[]): string {
   if (!sources.length) return "No sources yet";
   const n = sources.length;
-  const pinned = sources.filter((s) => s.state === "pinned").length;
-  const base = `${n} ${n === 1 ? "source" : "sources"}`;
-  return pinned ? `${base} · ${pinned} pinned` : base;
+  const inUse = sources.filter((s) => s.state !== "available").length;
+  return `${n} ${n === 1 ? "source" : "sources"}${inUse ? ` · ${inUse} in use` : ""}`;
+}
+
+export const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+/** Sentences of a transcript or note, as candidate fragments (§21) — a plain split, nothing invented. */
+export function suggestFragments(text: string, max = 5): Array<Fragment & { text: string }> {
+  const parts = text
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?।])\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 12 && t.length <= 200);
+  const seen = new Set<string>();
+  const out: Array<Fragment & { text: string }> = [];
+  let offset = 0;
+  for (const t of parts) {
+    const at = text.indexOf(t, offset);
+    if (at >= 0) offset = at + t.length;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    out.push({ kind: "text_range", start: at >= 0 ? at : undefined, end: at >= 0 ? at + t.length : undefined, text: t });
+    if (out.length >= max) break;
+  }
+  return out;
 }
