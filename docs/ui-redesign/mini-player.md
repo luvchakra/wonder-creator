@@ -483,6 +483,14 @@ If implemented:
 
 Do not allow arbitrary floating placement across the page unless proven necessary.
 
+> **Owner update (28 Sep 2026):** "I should be able to move the palette anywhere and leave it, it should stick to nearest
+> left or right edge of the screen. Same for the music player minimised image." The collapsed tab can be dragged anywhere.
+> On release it docks to the nearest **left or right** edge at the height it was dropped (clamped below the navbar and
+> above the bottom edge), and keeps >=72px from the Palette trigger on the same edge. The spot is remembered on the
+> device (`localStorage`, `wc.player.dock`) as a side plus a fraction of the viewport height. Shift + arrow keys move it
+> without dragging. A drag never counts as a tap. The expanded panel opens away from its edge, and the collapse chevron
+> and swipe point toward it. Implementation: `useEdgeDock` / `settleDock` in `packages/ui/src/components/edge-dock.ts`.
+
 ---
 
 # 18. Playing Indicator

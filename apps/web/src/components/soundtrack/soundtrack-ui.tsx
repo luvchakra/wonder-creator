@@ -1,6 +1,6 @@
 "use client";
 import { MOOD_LABEL, MOODS, formatDuration, rankTracks, type MoodFilter } from "@wonder/creator-soundtrack";
-import { Button, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
+import { Button, DOCK_GAP, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger, cn, dockStyle, useEdgeDock, type DockSide } from "@wonder/ui";
 import {
   ArrowDown,
   ArrowUp,
@@ -35,6 +35,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { placeClear, type Box } from "@/lib/mini-player-placement";
 import { useSoundtrack, useSoundtrackTime, type LibraryTrack, type Soundtrack } from "./audio-provider";
+
+/** The collapsed tab's height (px): 6.5rem. */
+const TAB_H = 104;
 
 const MOOD_ICON: Record<MoodFilter, React.ComponentType<{ className?: string }>> = {
   calm: Feather,
@@ -110,6 +113,9 @@ function Bars({ playing }: { playing: boolean }) {
 function primaryObstacles(exclude: HTMLElement | null): Box[] {
   const vh = window.innerHeight;
   const out: Box[] = [];
+  // The Palette trigger, wherever the creator docked it, with the >=72px separation (§15).
+  const palette = document.querySelector<HTMLElement>("[data-palette-trigger]")?.getBoundingClientRect();
+  if (palette && palette.width > 0) out.push({ top: palette.top - DOCK_GAP, bottom: palette.bottom + DOCK_GAP, left: palette.left - 8, right: palette.right + 8 });
   document.querySelectorAll<HTMLElement>('[data-primary-action], [class*="gradient-primary"]').forEach((el) => {
     if (exclude?.contains(el) || el.closest('[role="dialog"]')) return;
     const r = el.getBoundingClientRect();
@@ -119,10 +125,10 @@ function primaryObstacles(exclude: HTMLElement | null): Box[] {
 }
 
 /**
- * Where the expanded panel can sit without covering a primary action, recomputed on scroll, resize and page changes.
- * `dy` is the vertical shift from its natural right-middle spot; null = nowhere clear right now.
+ * Where the expanded panel can sit without covering a primary action or the Palette, recomputed on scroll, resize and
+ * page changes. `dy` is the vertical shift from its anchor beside the tab; null = nowhere clear right now.
  */
-function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDivElement | null>) {
+function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDivElement | null>, side: DockSide, centre: number) {
   const [dy, setDy] = useState<number | null>(0);
   const height = useRef(188);
   useEffect(() => {
@@ -135,11 +141,11 @@ function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDi
         const vh = window.innerHeight;
         if (panel.current) height.current = panel.current.offsetHeight || height.current;
         const width = Math.min(320, vw - 16);
-        const centre = Math.min(vh / 2, vh - 240);
-        const box: Box = { top: centre - height.current / 2, bottom: centre + height.current / 2, right: vw - 8, left: vw - 8 - width };
+        const c = Math.min(Math.max(centre, height.current / 2 + 8), vh - height.current / 2 - 8);
+        const box: Box = { top: c - height.current / 2, bottom: c + height.current / 2, ...(side === "left" ? { left: 8, right: 8 + width } : { right: vw - 8, left: vw - 8 - width }) };
         const navBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 72;
-        // Clear of the navbar, and >=72px above the Palette trigger (60px, 1rem from the bottom).
-        const next = placeClear(box, primaryObstacles(panel.current), { min: Math.max(8, navBottom + 8), max: vh - 148 });
+        // Clear of the navbar and the page's bottom edge; the Palette is one of the obstacles.
+        const next = placeClear(box, primaryObstacles(panel.current), { min: Math.max(8, navBottom + 8), max: vh - 8 });
         setDy((cur) => (cur === next ? cur : next));
       });
     };
@@ -153,16 +159,18 @@ function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDi
       window.removeEventListener("resize", measure);
       clearInterval(poll);
     };
-  }, [active, panel]);
+  }, [active, panel, side, centre]);
   return { dy: active ? dy : 0 };
 }
 
 /**
- * The CreativeRadio mini player (docs/ui-redesign/mini-player.md): docked to the right edge around the vertical middle.
- * Collapsed, it's a slim tab (art, a playing indicator, ‹) whose only job is awareness + expand. Expanded, a compact
- * panel opens leftward from the same anchor with track info, progress and previous / play / next / More. Collapse (›,
- * a swipe right, or Escape) tucks it back; collapsing never stops playback. It stays clear of the Palette trigger
- * (>=72px), stays collapsed on immersive screens, and sits below sheets and dialogs.
+ * The CreativeRadio mini player (docs/ui-redesign/mini-player.md): docked to the right edge around the vertical middle
+ * by default. The creator can drag the tab anywhere; it settles against the nearest left or right edge at that height
+ * and stays there (`useEdgeDock`). Collapsed, it's a slim tab (art, a playing indicator, a chevron) whose only job is
+ * awareness + expand. Expanded, a compact panel opens away from that edge with track info, progress and previous / play
+ * / next / More. Collapse (the chevron, a swipe toward the edge, or Escape) tucks it back; collapsing never stops
+ * playback. It stays clear of the Palette trigger (>=72px), stays collapsed on immersive screens, and sits below sheets
+ * and dialogs.
  */
 export function MiniPlayer() {
   const s = useSoundtrack();
@@ -170,7 +178,15 @@ export function MiniPlayer() {
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const wantExpanded = s?.playerUi === "expanded" && !s.forceCollapsed;
   const [override, setOverride] = useState(false);
-  const place = useClearOfPrimaryActions(wantExpanded && !!s?.current, panel);
+  const dock = useEdgeDock("wc.player.dock", {
+    height: TAB_H,
+    // Around the vertical middle, clear of the default Palette spot.
+    defaultY: (vh) => Math.min(vh / 2, vh - 204),
+    bounds: (vh) => ({ min: (document.querySelector("header")?.getBoundingClientRect().bottom ?? 64) + 8 + TAB_H / 2, max: vh - 8 - TAB_H / 2 }),
+  });
+  const left = dock.pos?.side === "left";
+  const centre = dock.pos?.y ?? 0;
+  const place = useClearOfPrimaryActions(wantExpanded && !!s?.current && !!dock.pos, panel, left ? "left" : "right", centre);
   // Never cover a primary action (§15): shift vertically, or show the tab until there's room — unless the creator
   // just tapped the tab to open it anyway.
   const expanded = wantExpanded && (place.dy !== null || override);
@@ -183,29 +199,39 @@ export function MiniPlayer() {
     setOverride(false);
     s.setPlayerUi("collapsed");
   };
-  // Centre on the viewport's middle, but never within 72px of the Palette trigger (60px, 1rem from the bottom).
-  const anchor = expanded ? "top-[min(50%,calc(100dvh-15rem))]" : "top-[min(50%,calc(100dvh-12.75rem))]";
+  // Before the dock is measured (first paint), the right-middle default.
+  const anchor = dock.pos ? undefined : "top-[min(50%,calc(100dvh-12.75rem))] -translate-y-1/2";
   const status = s.state.interruption ?? (s.state.playing ? null : "Paused");
 
   if (!expanded) {
     return (
       <button
         type="button"
+        {...dock.handlers}
         onClick={() => {
+          if (dock.consumeClick()) return; // the end of a drag, not a tap
           if (wantExpanded) setOverride(true);
           else s.setPlayerUi("expanded");
         }}
         aria-label={`Open audio player — ${s.state.playing ? "playing" : "paused"}: ${t.title}`}
+        aria-describedby="player-move-hint"
         aria-expanded={false}
+        data-player-tab=""
+        data-dock-side={left ? "left" : "right"}
+        style={dockStyle(dock, { w: 48, h: TAB_H }, "0px")}
         className={cn(
-          "fixed right-0 z-30 flex h-[6.5rem] w-12 -translate-y-1/2 flex-col items-center justify-between rounded-l-2xl border border-r-0 border-border-soft bg-surface/95 py-2 pr-[env(safe-area-inset-right)] shadow-[var(--shadow-card)] backdrop-blur focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          "motion-safe:transition-[transform,opacity] motion-safe:duration-200",
+          "fixed right-0 z-30 flex h-[6.5rem] w-12 cursor-grab select-none flex-col items-center justify-between border border-border-soft bg-surface/95 py-2 shadow-[var(--shadow-card)] backdrop-blur focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing",
+          left ? "rounded-r-2xl border-l-0 pl-[env(safe-area-inset-left)]" : "rounded-l-2xl border-r-0 pr-[env(safe-area-inset-right)]",
+          dock.drag && "rounded-2xl border",
           anchor,
         )}
       >
         <Art t={t} size="size-8" />
         {s.state.interruption ? <Pause className="size-3.5 text-ink-subtle" aria-hidden /> : <Bars playing={s.state.playing} />}
-        <ChevronLeft className="size-4 text-ink-muted" aria-hidden />
+        {left ? <ChevronRight className="size-4 text-ink-muted" aria-hidden /> : <ChevronLeft className="size-4 text-ink-muted" aria-hidden />}
+        <span id="player-move-hint" hidden>
+          Drag it, or press Shift with the arrow keys, to move it to either side.
+        </span>
       </button>
     );
   }
@@ -218,7 +244,12 @@ export function MiniPlayer() {
       role="region"
       aria-label="CreativeRadio"
       tabIndex={-1}
-      style={place.dy ? { translate: `0 calc(-50% + ${place.dy}px)` } : undefined}
+      style={{
+        ...(dock.pos ? { top: dock.pos.y, [left ? "left" : "right"]: `calc(0.5rem + env(safe-area-inset-${left ? "left" : "right"}))` } : {}),
+        translate: `0 calc(-50% + ${place.dy ?? 0}px)`,
+        ["--mini-dx" as string]: left ? "-1.5rem" : "1.5rem",
+        transformOrigin: left ? "left center" : "right center",
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") collapse();
         if (e.key === " " && e.target === e.currentTarget) {
@@ -230,12 +261,13 @@ export function MiniPlayer() {
       onPointerUp={(e) => {
         const d = swipe.current;
         swipe.current = null;
-        if (d && e.clientX - d.x > 60 && Math.abs(e.clientY - d.y) < 40) collapse();
+        // A swipe toward the docked edge tucks it away.
+        if (d && (left ? d.x - e.clientX : e.clientX - d.x) > 60 && Math.abs(e.clientY - d.y) < 40) collapse();
       }}
       className={cn(
-        "fixed right-[calc(0.5rem+env(safe-area-inset-right))] z-30 w-[min(20rem,calc(100vw-1rem))] -translate-y-1/2 rounded-2xl border border-border-soft bg-surface/95 p-2.5 shadow-[var(--shadow-card)] backdrop-blur focus:outline-none",
+        "fixed z-30 w-[min(20rem,calc(100vw-1rem))] rounded-2xl border border-border-soft bg-surface/95 p-2.5 shadow-[var(--shadow-card)] backdrop-blur focus:outline-none",
         "motion-safe:animate-[mini-in_220ms_ease-out] motion-reduce:animate-[fade-in_120ms_ease-out]",
-        anchor,
+        !dock.pos && "right-[calc(0.5rem+env(safe-area-inset-right))] top-[min(50%,calc(100dvh-15rem))]",
       )}
     >
       <div className="flex items-center gap-2.5">
@@ -250,7 +282,7 @@ export function MiniPlayer() {
           <Heart className={cn("size-4", fav && "fill-accent text-accent")} aria-hidden />
         </button>
         <button type="button" className={iconBtn} onClick={collapse} aria-label="Collapse player">
-          <ChevronRight className="size-5" aria-hidden />
+          {left ? <ChevronLeft className="size-5" aria-hidden /> : <ChevronRight className="size-5" aria-hidden />}
         </button>
       </div>
       <Progress s={s} className="-mb-2" />

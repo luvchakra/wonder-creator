@@ -10,6 +10,7 @@ export * from "./brand/kit-icons";
 export { WATERCOLOR, type WatercolorKey, type BrandImage, type BrandImageVariant } from "./brand/watercolor";
 export * from "./components/context-strip";
 export * from "./components/palette";
+export * from "./components/edge-dock";
 export * from "./components/chip";
 export * from "./components/segmented";
 export * from "./components/wonder";

@@ -108,4 +108,61 @@ test.describe("CreativeRadio", () => {
     const palette = (await page.getByRole("button", { name: "Open Creative Palette" }).boundingBox())!;
     expect(palette.y - (p.y + p.height)).toBeGreaterThanOrEqual(72);
   });
+
+  test("the Palette and the player tab can be moved anywhere and stay docked to the nearest side", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const trigger = page.getByRole("button", { name: "Open Creative Palette" });
+    const drag = async (el: typeof trigger, to: { x: number; y: number }) => {
+      const b = (await el.boundingBox())!;
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 8 });
+      await page.mouse.up();
+    };
+
+    // Drop the Palette on the left, a third of the way down: it docks to the left edge at that height.
+    await drag(trigger, { x: 120, y: 300 });
+    await expect(trigger).toHaveAttribute("data-dock-side", "left");
+    let b = (await trigger.boundingBox())!;
+    expect(b.x).toBeLessThan(24);
+    expect(Math.abs(b.y + b.height / 2 - 300)).toBeLessThanOrEqual(2);
+    // A drag isn't a tap: the Palette didn't open.
+    await expect(page.getByRole("dialog", { name: "Creative Palette" })).toHaveCount(0);
+
+    // It stays there across pages and reloads, and the fan opens on its right, downward from up here.
+    await page.reload();
+    b = (await trigger.boundingBox())!;
+    expect(b.x).toBeLessThan(24);
+    await trigger.click();
+    const first = page.getByRole("dialog", { name: "Creative Palette" }).locator("[data-palette-item]").first();
+    const f = (await first.boundingBox())!;
+    expect(f.x).toBeGreaterThan(b.x + b.width - 4);
+    expect(f.y).toBeGreaterThanOrEqual(b.y - 8);
+    await page.keyboard.press("Escape");
+
+    // Keyboard: Shift + arrow keys move it without dragging.
+    await trigger.focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await expect(trigger).toHaveAttribute("data-dock-side", "right");
+
+    // The player tab moves the same way and opens away from its edge.
+    await trigger.click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    await page.getByRole("dialog", { name: "CreativeRadio" }).getByRole("button", { name: /^Play / }).first().click();
+    await page.keyboard.press("Escape");
+    const tab = page.getByRole("button", { name: /^Open audio player/ });
+    await drag(tab, { x: 60, y: 560 });
+    await expect(tab).toHaveAttribute("data-dock-side", "left");
+    const t = (await tab.boundingBox())!;
+    expect(t.x).toBeLessThanOrEqual(1);
+    expect(Math.abs(t.y + t.height / 2 - 560)).toBeLessThanOrEqual(2);
+    await tab.click();
+    const mini = page.getByRole("region", { name: "CreativeRadio" });
+    await expect(mini).toBeVisible();
+    expect((await mini.boundingBox())!.x).toBeLessThan(16);
+    await mini.getByRole("button", { name: "Collapse player" }).click();
+    await page.reload();
+    await expect(page.getByRole("button", { name: /^Open audio player/ })).toHaveAttribute("data-dock-side", "left");
+  });
 });
