@@ -41,6 +41,7 @@ export function Composer({
   autoFocus,
   className,
   prompt,
+  seed,
 }: {
   onSubmit: (p: ComposerPayload) => Promise<void> | void;
   busy?: boolean;
@@ -49,8 +50,16 @@ export function Composer({
   autoFocus?: boolean;
   className?: string;
   prompt?: string;
+  /** Text to put in the composer from outside (e.g. a tapped example). A new `key` replaces the text again. */
+  seed?: { text: string; key: number } | null;
 }) {
   const [text, setText] = useState(prompt ?? "");
+  // A new seed replaces the text (adjusting state while rendering, not in an effect).
+  const [seenSeed, setSeenSeed] = useState(seed?.key ?? null);
+  if (seed && seed.key !== seenSeed) {
+    setSeenSeed(seed.key);
+    setText(seed.text);
+  }
   const [files, setFiles] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<File[]>([]);
@@ -65,10 +74,21 @@ export function Composer({
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
 
-  useEffect(() => () => {
-    recRef.current?.stop();
-    mediaRef.current?.stop();
-  }, []);
+  useEffect(
+    () => () => {
+      recRef.current?.stop();
+      mediaRef.current?.stop();
+    },
+    [],
+  );
+  // After a seed lands, focus the text with the cursor at the end so the creator can keep typing or just send.
+  useEffect(() => {
+    if (!seed) return;
+    const el = document.getElementById(ids.text) as HTMLTextAreaElement | null;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [seed, ids.text]);
 
   const canSend = !busy && (text.trim() || files.length || photos.length || voiceNotes.length || urls.length);
 
@@ -266,7 +286,10 @@ export function Composer({
             type="button"
             onClick={toggleRecording}
             aria-pressed={recording}
-            className={cn("flex min-h-11 shrink-0 flex-col items-center justify-center rounded-2xl px-2.5 text-[11px] text-ink-muted hover:bg-surface-muted sm:min-w-16", recording && "bg-danger-soft text-danger")}
+            className={cn(
+              "flex min-h-11 shrink-0 flex-col items-center justify-center rounded-2xl px-2.5 text-[11px] text-ink-muted hover:bg-surface-muted sm:min-w-16",
+              recording && "bg-danger-soft text-danger",
+            )}
           >
             {recording ? <Square className="size-[18px]" aria-hidden /> : <Mic className="size-[18px]" aria-hidden />}
             <span className={cn(compact && "sr-only sm:not-sr-only")}>{recording ? "Stop note" : "Voice note"}</span>
@@ -276,7 +299,14 @@ export function Composer({
           {busy ? <span className="size-4 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden /> : <ArrowRight className="size-5" aria-hidden />}
         </IconButton>
       </div>
-      <input id={ids.files} type="file" multiple hidden accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx" onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
+      <input
+        id={ids.files}
+        type="file"
+        multiple
+        hidden
+        accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx"
+        onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))}
+      />
       <input id={ids.camera} type="file" hidden accept="image/*" capture="environment" onChange={(e) => setPhotos((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
     </div>
   );

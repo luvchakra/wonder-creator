@@ -116,6 +116,8 @@ export function Studio({
 
   /* ------------------------------------------------------------ Canvas + autosave */
   const dirty = content !== (base?.content ?? "");
+  // The last version saved from here, for the navbar's brief "Saved · vN".
+  const [savedVersion, setSavedVersion] = useState<number | null>(null);
   const autosave = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onType = (v: string) => {
     typed.current = true;
@@ -137,9 +139,10 @@ export function Studio({
   useEffect(() => {
     if (saving) strip("save", { text: "Saving…", tone: "active" });
     else if (savedAt) strip("save", { text: "Autosaved", tone: "success", ttl: 1500 });
+    else if (savedVersion) strip("save", { text: `Saved · v${savedVersion}`, tone: "success", ttl: 1500 });
     else strip("save", null);
     return () => strip("save", null);
-  }, [saving, savedAt, strip]);
+  }, [saving, savedAt, savedVersion, strip]);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   // A selection in the text offers Rewrite · Expand · Shorten (board §8) — CreativeMind on just that passage.
@@ -167,6 +170,12 @@ export function Studio({
 
   /** Save as new version (board §12): the checkpoint that makes a durable version from the draft. */
   async function saveVersion(opts: { name: string; keepUnused: boolean }) {
+    // The version supersedes any pending draft autosave, which would otherwise land afterwards and re-store the draft.
+    if (autosave.current) {
+      clearTimeout(autosave.current);
+      autosave.current = null;
+      setSaving(false);
+    }
     setWorking("version");
     setError(null);
     try {
@@ -189,7 +198,9 @@ export function Studio({
           setSet(fresh.workingSet);
         }
       }
-      setSavedAt(new Date().toISOString());
+      // A version, not a draft: the label reads "Saved" and the navbar briefly says which version.
+      setSavedAt(null);
+      setSavedVersion(r.version.version_number);
       setSheet(null);
       router.refresh();
     } catch (e) {
@@ -332,7 +343,14 @@ export function Studio({
             {saveLabel}
           </p>
         </div>
-        <span className="flex -space-x-2" aria-label={`${people.length} on this Creation`}>
+        {/* Save stays visible while the text differs from the last version (minimalism: Save is never hidden). It opens
+            "Save as new version"; the draft itself autosaves. Soft accent, so Bring in stays the one purple action. */}
+        {dirty && !isCarousel && !proposal ? (
+          <button type="button" onClick={() => setSheet("save")} aria-haspopup="dialog" className="inline-flex min-h-11 shrink-0 items-center">
+            <span className="inline-flex h-8 items-center rounded-full bg-accent-soft px-3.5 text-[13px] font-semibold text-accent-ink ring-1 ring-accent/25 hover:bg-accent-softer">Save</span>
+          </button>
+        ) : null}
+        <span role="group" className="flex -space-x-2" aria-label={`${people.length} on this Creation`}>
           {people.slice(0, 3).map((p) => (
             <Avatar key={p.id} name={p.name} src={p.avatarUrl} size={28} className="ring-2 ring-background" />
           ))}

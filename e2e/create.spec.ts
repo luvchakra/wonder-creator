@@ -8,7 +8,10 @@ test.describe("creating with CreativeMind", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Create" }).click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /meTalk/ }).click();
+    await page
+      .getByRole("dialog", { name: "Creative Palette" })
+      .getByRole("button", { name: /meTalk/ })
+      .click();
     const sheet = page.getByRole("dialog", { name: "meTalk" });
     const composer = sheet.getByLabel("What are you thinking about?");
     await expect(sheet.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
@@ -67,6 +70,22 @@ test.describe("creating with CreativeMind", () => {
     const card = artifactCard(page);
     await expect(card).toBeVisible();
     await expect(card).toContainText("Short Film");
+  });
+
+  test("meTalk: tapping an example puts it in the composer, ready to send or finish in your own words", async ({ page }) => {
+    await page.goto("/create");
+    const talk = page.getByRole("region", { name: "meTalk" });
+    const examples = talk.getByRole("list", { name: "Examples to start from" });
+    const box = talk.getByLabel("What are you thinking about?");
+    await examples.getByRole("button", { name: /I don't know what this should become/ }).click();
+    await expect(box).toHaveValue("I don't know what this should become.");
+    await expect(box).toBeFocused();
+    await expect(examples.getByRole("button", { name: /I don't know what this should become/ })).toHaveAttribute("aria-pressed", "true");
+    // Another one replaces it; nothing is sent until the creator sends.
+    await examples.getByRole("button", { name: /Turn these notes into a poem/ }).click();
+    await expect(box).toHaveValue("Turn these notes into a poem.");
+    await expect(examples.getByRole("button", { name: /I don't know what this should become/ })).toHaveAttribute("aria-pressed", "false");
+    await expect(talk.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
   });
 
   test('meTalk: "Turn these notes into a poem." with a note produces a poem', async ({ page }) => {

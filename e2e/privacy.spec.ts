@@ -10,7 +10,8 @@ async function newPiece(page: Page, title: string, text: string): Promise<string
   await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
   await page.getByLabel("Poem text").fill(text);
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText(/Poem · v\d · saved/)).toBeVisible();
+  await page.getByRole("dialog", { name: "Save as new version" }).getByRole("button", { name: "Save version" }).click();
+  await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
   return page.url().split("/").at(-2)!;
 }
 
