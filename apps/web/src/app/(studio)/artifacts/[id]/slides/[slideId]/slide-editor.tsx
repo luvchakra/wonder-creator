@@ -3,7 +3,28 @@ import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider"
 import type { CarouselView, SlideView } from "@wonder/creator-brain";
 import { DEFAULT_TRANSFORM, OVERLAY_COLORS, OVERLAY_FONTS, SNAP_POINTS, snapPosition, type ImageTransform, type SlideOverlay } from "@wonder/creator-studio/carousel";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, Switch, Textarea, chipBase, cn } from "@wonder/ui";
-import { AlignCenter, AlignLeft, AlignRight, Check, ChevronLeft, ChevronRight, Copy, Download, Expand, Image as ImageIcon, MoreHorizontal, Palette, RefreshCw, Save, Scissors, Shuffle, Trash2, Type, Undo2, X } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Expand,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Palette,
+  RefreshCw,
+  Save,
+  Scissors,
+  Shuffle,
+  Trash2,
+  Type,
+  Undo2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,7 +47,10 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
   // Full-screen editing: the mini player stays a slim tab (music keeps playing; mini-player.md §32).
   useMiniPlayerConstraint({ forceCollapsed: true });
   const [view, setView] = useState(initial);
-  const index = Math.max(0, view.slides.findIndex((s) => s.id === slideId));
+  const index = Math.max(
+    0,
+    view.slides.findIndex((s) => s.id === slideId),
+  );
   const server = view.slides[index]!;
   const [slide, setSlide] = useState<SlideView>(server);
   const [tool, setTool] = useState<Tool>(null);
@@ -229,7 +253,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
     <div className="-mx-4 -mt-6 flex min-h-[calc(100dvh-4.5rem-var(--palette-clearance))] flex-col bg-[#15161c] px-3 pb-3 pt-1 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-5">
       {/* Header: back · n of N · More (§51). */}
       <div className="flex items-center justify-between">
-        <Link href={`/artifacts/${artifactId}`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
+        <Link href={`/artifacts/${artifactId}/studio`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
           <ChevronLeft className="size-5" aria-hidden />
         </Link>
         <p className="text-sm font-medium">
@@ -283,7 +307,14 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
           onPointerUp={onPointerUp}
           onPointerCancel={() => (drag.current = null)}
         >
-          <SlideFrame image={shown ?? null} overlay={slide.overlay} text={overlayText} transform={slide.pending && preview === "new" ? DEFAULT_TRANSFORM : slide.transform} aspect={aspect} className="rounded-2xl">
+          <SlideFrame
+            image={shown ?? null}
+            overlay={slide.overlay}
+            text={overlayText}
+            transform={slide.pending && preview === "new" ? DEFAULT_TRANSFORM : slide.transform}
+            aspect={aspect}
+            className="rounded-2xl"
+          >
             {slide.overlay.enabled && overlayText.trim() ? (
               <OverlayText
                 overlay={slide.overlay}
@@ -325,16 +356,47 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
         <div className="mb-2 space-y-2 rounded-2xl bg-white/5 p-2">
           <div role="radiogroup" aria-label="Compare images" className="flex justify-center gap-1.5">
             {(["current", "new"] as const).map((p) => (
-              <button key={p} type="button" role="radio" aria-checked={preview === p} onClick={() => setPreview(p)} className={cn(chipBase, preview === p ? "bg-white text-navy" : "bg-white/10 text-white")}>
+              <button
+                key={p}
+                type="button"
+                role="radio"
+                aria-checked={preview === p}
+                onClick={() => setPreview(p)}
+                className={cn(chipBase, preview === p ? "bg-white text-navy" : "bg-white/10 text-white")}
+              >
                 {p === "current" ? "Current image" : "New image"}
               </button>
             ))}
           </div>
           <div className="flex justify-center gap-2">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" loading={working === "keep"} onClick={() => run("keep", async () => { await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice: "keep" } }); setSlide((s) => ({ ...s, pending: null })); setPreview("new"); })}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+              loading={working === "keep"}
+              onClick={() =>
+                run("keep", async () => {
+                  await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice: "keep" } });
+                  setSlide((s) => ({ ...s, pending: null }));
+                  setPreview("new");
+                })
+              }
+            >
               Keep current
             </Button>
-            <Button size="sm" loading={working === "use"} onClick={() => run("use", async () => { await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice: "use" } }); await refresh(); setSlide((s) => ({ ...s, transform: DEFAULT_TRANSFORM })); save({ transform: DEFAULT_TRANSFORM }); setPreview("new"); })}>
+            <Button
+              size="sm"
+              loading={working === "use"}
+              onClick={() =>
+                run("use", async () => {
+                  await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice: "use" } });
+                  await refresh();
+                  setSlide((s) => ({ ...s, transform: DEFAULT_TRANSFORM }));
+                  save({ transform: DEFAULT_TRANSFORM });
+                  setPreview("new");
+                })
+              }
+            >
               Use new
             </Button>
           </div>
@@ -400,7 +462,15 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
                 <span className="flex justify-between">
                   Zoom <span className="text-ink-subtle">{slide.transform.zoom.toFixed(1)}×</span>
                 </span>
-                <input type="range" min={1} max={3} step={0.05} value={slide.transform.zoom} onChange={(e) => setTransform({ zoom: Number(e.target.value) })} className="h-11 w-full accent-[var(--color-accent)]" />
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.05}
+                  value={slide.transform.zoom}
+                  onChange={(e) => setTransform({ zoom: Number(e.target.value) })}
+                  className="h-11 w-full accent-[var(--color-accent)]"
+                />
               </label>
               <p className="text-xs text-ink-subtle">Drag the image to move what&apos;s in focus.</p>
               <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Focus">
@@ -434,13 +504,24 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
               ["image", "Image", ImageIcon],
             ] as const
           ).map(([t, label, Icon]) => (
-            <button key={t} type="button" aria-pressed={tool === t} onClick={() => setTool((cur) => (cur === t ? null : t))} className={cn("flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px]", tool === t ? "bg-white/15" : "hover:bg-white/10")}>
+            <button
+              key={t}
+              type="button"
+              aria-pressed={tool === t}
+              onClick={() => setTool((cur) => (cur === t ? null : t))}
+              className={cn("flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px]", tool === t ? "bg-white/15" : "hover:bg-white/10")}
+            >
               <Icon className="size-5" aria-hidden />
               {label}
             </button>
           ))}
           {view.isOwner ? (
-            <button type="button" onClick={() => setRegen(true)} disabled={busy} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px] hover:bg-white/10 disabled:opacity-50">
+            <button
+              type="button"
+              onClick={() => setRegen(true)}
+              disabled={busy}
+              className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px] hover:bg-white/10 disabled:opacity-50"
+            >
               <RefreshCw className="size-5" aria-hidden />
               Regenerate
             </button>
@@ -456,7 +537,13 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
         <ol className="flex flex-1 justify-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none]">
           {view.slides.map((s, i) => (
             <li key={s.id}>
-              <Link href={`/artifacts/${artifactId}/slides/${s.id}`} replace aria-current={s.id === slideId ? "true" : undefined} aria-label={`Slide ${i + 1}`} className={cn("block size-11 overflow-hidden rounded-lg border-2", s.id === slideId ? "border-white" : "border-transparent opacity-70")}>
+              <Link
+                href={`/artifacts/${artifactId}/slides/${s.id}`}
+                replace
+                aria-current={s.id === slideId ? "true" : undefined}
+                aria-label={`Slide ${i + 1}`}
+                className={cn("block size-11 overflow-hidden rounded-lg border-2", s.id === slideId ? "border-white" : "border-transparent opacity-70")}
+              >
                 {s.image?.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.image.thumbnailUrl} alt="" className="size-full object-cover" />
@@ -471,17 +558,37 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
           <ChevronRight className="size-5" aria-hidden />
         </button>
       </nav>
-      <Link href={`/artifacts/${artifactId}`} onClick={() => void flush()} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy">
+      <Link href={`/artifacts/${artifactId}/studio`} onClick={() => void flush()} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy">
         <Check className="mr-1.5 size-4" aria-hidden /> Done
       </Link>
 
       {regen ? <RegenerateSheet slide={slide} index={index} onClose={() => setRegen(false)} onQueued={refresh} /> : null}
       {full ? (
-        <div role="dialog" aria-modal="true" aria-label={`Slide ${index + 1}, full screen`} className="fixed inset-0 z-50 flex items-center justify-center bg-black" onClick={() => setFull(false)} onKeyDown={(e) => e.key === "Escape" && setFull(false)}>
-          <button type="button" autoFocus aria-label="Close full screen" onClick={() => setFull(false)} className="absolute right-3 top-3 inline-flex size-11 items-center justify-center rounded-full bg-white/10 text-white">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Slide ${index + 1}, full screen`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+          onClick={() => setFull(false)}
+          onKeyDown={(e) => e.key === "Escape" && setFull(false)}
+        >
+          <button
+            type="button"
+            autoFocus
+            aria-label="Close full screen"
+            onClick={() => setFull(false)}
+            className="absolute right-3 top-3 inline-flex size-11 items-center justify-center rounded-full bg-white/10 text-white"
+          >
             <X className="size-5" aria-hidden />
           </button>
-          <SlideFrame image={slide.image?.url ?? null} overlay={slide.overlay} text={overlayText} transform={slide.transform} aspect={aspect} className="max-h-[100dvh] w-full max-w-[min(100vw,calc(100dvh*0.8))]" />
+          <SlideFrame
+            image={slide.image?.url ?? null}
+            overlay={slide.overlay}
+            text={overlayText}
+            transform={slide.transform}
+            aspect={aspect}
+            className="max-h-[100dvh] w-full max-w-[min(100vw,calc(100dvh*0.8))]"
+          />
         </div>
       ) : null}
     </div>
@@ -533,7 +640,16 @@ function TextTool({
             </span>
             <Switch checked={!separate} onCheckedChange={(same) => setOverlay({ text: same ? null : slide.displayText })} label="Same words on the image" />
           </div>
-          {separate ? <Textarea aria-label="Words on the image" rows={2} className="min-h-0 font-display" maxLength={2000} value={slide.overlay.text ?? ""} onChange={(e) => setOverlay({ text: e.target.value })} /> : null}
+          {separate ? (
+            <Textarea
+              aria-label="Words on the image"
+              rows={2}
+              className="min-h-0 font-display"
+              maxLength={2000}
+              value={slide.overlay.text ?? ""}
+              onChange={(e) => setOverlay({ text: e.target.value })}
+            />
+          ) : null}
         </>
       ) : null}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
@@ -595,8 +711,26 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
     <div className="space-y-3">
       <div role="radiogroup" aria-label="Font" className="grid grid-cols-4 gap-1.5">
         {OVERLAY_FONTS.map((f) => (
-          <button key={f.value} type="button" role="radio" aria-checked={overlay.font === f.value} onClick={() => setOverlay({ font: f.value })} className={cn("flex min-h-12 flex-col items-center justify-center rounded-xl border text-[11.5px]", overlay.font === f.value ? "border-accent bg-accent-softer text-accent-ink" : "border-border-soft text-ink-muted")}>
-            <span className={cn("text-lg leading-none text-ink", f.value === "modern" ? "font-sans font-semibold" : f.value === "handwritten" ? "[font-family:cursive]" : "font-display", f.value === "editorial" && "italic")}>Aa</span>
+          <button
+            key={f.value}
+            type="button"
+            role="radio"
+            aria-checked={overlay.font === f.value}
+            onClick={() => setOverlay({ font: f.value })}
+            className={cn(
+              "flex min-h-12 flex-col items-center justify-center rounded-xl border text-[11.5px]",
+              overlay.font === f.value ? "border-accent bg-accent-softer text-accent-ink" : "border-border-soft text-ink-muted",
+            )}
+          >
+            <span
+              className={cn(
+                "text-lg leading-none text-ink",
+                f.value === "modern" ? "font-sans font-semibold" : f.value === "handwritten" ? "[font-family:cursive]" : "font-display",
+                f.value === "editorial" && "italic",
+              )}
+            >
+              Aa
+            </span>
             {f.label}
           </button>
         ))}
@@ -604,11 +738,27 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
           Size
-          <input type="range" min={0.03} max={0.14} step={0.002} value={overlay.size} onChange={(e) => setOverlay({ size: Number(e.target.value) })} className="h-11 w-full accent-[var(--color-accent)]" />
+          <input
+            type="range"
+            min={0.03}
+            max={0.14}
+            step={0.002}
+            value={overlay.size}
+            onChange={(e) => setOverlay({ size: Number(e.target.value) })}
+            className="h-11 w-full accent-[var(--color-accent)]"
+          />
         </label>
         <label className="block text-sm">
           Width
-          <input type="range" min={0.3} max={1} step={0.01} value={overlay.width} onChange={(e) => setOverlay({ width: Number(e.target.value) })} className="h-11 w-full accent-[var(--color-accent)]" />
+          <input
+            type="range"
+            min={0.3}
+            max={1}
+            step={0.01}
+            value={overlay.width}
+            onChange={(e) => setOverlay({ width: Number(e.target.value) })}
+            className="h-11 w-full accent-[var(--color-accent)]"
+          />
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
@@ -620,14 +770,30 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
               ["right", AlignRight],
             ] as const
           ).map(([a, Icon]) => (
-            <button key={a} type="button" role="radio" aria-checked={overlay.align === a} aria-label={`Align ${a}`} onClick={() => setOverlay({ align: a })} className={cn("inline-flex size-11 items-center justify-center rounded-xl", overlay.align === a ? "bg-accent-softer text-accent-ink" : "text-ink-muted")}>
+            <button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={overlay.align === a}
+              aria-label={`Align ${a}`}
+              onClick={() => setOverlay({ align: a })}
+              className={cn("inline-flex size-11 items-center justify-center rounded-xl", overlay.align === a ? "bg-accent-softer text-accent-ink" : "text-ink-muted")}
+            >
               <Icon className="size-4" aria-hidden />
             </button>
           ))}
         </div>
         <div role="radiogroup" aria-label="Colour" className="flex gap-1">
           {OVERLAY_COLORS.map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={overlay.color === c} aria-label={`Colour ${c}`} onClick={() => setOverlay({ color: c })} className="inline-flex size-11 items-center justify-center">
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={overlay.color === c}
+              aria-label={`Colour ${c}`}
+              onClick={() => setOverlay({ color: c })}
+              className="inline-flex size-11 items-center justify-center"
+            >
               <span className={cn("size-6 rounded-full border", overlay.color === c ? "ring-2 ring-accent ring-offset-2" : "border-border")} style={{ background: c }} />
             </button>
           ))}
@@ -642,7 +808,14 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
               ["band", "Band"],
             ] as const
           ).map(([b, label]) => (
-            <button key={b} type="button" role="radio" aria-checked={overlay.background === b} onClick={() => setOverlay({ background: b })} className={cn(chipBase, overlay.background === b ? "bg-navy text-white" : "bg-surface-muted text-ink-muted")}>
+            <button
+              key={b}
+              type="button"
+              role="radio"
+              aria-checked={overlay.background === b}
+              onClick={() => setOverlay({ background: b })}
+              className={cn(chipBase, overlay.background === b ? "bg-navy text-white" : "bg-surface-muted text-ink-muted")}
+            >
               {label}
             </button>
           ))}
@@ -656,7 +829,13 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
         <p className="mb-1 text-sm">Position</p>
         <div role="group" aria-label="Position" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
           {SNAP_POINTS.map((p) => (
-            <button key={p.label} type="button" aria-pressed={overlay.x === p.x && overlay.y === p.y} onClick={() => setOverlay({ x: p.x, y: p.y, align: p.x < 0.5 ? "left" : p.x > 0.5 ? "right" : "center" })} className={cn(chipBase, overlay.x === p.x && overlay.y === p.y ? "bg-navy text-white" : "bg-surface-muted text-ink-muted")}>
+            <button
+              key={p.label}
+              type="button"
+              aria-pressed={overlay.x === p.x && overlay.y === p.y}
+              onClick={() => setOverlay({ x: p.x, y: p.y, align: p.x < 0.5 ? "left" : p.x > 0.5 ? "right" : "center" })}
+              className={cn(chipBase, overlay.x === p.x && overlay.y === p.y ? "bg-navy text-white" : "bg-surface-muted text-ink-muted")}
+            >
               {p.label}
             </button>
           ))}
