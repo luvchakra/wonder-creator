@@ -139,7 +139,11 @@ test.describe("CreativeRadio", () => {
     const f = (await first.boundingBox())!;
     expect(f.x).toBeGreaterThan(b.x + b.width - 4);
     expect(f.y).toBeGreaterThanOrEqual(b.y - 8);
-    await page.keyboard.press("Escape");
+    // The X closes it (and doesn't reopen it).
+    await page.getByRole("button", { name: "Close Creative Palette" }).click();
+    await expect(page.getByRole("dialog", { name: "Creative Palette" })).toHaveCount(0);
+    await page.waitForTimeout(300);
+    await expect(page.getByRole("dialog", { name: "Creative Palette" })).toHaveCount(0);
 
     // Keyboard: Shift + arrow keys move it without dragging.
     await trigger.focus();
