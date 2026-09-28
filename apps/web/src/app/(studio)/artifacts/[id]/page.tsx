@@ -28,18 +28,37 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   if (!artifact) notFound();
   const isOwner = artifact.creator_id === creator.id;
 
-  // A Carousel opens in the Composer (carousel-composer.md §9); About/Materials/Versions/Rights/People live in Details.
+  // The owner works on a Carousel in the Creative Studio canvas (owner, 28 Sep 2026: the old overview is gone);
+  // About/Materials/Versions/Rights/People stay in Details. Collaborators, who don't have the owner's Studio, keep the
+  // Composer (carousel-composer.md §9).
+  if (artifact.artifact_type === "carousel" && !tab && !details && isOwner) redirect(`/artifacts/${id}/studio`);
   if (artifact.artifact_type === "carousel" && !tab && !details) {
     const [view, versions, graph] = await Promise.all([carouselView({ db, service: serviceClient(), creatorId: creator.id }, id), listVersions(db, id), lineageGraph(db, id)]);
     const current = versions.find((v) => v.id === artifact.current_version_id) ?? versions[0];
-    const status = artifact.status === "draft" ? "In progress" : artifact.status === "in_review" ? "In review" : artifact.status === "final" ? "Completed" : artifact.status === "published" ? "Published" : "Archived";
+    const status =
+      artifact.status === "draft"
+        ? "In progress"
+        : artifact.status === "in_review"
+          ? "In review"
+          : artifact.status === "final"
+            ? "Completed"
+            : artifact.status === "published"
+              ? "Published"
+              : "Archived";
     const privacy = artifact.privacy === "public" ? "Public" : artifact.privacy === "creator_private" ? "Private" : "Shared";
     const source = graph.nodes.find((n) => n.depth < 0 && n.type === "artifact");
     const lifecycle = artifact.status === "archived" ? "archived" : artifact.status === "published" ? "published" : artifact.status === "final" ? "finished" : "in-progress";
     return (
       <>
         <PaletteScope
-          context={{ page: "creation", entityType: "creation", lifecycle, permissions: isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : view.canEdit ? ["collaborate"] : [], ids: { artifactId: id }, strip: { version: current?.version_number, count: view.slides.length ? [view.slides.length, "slide", "slides"] : undefined } }}
+          context={{
+            page: "creation",
+            entityType: "creation",
+            lifecycle,
+            permissions: isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : view.canEdit ? ["collaborate"] : [],
+            ids: { artifactId: id },
+            strip: { version: current?.version_number, count: view.slides.length ? [view.slides.length, "slide", "slides"] : undefined },
+          }}
         />
         <CarouselComposer artifactId={id} title={artifact.title} meta={`Carousel · v${current?.version_number ?? 1} · ${status} · ${privacy}`} source={source?.title ?? null} initial={view} />
       </>
@@ -73,12 +92,31 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   // The Palette follows this Creation's lifecycle and what the viewer may do with it (palette-spec §7, §11).
   const current = versions.find((v) => v.id === artifact.current_version_id) ?? versions[0];
   const lifecycle =
-    artifact.status === "archived" ? "archived" : artifact.status === "published" ? "published" : artifact.status === "final" ? "finished" : artifact.status === "in_review" ? "review" : current?.content?.trim() ? "in-progress" : "idea";
+    artifact.status === "archived"
+      ? "archived"
+      : artifact.status === "published"
+        ? "published"
+        : artifact.status === "final"
+          ? "finished"
+          : artifact.status === "in_review"
+            ? "review"
+            : current?.content?.trim()
+              ? "in-progress"
+              : "idea";
   const collaborator = (contributors.data ?? []).some((c) => c.contributor_creator_id === creator.id);
   const permissions: Array<"edit" | "publish" | "rights" | "collaborate" | "invite"> = isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : collaborator ? ["collaborate"] : [];
   return (
     <>
-      <PaletteScope context={{ page: "creation", entityType: "creation", lifecycle, permissions, ids: { artifactId: id }, strip: { version: current?.version_number, visibility: artifact.privacy as "private" | "shared" | "public" } }} />
+      <PaletteScope
+        context={{
+          page: "creation",
+          entityType: "creation",
+          lifecycle,
+          permissions,
+          ids: { artifactId: id },
+          strip: { version: current?.version_number, visibility: artifact.privacy as "private" | "shared" | "public" },
+        }}
+      />
       <ArtifactView
         initialTab={tab}
         artifact={artifact}
