@@ -17,10 +17,12 @@ test.describe("Approval Center", () => {
     await askForPoem(page, first);
     await askForPoem(page, second);
 
-    // Home points to the Approval Center.
+    // Home lists each waiting request under "You could help", linking to its approval.
     await page.goto("/");
-    await page.getByRole("link", { name: /2 proposals waiting for your approval/ }).click();
-    await expect(page).toHaveURL(/\/approvals$/);
+    const help = page.getByRole("region", { name: "You could help" });
+    await expect(help.getByRole("link", { name: /Waiting for your OK/ })).toHaveCount(2);
+    await expect(help.getByRole("link", { name: /Waiting for your OK/ }).first()).toHaveAttribute("href", /^\/approvals\/[0-9a-f-]{36}$/);
+    await page.goto("/approvals");
     await expect(page.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible();
     await expect(page.getByText("CreativeMind asks before acting on creative generation")).toBeVisible();
     await expect(page.getByRole("link", { name: "Change autonomy settings" })).toHaveAttribute("href", "/settings?section=autonomy");

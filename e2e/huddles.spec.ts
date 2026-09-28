@@ -58,8 +58,10 @@ test.describe("Huddles", () => {
     await expect(card).toContainText(creatorA.firstName);
     await expect(card).toContainText("1 creator");
     await b.goto("/");
-    const homeLive = b.getByRole("region").filter({ has: b.getByRole("heading", { name: "Live now" }) });
-    await expect(liveCard(b, topic).or(homeLive.getByRole("article").filter({ hasText: topic }))).toBeVisible();
+    const worth = b.getByRole("region", { name: "Worth hearing" });
+    await expect(worth).toContainText("Live Huddle");
+    await expect(worth.getByRole("link", { name: new RegExp(topic) })).toHaveAttribute("href", `/huddles/${huddleId}`);
+    await b.goto("/huddles");
     await liveCard(b, topic).getByRole("link", { name: "Request to Join" }).click();
     await expect(b).toHaveURL(new RegExp(`/huddles/${huddleId}$`));
 
