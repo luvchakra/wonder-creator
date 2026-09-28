@@ -30,12 +30,12 @@
 }
 /* Creative Palette leaves fan up from the corner. */
 @keyframes palette-leaf {
-  from { opacity: 0; transform: translate(0.75rem, 0.5rem) scale(0.96); }
+  from { opacity: 0; transform: translate(var(--fan-dx, 0.75rem), var(--fan-dy, 0.5rem)) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
-/* CreativeRadio mini player: the panel opens leftward from the right-edge tab (mini-player.md §10). */
+/* CreativeRadio mini player: the panel opens away from the edge its tab is docked to (mini-player.md §10). */
 @keyframes mini-in {
-  from { opacity: 0; transform: translateX(1.5rem) scaleX(0.94); transform-origin: right center; }
+  from { opacity: 0; transform: translateX(var(--mini-dx, 1.5rem)) scaleX(0.94); }
   to { opacity: 1; transform: none; }
 }
 @keyframes eq {

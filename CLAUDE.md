@@ -25,6 +25,9 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
   rotation of the leaf or its text. Never use icon-only leaves.
 * The trigger is the painted Vector Kit palette only — no disc or background behind it. The open state may show a small
   surface behind the close icon so it stays legible.
+* **Movable (owner, 28 Sep 2026):** the creator can drag the trigger anywhere and leave it. It docks to the nearest left
+  or right edge at the dropped height, and the spot is remembered on the device (`useEdgeDock`). The fan mirrors to that
+  side and opens downward when the trigger sits high on the screen. Shift + arrow keys move it; a drag is never a tap.
 * **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
   `docs/ui-redesign/ai-context-line.md`).
 * Contextual Palette: **3–4 primary actions**, then `More…` and `Go to…`; global Palette max **6** destinations (Home,
@@ -104,6 +107,8 @@ The Wonder Creator Carousel experience is a compact composition workflow, not a 
 Wonder Creator's mini audio/music player is a persistent app-shell component.
 
 * When audio is active, the player docks to the **right edge around the vertical middle of the viewport**.
+* **Movable (owner, 28 Sep 2026):** the collapsed tab can be dragged anywhere. It docks to the nearest left or right edge
+  at that height, is remembered on the device, and keeps >=72px from the Palette. The panel expands away from that edge.
 * Default compact state is a slim right-edge tab showing tiny artwork + subtle playing indicator + expand affordance.
 * Tapping the collapsed player expands a compact player **leftward from the same right-middle anchor**.
 * Expanded player shows only essential controls: track info, progress, previous, play/pause, next, and optional Queue/More.
