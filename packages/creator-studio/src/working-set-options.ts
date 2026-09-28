@@ -289,7 +289,7 @@ export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType
   }
   if (SOUND_TYPES.has(t)) {
     return [
-      { key: "words", intent: "content", label: mode === "carousel" ? "Use its words on the slides" : "Use its words", hint: "What's said, as text" },
+      { key: "words", intent: "content", label: mode === "carousel" ? "Put its words on this slide" : "Use its words", hint: "What's said, as text" },
       { key: "moment", intent: "quote", label: "Use one moment of it", hint: "Pick where it starts and ends", part: true },
       { key: "mood", intent: "mood", label: "Take its mood", hint: "The feeling in the voice" },
       mode === "audio" || mode === "video"
@@ -306,7 +306,7 @@ export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType
   }
   // Words: a note, an idea, a previous Creation, a Huddle moment.
   return [
-    { key: "words", intent: "content", label: mode === "carousel" ? "Use its words on the slides" : "Use its words", hint: "As the text of this piece" },
+    { key: "words", intent: "content", label: mode === "carousel" ? "Put its words on this slide" : "Use its words", hint: "As the text of this piece" },
     { key: "part", intent: "quote", label: "Use only a part", hint: "A line or passage you choose", part: true },
     { key: "structure", intent: "structure", label: "Follow its shape", hint: "Its order, sections or rhythm" },
     { key: "tone", intent: "style", label: "Take its tone and voice", hint: "How it sounds, not what it says" },

@@ -1,4 +1,4 @@
-import { expect, saveNote, test, uid } from "./fixtures";
+import { expect, pngBytes, saveNote, seedCarousel, sendItem, test, uid, uploadViaInbox } from "./fixtures";
 
 test.describe("CreativeStudio Working Set", () => {
   test.beforeEach(({ creator }) => void creator);
@@ -174,5 +174,83 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(panel).toContainText("Its shape");
     await page.reload();
     await expect(page.getByRole("region", { name: /^Used materials/ })).toContainText("Its shape");
+  });
+  test("choosing a use makes it happen — writing: words go into the draft; a tone becomes a CreativeMind revision", async ({ page }) => {
+    const tag = uid();
+    const a = await saveNote(page, `The chai seller's radio ${tag}\nOld film songs, half heard.`);
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${tag}`, content: "Every Sunday my father waited." } })).json()).artifact as {
+      id: string;
+    };
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: a }] } });
+    await page.goto(`/artifacts/${art.id}/studio`);
+    const sheet = page.getByRole("dialog", { name: "Working Set" });
+    const how = page.getByRole("dialog", { name: "How do you want to use this?" });
+
+    // A tone steers: CreativeMind proposes a revision from the source (offline: a labelled placeholder) to keep or discard.
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await sheet.getByRole("checkbox", { name: /^Select The chai seller/ }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+    await how.getByRole("radio", { name: /Take its tone and voice/ }).click();
+    await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(page.getByRole("button", { name: "Keep revision" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status").filter({ hasText: /CreativeMind is working/ })).toBeVisible();
+    await page.getByRole("button", { name: "Discard" }).click();
+
+    // Its words go straight into the draft.
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await sheet.getByRole("checkbox", { name: /^Select The chai seller/ }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+    await how.getByRole("radio", { name: /^Use its words/ }).click();
+    await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(page.getByLabel("Poem text")).toHaveValue(/Every Sunday my father waited\.\n\nThe chai seller's radio .*\nOld film songs, half heard\./);
+    await expect(page.getByRole("status").filter({ hasText: "Its words are in your draft." })).toBeVisible();
+  });
+
+  test("choosing a use makes it happen — carousel: your photo is offered on the slide; words go onto it", async ({ page, creator }) => {
+    const tag = uid();
+    const name = `station-${tag}`;
+    await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes(64) }]);
+    const item = sendItem(page, name);
+    await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+    const photo = (await item.getByRole("link", { name, exact: true }).getAttribute("href"))!.split("/").pop()!;
+    const note = await saveNote(page, `Lamps and steam ${tag}\nThe platform hums.`);
+    const id = (
+      (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Station ${tag}`, content: "First light\n\nSecond wind" } })).json()).artifact as { id: string }
+    ).id;
+    await seedCarousel(creator.id, id, ["First light", "Second wind"]);
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, {
+      data: {
+        items: [
+          { type: "material", id: photo },
+          { type: "material", id: note },
+        ],
+      },
+    });
+
+    await page.goto(`/artifacts/${id}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    const sheet = page.getByRole("dialog", { name: "Working Set" });
+    const how = page.getByRole("dialog", { name: "How do you want to use this?" });
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await sheet.getByRole("checkbox", { name: new RegExp(`^Select ${name}`) }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+    await expect(how.getByRole("radio", { name: /Use it as a slide image/ })).toHaveAttribute("aria-checked", "true");
+    await how.getByRole("button", { name: /Use it/ }).click();
+    // Offered, not replaced: the slide shows it with Keep current / Use new.
+    const choice = editor.getByRole("region", { name: "New image for this slide" });
+    await expect(choice).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status").filter({ hasText: "Your photo is on the slide" })).toBeVisible();
+    await choice.getByRole("button", { name: "Use new" }).click();
+    await expect(choice).toHaveCount(0);
+
+    // Words onto the slide on screen.
+    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await sheet.getByRole("checkbox", { name: /^Select Lamps and steam/ }).click();
+    await sheet.getByRole("button", { name: /Use this/ }).click();
+    await how.getByRole("radio", { name: /Put its words on this slide/ }).click();
+    await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 2: Lamps and steam/ })).toBeVisible({ timeout: 15_000 });
   });
 });

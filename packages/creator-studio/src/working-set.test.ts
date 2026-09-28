@@ -63,7 +63,7 @@ describe("Working Set rules", () => {
     expect(photo.map((o) => o.intent)).toEqual(["visual", "style", "mood", "reference"]);
     expect(usageOptionsFor(src({ mediaType: "image" }), "poem")[0]).toMatchObject({ intent: "content", label: "Write from what's in it" });
     const voice = usageOptionsFor(src({ mediaType: "voice" }), "carousel");
-    expect(voice[0]!.label).toBe("Use its words on the slides");
+    expect(voice[0]!.label).toBe("Put its words on this slide");
     expect(voice.find((o) => o.part)?.intent).toBe("quote");
     expect(usageOptionsFor(src({ sourceType: "creation", mediaType: "poem" }), "carousel").map((o) => o.intent)).toEqual(["content", "quote", "structure", "style"]);
     expect(usageOptionsFor(src({ sourceType: "comment", mediaType: null }), "poem")[0]!.intent).toBe("constraint");

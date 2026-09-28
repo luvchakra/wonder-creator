@@ -44,6 +44,7 @@ export function WorkingSetSheet({
   initialFilter = "all",
   onBringIn,
   onFragments,
+  onUsed,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -53,11 +54,24 @@ export function WorkingSetSheet({
   initialFilter?: "all" | SourceState;
   onBringIn: () => void;
   onFragments: (row: WorkingSource) => void;
+  /** After "How do you want to use this?" is answered and saved: make those uses happen (the Studio knows how). */
+  onUsed?: (rows: WorkingSource[]) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Working Set" description={set ? workingSetSummary(set.sources) : "Opening…"} art={KIT.painted.leafSprigSage} wide className="sm:max-w-3xl">
-        {open ? <WorkingSetBody set={set} onChange={onChange} onSet={onSet} initialFilter={initialFilter} onBringIn={onBringIn} onFragments={onFragments} onClose={() => onOpenChange(false)} /> : null}
+        {open ? (
+          <WorkingSetBody
+            set={set}
+            onChange={onChange}
+            onSet={onSet}
+            initialFilter={initialFilter}
+            onBringIn={onBringIn}
+            onFragments={onFragments}
+            onUsed={onUsed}
+            onClose={() => onOpenChange(false)}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -70,8 +84,10 @@ function WorkingSetBody({
   initialFilter,
   onBringIn,
   onFragments,
+  onUsed,
   onClose,
 }: {
+  onUsed?: (rows: WorkingSource[]) => void;
   onClose: () => void;
   set: WorkingSetView | null;
   onChange: Change;
@@ -177,6 +193,8 @@ function WorkingSetBody({
           }}
           onDone={(next) => {
             onSet(next);
+            // Make each chosen use happen now, with the saved answers (the fresh rows carry them).
+            onUsed?.(next.sources.filter((x) => chosen.some((c) => c.id === x.id)));
             if (chosen.length > 1) return setTogether("together");
             setTogether(false);
             setPicked(new Set());
