@@ -82,7 +82,7 @@ function WorkingSetBody({
 }) {
   const [filter, setFilter] = useState<"all" | SourceState>(initialFilter);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [together, setTogether] = useState(false);
+  const [together, setTogether] = useState<false | "ask" | "together">(false);
   const sources = set?.sources ?? [];
   const shown = sources.filter((s) => filter === "all" || s.state === filter);
   const counts = {
@@ -157,17 +157,19 @@ function WorkingSetBody({
                 </span>
                 {chosen.length} selected
               </span>
-              <Button onClick={() => setTogether(true)}>
+              <Button onClick={() => setTogether("ask")}>
                 <Sparkles className="size-4" aria-hidden /> {chosen.length > 1 ? "Use together" : "Use this"} <ArrowRight className="size-4" aria-hidden />
               </Button>
             </div>
           ) : null}
         </div>
       )}
-      {set && together && chosen.length === 1 ? (
-        <UseThis
+      {/* Use this / Use together: ask how each one is used (one question per source), then — for several — what
+          they could become together. */}
+      {set && together === "ask" ? (
+        <UseEach
           set={set}
-          row={chosen[0]!}
+          rows={chosen}
           onClose={() => setTogether(false)}
           onPart={(row) => {
             setTogether(false);
@@ -175,13 +177,14 @@ function WorkingSetBody({
           }}
           onDone={(next) => {
             onSet(next);
+            if (chosen.length > 1) return setTogether("together");
             setTogether(false);
             setPicked(new Set());
             onClose();
           }}
         />
       ) : null}
-      {set && together && chosen.length > 1 ? (
+      {set && together === "together" ? (
         <UseTogether
           set={set}
           chosen={chosen}
@@ -294,36 +297,58 @@ function SourceRow({ s, picked, onPick, onChange, onFragments }: { s: WorkingSou
  * Creation is becoming, then "Something else…" in the creator's own words. Choosing puts it In use with that intent;
  * a "part" option opens Fragments first. No model involved, nothing invented.
  */
-function UseThis({
+function UseEach({
   set,
-  row,
+  rows,
   onClose,
   onPart,
   onDone,
 }: {
   set: WorkingSetView;
-  row: WorkingSource;
+  rows: WorkingSource[];
   onClose: () => void;
   onPart: (row: WorkingSource) => void;
   onDone: (next: WorkingSetView) => void;
 }) {
-  const options = usageOptionsFor(row, currentType(set));
-  const [pick, setPick] = useState<string>(row.usageNote ? "other" : (options.find((o) => o.intent === row.usageIntent)?.key ?? options[0]!.key));
-  const [other, setOther] = useState(row.usageNote ?? "");
+  const type = currentType(set);
+  const several = rows.length > 1;
+  const initial = (row: WorkingSource) => {
+    const options = usageOptionsFor(row, type);
+    return { pick: row.usageNote ? "other" : (options.find((o) => o.intent === row.usageIntent)?.key ?? options[0]!.key), other: row.usageNote ?? "" };
+  };
+  const [answers, setAnswers] = useState<Record<string, { pick: string; other: string }>>(() => Object.fromEntries(rows.map((r) => [r.id, initial(r)])));
+  const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const chosen: UsageOption | null = pick === "other" ? null : (options.find((o) => o.key === pick) ?? null);
-  async function use() {
-    if (chosen?.part) return onPart(row);
-    if (!chosen && !other.trim()) return setError("Say how you'd like to use it.");
-    setBusy(true);
+  const row = rows[step]!;
+  const options = usageOptionsFor(row, type);
+  const a = answers[row.id]!;
+  const set1 = (patch: Partial<{ pick: string; other: string }>) => setAnswers((x) => ({ ...x, [row.id]: { ...x[row.id]!, ...patch } }));
+  const chosenOf = (r: WorkingSource): UsageOption | null => {
+    const x = answers[r.id]!;
+    return x.pick === "other" ? null : (usageOptionsFor(r, type).find((o) => o.key === x.pick) ?? null);
+  };
+  const chosen = chosenOf(row);
+  const last = step === rows.length - 1;
+
+  async function next() {
+    if (!chosen && !a.other.trim()) return setError("Say how you'd like to use it.");
     setError(null);
+    // One source and a "part" choice: pick the passage or moment first (Fragments).
+    if (!several && chosen?.part) return onPart(row);
+    if (!last) return setStep(step + 1);
+    setBusy(true);
     try {
-      const r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}/sources/${row.id}`, {
-        method: "PATCH",
-        json: { state: row.state === "pinned" ? "pinned" : "in_use", usageIntent: chosen?.intent ?? null, usageNote: chosen ? null : other.trim() },
-      });
-      onDone(r.workingSet);
+      let view: WorkingSetView | null = null;
+      for (const r of rows) {
+        const c = chosenOf(r);
+        const res = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}/sources/${r.id}`, {
+          method: "PATCH",
+          json: { state: r.state === "pinned" ? "pinned" : "in_use", usageIntent: c?.intent ?? null, usageNote: c ? null : answers[r.id]!.other.trim() },
+        });
+        view = res.workingSet;
+      }
+      onDone(view!);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -331,41 +356,45 @@ function UseThis({
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent title="How do you want to use this?" description={row.title} art={KIT.mark.sparklePurple}>
-        <div className="space-y-3">
+      <DialogContent title="How do you want to use this?" description={several ? `${step + 1} of ${rows.length} · ${row.title}` : row.title} art={KIT.mark.sparklePurple}>
+        <div key={row.id} className="space-y-3">
+          {several ? (
+            <div className="flex items-center gap-1" aria-hidden>
+              {rows.map((r, i) => (
+                <span key={r.id} className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-accent" : "bg-light-gray")} />
+              ))}
+            </div>
+          ) : null}
           <div role="radiogroup" aria-label="Ways to use it" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft">
             {options.map((o) => (
               <button
                 key={o.key}
                 type="button"
                 role="radio"
-                aria-checked={pick === o.key}
-                onClick={() => setPick(o.key)}
-                className={cn("flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left", pick === o.key ? "bg-accent-softer" : "hover:bg-black/[0.02]")}
+                aria-checked={a.pick === o.key}
+                onClick={() => set1({ pick: o.key })}
+                className={cn("flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left", a.pick === o.key ? "bg-accent-softer" : "hover:bg-black/[0.02]")}
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-ink">
                     {o.label}
                     {o.part ? "…" : ""}
                   </span>
-                  <span className="block text-[12.5px] text-ink-muted">{o.hint}</span>
+                  <span className="block text-[12.5px] text-ink-muted">{o.part && several ? "Choose the part afterwards, from its row" : o.hint}</span>
                 </span>
-                {pick === o.key ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
+                {a.pick === o.key ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
               </button>
             ))}
-            <div className={cn("px-3 py-2", pick === "other" && "bg-accent-softer")}>
-              <button type="button" role="radio" aria-checked={pick === "other"} onClick={() => setPick("other")} className="min-h-9 text-left text-sm font-medium text-ink">
+            <div className={cn("px-3 py-2", a.pick === "other" && "bg-accent-softer")}>
+              <button type="button" role="radio" aria-checked={a.pick === "other"} onClick={() => set1({ pick: "other" })} className="min-h-9 text-left text-sm font-medium text-ink">
                 Something else…
               </button>
               <Input
                 aria-label="How you'd like to use it"
-                value={other}
+                value={a.other}
                 maxLength={300}
-                onFocus={() => setPick("other")}
-                onChange={(e) => {
-                  setPick("other");
-                  setOther(e.target.value);
-                }}
+                onFocus={() => set1({ pick: "other" })}
+                onChange={(e) => set1({ pick: "other", other: e.target.value })}
                 placeholder="e.g. only the colours of the sky, for the last slide"
                 className="mt-1"
               />
@@ -376,9 +405,16 @@ function UseThis({
               {error}
             </p>
           ) : null}
-          <Button className="w-full" loading={busy} onClick={use}>
-            {chosen?.part ? "Choose the part" : "Use it"} <ArrowRight className="size-4" aria-hidden />
-          </Button>
+          <div className="flex gap-2">
+            {several && step > 0 ? (
+              <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={busy}>
+                <ArrowLeft className="size-4" aria-hidden /> Back
+              </Button>
+            ) : null}
+            <Button className="flex-1" loading={busy} onClick={next}>
+              {!several && chosen?.part ? "Choose the part" : !last ? "Next" : several ? "Use them together" : "Use it"} <ArrowRight className="size-4" aria-hidden />
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

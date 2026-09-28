@@ -70,6 +70,22 @@ test.describe("CreativeStudio Working Set", () => {
     await set.getByRole("checkbox", { name: /Select Dad waited/ }).click();
     await set.getByRole("checkbox", { name: /Select Station at dusk/ }).click();
     await set.getByRole("button", { name: /Use together/ }).click();
+    // First, how each one is used — one question per source, with Back — then what they could become together.
+    const how = page.getByRole("dialog", { name: "How do you want to use this?" });
+    await expect(how).toContainText("1 of 2");
+    await how
+      .getByRole("radiogroup", { name: "Ways to use it" })
+      .getByRole("radio", { name: /Follow its shape/ })
+      .click();
+    await how.getByRole("button", { name: /^Next/ }).click();
+    await expect(how).toContainText("2 of 2");
+    await how.getByRole("button", { name: /Back/ }).click();
+    await expect(how).toContainText("1 of 2");
+    await expect(how.getByRole("radio", { name: /Follow its shape/ })).toHaveAttribute("aria-checked", "true");
+    await how.getByRole("button", { name: /^Next/ }).click();
+    await how.getByLabel("How you'd like to use it").fill("the lamps, for the last line");
+    await how.getByRole("button", { name: /Use them together/ }).click();
+    await expect(how).toHaveCount(0);
     const together = page.getByRole("dialog", { name: "2 sources selected" });
     await expect(together.getByRole("radiogroup", { name: "Directions" }).getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
     await together.getByRole("radio", { name: /^Poem/ }).click();
