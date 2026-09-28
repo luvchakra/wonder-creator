@@ -1892,6 +1892,15 @@ which opens the 6-item global Palette.
 
 ---
 
+## 18.1 Preview bubble (owner board "Fan + Preview Bubble — Combined state", 28 Sep 2026)
+
+* Leaves are label-only pills. What an action does lives in a **preview bubble**: a compact card (icon, label, one plain sentence) floating just above the previewed leaf — below it when the fan opens downward — on the trigger's side.
+* One leaf is previewed at a time: on hover (mouse), on keyboard focus, or after a **long press** (~420ms) on touch. A long press never activates the leaf; the next tap does. The previewed leaf takes the selected (accent-soft) tint.
+* The trigger stays in front of every page surface (z 44: above the header, the mini player and the Studio bars); only modal sheets and the open Palette sit above it.
+* The bubble is descriptive only (`aria-hidden`); each leaf carries the same sentence through `aria-describedby`, so screen readers get it without the bubble.
+* The bubble fades in over 150ms and appears instantly under reduced motion. Closing the Palette or switching views (More…, Go to…, Create) drops it.
+* Board: `boards/palette-fan-preview-bubble-2026-09-28.png`. The painted Vector Kit palette stays the trigger (the board's disc is reference only).
+
 # 19. Motion
 
 Opening:

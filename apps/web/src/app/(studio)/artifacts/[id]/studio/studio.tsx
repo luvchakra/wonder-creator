@@ -286,6 +286,7 @@ export function Studio({
   const connection = (connections ?? []).find((c) => !dismissed.has(c.insight) && c.sourceIds.every((id) => sources.some((s) => s.id === id)));
   const nudge = !connection && inUse > 0 ? unusedNudge(sources) : null;
   const nudgeKey = nudge ? `nudge:${nudge.count}` : null;
+  const thumbs = sources.filter((x) => x.available && x.state !== "available" && x.thumbnailUrl).slice(0, 4);
   const showNudge = nudge && nudgeKey && !dismissed.has(nudgeKey);
   async function useConnection() {
     if (!set || !connection) return;
@@ -602,6 +603,29 @@ export function Studio({
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {/* In-use visuals (owner board "Fan + Preview Bubble"): a compact strip of the pictures on the table, above the
+          Sources pill, in the cover view only. Tapping a picture opens the Working Set on what's In use; + brings more in. */}
+      {mode === "view" && !isCarousel && !proposal && !connection && !showNudge && thumbs.length ? (
+        <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-20 mx-auto flex max-w-3xl">
+          <ul className="pointer-events-auto flex items-center gap-1 rounded-xl border border-border-soft bg-surface/85 p-1 shadow-[var(--shadow-card)] backdrop-blur" aria-label="Pictures in use">
+            {thumbs.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => setSheet("influence")}
+                  aria-label={`${t.title} — in the Working Set`}
+                  className="block h-11 w-14 overflow-hidden rounded-lg border border-border-soft bg-cream-deep focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.thumbnailUrl!} alt="" className="size-full object-cover" />
+                </button>
+              </li>
+            ))}
+            {thumbs.length < inUse ? <li className="px-1 text-xs text-ink-muted">+{inUse - thumbs.length}</li> : null}
+          </ul>
         </div>
       ) : null}
 

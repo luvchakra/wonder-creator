@@ -10,17 +10,62 @@ const route = (href: string) => ({ kind: "route" as const, href });
 const cmd = (command: "metalk" | "create-menu") => ({ kind: "command" as const, command });
 
 export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
-  { id: "home", label: "Home", icon: "home", class: "navigation", target: route("/"), score: 60, current: pathname === "/" },
-  { id: "create", label: "Create", icon: "spark", class: "create", target: cmd("create-menu"), score: 59, current: pathname.startsWith("/create") },
-  { id: "materials", label: "Materials", icon: "images", class: "navigation", target: route("/space?tab=ideas"), score: 58, current: pathname.startsWith("/space") },
-  { id: "huddles", label: "Huddles", icon: "users", class: "navigation", target: route("/huddles"), score: 57, current: pathname.startsWith("/huddles") },
-  { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/search"), score: 56, current: pathname.startsWith("/search") || pathname.startsWith("/discover") },
-  { id: "me", label: "Me", icon: "user", class: "navigation", target: route("/profile"), score: 55, current: pathname.startsWith("/profile") || pathname.startsWith("/creators") },
+  { id: "home", label: "Home", hint: "Where you left off and what's waiting", icon: "home", class: "navigation", target: route("/"), score: 60, current: pathname === "/" },
+  {
+    id: "create",
+    label: "Create",
+    hint: "New Creation, Bring Material, Capture or meTalk",
+    icon: "spark",
+    class: "create",
+    target: cmd("create-menu"),
+    score: 59,
+    current: pathname.startsWith("/create"),
+  },
+  {
+    id: "materials",
+    label: "Materials",
+    hint: "Photos, notes, voice and everything you've brought in",
+    icon: "images",
+    class: "navigation",
+    target: route("/space?tab=ideas"),
+    score: 58,
+    current: pathname.startsWith("/space"),
+  },
+  {
+    id: "huddles",
+    label: "Huddles",
+    hint: "Live conversations with other creators",
+    icon: "users",
+    class: "navigation",
+    target: route("/huddles"),
+    score: 57,
+    current: pathname.startsWith("/huddles"),
+  },
+  {
+    id: "explore",
+    label: "Explore",
+    hint: "Search and discover across Wonder Creator",
+    icon: "compass",
+    class: "navigation",
+    target: route("/search"),
+    score: 56,
+    current: pathname.startsWith("/search") || pathname.startsWith("/discover"),
+  },
+  {
+    id: "me",
+    label: "Me",
+    hint: "Your profile, Creations and settings",
+    icon: "user",
+    class: "navigation",
+    target: route("/profile"),
+    score: 55,
+    current: pathname.startsWith("/profile") || pathname.startsWith("/creators"),
+  },
 ];
 
 export const CREATE_ITEMS: PaletteItem[] = [
-  { id: "new", label: "New Creation", icon: "spark", class: "create", target: route("/create"), score: 100 },
-  { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 99 },
+  { id: "new", label: "New Creation", hint: "Start a piece from an idea or from your Materials", icon: "spark", class: "create", target: route("/create"), score: 100 },
+  { id: "bring", label: "Bring Material", hint: "Upload, paste a link or import", icon: "add", class: "create", target: route("/send"), score: 99 },
   { id: "capture", label: "Capture", hint: "Photo, voice or a note", icon: "camera", class: "create", target: route("/send"), score: 98 },
   { id: "metalk", label: "meTalk", hint: "Say what you want to make", icon: "mic", class: "create", target: cmd("metalk"), score: 97 },
 ];
@@ -50,7 +95,9 @@ export function rulesFor(ctx: PaletteContext): Rules {
     case "material": {
       const m = i.materialId!;
       const create: PaletteItem = { id: "create-with", label: "Create with this", icon: "spark", class: "create", target: route(`/create?material=${m}`), score: 100 };
-      const related: PaletteItem[] = f.related ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/search?q=${encodeURIComponent(f.related)}`), score: 85 }] : [];
+      const related: PaletteItem[] = f.related
+        ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/search?q=${encodeURIComponent(f.related)}`), score: 85 }]
+        : [];
       const collect: PaletteItem = { id: "collect", label: "Add to Collection", icon: "images", class: "context", target: route(`/space/materials/${m}#collections`), score: 80 };
       const explore: PaletteItem = { id: "explore", label: "Explore possibilities", icon: "compass", class: "create", target: route(`/create/discover?material=${m}`), score: 75 };
       const edit: PaletteItem = { id: "edit", label: "Edit details", class: "utility", target: route(`/space/materials/${m}#details`), score: 30, requires: "edit" };
@@ -82,11 +129,29 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "This Creation",
         items: [
-          { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 100, requires: "edit" },
-          { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`${a}/collaborate`), score: 95, requires: "collaborate" },
-          { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 90 },
+          {
+            id: "transform",
+            label: "Transform",
+            hint: "Turn this Creation into another format (video, audio, document…)",
+            icon: "pen",
+            class: "transform",
+            target: route(`${a}/transform`),
+            score: 100,
+            requires: "edit",
+          },
+          {
+            id: "people",
+            label: "People",
+            hint: "Who's working on it and what each person may do",
+            icon: "people",
+            class: "collaboration",
+            target: route(`${a}/collaborate`),
+            score: 95,
+            requires: "collaborate",
+          },
+          { id: "versions", label: "Versions", hint: "Every saved version — compare or restore one", class: "context", target: route(`${a}?tab=versions`), score: 90 },
           { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 60, requires: "edit" },
-          { id: "share", label: "Share", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
+          { id: "share", label: "Share", hint: "A private link for people you choose", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
         ],
       };
 
@@ -315,7 +380,16 @@ function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
     references: { id: "references", label: "References", class: "context", target: route(`${a}/context?tab=references`), score: 45 },
     transform: { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 44, requires: "edit" },
     versions: { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 43 },
-    visuals: { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 46, requires: "edit" },
+    visuals: {
+      id: "visuals",
+      label: "Visual directions",
+      hint: "Images made from this Creation",
+      icon: "images",
+      class: "create",
+      target: route(`${a}#visual-directions`),
+      score: 46,
+      requires: "edit",
+    },
     context: { id: "context", label: "Context", hint: "Materials, people, related", icon: "compass", class: "context", target: route(`${a}/context`), score: 42 },
     share: { id: "share", label: "Share", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
     rights: { id: "rights", label: "Rights", class: "rights", target: route(`${a}?tab=rights`), score: 35 },
