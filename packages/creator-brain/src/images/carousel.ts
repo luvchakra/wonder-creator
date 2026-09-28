@@ -1,9 +1,20 @@
 import { audit, DomainError, log } from "@wonder/core";
 import { artifactAccess } from "@wonder/creator-studio";
-import { alternativeChunks, CAROUSEL_MAX_SLIDES, chunkText, cleanSource, DEFAULT_OVERLAY, DEFAULT_TRANSFORM, splitChunk, type ImageTransform, type SlideOverlay } from "@wonder/creator-studio/carousel";
+import {
+  alternativeChunks,
+  CAROUSEL_MAX_SLIDES,
+  chunkText,
+  cleanSource,
+  DEFAULT_OVERLAY,
+  DEFAULT_TRANSFORM,
+  splitChunk,
+  type ImageTransform,
+  type SlideOverlay,
+} from "@wonder/creator-studio/carousel";
 import type { Db } from "@wonder/db";
 import { z } from "zod";
-import { orderedSet, requestImageGeneration, type ImageDeps } from "./service";
+import { inspectUpload } from "@wonder/core/server";
+import { GENERATED_BUCKET, orderedSet, requestImageGeneration, type ImageDeps } from "./service";
 
 /**
  * Carousel Composer (docs/ui-redesign/carousel-composer.md). A Carousel Creation becomes a sequence of slides, each an
@@ -145,13 +156,34 @@ export async function carouselView(deps: Deps, artifactId: string): Promise<Caro
   };
   if (!c?.generation_id) {
     if (!a.isOwner) return base;
-    const { data: prev } = await deps.db.from("image_generations").select("id").eq("artifact_id", artifactId).eq("purpose", "carousel").in("status", ["complete", "partial"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { data: prev } = await deps.db
+      .from("image_generations")
+      .select("id")
+      .eq("artifact_id", artifactId)
+      .eq("purpose", "carousel")
+      .in("status", ["complete", "partial"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (!prev) return base;
     const { data: rows } = await deps.db.from("image_generation_assets").select("id, sequence, position, replaced_by, thumbnail_object_id, storage_object_id").eq("generation_id", prev.id);
     const set = orderedSet(rows ?? []);
     if (!set.length) return base;
-    const urls = await signed(deps.service, set.slice(0, 6).map((x) => x.thumbnail_object_id ?? x.storage_object_id));
-    return { ...base, existing: { generationId: prev.id, count: set.length, thumbnails: set.slice(0, 6).map((x) => urls.get(x.thumbnail_object_id ?? x.storage_object_id) ?? "").filter(Boolean) } };
+    const urls = await signed(
+      deps.service,
+      set.slice(0, 6).map((x) => x.thumbnail_object_id ?? x.storage_object_id),
+    );
+    return {
+      ...base,
+      existing: {
+        generationId: prev.id,
+        count: set.length,
+        thumbnails: set
+          .slice(0, 6)
+          .map((x) => urls.get(x.thumbnail_object_id ?? x.storage_object_id) ?? "")
+          .filter(Boolean),
+      },
+    };
   }
   const { data: g } = await deps.db.from("image_generations").select("id, status, requested_count, created_at").eq("id", c.generation_id).maybeSingle();
   if (!g) return base;
@@ -170,11 +202,19 @@ export async function carouselView(deps: Deps, artifactId: string): Promise<Caro
     ? await deps.service.from("image_generation_assets").select("id, generation_id, storage_object_id, thumbnail_object_id, width, height").in("id", assetIds).eq("generation_id", g.id)
     : { data: [] };
   const byId = new Map((assets ?? []).map((x) => [x.id, x]));
-  const urls = await signed(deps.service, (assets ?? []).flatMap((x) => [x.storage_object_id, x.thumbnail_object_id]).filter((x): x is string => !!x));
+  const urls = await signed(
+    deps.service,
+    (assets ?? []).flatMap((x) => [x.storage_object_id, x.thumbnail_object_id]).filter((x): x is string => !!x),
+  );
   const img = (id: string | null) => {
     const x = id ? byId.get(id) : undefined;
     if (!x) return null;
-    return { url: urls.get(x.storage_object_id) ?? null, thumbnailUrl: (x.thumbnail_object_id && urls.get(x.thumbnail_object_id)) || urls.get(x.storage_object_id) || null, width: x.width, height: x.height };
+    return {
+      url: urls.get(x.storage_object_id) ?? null,
+      thumbnailUrl: (x.thumbnail_object_id && urls.get(x.thumbnail_object_id)) || urls.get(x.storage_object_id) || null,
+      width: x.width,
+      height: x.height,
+    };
   };
   const since = new Date(Date.now() - RECENT_FAILURE_MS).toISOString();
   const { data: revs } = await deps.db
@@ -227,7 +267,11 @@ export async function startCarousel(deps: ImageDeps, artifactId: string, input: 
   });
   if (error) throw new DomainError("internal", "Couldn't start the Carousel.", { cause: error });
   // "Try again" after a failed set asks for a fresh generation instead of the cached failure.
-  const out = await requestImageGeneration(deps, { artifactId, purpose: "carousel", aspectRatio: input.aspectRatio, slideTexts: chunks, visualStyle: input.visualStyle, idempotencyKey: input.idempotencyKey ?? null }, { regenerate: !!input.retry });
+  const out = await requestImageGeneration(
+    deps,
+    { artifactId, purpose: "carousel", aspectRatio: input.aspectRatio, slideTexts: chunks, visualStyle: input.visualStyle, idempotencyKey: input.idempotencyKey ?? null },
+    { regenerate: !!input.retry },
+  );
   if (out.kind !== "generation") return { kind: out.kind };
   await deps.service.from("carousels").update({ generation_id: out.view.id }).eq("artifact_id", artifactId);
   await audit(deps.db, { action: "carousel.started", objectType: "artifact", objectId: artifactId, metadata: { slides: chunks.length, style: input.visualStyle } });
@@ -245,7 +289,18 @@ export async function adoptCarouselSet(deps: Deps, artifactId: string, generatio
   const count = Math.min(CAROUSEL_MAX_SLIDES, orderedSet(rows ?? []).length);
   if (!count) throw new DomainError("not_found", "Those images aren't available.");
   const aspect = (["1:1", "4:5", "16:9"] as const).find((x) => x === g.aspect_ratio) ?? "4:5";
-  const { error } = await deps.service.from("carousels").upsert({ artifact_id: artifactId, creator_id: deps.creatorId, requested_count: count, aspect_ratio: aspect, visual_style: "auto", source_version: a.version, generation_id: g.id, seeded_at: null });
+  const { error } = await deps.service
+    .from("carousels")
+    .upsert({
+      artifact_id: artifactId,
+      creator_id: deps.creatorId,
+      requested_count: count,
+      aspect_ratio: aspect,
+      visual_style: "auto",
+      source_version: a.version,
+      generation_id: g.id,
+      seeded_at: null,
+    });
   if (error) throw new DomainError("internal", "Couldn't set up the slides.", { cause: error });
   await seedSlides(deps.service, artifactId, g.id, a.content);
 }
@@ -262,7 +317,10 @@ async function slideFor(deps: Deps, slideId: string) {
   return s;
 }
 
-async function queueChange(deps: ImageDeps, row: { generationId: string; kind: "variation" | "fill" | "add"; assetId: string | null; slideId: string | null; slideText: string; instruction?: string | null; idempotencyKey?: string }) {
+async function queueChange(
+  deps: ImageDeps,
+  row: { generationId: string; kind: "variation" | "fill" | "add"; assetId: string | null; slideId: string | null; slideText: string; instruction?: string | null; idempotencyKey?: string },
+) {
   if (row.idempotencyKey) {
     const { data: dup } = await deps.db.from("image_asset_revisions").select("id").eq("creator_id", deps.creatorId).eq("idempotency_key", row.idempotencyKey).maybeSingle();
     if (dup) return { kind: "queued" as const, revisionId: dup.id, queued: false };
@@ -275,7 +333,16 @@ async function queueChange(deps: ImageDeps, row: { generationId: string; kind: "
   const instruction = row.instruction?.trim().slice(0, 300) || null;
   const { data: rev, error } = await deps.service
     .from("image_asset_revisions")
-    .insert({ creator_id: deps.creatorId, generation_id: row.generationId, asset_id: row.assetId, slide_id: row.slideId, kind: row.kind, slide_text: row.slideText.slice(0, 2000) || null, instruction, idempotency_key: row.idempotencyKey ?? null })
+    .insert({
+      creator_id: deps.creatorId,
+      generation_id: row.generationId,
+      asset_id: row.assetId,
+      slide_id: row.slideId,
+      kind: row.kind,
+      slide_text: row.slideText.slice(0, 2000) || null,
+      instruction,
+      idempotency_key: row.idempotencyKey ?? null,
+    })
     .select("id")
     .single();
   if (error || !rev) throw new DomainError("internal", "Couldn't start that image.", { cause: error });
@@ -367,14 +434,32 @@ async function requireEditor(deps: Deps, artifactId: string) {
 }
 
 /** Insert a slide right after another, shifting the rest (server-side: membership isn't a client write). */
-async function insertAfter(deps: Deps, after: { artifact_id: string; order_index: number }, row: { asset_id: string | null; source_text: string; display_text: string; overlay?: unknown; image_transform?: unknown }) {
+async function insertAfter(
+  deps: Deps,
+  after: { artifact_id: string; order_index: number },
+  row: { asset_id: string | null; source_text: string; display_text: string; overlay?: unknown; image_transform?: unknown },
+) {
   const { data: all } = await deps.service.from("carousel_slides").select("id, order_index").eq("artifact_id", after.artifact_id).order("order_index");
   if ((all ?? []).length >= CAROUSEL_MAX_SLIDES) throw new DomainError("validation", `A Carousel can have up to ${CAROUSEL_MAX_SLIDES} slides.`);
-  for (const r of [...(all ?? [])].reverse()) if (r.order_index > after.order_index) await deps.service.from("carousel_slides").update({ order_index: r.order_index + 1 }).eq("id", r.id);
+  for (const r of [...(all ?? [])].reverse())
+    if (r.order_index > after.order_index)
+      await deps.service
+        .from("carousel_slides")
+        .update({ order_index: r.order_index + 1 })
+        .eq("id", r.id);
   const { data: owner } = await deps.service.from("carousels").select("creator_id").eq("artifact_id", after.artifact_id).single();
   const { data, error } = await deps.service
     .from("carousel_slides")
-    .insert({ artifact_id: after.artifact_id, creator_id: owner!.creator_id, order_index: after.order_index + 1, asset_id: row.asset_id, source_text: row.source_text, display_text: row.display_text, overlay: (row.overlay ?? { enabled: false }) as never, image_transform: (row.image_transform ?? {}) as never })
+    .insert({
+      artifact_id: after.artifact_id,
+      creator_id: owner!.creator_id,
+      order_index: after.order_index + 1,
+      asset_id: row.asset_id,
+      source_text: row.source_text,
+      display_text: row.display_text,
+      overlay: (row.overlay ?? { enabled: false }) as never,
+      image_transform: (row.image_transform ?? {}) as never,
+    })
     .select("id")
     .single();
   if (error || !data) throw new DomainError("internal", "Couldn't add the slide.", { cause: error });
@@ -423,3 +508,82 @@ export async function suggestSlideChunks(deps: Deps, slideId: string) {
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
+ * "Use it as a slide image" (Studio, owner 28 Sep 2026): one of the creator's own photos becomes the new image offered
+ * for a slide — pending, so the slide shows "Use new / Keep current" and nothing is replaced until they choose. The
+ * photo is copied (slide-sized, with a thumbnail) into the Carousel's own set with the Material recorded as its source;
+ * no image is generated and nothing is charged. The Material must be one the creator can see (RLS read).
+ */
+export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">, slideId: string, materialId: string): Promise<{ slideId: string }> {
+  const { data: slide } = await deps.db.from("carousel_slides").select("id, artifact_id, asset_id").eq("id", slideId).maybeSingle();
+  if (!slide) throw new DomainError("not_found", "That slide isn't available.");
+  const level = await access(deps.db, slide.artifact_id);
+  if (level !== "owner" && level !== "edit") throw new DomainError("forbidden", "You can't change this Carousel.");
+  const { data: c } = await deps.db.from("carousels").select("generation_id").eq("artifact_id", slide.artifact_id).maybeSingle();
+  if (!c?.generation_id) throw new DomainError("conflict", "Create the Carousel's images first.");
+  const { data: m } = await deps.db.from("creative_materials").select("id, type, title, storage_object_id").eq("id", materialId).maybeSingle();
+  if (!m || !["image", "sketch"].includes(m.type) || !m.storage_object_id) throw new DomainError("validation", "That isn't a photo you can use here.");
+  const { data: o } = await deps.db.from("storage_objects").select("bucket, path, security_status").eq("id", m.storage_object_id).maybeSingle();
+  if (!o || o.security_status !== "clean") throw new DomainError("validation", "That photo isn't available.");
+  const dl = await deps.service.storage.from(o.bucket).download(o.path);
+  if (!dl.data) throw new DomainError("internal", "Couldn't read the photo.");
+  const bytes = new Uint8Array(await dl.data.arrayBuffer());
+  if ((await inspectUpload(bytes)).kind !== "image") throw new DomainError("validation", "That isn't a photo you can use here.");
+  const derived = await deps.derive(bytes);
+  const g = c.generation_id;
+  const { data: seqs } = await deps.service.from("image_generation_assets").select("sequence").eq("generation_id", g).order("sequence", { ascending: false }).limit(1);
+  const seq = (seqs?.[0]?.sequence ?? -1) + 1;
+  if (seq > 99) throw new DomainError("validation", "This Carousel's image set is full.");
+  const store = async (b: Uint8Array, suffix: string) => {
+    const path = `${deps.creatorId}/generated/${g}/${seq}-${suffix}.webp`;
+    const up = await deps.service.storage.from(GENERATED_BUCKET).upload(path, b, { contentType: "image/webp", upsert: true });
+    if (up.error) throw new DomainError("internal", "Couldn't store the photo.", { cause: up.error });
+    const insp = await inspectUpload(b);
+    const { data, error } = await deps.service
+      .from("storage_objects")
+      .upsert(
+        {
+          creator_id: deps.creatorId,
+          bucket: GENERATED_BUCKET,
+          path,
+          mime_type: "image/webp",
+          size_bytes: insp.size,
+          sha256: insp.sha256,
+          original_filename: `${(m.title ?? "photo").slice(0, 60)}.webp`,
+          security_status: "clean",
+        },
+        { onConflict: "bucket,path" },
+      )
+      .select("id")
+      .single();
+    if (error || !data) throw new DomainError("internal", "Couldn't record the photo.", { cause: error });
+    return data.id;
+  };
+  const master = await store(derived.master, "master");
+  const thumb = await store(derived.thumbnail, "480");
+  const { data: fresh, error } = await deps.service
+    .from("image_generation_assets")
+    .insert({
+      generation_id: g,
+      creator_id: deps.creatorId,
+      storage_object_id: master,
+      thumbnail_object_id: thumb,
+      width: derived.width,
+      height: derived.height,
+      sequence: seq,
+      direction_label: "Your photo",
+      revision_of: slide.asset_id,
+      replaced_by: null,
+    })
+    .select("id")
+    .single();
+  if (error || !fresh) throw new DomainError("internal", "Couldn't record the photo.", { cause: error });
+  // Lineage: the set now also comes from this Material ("Used in slides …" reads it).
+  const { data: gen } = await deps.service.from("image_generations").select("source_material_ids").eq("id", g).single();
+  const ids = [...new Set([...(gen?.source_material_ids ?? []), materialId])];
+  await deps.service.from("image_generations").update({ source_material_ids: ids }).eq("id", g);
+  await deps.service.from("carousel_slides").update({ pending_asset_id: fresh.id }).eq("id", slideId);
+  await audit(deps.db, { action: "carousel.slide_photo", objectType: "artifact", objectId: slide.artifact_id, metadata: { slideId, materialId } });
+  return { slideId };
+}

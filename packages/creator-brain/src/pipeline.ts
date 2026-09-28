@@ -2,7 +2,17 @@ import { DomainError, fromDbError, isDomainError, log, must } from "@wonder/core
 import type { Db, JsonValue, Tables } from "@wonder/db";
 import { z } from "zod";
 import { findCollaborators, stemTerm, type CollaboratorCard } from "@wonder/creator-identity";
-import { artifactType, createArtifact, createVersion, getArtifact, getPublishingPreferences, inheritFromSource, isKnownArtifactType, listDestinations, type LineageSource } from "@wonder/creator-studio";
+import {
+  artifactType,
+  createArtifact,
+  createVersion,
+  getArtifact,
+  getPublishingPreferences,
+  inheritFromSource,
+  isKnownArtifactType,
+  listDestinations,
+  type LineageSource,
+} from "@wonder/creator-studio";
 import { renderBrief, type IntentBrief } from "./clarify";
 import { artifactSourceMaterials, findingsOf, getReport, markApplied, provenanceCheck, selectiveInstruction, withRightsCheck } from "./quality-workflow";
 import { assembleContext, extractKeywords, type CreativeContext, type MaterialContext } from "./context";
@@ -13,7 +23,6 @@ import type { ContentPart, CreativeModelProvider, GenerateInput } from "./provid
 import { heuristicChecks, mergeChecks, type QualityCheck } from "./quality";
 import { RunTracker, type StepName } from "./runs";
 import { critiqueSchema, directionsSchema, planSchema, understandingSchema, type Direction, type Intent, type Understanding } from "./schemas";
-
 
 export interface ProgressEvent {
   step: StepName | "deciding";
@@ -75,7 +84,14 @@ async function runGuarded<T>(run: RunTracker, fn: () => Promise<T>): Promise<T> 
 async function startRun(
   deps: BrainDeps,
   intent: string,
-  opts: { conversationId?: string | null; artifactId?: string | null; inputCategory?: string; intentBrief?: Record<string, unknown> | null; request?: Record<string, unknown> | null; retryOf?: string | null },
+  opts: {
+    conversationId?: string | null;
+    artifactId?: string | null;
+    inputCategory?: string;
+    intentBrief?: Record<string, unknown> | null;
+    request?: Record<string, unknown> | null;
+    retryOf?: string | null;
+  },
 ) {
   const run = await RunTracker.start(deps.db, deps.creatorId, {
     intent,
@@ -106,18 +122,22 @@ export function titleFromInstruction(instruction: string): string | null {
 // ---------------------------------------------------------------------------
 export async function understand(deps: BrainDeps, ctx: CreativeContext, run: RunTracker): Promise<Understanding> {
   progress(deps, "understand");
-  return run.step("understand", async () => {
-    const out = await deps.provider.structured({
-      task: "understand",
-      system: systemPrompt(ctx, TASKS.understand),
-      schema: understandingSchema,
-      schemaName: "understanding",
-      messages: [{ role: "user", content: await materialParts(deps, ctx.selectedMaterials) }],
-      hints: hintsFrom(ctx),
-    });
-    run.addUsage(out.usage, out.model);
-    return out.value;
-  }, (u) => ({ themes: u.themes.length, materials: ctx.selectedMaterials.length }));
+  return run.step(
+    "understand",
+    async () => {
+      const out = await deps.provider.structured({
+        task: "understand",
+        system: systemPrompt(ctx, TASKS.understand),
+        schema: understandingSchema,
+        schemaName: "understanding",
+        messages: [{ role: "user", content: await materialParts(deps, ctx.selectedMaterials) }],
+        hints: hintsFrom(ctx),
+      });
+      run.addUsage(out.usage, out.model);
+      return out.value;
+    },
+    (u) => ({ themes: u.themes.length, materials: ctx.selectedMaterials.length }),
+  );
 }
 
 export interface DirectionWithIds extends Omit<Direction, "materialRefs"> {
@@ -142,23 +162,27 @@ export async function discover(deps: BrainDeps, input: { materialIds: string[]; 
     if (decision.outcome === "denied") throw new DomainError("forbidden", `${decision.reason} You can change this in Creator Autonomy.`);
     const understanding = await understand(deps, ctx, run);
     progress(deps, "plan");
-    const out = await run.step("plan", async () => {
-      const r = await deps.provider.structured({
-        task: "discover",
-        system: systemPrompt(ctx, TASKS.discover),
-        schema: directionsSchema,
-        schemaName: "directions",
-        messages: [
-          {
-            role: "user",
-            content: `${renderMaterials(ctx.selectedMaterials)}\n\nWhat I understood: ${understanding.summary}\nThemes: ${understanding.themes.join(", ")}\n\nThe creator said: "${input.instruction}"`,
-          },
-        ],
-        hints: hintsFrom(ctx),
-      });
-      run.addUsage(r.usage, r.model);
-      return r.value;
-    }, (d) => ({ directions: d.directions.length }));
+    const out = await run.step(
+      "plan",
+      async () => {
+        const r = await deps.provider.structured({
+          task: "discover",
+          system: systemPrompt(ctx, TASKS.discover),
+          schema: directionsSchema,
+          schemaName: "directions",
+          messages: [
+            {
+              role: "user",
+              content: `${renderMaterials(ctx.selectedMaterials)}\n\nWhat I understood: ${understanding.summary}\nThemes: ${understanding.themes.join(", ")}\n\nThe creator said: "${input.instruction}"`,
+            },
+          ],
+          hints: hintsFrom(ctx),
+        });
+        run.addUsage(r.usage, r.model);
+        return r.value;
+      },
+      (d) => ({ directions: d.directions.length }),
+    );
 
     // Map model refs back to IDs we already hold; never trust model-invented identifiers.
     const byRef = new Map(ctx.selectedMaterials.map((m) => [m.ref, m.id]));
@@ -191,9 +215,7 @@ export interface CreateInput {
   brief?: { values: IntentBrief; source: "confirmed" | "inferred"; acknowledged?: string[] } | null;
 }
 
-export type CreateResult =
-  | { kind: "artifact"; artifact: Tables<"artifacts">; runId: string; quality: QualityResult; offline: boolean }
-  | { kind: "proposal"; proposal: Proposal; runId: string };
+export type CreateResult = { kind: "artifact"; artifact: Tables<"artifacts">; runId: string; quality: QualityResult; offline: boolean } | { kind: "proposal"; proposal: Proposal; runId: string };
 
 export async function create(deps: BrainDeps, input: CreateInput, opts: { approved?: boolean; retryOf?: string } = {}): Promise<CreateResult> {
   if (!isKnownArtifactType(input.artifactType)) throw new DomainError("validation", "I don't know how to make that kind of Creation yet.");
@@ -263,28 +285,36 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
       run.addUsage(r.usage, r.model);
       return r.value;
     });
-    const workingTitle = input.title || (plan.title && plan.title !== "Untitled" ? plan.title : null) || understanding?.suggestedTitle || titleFromInstruction(input.instruction) || `Untitled ${def.label}`;
+    const workingTitle =
+      input.title || (plan.title && plan.title !== "Untitled" ? plan.title : null) || understanding?.suggestedTitle || titleFromInstruction(input.instruction) || `Untitled ${def.label}`;
 
     progress(deps, "generate");
-    const draft = await run.step("generate", async () => {
-      const r = await deps.provider.generate({
-        task: "generate",
-        system: systemPrompt(ctx, `${TASKS.generate}\n${artifactBrief(def.type)}`),
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...(await materialParts(deps, ctx.selectedMaterials)),
-              ...(ctx.references.length ? [{ type: "text" as const, text: `References:\n${renderMaterials(ctx.references)}` }] : []),
-              { type: "text", text: `Plan:\nTitle: ${plan.title}\nApproach: ${plan.approach}\nOutline:\n${plan.outline.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\nRequest: "${input.instruction}"${briefText}` },
-            ],
-          },
-        ],
-        hints: hintsFrom(ctx, { title: workingTitle, format: def.format }),
-      });
-      run.addUsage(r.usage, r.model);
-      return r.text.trim();
-    }, (t) => ({ chars: t.length }));
+    const draft = await run.step(
+      "generate",
+      async () => {
+        const r = await deps.provider.generate({
+          task: "generate",
+          system: systemPrompt(ctx, `${TASKS.generate}\n${artifactBrief(def.type)}`),
+          messages: [
+            {
+              role: "user",
+              content: [
+                ...(await materialParts(deps, ctx.selectedMaterials)),
+                ...(ctx.references.length ? [{ type: "text" as const, text: `References:\n${renderMaterials(ctx.references)}` }] : []),
+                {
+                  type: "text",
+                  text: `Plan:\nTitle: ${plan.title}\nApproach: ${plan.approach}\nOutline:\n${plan.outline.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\nRequest: "${input.instruction}"${briefText}`,
+                },
+              ],
+            },
+          ],
+          hints: hintsFrom(ctx, { title: workingTitle, format: def.format }),
+        });
+        run.addUsage(r.usage, r.model);
+        return r.text.trim();
+      },
+      (t) => ({ chars: t.length }),
+    );
 
     progress(deps, "validate");
     await run.step("validate", async () => {
@@ -292,7 +322,14 @@ export async function create(deps: BrainDeps, input: CreateInput, opts: { approv
     });
 
     progress(deps, "critique");
-    const quality = await qualityChecks(deps, ctx, run, def.type, draft, [...ctx.selectedMaterials, ...ctx.references].map((m) => m.id));
+    const quality = await qualityChecks(
+      deps,
+      ctx,
+      run,
+      def.type,
+      draft,
+      [...ctx.selectedMaterials, ...ctx.references].map((m) => m.id),
+    );
 
     progress(deps, "render");
     const home = input.conversationId ? (await deps.db.from("conversations").select("collection_id, project_id").eq("id", input.conversationId).maybeSingle()).data : null;
@@ -336,31 +373,39 @@ export interface QualityResult {
 
 async function qualityChecks(deps: BrainDeps, ctx: CreativeContext, run: RunTracker, type: string, content: string, sourceMaterialIds: string[]): Promise<QualityResult> {
   const heuristic = heuristicChecks(type, content, { avoid: ctx.creativeIdentity.avoid });
-  const modelChecks = await run.step("critique", async () => {
-    const r = await deps.provider.structured({
-      task: "critique",
-      system: systemPrompt(ctx, `${TASKS.critique}\n${artifactBrief(type)}`),
-      schema: critiqueSchema,
-      schemaName: "critique",
-      messages: [{ role: "user", content: `<draft>\n${content.slice(0, 60000)}\n</draft>` }],
-    });
-    run.addUsage(r.usage, r.model);
-    return r.value;
-  }, (c) => ({ checks: c.checks.length, suggestions: c.suggestions.length }));
+  const modelChecks = await run.step(
+    "critique",
+    async () => {
+      const r = await deps.provider.structured({
+        task: "critique",
+        system: systemPrompt(ctx, `${TASKS.critique}\n${artifactBrief(type)}`),
+        schema: critiqueSchema,
+        schemaName: "critique",
+        messages: [{ role: "user", content: `<draft>\n${content.slice(0, 60000)}\n</draft>` }],
+      });
+      run.addUsage(r.usage, r.model);
+      return r.value;
+    },
+    (c) => ({ checks: c.checks.length, suggestions: c.suggestions.length }),
+  );
   // Rights & provenance come from where the material came from, never from the model or the draft.
   const rights = await provenanceCheck(deps.db, sourceMaterialIds);
   return { checks: withRightsCheck(mergeChecks(heuristic, modelChecks.checks), rights), suggestions: modelChecks.suggestions.slice(0, 3) };
 }
 
 async function saveQualityReport(deps: BrainDeps, artifactId: string, versionId: string, runId: string, r: QualityResult): Promise<string> {
-  const res = await deps.db.from("quality_reports").insert({
-    artifact_id: artifactId,
-    version_id: versionId,
-    creator_id: deps.creatorId,
-    ai_run_id: runId,
-    checks: r.checks as unknown as JsonValue,
-    suggestions: r.suggestions as unknown as JsonValue,
-  }).select("id").single();
+  const res = await deps.db
+    .from("quality_reports")
+    .insert({
+      artifact_id: artifactId,
+      version_id: versionId,
+      creator_id: deps.creatorId,
+      ai_run_id: runId,
+      checks: r.checks as unknown as JsonValue,
+      suggestions: r.suggestions as unknown as JsonValue,
+    })
+    .select("id")
+    .single();
   if (res.error) throw fromDbError(res.error);
   return res.data.id;
 }
@@ -385,13 +430,18 @@ export async function reviewQuality(deps: BrainDeps, artifactId: string) {
 // ---------------------------------------------------------------------------
 // Refine (never silently overwrites: draft => proposal for review; auto => new version)
 // ---------------------------------------------------------------------------
-export type RefineResult =
-  | { kind: "version"; artifactId: string; versionId: string; versionNumber: number; runId: string }
-  | { kind: "proposal"; proposal: Proposal; runId: string; preview: string };
+export type RefineResult = { kind: "version"; artifactId: string; versionId: string; versionNumber: number; runId: string } | { kind: "proposal"; proposal: Proposal; runId: string; preview: string };
 
 export async function refine(
   deps: BrainDeps,
-  input: { artifactId: string; instruction: string; action?: string | null; conversationId?: string | null },
+  input: {
+    artifactId: string;
+    instruction: string;
+    action?: string | null;
+    conversationId?: string | null;
+    /** Studio sources to work from (how the creator chose to use each). Untrusted text: fenced before it reaches the model. */
+    sources?: Array<{ title: string; use: string; text: string }>;
+  },
   /** previewOnly: always a proposal to review, whatever the autonomy setting (selective quality refinement). */
   opts: { previewOnly?: boolean; changeSummary?: string; quality?: { reportId: string; keys: string[]; titles: string[] } } = {},
 ): Promise<RefineResult> {
@@ -403,16 +453,27 @@ export async function refine(
   const run = await startRun(deps, "refine", { artifactId: artifact.id, conversationId: input.conversationId, inputCategory: "artifact" });
   return runGuarded(run, async () => {
     progress(deps, "refine");
-    const revised = await run.step("refine", async () => {
-      const r = await deps.provider.generate({
-        task: "refine",
-        system: systemPrompt(ctx, `${TASKS.refine}\n${artifactBrief(artifact.artifact_type)}`),
-        messages: [{ role: "user", content: `Request: "${input.instruction}"\n\n<current_draft>\n${current.content}\n</current_draft>` }],
-        hints: { action: input.action ?? "improve", title: artifact.title, format: artifactType(artifact.artifact_type).format },
-      });
-      run.addUsage(r.usage, r.model);
-      return r.text.trim();
-    }, (t) => ({ chars: t.length }));
+    const revised = await run.step(
+      "refine",
+      async () => {
+        const r = await deps.provider.generate({
+          task: "refine",
+          system: systemPrompt(ctx, `${TASKS.refine}\n${artifactBrief(artifact.artifact_type)}`),
+          messages: [
+            {
+              role: "user",
+              content: `Request: "${input.instruction}"${(input.sources ?? [])
+                .map((s, i) => `\n\nSource ${i + 1} — use it for: ${s.use}\n${fenceUntrusted(`source_${i + 1}_title`, s.title, 200)}\n${fenceUntrusted(`source_${i + 1}`, s.text, 4000)}`)
+                .join("")}\n\n<current_draft>\n${current.content}\n</current_draft>`,
+            },
+          ],
+          hints: { action: input.action ?? "improve", title: artifact.title, format: artifactType(artifact.artifact_type).format },
+        });
+        run.addUsage(r.usage, r.model);
+        return r.text.trim();
+      },
+      (t) => ({ chars: t.length }),
+    );
     progress(deps, "validate");
     if (!revised || revised === current.content.trim()) {
       throw new DomainError("provider_failed", "I couldn't find a meaningful change to make. Your current version is unchanged.");
@@ -435,7 +496,14 @@ export async function refine(
       return { kind: "proposal" as const, proposal, runId: run.id, preview: revised };
     }
     progress(deps, "render");
-    const v = await createVersion(deps.db, artifact.id, { content: revised, label: "Revised with CreativeMind", authorKind: "ai", aiRunId: run.id, changeSummary: summary, generationMetadata: { provider: deps.provider.name, offline: !deps.provider.live } });
+    const v = await createVersion(deps.db, artifact.id, {
+      content: revised,
+      label: "Revised with CreativeMind",
+      authorKind: "ai",
+      aiRunId: run.id,
+      changeSummary: summary,
+      generationMetadata: { provider: deps.provider.name, offline: !deps.provider.live },
+    });
     await run.finish({ outputCategory: "version", artifactId: artifact.id });
     return { kind: "version" as const, artifactId: artifact.id, versionId: v.id, versionNumber: v.version_number, runId: run.id };
   });
@@ -444,7 +512,10 @@ export async function refine(
 // ---------------------------------------------------------------------------
 // Transform: always a new, derived artifact (lineage preserved; never passed off as original)
 // ---------------------------------------------------------------------------
-export async function transform(deps: BrainDeps, input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null; madeFor?: string | null }) {
+export async function transform(
+  deps: BrainDeps,
+  input: { artifactId: string; targetType: string; instruction: string; conversationId?: string | null; versionId?: string | null; madeFor?: string | null },
+) {
   if (!isKnownArtifactType(input.targetType)) throw new DomainError("validation", "I don't know how to make that kind of Creation yet.");
   const source = await getArtifact(deps.db, input.artifactId);
   // Someone else's work can only be adapted when they allowed derivatives (or their project's rights policy does).
@@ -454,13 +525,22 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
     if (permission !== "allowed") throw new DomainError("forbidden", "The creator of this Creation hasn't allowed derivatives.");
   }
   const def = artifactType(input.targetType);
-  const ctx = await assembleContext(deps.db, deps.creatorId, { intent: "transform", instruction: input.instruction, artifactType: def.type, artifactIds: [source.id], conversationId: input.conversationId });
+  const ctx = await assembleContext(deps.db, deps.creatorId, {
+    intent: "transform",
+    instruction: input.instruction,
+    artifactType: def.type,
+    artifactIds: [source.id],
+    conversationId: input.conversationId,
+  });
   const current = ctx.selectedArtifacts[0];
   if (!current) throw new DomainError("not_found", "We couldn't find that Creation.");
   // Any version of the source can be adapted; the current one by default.
   let src = { content: current.content, versionId: current.versionId, versionNumber: current.versionNumber };
   if (input.versionId && input.versionId !== current.versionId) {
-    const v = must(await deps.db.from("artifact_versions").select("id, version_number, content").eq("id", input.versionId).eq("artifact_id", source.id).maybeSingle(), "We couldn't find that version.");
+    const v = must(
+      await deps.db.from("artifact_versions").select("id, version_number, content").eq("id", input.versionId).eq("artifact_id", source.id).maybeSingle(),
+      "We couldn't find that version.",
+    );
     src = { content: v.content, versionId: v.id, versionNumber: v.version_number };
   }
   // A run is recorded against the creator's own piece; adapting someone else's is recorded without it.
@@ -500,7 +580,10 @@ export async function transform(deps: BrainDeps, input: { artifactId: string; ta
     });
     // A publication derivative records the destination it was made for (P1-13).
     if (input.madeFor) {
-      const up = await deps.db.from("artifacts").update({ made_for: input.madeFor.slice(0, 60) }).eq("id", artifact.id);
+      const up = await deps.db
+        .from("artifacts")
+        .update({ made_for: input.madeFor.slice(0, 60) })
+        .eq("id", artifact.id);
       if (up.error) throw fromDbError(up.error);
     }
     // Material, contributors and rights constraints follow the derivative.
@@ -578,7 +661,11 @@ export async function applyQualityFindings(deps: BrainDeps, artifactId: string, 
   if (chosen.some((f) => f.locked)) throw new DomainError("validation", "Rights and provenance notes can't be fixed by rewriting. Check your permissions or set the Creation's rights.");
   if (chosen.some((f) => f.state !== "open")) throw new DomainError("conflict", "Some of those suggestions were already applied or set aside.");
   const { instruction, summary } = selectiveInstruction(chosen);
-  return refine(deps, { artifactId, instruction, action: "quality" }, { previewOnly: true, changeSummary: summary, quality: { reportId: report.id, keys: chosen.map((f) => f.key), titles: chosen.map((f) => f.title) } });
+  return refine(
+    deps,
+    { artifactId, instruction, action: "quality" },
+    { previewOnly: true, changeSummary: summary, quality: { reportId: report.id, keys: chosen.map((f) => f.key), titles: chosen.map((f) => f.title) } },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -672,7 +759,9 @@ export type CollaboratorQuery = z.infer<typeof collaboratorQuerySchema>;
 
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, a: 1, an: 1 };
 const ASK_STOPWORDS = new Set(
-  "find show suggest me my our the a an some any few who whom that this these those for fit fits fitting would could might in on of to with and or people person creators creator collaborators collaborator someone somebody project network know known worked working work together near based from around please good great best".split(" "),
+  "find show suggest me my our the a an some any few who whom that this these those for fit fits fitting would could might in on of to with and or people person creators creator collaborators collaborator someone somebody project network know known worked working work together near based from around please good great best".split(
+    " ",
+  ),
 );
 
 /** Offline: a plain, rule-based reading of the request (no model is involved). */
@@ -696,7 +785,9 @@ export function parseCollaboratorAsk(ask: string): CollaboratorQuery {
 export async function suggestCollaborators(deps: BrainDeps, input: { ask: string; projectId?: string | null }): Promise<{ query: CollaboratorQuery; people: CollaboratorCard[]; offline: boolean }> {
   const ask = input.ask.trim().slice(0, 500);
   if (!ask) throw new DomainError("validation", "Say who you're looking for.");
-  const project = input.projectId ? must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", input.projectId).maybeSingle(), "We couldn't find that Creative Room.") : null;
+  const project = input.projectId
+    ? must(await deps.db.from("projects").select("id, title, status, brief, goals").eq("id", input.projectId).maybeSingle(), "We couldn't find that Creative Room.")
+    : null;
   const run = await startRun(deps, "collaborator_query", { inputCategory: "text" });
   return runGuarded(run, async () => {
     const decision = await authorizeTool(deps.db, deps.creatorId, "find_collaborators", run.id);
@@ -780,12 +871,18 @@ export async function draftMessage(
 // Publishing plan (P1-12): where, how and when — proposals only. The creator prepares and approves.
 // ---------------------------------------------------------------------------
 export const publishPlanSchema = z.object({
-  destinations: z.array(z.object({ key: z.string().min(1).max(60), why: z.string().max(300) })).max(10).default([]),
+  destinations: z
+    .array(z.object({ key: z.string().min(1).max(60), why: z.string().max(300) }))
+    .max(10)
+    .default([]),
   adaptations: z
     .array(z.object({ key: z.string().min(1).max(60), caption: z.string().max(2200).nullable().optional(), tags: z.array(z.string().max(40)).max(10).optional() }))
     .max(10)
     .default([]),
-  schedule: z.array(z.object({ key: z.string().min(1).max(60), at: z.string().max(40).nullable(), why: z.string().max(300).optional() })).max(10).default([]),
+  schedule: z
+    .array(z.object({ key: z.string().min(1).max(60), at: z.string().max(40).nullable(), why: z.string().max(300).optional() }))
+    .max(10)
+    .default([]),
   notes: z.array(z.string().max(300)).max(3).default([]),
 });
 export type PublishPlan = z.infer<typeof publishPlanSchema>;
@@ -793,7 +890,12 @@ export type PublishPlan = z.infer<typeof publishPlanSchema>;
 /** The next occurrence of HH:MM in a time zone, at least `minAheadMs` from now (as an ISO string in UTC). */
 export function nextLocalTime(hhmm: string, timeZone: string, now = new Date(), minAheadMs = 10 * 60_000): string {
   const [h, m] = hhmm.split(":").map(Number) as [number, number];
-  const parts = (d: Date) => Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d).map((p) => [p.type, p.value]));
+  const parts = (d: Date) =>
+    Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+        .formatToParts(d)
+        .map((p) => [p.type, p.value]),
+    );
   for (let day = 0; day < 3; day++) {
     const today = parts(new Date(now.getTime() + day * 86_400_000));
     const guess = Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day), h, m);

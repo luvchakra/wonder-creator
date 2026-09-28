@@ -18,7 +18,27 @@ import { AddOneSheet, Arrange, CarouselComposer } from "../carousel/composer";
  * "Add slide". Tapping the slide opens the focused Slide Editor. Before there are slides, the Composer's own steps show
  * here unchanged.
  */
-export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifactId: string; initial: CarouselView; arrangeRequest: number }) {
+/** A result from outside the canvas ("Use this"): jump to that slide, refresh, and — for words — offer them to keep. */
+export interface CanvasNews {
+  key: number;
+  slideId: string;
+  proposal?: { text: string; live: boolean } | null;
+}
+
+export function CarouselCanvas({
+  artifactId,
+  initial,
+  arrangeRequest,
+  onSlides,
+  news,
+}: {
+  artifactId: string;
+  initial: CarouselView;
+  arrangeRequest: number;
+  /** The slide on screen and the order, so "Use this" knows where to put things. */
+  onSlides?: (s: { current: string | null; ids: string[] }) => void;
+  news?: CanvasNews | null;
+}) {
   const [view, setView] = useState(initial);
   const [current, setCurrent] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -33,6 +53,9 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
     setSeenArrange(arrangeRequest);
     if (view.slides.length > 1) setArranging(true);
   }
+
+  const [incoming, setIncoming] = useState<{ slideId: string; proposal: { text: string; live: boolean } } | null>(null);
+  const [seenNews, setSeenNews] = useState<number | null>(news?.key ?? null);
 
   const refresh = useCallback(async () => {
     try {
@@ -49,6 +72,26 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
     const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
   }, [busy, refresh]);
+
+  // News from "Use this" (adjusted while rendering; the fetch runs in the effect below).
+  if (news && news.key !== seenNews) {
+    setSeenNews(news.key);
+    const i = view.slides.findIndex((s) => s.id === news.slideId);
+    if (i >= 0) setCurrent(i);
+    setIncoming(news.proposal ? { slideId: news.slideId, proposal: news.proposal } : null);
+  }
+  const newsKey = news?.key ?? null;
+  useEffect(() => {
+    if (newsKey === null) return;
+    const t = setTimeout(() => void refresh(), 0);
+    return () => clearTimeout(t);
+  }, [newsKey, refresh]);
+
+  const slideIds = view.slides.map((s) => s.id).join(",");
+  const currentId = view.slides[Math.min(current, Math.max(0, view.slides.length - 1))]?.id ?? null;
+  useEffect(() => {
+    onSlides?.({ current: currentId, ids: slideIds ? slideIds.split(",") : [] });
+  }, [currentId, slideIds, onSlides]);
 
   useEffect(() => {
     if (view.adding) strip("carousel", { text: "Creating one more slide…", tone: "active" });
@@ -101,7 +144,9 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
   const n = view.slides.length;
   const idx = Math.min(current, n - 1);
   const slide = view.slides[idx]!;
-  const image = slide.image?.url ?? slide.pending?.url ?? null;
+  // A new image waiting for the creator's choice (a regenerated one, or their own photo from "Use this") shows in the
+  // frame so they can judge it; the bar under the frame decides.
+  const image = slide.pending?.url ?? slide.image?.url ?? null;
   const words = slide.displayText || slide.sourceText;
   const go = (to: number) => setCurrent(((to % n) + n) % n);
   // On phones the slide shrinks so the strip below it stays above the bottom bar on the first screen: its width follows
@@ -159,8 +204,18 @@ export function CarouselCanvas({ artifactId, initial, arrangeRequest }: { artifa
               </button>
             </>
           ) : null}
-          {view.canEdit ? <RefineText key={slide.id} artifactId={artifactId} slideId={slide.id} words={words} onChanged={refresh} /> : null}
+          {view.canEdit ? (
+            <RefineText
+              key={`${slide.id}:${incoming?.slideId === slide.id ? seenNews : ""}`}
+              artifactId={artifactId}
+              slideId={slide.id}
+              words={words}
+              onChanged={refresh}
+              initial={incoming?.slideId === slide.id ? incoming.proposal : null}
+            />
+          ) : null}
         </div>
+        {slide.pending && view.canEdit ? <PendingChoice key={slide.id} slideId={slide.id} onDone={refresh} /> : null}
         {/* Words that aren't on the image: two lines on a phone (the slide editor has them all), under the frame. */}
         {caption ? <p className="line-clamp-2 whitespace-pre-line px-4 py-3 font-display text-[15px] leading-snug text-ink sm:line-clamp-none">{words}</p> : null}
       </div>
@@ -339,10 +394,22 @@ const REFINES: Array<{ key: string; label: string; instruction: string }> = [
 ];
 
 /** "Refine text" on the slide: one menu, one suggestion at a time, the creator's choice to use it (carousel-composer.md §11). */
-function RefineText({ artifactId, slideId, words, onChanged }: { artifactId: string; slideId: string; words: string; onChanged: () => Promise<void> }) {
+function RefineText({
+  artifactId,
+  slideId,
+  words,
+  onChanged,
+  initial = null,
+}: {
+  artifactId: string;
+  slideId: string;
+  words: string;
+  onChanged: () => Promise<void>;
+  initial?: { text: string; live: boolean } | null;
+}) {
   const router = useRouter();
   const [working, setWorking] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<{ text: string; live: boolean } | null>(null);
+  const [proposal, setProposal] = useState<{ text: string; live: boolean } | null>(initial);
   const [error, setError] = useState<string | null>(null);
   async function ask(r: (typeof REFINES)[number]) {
     setWorking(r.key);
@@ -420,5 +487,39 @@ function RefineText({ artifactId, slideId, words, onChanged }: { artifactId: str
         </div>
       ) : null}
     </>
+  );
+}
+
+/** "Use new / Keep current" for an image waiting on this slide (carousel-composer.md §27). Nothing replaces until chosen. */
+function PendingChoice({ slideId, onDone }: { slideId: string; onDone: () => Promise<void> }) {
+  const [busy, setBusy] = useState<"use" | "keep" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function choose(choice: "use" | "keep") {
+    setBusy(choice);
+    setError(null);
+    try {
+      await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice } });
+      await onDone();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <div role="region" aria-label="New image for this slide" className="flex flex-wrap items-center gap-2 border-t border-border-soft px-4 py-2.5">
+      <span className="flex-1 text-[13px] text-ink">New image on this slide</span>
+      {error ? (
+        <span role="alert" className="w-full text-[12.5px] text-danger">
+          {error}
+        </span>
+      ) : null}
+      <Button size="sm" variant="ghost" loading={busy === "keep"} disabled={!!busy} onClick={() => choose("keep")}>
+        Keep current
+      </Button>
+      <Button size="sm" loading={busy === "use"} disabled={!!busy} onClick={() => choose("use")}>
+        Use new
+      </Button>
+    </div>
   );
 }

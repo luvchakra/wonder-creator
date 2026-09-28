@@ -11,7 +11,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
-import { CarouselCanvas } from "./carousel-canvas";
+import { CarouselCanvas, type CanvasNews } from "./carousel-canvas";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 import { SourcesPanel } from "./sources-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
@@ -211,7 +211,57 @@ export function Studio({
     }
   }
 
-  async function refine(a: { key: string; label: string; instruction?: string } | null) {
+  // "Use this" results (owner, 28 Sep 2026): what the chosen uses did, said once; and news for the carousel canvas.
+  const [slides, setSlides] = useState<{ current: string | null; ids: string[] }>({ current: null, ids: [] });
+  const [news, setNews] = useState<CanvasNews | null>(null);
+  const newsSeq = useRef(0);
+  const [usedNote, setUsedNote] = useState<string | null>(null);
+  async function applyUses(rows: WorkingSource[]) {
+    if (!set || !rows.length) return;
+    setUsedNote(null);
+    const notes: string[] = [];
+    const words: string[] = [];
+    const steer: WorkingSource[] = [];
+    let part: WorkingSource | null = null;
+    const start = Math.max(0, slides.ids.indexOf(slides.current ?? ""));
+    let k = 0;
+    try {
+      for (const row of rows) {
+        const slideId = slides.ids.length ? slides.ids[Math.min(start + k, slides.ids.length - 1)] : null;
+        const r = await api<{ kind: string; slideId?: string; message?: string; text?: string; live?: boolean }>(`/api/v1/studio-sessions/${set.sessionId}/sources/${row.id}/apply`, {
+          method: "POST",
+          json: { slideId },
+        });
+        if (r.kind === "slide_image" || r.kind === "slide_words" || r.kind === "slide_proposal") {
+          k += 1;
+          setNews({ key: ++newsSeq.current, slideId: r.slideId!, proposal: r.kind === "slide_proposal" ? { text: r.text ?? "", live: !!r.live } : null });
+          notes.push(r.kind === "slide_proposal" ? `New words from “${row.title}” are on the slide — keep them or not.` : (r.message ?? ""));
+        } else if (r.kind === "draft_words" && r.text) words.push(r.text);
+        else if (r.kind === "refine") steer.push(row);
+        else if (r.kind === "choose_part") part = row;
+        else if (r.message) notes.push(r.message);
+      }
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+    // Writing: steering first (CreativeMind works on the saved version), then the words go into the draft.
+    if (steer.length) {
+      await refine(
+        { key: "use-sources", label: "Use sources", instruction: `Rework the draft using ${steer.length === 1 ? "this source" : "these sources"} as described for each.` },
+        steer.map((r) => r.id),
+      );
+      notes.push(`CreativeMind is working ${steer.length === 1 ? `“${steer[0]!.title}”` : `${steer.length} sources`} into it — review the revision.`);
+    }
+    if (words.length) {
+      setMode("edit");
+      onType(`${content.trim() ? `${content.trimEnd()}\n\n` : ""}${words.join("\n\n")}`);
+      notes.push(words.length === 1 ? "Its words are in your draft." : "Their words are in your draft.");
+    }
+    if (part) setFragmentsFor(part);
+    setUsedNote(notes.filter(Boolean).join(" ") || null);
+  }
+
+  async function refine(a: { key: string; label: string; instruction?: string } | null, sourceIds?: string[]) {
     if (dirty) {
       setError("Save a version first — CreativeMind works on your latest saved version.");
       setSheet("save");
@@ -224,7 +274,7 @@ export function Studio({
     try {
       const r = await api<{ kind: "version" | "proposal"; versionId?: string; versionNumber?: number; proposal?: { id: string }; preview?: string }>(`/api/v1/artifacts/${artifact.id}/refine`, {
         method: "POST",
-        json: { instruction: text, action: a?.key },
+        json: { instruction: text, action: a?.key, ...(sourceIds?.length ? { sourceIds } : {}) },
       });
       if (r.kind === "proposal" && r.proposal) setProposal({ id: r.proposal.id, preview: r.preview ?? "", baseVersionId: base?.id ?? "" });
       else router.refresh();
@@ -403,10 +453,20 @@ export function Studio({
         </p>
       ) : null}
 
+      {usedNote ? (
+        <p role="status" className="mb-2 flex items-start gap-2 rounded-2xl bg-accent-softer px-3 py-2 text-[13px] text-ink">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+          <span className="flex-1">{usedNote}</span>
+          <button type="button" aria-label="Dismiss" onClick={() => setUsedNote(null)} className="-my-1 inline-flex size-8 items-center justify-center rounded-full text-ink-subtle hover:bg-black/5">
+            <X className="size-4" aria-hidden />
+          </button>
+        </p>
+      ) : null}
+
       {/* The canvas */}
       {isCarousel ? (
         <section aria-label="Editor">
-          <CarouselCanvas artifactId={artifact.id} initial={carousel} arrangeRequest={arrangeReq} />
+          <CarouselCanvas artifactId={artifact.id} initial={carousel} arrangeRequest={arrangeReq} onSlides={setSlides} news={news} />
         </section>
       ) : (
         <section aria-label="Editor" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
@@ -701,6 +761,7 @@ export function Studio({
         initialFilter={sheet === "influence" ? "in_use" : "all"}
         onBringIn={() => setSheet("bring")}
         onFragments={(row) => setFragmentsFor(row)}
+        onUsed={(rows) => void applyUses(rows)}
       />
       <BringInSheet
         open={sheet === "bring"}
