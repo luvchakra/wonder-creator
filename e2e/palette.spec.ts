@@ -47,5 +47,11 @@ test.describe("Creative Palette", () => {
     await palette.getByRole("button", { name: "Create" }).click();
     await expect(palette.getByRole("button", { name: "New Creation" })).toBeFocused();
     await expect(palette.getByRole("button", { name: /meTalk/ })).toBeVisible();
+    // The X closes it, and it stays closed.
+    await page.getByRole("button", { name: "Close Creative Palette" }).click();
+    await expect(palette).toHaveCount(0);
+    await page.waitForTimeout(300);
+    await expect(palette).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open Creative Palette" })).toBeVisible();
   });
 });
