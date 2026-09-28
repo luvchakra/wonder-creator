@@ -54,4 +54,37 @@ test.describe("Creative Palette", () => {
     await expect(palette).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open Creative Palette" })).toBeVisible();
   });
+  test("previews what a leaf does in one bubble, and the trigger stays in front of the page", async ({ page, creator }) => {
+    void creator;
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${uid()}` } })).json()).artifact as { id: string; current_version_id: string };
+    await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "Every Sunday my father waited at Platform 3.", baseVersionId: art.current_version_id, label: "Written" } });
+    await page.goto(`/artifacts/${art.id}/studio`);
+    const trigger = page.getByRole("button", { name: "Open Creative Palette" });
+    const palette = page.getByRole("dialog", { name: "Creative Palette" });
+    const bubble = page.locator("[data-palette-preview]");
+
+    // Nothing on the Studio canvas sits over the trigger.
+    const box = (await trigger.boundingBox())!;
+    expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest("[data-palette-trigger]"), [box.x + box.width / 2, box.y + box.height / 2])).toBe(true);
+
+    // Leaves are labels only; what each does is its description and, when previewed, one bubble.
+    await trigger.click();
+    const transform = palette.getByRole("button", { name: "Transform" });
+    await expect(transform).toHaveText("Transform");
+    await expect(transform).toHaveAccessibleDescription(/another format/);
+    await expect(bubble).toHaveCount(0);
+    await transform.hover();
+    await expect(bubble).toHaveCount(1);
+    await expect(bubble).toContainText("Turn this Creation into another format");
+
+    // Keyboard focus previews the focused leaf instead: still one bubble.
+    await page.keyboard.press("Tab");
+    await expect(palette.getByRole("button", { name: "People" })).toBeFocused();
+    await expect(bubble).toHaveCount(1);
+    await expect(bubble).toContainText("Who's working on it");
+
+    await page.keyboard.press("Escape");
+    await expect(palette).toHaveCount(0);
+    await expect(bubble).toHaveCount(0);
+  });
 });
