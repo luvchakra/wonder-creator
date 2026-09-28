@@ -2913,13 +2913,13 @@ isOneToOne: false
                   ]
                 },"studio_sessions": {
                   Row: {
-                    "artifact_id": string,"created_at": string,"creator_id": string,"id": string,"intent": NonNullable<Json>,"output_mode": string,"status": string,"updated_at": string
+                    "artifact_id": string,"created_at": string,"creator_id": string,"draft": string | null,"draft_base_version_id": string | null,"draft_saved_at": string | null,"id": string,"intent": NonNullable<Json>,"output_mode": string,"status": string,"updated_at": string
                   }
                   Insert: {
-                    "artifact_id": string,"created_at"?: string,"creator_id": string,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                    "artifact_id": string,"created_at"?: string,"creator_id": string,"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2934,17 +2934,23 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_sessions_draft_base_version_id_fkey"
+      columns: ["draft_base_version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
     }
                   ]
                 },"studio_sources": {
                   Row: {
-                    "added_at": string,"added_by": string,"creator_id": string,"id": string,"roles": (string)[],"session_id": string,"source_id": string,"source_type": string,"state": string,"usage_intent": string | null
+                    "added_at": string,"added_by": string,"creator_id": string,"fragment": Json | null,"fragment_key": string,"id": string,"roles": (string)[],"session_id": string,"source_id": string,"source_type": string,"state": string,"usage_intent": string | null
                   }
                   Insert: {
-                    "added_at"?: string,"added_by": string,"creator_id": string,"id"?: string,"roles"?: (string)[],"session_id": string,"source_id": string,"source_type": string,"state"?: string,"usage_intent"?: string | null
+                    "added_at"?: string,"added_by": string,"creator_id": string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id": string,"source_id": string,"source_type": string,"state"?: string,"usage_intent"?: string | null
                   }
                   Update: {
-                    "added_at"?: string,"added_by"?: string,"creator_id"?: string,"id"?: string,"roles"?: (string)[],"session_id"?: string,"source_id"?: string,"source_type"?: string,"state"?: string,"usage_intent"?: string | null
+                    "added_at"?: string,"added_by"?: string,"creator_id"?: string,"fragment"?: Json | null,"fragment_key"?: never,"id"?: string,"roles"?: (string)[],"session_id"?: string,"source_id"?: string,"source_type"?: string,"state"?: string,"usage_intent"?: string | null
                   }
                   Relationships: [
                     {

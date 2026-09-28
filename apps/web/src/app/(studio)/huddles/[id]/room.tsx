@@ -532,6 +532,10 @@ export function HuddleRoom({
       {savedMoment ? (
         <p role="status" className="mt-2 px-4 text-sm text-ink sm:px-0">
           Saved to your Creative Space.{" "}
+          <Link href={`/studio/use?add=material:${savedMoment}`} className="font-medium text-accent-ink hover:underline">
+            Use in Studio
+          </Link>{" "}
+          ·{" "}
           <Link href={`/space/materials/${savedMoment}`} className="font-medium text-accent-ink hover:underline">
             View it
           </Link>
@@ -694,6 +698,9 @@ function PreserveDialog({ huddleId, text, onClose }: { huddleId: string; text: s
           <div className="space-y-3">
             <p className="text-ink">Saved to your Creative Space.</p>
             <div className="flex gap-2">
+              <Link href={`/studio/use?add=material:${saved}`} className={buttonClasses({ size: "sm" })}>
+                Use in Studio
+              </Link>
               <Link href={`/space/materials/${saved}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
                 View it
               </Link>
