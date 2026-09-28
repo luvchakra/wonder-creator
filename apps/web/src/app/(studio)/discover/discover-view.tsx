@@ -1,5 +1,5 @@
 "use client";
-import { Avatar, Badge, Button, Field, Input, PageTitle, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { Avatar, Badge, Button, Field, Input, PageTitle, Textarea, buttonClasses, cn, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,6 +74,7 @@ export function DiscoverView({
         </Link>
       ) : null}
       <PageTitle
+        art={KIT.botanical.botanicalSprig2}
         title="Find collaborators"
         subtitle={`${project ? `For ${project.title}. ` : ""}Search by what people do and how you know them. Results explain why they're here; nobody is ranked by popularity.`}
       />
@@ -216,11 +217,11 @@ export function DiscoverView({
             ))}
           </ul>
         ) : searched || brain ? (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+          <EmptyNote art={KIT.painted.leafSprigSage}>
             No one matches yet. Try broader words (“photo” finds photographers and photography), or include selective availability.
-          </p>
+          </EmptyNote>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Search by discipline, skill, interest or location — or ask CreativeMind.</p>
+          <EmptyNote art={KIT.painted.coralLeaves}>Search by discipline, skill, interest or location — or ask CreativeMind.</EmptyNote>
         )}
       </section>
 

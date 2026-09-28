@@ -1,5 +1,5 @@
 "use client";
-import { Button, ConfirmDialog, Dialog, DialogContent, EmptyState, Field, IconButton, Input, PageTitle, Select, TagInput, Textarea, buttonClasses, cn, BACKGROUNDS } from "@wonder/ui";
+import { Button, ConfirmDialog, Dialog, DialogContent, EmptyState, Field, IconButton, Input, PageTitle, Select, TagInput, Textarea, buttonClasses, cn, BACKGROUNDS, KIT } from "@wonder/ui";
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ export function ReferenceShelf({ shelves, activeShelf, items }: { shelves: Array
   return (
     <div>
       <PageTitle
+        art={KIT.botanical.botanicalSprig1}
         title="Reference Shelf"
         subtitle="Save and use inspiration."
         action={
@@ -194,7 +195,7 @@ function AddReferenceDialog({ open, onOpenChange, shelves, defaultShelf }: { ope
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Add a reference" description="Links, images, videos, audio, PDFs or a note.">
+      <DialogContent art={KIT.painted.coralLeaves} title="Add a reference" description="Links, images, videos, audio, PDFs or a note.">
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -261,7 +262,7 @@ function NewShelfDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="New shelf">
+      <DialogContent art={KIT.botanical.botanicalSprig1} title="New shelf">
         <form
           className="space-y-4"
           onSubmit={async (e) => {

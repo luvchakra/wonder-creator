@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowLeft, Bot, MoreHorizontal, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -154,7 +154,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">No open proposals.</p>
+          <EmptyNote art={KIT.painted.lavenderSprig}>No open proposals.</EmptyNote>
         )}
         {decided.length ? (
           <details className="mt-3">

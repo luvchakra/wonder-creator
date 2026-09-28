@@ -1,6 +1,6 @@
 "use client";
 import { ARTIFACT_TYPES } from "@wonder/creator-studio/types";
-import { Button, Dialog, DialogContent, Field, Input, Select } from "@wonder/ui";
+import { Button, Dialog, DialogContent, Field, Input, Select, KIT } from "@wonder/ui";
 import { Plus, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -45,7 +45,7 @@ export function NewPieceButton() {
         <Plus className="size-4" aria-hidden /> New
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Start a new Creation" description="Begin from a blank page. You can bring CreativeMind in anytime.">
+        <DialogContent art={KIT.painted.blossomSprig} title="Start a new Creation" description="Begin from a blank page. You can bring CreativeMind in anytime.">
           <form
             className="space-y-4"
             onSubmit={async (e) => {

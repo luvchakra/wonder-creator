@@ -71,6 +71,38 @@ Wonder Creator generates images from **creative context**, not generic prompt-bo
 
 * Contract: `docs/image-generation.md`. Implementation: `packages/creator-brain/src/images/` (router, context, hash, service), `apps/web/src/lib/images.ts` (derivatives), `/api/v1/image-generations`.
 
+## CreativeStudio convergence / Working Set (owner's standing instruction)
+
+CreativeStudio is not merely an editor for a Creation. It is the convergence surface where the creator brings multiple inputs together and shapes them into Creations.
+
+* Introduce a persistent `StudioSession` / `Working Set` concept containing temporary source references, fragments, current intent, pins and usage state.
+* Keep the current Creations object as the durable output. Do not write every Studio experiment into permanent lineage.
+* CreativeStudio default mobile UI is Canvas-first. The canvas dominates; a compact `Sources N` affordance opens the Working Set. Do not show permanent Materials/References/Context/CreativeMind panels.
+* Provide one universal `Bring in` action inside CreativeStudio. It can bring in Materials, previous Creations/versions, photo/video, voice, note, file/PDF, link/YouTube, Collection, Huddle moment, collaborator comment/feedback, references or capture-now content.
+* Search inside `Bring in` should span relevant source types so users do not leave CreativeStudio to find context.
+* Every Working Set item has a simple state: `Available`, `In Use`, or `Pinned`.
+* CreativeMind may infer source roles such as Story, Visual, Mood, Reference, Fact, Voice, Style, Constraint, Structure, Sound or Quote. Users can correct roles. AI never infers legal rights/ownership/permissions.
+* When 2+ sources are selected, expose one contextual primary action: `Use together`.
+* `Use together` should combine source context through CreativeMind and produce one concise proposed creative possibility, not a new AI chat flow.
+* Support source fragments: text ranges, audio ranges, video clips/frames, document sections, Creation scenes/stanzas/blocks, etc.
+* Previous Creations must be reusable partially: Whole Creation, Text, Visual Style, Scene, Structure, Idea, Opening, Ending. Record the reuse intent.
+* Output format is independent from the Working Set. Changing from writing → carousel → image → video must not discard sources/context.
+* Transformations should occur inside CreativeStudio by changing the canvas/output mode while preserving the Working Set.
+* meTalk manipulates Studio context directly: e.g. `use these photos`, `ignore the PDF`, `take the mood from this image`, `use only the Platform 3 part`, `make a carousel from all of this`.
+* CreativeMind should quietly discover meaningful source relationships and surface at most one high-value contextual connection at a time. Never stack AI suggestion cards.
+* Provide an inspectable `What's influencing this?` view showing In Use / Available / Pinned sources so creators understand what CreativeMind is considering.
+* Unused sources remain available and may be surfaced contextually later; do not discard them automatically.
+* Pinned sources/quotes/styles act as explicit constraints. If an operation conflicts with a pin, ask before altering it.
+* Huddle moments and collaborator comments can be sent directly into an active CreativeStudio Working Set via `Save to Studio` / `Use in Studio`.
+* Projects/Creative Rooms may make briefs/goals/references/constraints available to Studio, but should not mark everything In Use automatically.
+* CreativeStudio owns StudioSession/Working Set state; Materials, Creations, Huddles, Projects, Rights, People and Comments remain owned by their existing domains. Store references rather than duplicating domain truth.
+* Durable Creation provenance should be updated only for sources/fragments actually used in a committed result.
+* Routine Working Set changes autosave. Do not create a formal Creation version for every add/remove/select/pin operation.
+* Keep page controls minimal: actual creative work is primary; `Sources` and Palette are secondary. Avoid permanent action walls.
+* Preserve existing RLS, permissions, rights, governance and provider boundaries. CreativeStudio convergence must never become an authorization bypass.
+
+* Contract: `docs/ui-redesign/creative-studio-working-set.md`. Implementation: `packages/creator-studio/src/working-set.ts`, `/api/v1/studio-sessions`, `apps/web/src/app/(studio)/artifacts/[id]/studio/working-set.tsx`. Phases A→F tracked in `docs/ui-redesign/README.md`.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.

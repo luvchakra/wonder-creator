@@ -12,7 +12,7 @@ import {
   type DerivativePolicy,
   type OwnershipClaim,
 } from "@wonder/creator-projects/options";
-import { Badge, Button, Dialog, DialogContent, Field, Input, SectionHeader, Select, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, SectionHeader, Select, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
 import { Scale } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -371,9 +371,9 @@ export function RightsPanel({
             })}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+          <EmptyNote art={KIT.painted.leafSprigSage}>
             No Creations are linked to this Creative Room yet. Rights appear here once Creations are added.
-          </p>
+          </EmptyNote>
         )}
       </section>
 
@@ -442,7 +442,7 @@ export function RightsPanel({
             })}
           </ol>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">No ownership claims recorded.</p>
+          <EmptyNote art={KIT.botanical.botanicalSprig4}>No ownership claims recorded.</EmptyNote>
         )}
       </section>
 

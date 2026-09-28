@@ -1,5 +1,5 @@
 "use client";
-import { Button, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, cn } from "@wonder/ui";
+import { Button, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, cn, EmptyNote, KIT } from "@wonder/ui";
 import { MoreHorizontal, Paperclip, Tag, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -172,7 +172,7 @@ export function CrewChat({
           ))}
         </ol>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">No messages yet. Say hello to the crew.</p>
+        <EmptyNote art={KIT.mark.birds}>No messages yet. Say hello to the crew.</EmptyNote>
       )}
       <div ref={bottom} />
       <MessageComposer

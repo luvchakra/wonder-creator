@@ -1,5 +1,5 @@
 "use client";
-import { Button, Dialog, DialogContent, Field, Input, Textarea } from "@wonder/ui";
+import { Button, Dialog, DialogContent, Field, Input, Textarea, KIT } from "@wonder/ui";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,7 +28,7 @@ export function NewProjectButton() {
         <Plus className="size-4" aria-hidden /> New Creative Room
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New Creative Room" description="A Creative Room points to your work; nothing is moved or copied into it.">
+        <DialogContent art={KIT.painted.flowerBranch} title="New Creative Room" description="A Creative Room points to your work; nothing is moved or copied into it.">
           <form
             className="space-y-4"
             onSubmit={async (e) => {

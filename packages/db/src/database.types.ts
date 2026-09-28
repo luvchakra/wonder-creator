@@ -2911,6 +2911,62 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"studio_sessions": {
+                  Row: {
+                    "artifact_id": string,"created_at": string,"creator_id": string,"id": string,"intent": NonNullable<Json>,"output_mode": string,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"created_at"?: string,"creator_id": string,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "studio_sessions_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_sessions_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"studio_sources": {
+                  Row: {
+                    "added_at": string,"added_by": string,"creator_id": string,"id": string,"roles": (string)[],"session_id": string,"source_id": string,"source_type": string,"state": string,"usage_intent": string | null
+                  }
+                  Insert: {
+                    "added_at"?: string,"added_by": string,"creator_id": string,"id"?: string,"roles"?: (string)[],"session_id": string,"source_id": string,"source_type": string,"state"?: string,"usage_intent"?: string | null
+                  }
+                  Update: {
+                    "added_at"?: string,"added_by"?: string,"creator_id"?: string,"id"?: string,"roles"?: (string)[],"session_id"?: string,"source_id"?: string,"source_type"?: string,"state"?: string,"usage_intent"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "studio_sources_added_by_fkey"
+      columns: ["added_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_sources_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_sources_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "studio_sessions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tenant_memberships": {
                   Row: {
                     "created_at": string,"role": Database["public"]['Enums']["tenant_role"],"tenant_id": string,"user_id": string

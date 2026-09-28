@@ -1,6 +1,6 @@
 "use client";
 import type { DirectMessage } from "@wonder/creator-projects";
-import { Button, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
+import { Button, Menu, MenuContent, MenuItem, MenuTrigger, cn, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowLeft, MoreHorizontal, Tag } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -123,7 +123,7 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
             ))}
           </ol>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">No messages yet.</p>
+          <EmptyNote art={KIT.mark.heartOutline}>No messages yet.</EmptyNote>
         )}
         <div ref={bottom} />
         <MessageComposer

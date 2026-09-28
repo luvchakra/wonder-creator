@@ -10,6 +10,7 @@
     "./exports": "./src/exports.ts",
     "./commercial": "./src/commercial.ts",
     "./carousel": "./src/carousel.ts",
-    "./business": "./src/business.ts"
+    "./business": "./src/business.ts",
+    "./working-set": "./src/working-set-options.ts"
   }
 }

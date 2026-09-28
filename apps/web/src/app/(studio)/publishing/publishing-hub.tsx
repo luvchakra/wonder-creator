@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, PageTitle, Segmented, Select, Textarea, buttonClasses } from "@wonder/ui";
+import { Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, PageTitle, Segmented, Select, Textarea, buttonClasses, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowUpRight, Globe, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -150,7 +150,7 @@ export function PublishingHub({
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <PageTitle title="Publishing" subtitle="What's waiting, what went out, and where it can go. Nothing is published without your approval, and nothing is marked published until the destination confirms it." />
+      <PageTitle art={KIT.painted.coralLeaves} title="Publishing" subtitle="What's waiting, what went out, and where it can go. Nothing is published without your approval, and nothing is marked published until the destination confirms it." />
 
       <div aria-live="polite" className="sr-only">
         {msg}
@@ -233,9 +233,9 @@ export function PublishingHub({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+          <EmptyNote art={KIT.mark.sparklePeach}>
             {view === "queue" ? "Nothing waiting. Approved and scheduled publications appear here." : "No drafts. Publish a Creation from its page (Publish) to start."}
-          </p>
+          </EmptyNote>
         )}
       </section>
       ) : null}

@@ -1,7 +1,7 @@
 import { listApprovals } from "@wonder/creator-brain";
 import { getAutonomy } from "@wonder/creator-identity";
 import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS } from "@wonder/creator-identity/autonomy";
-import { EmptyState, PageTitle, SectionHeader } from "@wonder/ui";
+import { EmptyState, PageTitle, SectionHeader, KIT } from "@wonder/ui";
 import { ChevronRight, Clock, Scale } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
@@ -27,14 +27,14 @@ export default async function ApprovalsPage() {
     <>
       <PaletteScope context={{ page: "approvals", strip: pending.length ? { pendingApprovalCount: pending.length } : undefined }} />
       <div className="mx-auto max-w-3xl">
-        <PageTitle title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
+        <PageTitle art={KIT.painted.leafSprigSage} title="Approvals" subtitle="What CreativeMind wants to do, waiting on your OK. Nothing here happens until you approve it." />
 
         <section aria-labelledby="pending-h" className="space-y-6">
           <h2 id="pending-h" className="sr-only">
             Waiting for you
           </h2>
           {pending.length === 0 ? (
-            <EmptyState title="Nothing waiting" body="When CreativeMind needs your OK before acting, it shows up here with exactly what it will do." />
+            <EmptyState art={KIT.mark.sun} title="Nothing waiting" body="When CreativeMind needs your OK before acting, it shows up here with exactly what it will do." />
           ) : null}
           {urgent.length ? <Group title="Expiring soon" items={urgent} /> : null}
           {[...byDomain].map(([domain, items]) => (

@@ -4,13 +4,19 @@ import { Dialog as D, DropdownMenu as M, Popover as P, Switch as S, Tabs as T } 
 import * as React from "react";
 import { cn } from "../cn";
 import { Button } from "./button";
+import { KitArt } from "./brand";
+import type { KitAsset } from "../brand/kit";
 
 export const Dialog = D.Root;
 export const DialogTrigger = D.Trigger;
 export const DialogClose = D.Close;
 
 /** Accessible dialog; on small screens it becomes a bottom sheet. */
-export function DialogContent({ title, description, children, className, wide }: { title: string; description?: string; children: React.ReactNode; className?: string; wide?: boolean }) {
+/**
+ * A dialog — a bottom sheet on phones, centred from `sm`. Creative sheets may carry one small Vector Kit painting beside
+ * the title (`art`); functional and warning dialogs stay plain.
+ */
+export function DialogContent({ title, description, children, className, wide, art }: { title: string; description?: string; children: React.ReactNode; className?: string; wide?: boolean; art?: KitAsset }) {
   return (
     <D.Portal>
       <D.Overlay className="fixed inset-0 z-50 bg-navy/30 backdrop-blur-[2px] motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]" />
@@ -23,7 +29,8 @@ export function DialogContent({ title, description, children, className, wide }:
         )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border-soft px-5 pb-3 pt-5">
-          <div className="min-w-0">
+          {art ? <KitArt art={art} sizes="3rem" className="-my-1 h-10 w-auto shrink-0" /> : null}
+          <div className="min-w-0 flex-1">
             <D.Title className="text-lg font-semibold text-ink">{title}</D.Title>
             {description ? <D.Description className="mt-0.5 text-sm text-ink-muted">{description}</D.Description> : <D.Description className="sr-only">{title}</D.Description>}
           </div>
