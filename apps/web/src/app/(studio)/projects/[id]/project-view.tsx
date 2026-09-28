@@ -824,7 +824,7 @@ function CrewStrip({ projectId, crew, canEdit, projectTitle }: { projectId: stri
       )}
       {open ? (
         <Dialog open onOpenChange={setOpen}>
-          <DialogContent title="Start a crew" description="You'll be its owner. Invite people next — they choose whether to join.">
+          <DialogContent art={KIT.mark.confettiDots} title="Start a crew" description="You'll be its owner. Invite people next — they choose whether to join.">
             <form
               className="space-y-4"
               onSubmit={async (e) => {

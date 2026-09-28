@@ -127,6 +127,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
       <PaletteScope context={{ page: "spaces", facts: { activeCreationId: shownArtifacts.find((a) => a.status === "draft" || a.status === "in_review")?.id ?? null } }} />
       <div>
         <PageTitle
+          art={KIT.painted.flowerBranch}
           title="My Creative Space"
           subtitle="Ideas, materials and creations — all in one place."
           action={

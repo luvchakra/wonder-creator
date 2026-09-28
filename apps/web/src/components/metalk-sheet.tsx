@@ -1,5 +1,5 @@
 "use client";
-import { Dialog, DialogContent } from "@wonder/ui";
+import { Dialog, DialogContent, KIT } from "@wonder/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Composer, type ComposerPayload } from "@/components/composer";
@@ -50,7 +50,7 @@ export function MeTalkSheet({ open, onOpenChange }: { open: boolean; onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="meTalk" description="Tell Wonder Creator what you'd like to make or change — type, speak, or bring something in.">
+      <DialogContent art={KIT.mark.sparklePurple} title="meTalk" description="Tell Wonder Creator what you'd like to make or change — type, speak, or bring something in.">
         <Composer onSubmit={submit} busy={busy} placeholder="What are you thinking about today?" />
         {error ? (
           <p role="alert" className="mt-2 text-sm text-danger">

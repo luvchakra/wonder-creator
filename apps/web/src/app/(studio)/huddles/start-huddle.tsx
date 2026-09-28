@@ -1,5 +1,5 @@
 "use client";
-import { Button, Dialog, DialogContent, Field, Input, Switch, Textarea, buttonClasses } from "@wonder/ui";
+import { Button, Dialog, DialogContent, Field, Input, Switch, Textarea, buttonClasses, KIT } from "@wonder/ui";
 import { Radio, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ export function StartHuddle({ currentHuddleId, mediaConfigured, creatorName, rel
         <Radio className="size-4" aria-hidden /> Start a Huddle
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Start a Huddle" description="A temporary space to talk. It ends when the last person leaves — nothing is kept unless someone saves it.">
+        <DialogContent art={KIT.mark.birds} title="Start a Huddle" description="A temporary space to talk. It ends when the last person leaves — nothing is kept unless someone saves it.">
           <form
             className="space-y-4"
             onSubmit={async (e) => {

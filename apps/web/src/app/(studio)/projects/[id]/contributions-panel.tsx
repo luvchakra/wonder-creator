@@ -1,6 +1,6 @@
 "use client";
 import { ATTRIBUTION_LABEL, CONTRIBUTION_KINDS, CONTRIBUTION_KIND_LABEL, RIGHTS_RELATIONSHIP_LABEL, type ContributionKind } from "@wonder/creator-projects/options";
-import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Textarea, buttonClasses, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Textarea, buttonClasses, cn, EmptyNote, KIT } from "@wonder/ui";
 import { Download, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -188,9 +188,9 @@ export function ContributionsPanel({ projectId, manages, entries, summary, peopl
             ))}
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+          <EmptyNote art={KIT.painted.flowerBranch}>
             Contributions appear here as people write versions, share work and finish tasks{manages ? " — or record them yourself" : ""}.
-          </p>
+          </EmptyNote>
         )}
       </section>
 

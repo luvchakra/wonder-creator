@@ -1,6 +1,6 @@
 "use client";
 import type { DerivativeView, PublicationDerivativePreset } from "@wonder/creator-studio";
-import { Badge, Button, PageTitle, buttonClasses } from "@wonder/ui";
+import { Badge, Button, PageTitle, buttonClasses, EmptyNote, KIT } from "@wonder/ui";
 import { ArrowLeft, GitBranch, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,7 +37,7 @@ export function DerivativesView({
       <Link href={`/artifacts/${source.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> {source.title}
       </Link>
-      <PageTitle title="Derivatives" subtitle="Platform adaptations are Creations in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
+      <PageTitle art={KIT.painted.coralLeaves} title="Derivatives" subtitle="Platform adaptations are Creations in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
 
       <section aria-label="Source" className="rounded-2xl border border-border-soft bg-surface px-4 py-3">
         <p className="text-sm text-ink-subtle">Source</p>
@@ -149,7 +149,7 @@ export function DerivativesView({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">Nothing made from this Creation yet.</p>
+          <EmptyNote art={KIT.painted.coralLeaves}>Nothing made from this Creation yet.</EmptyNote>
         )}
       </section>
     </div>

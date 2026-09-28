@@ -10,3 +10,4 @@ export * from "./derivatives";
 export * from "./analytics";
 export * from "./market";
 export * from "./business";
+export * from "./working-set";

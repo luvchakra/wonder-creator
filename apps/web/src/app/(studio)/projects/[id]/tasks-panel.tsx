@@ -1,6 +1,6 @@
 "use client";
 import { TASK_GROUP_ORDER, TASK_STATUSES, TASK_STATUS_LABEL, type TaskStatus } from "@wonder/creator-projects/options";
-import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Switch, Textarea, cn } from "@wonder/ui";
+import { Badge, Button, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Segmented, Select, Switch, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
 import { CalendarDays, Flag, MoreHorizontal, Plus, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -263,9 +263,9 @@ export function TasksPanel({
             ))}
           </ol>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+          <EmptyNote art={KIT.mark.starGold}>
             {manages ? "Mark the moments that matter — a first cut, a demo, a premiere." : "No milestones yet."}
-          </p>
+          </EmptyNote>
         )}
       </section>
 

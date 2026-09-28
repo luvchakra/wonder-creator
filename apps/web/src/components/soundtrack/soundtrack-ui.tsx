@@ -1,6 +1,6 @@
 "use client";
 import { MOOD_LABEL, MOODS, formatDuration, rankTracks, type MoodFilter } from "@wonder/creator-soundtrack";
-import { Button, DOCK_GAP, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger, cn, dockStyle, useEdgeDock, type DockSide } from "@wonder/ui";
+import { Button, DOCK_GAP, Dialog, DialogContent, Menu, MenuContent, MenuItem, MenuTrigger, cn, dockStyle, useEdgeDock, type DockSide, KIT } from "@wonder/ui";
 import {
   ArrowDown,
   ArrowUp,
@@ -509,7 +509,7 @@ export function SoundtrackPanel() {
   const queue = s.state.queue.map((id) => s.byId(id)).filter((t): t is LibraryTrack => !!t);
   return (
     <Dialog open={s.panel.open} onOpenChange={(o) => (o ? s.openPanel(s.panel.view) : s.closePanel())}>
-      <DialogContent title="CreativeRadio" description="Music for your creativity" wide>
+      <DialogContent art={KIT.mark.birds} title="CreativeRadio" description="Music for your creativity" wide>
         {s.error ? (
           <p role="alert" className="text-sm text-danger">
             {s.error}

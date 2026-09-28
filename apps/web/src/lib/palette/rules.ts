@@ -77,17 +77,15 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return { title: "This Creation", items: creationItems(ctx, a) };
 
     case "studio":
-      // §9.16–9.19: the canvas stays dominant; editor controls stay in the editor.
+      // §9.16–9.19: the canvas stays dominant; editor controls stay in the editor. Materials, References and Context
+      // live in the Studio's Working Set now (creative-studio-working-set.md §66), and Refine is on the page itself.
       return {
         title: "This Creation",
         items: [
-          { id: "refine", label: "Refine", hint: "CreativeMind suggestions", icon: "spark", class: "transform", target: route(`${a}/studio#creativemind`), score: 100, requires: "edit" },
-          { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route(`/create?artifact=${i.artifactId}`), score: 95, requires: "edit" },
-          { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 92, requires: "edit" },
-          { id: "references", label: "References", icon: "images", class: "context", target: route(`${a}/context?tab=references`), score: 90 },
-          { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 85, requires: "edit" },
-          { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 50 },
-          { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`${a}/collaborate`), score: 45, requires: "collaborate" },
+          { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 100, requires: "edit" },
+          { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`${a}/collaborate`), score: 95, requires: "collaborate" },
+          { id: "versions", label: "Versions", class: "context", target: route(`${a}?tab=versions`), score: 90 },
+          { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 60, requires: "edit" },
           { id: "share", label: "Share", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
         ],
       };

@@ -45,6 +45,19 @@ export function Spinner({ label = "Loading", className }: { label?: string; clas
   );
 }
 
+/**
+ * A quiet empty note inside a section (compact-density: one short line, no large card): a dashed surface with one small
+ * Vector Kit painting beside the words. Decoration only — the text carries the meaning.
+ */
+export function EmptyNote({ children, art = KIT.painted.blossomSprig, className }: { children: React.ReactNode; art?: KitAsset; className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/70 px-4 py-3.5 text-[14px] leading-snug text-ink-muted", className)}>
+      <KitArt art={art} sizes="3rem" className="h-11 w-11 shrink-0 object-contain" />
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   body,

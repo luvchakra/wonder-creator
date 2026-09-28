@@ -1,5 +1,5 @@
 "use client";
-import { Button, Dialog, DialogContent, Field, Input, Textarea } from "@wonder/ui";
+import { Button, Dialog, DialogContent, Field, Input, Textarea, KIT } from "@wonder/ui";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -19,7 +19,7 @@ export function NewCampaign() {
         <Plus className="size-4" aria-hidden /> New campaign
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New campaign" description="A brief creators can say yes to. No payments or contracts here.">
+        <DialogContent art={KIT.painted.flowerBranch} title="New campaign" description="A brief creators can say yes to. No payments or contracts here.">
           <form
             className="space-y-3"
             onSubmit={async (e) => {

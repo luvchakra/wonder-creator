@@ -7,18 +7,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
-import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { TransformDialog } from "../view";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
+import { WorkingSet } from "./working-set";
 
 export function Studio({
   artifact,
   version,
   actions,
   initialAction,
-  materials,
   quality,
   pendingProposal,
   offline,
@@ -27,7 +26,6 @@ export function Studio({
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
   initialAction: string | null;
-  materials: MaterialCardData[];
   quality: QualityReportView | null;
   pendingProposal: QualityProposal | null;
   offline: boolean;
@@ -333,30 +331,8 @@ export function Studio({
         />
       </section>
 
-      <section aria-label="Materials">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink-muted">Materials</h2>
-          <Link href={`/artifacts/${artifact.id}/context`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-            Context
-          </Link>
-        </div>
-        {materials.length ? (
-          <ul className="flex gap-3 overflow-x-auto pb-2">
-            {materials.map((m) => (
-              <li key={m.id} className="w-28 shrink-0">
-                <Link href={`/space/materials/${m.id}`}>
-                  <div className="aspect-square overflow-hidden rounded-xl border border-border-soft">
-                    <MaterialVisual m={m} />
-                  </div>
-                  <p className="mt-1 truncate text-xs text-ink-muted">{m.title || "Untitled"}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-ink-subtle">No Materials linked yet. Bring Material from the Palette to ground this Creation.</p>
-        )}
-      </section>
+      {/* Everything on the table for this Creation (Working Set): one compact pill, the canvas stays dominant. */}
+      <WorkingSet artifactId={artifact.id} />
 
       {transformType ? (
         <TransformDialog open focused onOpenChange={(o) => !o && setTransformType(null)} artifactId={artifact.id} currentType={artifact.type} initialType={transformType} />

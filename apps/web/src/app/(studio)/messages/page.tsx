@@ -1,5 +1,5 @@
 import { listThreads } from "@wonder/creator-projects";
-import { Badge, PageTitle } from "@wonder/ui";
+import { Badge, PageTitle, EmptyNote, KIT } from "@wonder/ui";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
 import { requireSession } from "@/lib/session";
@@ -11,7 +11,7 @@ export default async function MessagesPage() {
   const threads = await listThreads(db, creator.id);
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle title="Messages" subtitle="Direct conversations with people you work with. Crew conversations live in each Creative Room's Chat." />
+      <PageTitle art={KIT.mark.birds} title="Messages" subtitle="Direct conversations with people you work with. Crew conversations live in each Creative Room's Chat." />
       {threads.length ? (
         <ul aria-label="Conversations" className="space-y-2">
           {threads.map((t) => (
@@ -39,9 +39,9 @@ export default async function MessagesPage() {
           ))}
         </ul>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-6 text-center text-[15px] text-ink-muted">
+        <EmptyNote art={KIT.mark.birds}>
           No conversations yet. Open someone&rsquo;s profile and choose Message.
-        </p>
+        </EmptyNote>
       )}
     </div>
   );
