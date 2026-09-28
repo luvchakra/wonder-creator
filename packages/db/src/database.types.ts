@@ -1124,6 +1124,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_visits": {
+                  Row: {
+                    "creator_id": string,"last_seen_at": string,"previous_seen_at": string | null
+                  }
+                  Insert: {
+                    "creator_id": string,"last_seen_at"?: string,"previous_seen_at"?: string | null
+                  }
+                  Update: {
+                    "creator_id"?: string,"last_seen_at"?: string,"previous_seen_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_visits_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_voice_profiles": {
                   Row: {
                     "code_switching": boolean,"color_preferences": (string)[],"composition_notes": string | null,"creator_id": string,"experimentation": string,"formality": string | null,"language_style": string | null,"narrative_style": string | null,"recurring_themes": (string)[],"tones": (string)[],"updated_at": string,"visual_moods": (string)[],"visual_styles": (string)[],"vocabulary": string | null,"writing_style": string | null
@@ -3306,6 +3325,9 @@ isOneToOne: false
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
               "huddle_id": string,"participant_count": number,"participant_ids": (string)[],"participant_names": (string)[],"started_at": string,"topic": string,"viewer_state": string
             }[]
+                           },
+"mark_home_visit":
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "market_listing_readiness":
 { Args: { "p_listing": string }; Returns: (string)[]
