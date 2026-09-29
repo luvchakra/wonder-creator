@@ -1,4 +1,5 @@
 import "server-only";
+import { mediaLink } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
 import { serviceClient, serviceConfigured } from "./supabase/service";
 
@@ -13,10 +14,22 @@ export async function avatarUrls(db: Db, creatorIds: string[]): Promise<Record<s
   const rows = (data ?? []).filter((r) => r.avatar_object_id);
   if (!rows.length) return {};
   const service = serviceClient();
-  const objs = await service.from("storage_objects").select("id, path, creator_id").in("id", rows.map((r) => r.avatar_object_id!));
+  const objs = await service
+    .from("storage_objects")
+    .select("id, path, creator_id")
+    .in(
+      "id",
+      rows.map((r) => r.avatar_object_id!),
+    );
   const valid = (objs.data ?? []).filter((o) => rows.some((r) => r.avatar_object_id === o.id && r.id === o.creator_id));
   if (!valid.length) return {};
-  const signed = await service.storage.from("creator-media").createSignedUrls(valid.map((o) => o.path), 3600);
+  // Stable links so avatars aren't downloaded again on every page.
+  const stable = valid.map((o) => [o.creator_id, mediaLink(o.id)] as const);
+  if (stable.every(([, l]) => l)) return Object.fromEntries(stable) as Record<string, string>;
+  const signed = await service.storage.from("creator-media").createSignedUrls(
+    valid.map((o) => o.path),
+    3600,
+  );
   const out: Record<string, string> = {};
   for (const o of valid) {
     const url = signed.data?.find((s) => s.path === o.path)?.signedUrl;

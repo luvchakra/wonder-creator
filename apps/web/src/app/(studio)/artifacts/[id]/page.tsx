@@ -1,6 +1,7 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
+import { ContextBack } from "@/components/context-back";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -17,9 +18,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: data?.title ?? "Creation" };
 }
 
-export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; details?: string }> }) {
+export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; details?: string; from?: string }> }) {
   const { id } = await params;
-  const { tab, details } = await searchParams;
+  const { tab, details, from } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   // Lineage and references moved to the Context view (UI redesign §16); old links keep working.
   if (tab === "lineage" || tab === "references") redirect(`/artifacts/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
@@ -107,6 +108,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const permissions: Array<"edit" | "publish" | "rights" | "collaborate" | "invite"> = isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : collaborator ? ["collaborate"] : [];
   return (
     <>
+      <ContextBack db={db} from={from} />
       <PaletteScope
         context={{
           page: "creation",

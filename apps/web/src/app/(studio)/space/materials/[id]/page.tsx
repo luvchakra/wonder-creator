@@ -1,15 +1,33 @@
 import { getMaterial, listCollections, listShelves, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { notFound } from "next/navigation";
+import { ContextBack } from "@/components/context-back";
 import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { MaterialDetail } from "./detail";
 
 export const metadata = { title: "Material" };
 
-const KIND_LABEL: Record<string, string> = { idea: "Idea", reference: "Reference", research: "Research", conversation: "Conversation", inspiration: "Inspiration", image: "Photo", sketch: "Sketch", voice: "Voice", audio: "Audio", video: "Video", note: "Note", text: "Note", document: "Document", pdf: "Document", url: "Link" };
+const KIND_LABEL: Record<string, string> = {
+  idea: "Idea",
+  reference: "Reference",
+  research: "Research",
+  conversation: "Conversation",
+  inspiration: "Inspiration",
+  image: "Photo",
+  sketch: "Sketch",
+  voice: "Voice",
+  audio: "Audio",
+  video: "Video",
+  note: "Note",
+  text: "Note",
+  document: "Document",
+  pdf: "Document",
+  url: "Link",
+};
 
-export default async function MaterialPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MaterialPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
   const { id } = await params;
+  const { from } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const m = await getMaterial(db, id).catch(() => null);
@@ -41,7 +59,28 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   };
   return (
     <>
-      <PaletteScope context={{ page: "material", entityType: m.type === "image" || m.type === "sketch" ? "photo" : m.type === "voice" || m.type === "audio" ? "audio" : m.type === "video" ? "video" : m.type === "url" ? "link" : m.type === "document" || m.type === "pdf" ? "document" : "note", permissions: m.creator_id === creator.id ? ["edit"] : [], ids: { materialId: id }, facts: { related: related || null }, strip }} />
+      <ContextBack db={db} from={from} />
+      <PaletteScope
+        context={{
+          page: "material",
+          entityType:
+            m.type === "image" || m.type === "sketch"
+              ? "photo"
+              : m.type === "voice" || m.type === "audio"
+                ? "audio"
+                : m.type === "video"
+                  ? "video"
+                  : m.type === "url"
+                    ? "link"
+                    : m.type === "document" || m.type === "pdf"
+                      ? "document"
+                      : "note",
+          permissions: m.creator_id === creator.id ? ["edit"] : [],
+          ids: { materialId: id },
+          facts: { related: related || null },
+          strip,
+        }}
+      />
       <MaterialDetail
         canGenerate={m.creator_id === creator.id}
         m={{

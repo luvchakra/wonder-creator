@@ -1,9 +1,9 @@
 "use client";
 import { USAGE_LABEL, groupSources, materialActionsFor, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import { cn } from "@wonder/ui";
-import { ChevronDown, ChevronRight, Columns2, Loader2, Image as ImageIcon, ImagePlus, PenLine, RefreshCw, Scissors, Sparkles, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Columns2, Loader2, Image as ImageIcon, ImagePlus, PenLine, RefreshCw, Scissors, Sparkles, Type } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/client";
 import { useSoundtrack } from "@/components/soundtrack/audio-provider";
 import { SourceIcon } from "./working-set";
@@ -36,6 +36,25 @@ function writeOpen(artifactId: string, id: string | null) {
   }
   listeners.forEach((l) => l());
 }
+// Whether the sheet is slid down, remembered per device (same tiny store).
+const HIDDEN_KEY = "wc.studio.materials-hidden";
+function readHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDDEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeHidden(v: boolean) {
+  try {
+    if (v) localStorage.setItem(HIDDEN_KEY, "1");
+    else localStorage.removeItem(HIDDEN_KEY);
+  } catch {
+    /* private mode */
+  }
+  listeners.forEach((l) => l());
+}
+
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => {
@@ -89,6 +108,22 @@ export function SourcesPanel({
   onAction: (row: WorkingSource, action: MaterialAction) => Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const hidden = useSyncExternalStore(subscribe, readHidden, () => false);
+  // Swipe the handle: down slides the sheet away, up brings it back (a tap toggles; the gesture is never required).
+  const swipe = useRef<number | null>(null);
+  const handleProps = {
+    onPointerDown: (e: React.PointerEvent) => {
+      swipe.current = e.clientY;
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      const start = swipe.current;
+      swipe.current = null;
+      if (start === null) return;
+      const dy = e.clientY - start;
+      if (dy > 32 && !hidden) writeHidden(true);
+      else if (dy < -32 && hidden) writeHidden(false);
+    },
+  };
   const remembered = useSyncExternalStore(
     subscribe,
     () => readOpen(artifactId),
@@ -115,89 +150,126 @@ export function SourcesPanel({
   // Only the last one opened stays open — and any can be closed, so all can be (owner, 29 Sep 2026).
   const openId = remembered && rows.some((r) => r.id === remembered) ? remembered : null;
   return (
-    <section aria-labelledby="sources-title" className="mt-3 rounded-3xl border border-border-soft bg-surface/80 p-3 pt-2 shadow-[var(--shadow-card)]">
-      <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-border-soft" />
+    <section aria-labelledby="sources-title" className="mt-3 rounded-3xl border border-border-soft bg-surface/80 p-3 pt-1 shadow-[var(--shadow-card)]">
+      {/* The handle slides the sheet down and back (owner, 29 Sep 2026). */}
+      <button
+        type="button"
+        aria-expanded={!hidden}
+        aria-controls="used-materials-list"
+        aria-label={hidden ? "Show used materials" : "Slide used materials down"}
+        onClick={() => writeHidden(!hidden)}
+        {...handleProps}
+        className="flex min-h-7 w-full touch-none items-center justify-center"
+      >
+        <span aria-hidden className="block h-1 w-10 rounded-full bg-border-soft" />
+      </button>
       <div className="mb-2 flex items-start justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <h2 id="sources-title" className="text-[15px] font-semibold text-ink">
-            Used materials
-          </h2>
-          <p className="text-[12.5px] text-ink-subtle">
-            {rows.length} {rows.length === 1 ? "material" : "materials"} · {lost ? `${lost} no longer available` : "All visible on this creation"}
-          </p>
-        </div>
-        <button type="button" onClick={onSeeAll} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 rounded-full px-2 text-[13px] text-ink-muted hover:text-ink">
-          See all <ChevronRight className="size-3.5" aria-hidden />
-        </button>
+        {hidden ? (
+          <button type="button" onClick={() => writeHidden(false)} className="min-h-11 min-w-0 text-left">
+            <h2 id="sources-title" className="text-[15px] font-semibold text-ink">
+              Used materials <span className="font-normal text-ink-subtle">· {rows.length}</span>
+            </h2>
+          </button>
+        ) : (
+          <div className="min-w-0">
+            <h2 id="sources-title" className="text-[15px] font-semibold text-ink">
+              Used materials
+            </h2>
+            <p className="text-[12.5px] text-ink-subtle">
+              {rows.length} {rows.length === 1 ? "material" : "materials"} · {lost ? `${lost} no longer available` : "All visible on this creation"}
+            </p>
+          </div>
+        )}
+        {hidden ? (
+          <button
+            type="button"
+            onClick={() => writeHidden(false)}
+            className="inline-flex min-h-9 shrink-0 items-center gap-0.5 rounded-full px-2 text-[13px] font-medium text-accent-ink hover:bg-accent-softer"
+          >
+            Show <ChevronUp className="size-3.5" aria-hidden />
+          </button>
+        ) : (
+          <button type="button" onClick={onSeeAll} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 rounded-full px-2 text-[13px] text-ink-muted hover:text-ink">
+            See all <ChevronRight className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
-      <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
-        {rows.map((row) => {
-          const open = row.id === openId;
-          const actions = materialActionsFor(row, creationType);
-          const how = row.usageNote ? `“${row.usageNote}”` : row.usageIntent ? USAGE_LABEL[row.usageIntent] : null;
-          const where = [how, usedIn(usage[row.id]) ?? (how ? null : STATE_LABEL[row.state])].filter(Boolean).join(" · ");
-          return (
-            <li key={row.id}>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-controls={`source-${row.id}`}
-                onClick={() => writeOpen(artifactId, open ? null : row.id)}
-                className="flex min-h-12 w-full items-center gap-2.5 px-2.5 py-1.5 text-left hover:bg-black/[0.02]"
-              >
-                <SourceIcon s={row} size="size-9" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    {row.fresh ? <span className="shrink-0 rounded-full bg-accent-softer px-1.5 py-px text-[11px] font-semibold text-accent-ink">New</span> : null}
-                    <span className="truncate text-[14px] font-medium text-ink">{row.title}</span>
-                  </span>
-                  <span className="block truncate text-[12px] text-ink-subtle">{row.kind}</span>
-                </span>
-                <span className="hidden shrink-0 text-[12.5px] text-ink-muted sm:block">{where}</span>
-                <ChevronDown className={cn("size-4 shrink-0 text-ink-subtle transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden />
-              </button>
-              <p className="-mt-1 px-2.5 pb-1 pl-[3.5rem] text-[12px] text-ink-muted sm:hidden">{row.fresh && !how ? "Freshly brought in" : where}</p>
-              {open && set ? <SourceBody row={row} sessionId={set.sessionId} onUsePart={() => onUsePart(row)} /> : null}
-              {/* How to use it here, one tap each (owner board): context-based, always visible, open or not. */}
-              {actions.length ? (
-                <div className="-mx-0.5 flex gap-1.5 overflow-x-auto px-2.5 pb-2.5 [scrollbar-width:none]" role="group" aria-label={`Use ${row.title}`}>
-                  {actions.map((x) => {
-                    const Icon = ACTION_ICON[x.action];
-                    const key = `${row.id}:${x.action}`;
-                    return (
-                      <button
-                        key={x.action}
-                        type="button"
-                        disabled={!!busy}
-                        onClick={async () => {
-                          setBusy(key);
-                          try {
-                            await onAction(row, x.action);
-                          } finally {
-                            setBusy(null);
-                          }
-                        }}
-                        className="inline-flex min-h-11 shrink-0 items-center"
-                      >
-                        <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-softer px-3 text-[12.5px] font-medium text-accent-ink hover:bg-accent-soft">
-                          {busy === key ? <Loader2 className="size-3.5 motion-safe:animate-spin" aria-hidden /> : <Icon className="size-3.5" aria-hidden />}
-                          {busy === key ? "Working…" : x.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      <div
+        id="used-materials-list"
+        className={cn("grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none", hidden ? "invisible grid-rows-[0fr]" : "grid-rows-[1fr]")}
+        inert={hidden || undefined}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
+            {rows.map((row) => {
+              const open = row.id === openId;
+              const actions = materialActionsFor(row, creationType);
+              const how = row.usageNote ? `“${row.usageNote}”` : row.usageIntent ? USAGE_LABEL[row.usageIntent] : null;
+              const where = [how, usedIn(usage[row.id]) ?? (how ? null : STATE_LABEL[row.state])].filter(Boolean).join(" · ");
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={`source-${row.id}`}
+                    onClick={() => writeOpen(artifactId, open ? null : row.id)}
+                    className="flex min-h-12 w-full items-center gap-2.5 px-2.5 py-1.5 text-left hover:bg-black/[0.02]"
+                  >
+                    <SourceIcon s={row} size="size-9" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        {row.fresh ? <span className="shrink-0 rounded-full bg-accent-softer px-1.5 py-px text-[11px] font-semibold text-accent-ink">New</span> : null}
+                        <span className="truncate text-[14px] font-medium text-ink">{row.title}</span>
+                      </span>
+                      <span className="block truncate text-[12px] text-ink-subtle">{row.kind}</span>
+                    </span>
+                    <span className="hidden shrink-0 text-[12.5px] text-ink-muted sm:block">{where}</span>
+                    <ChevronDown className={cn("size-4 shrink-0 text-ink-subtle transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden />
+                  </button>
+                  <p className="-mt-1 px-2.5 pb-1 pl-[3.5rem] text-[12px] text-ink-muted sm:hidden">{row.fresh && !how ? "Freshly brought in" : where}</p>
+                  {open && set ? <SourceBody row={row} sessionId={set.sessionId} artifactId={artifactId} onUsePart={() => onUsePart(row)} /> : null}
+                  {/* How to use it here, one tap each (owner board): context-based, always visible, open or not. */}
+                  {actions.length ? (
+                    <div className="-mx-0.5 flex gap-1.5 overflow-x-auto px-2.5 pb-2.5 [scrollbar-width:none]" role="group" aria-label={`Use ${row.title}`}>
+                      {actions.map((x) => {
+                        const Icon = ACTION_ICON[x.action];
+                        const key = `${row.id}:${x.action}`;
+                        return (
+                          <button
+                            key={x.action}
+                            type="button"
+                            disabled={!!busy}
+                            onClick={async () => {
+                              setBusy(key);
+                              try {
+                                await onAction(row, x.action);
+                              } finally {
+                                setBusy(null);
+                              }
+                            }}
+                            className="inline-flex min-h-11 shrink-0 items-center"
+                          >
+                            <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-softer px-3 text-[12.5px] font-medium text-accent-ink hover:bg-accent-soft">
+                              {busy === key ? <Loader2 className="size-3.5 motion-safe:animate-spin" aria-hidden /> : <Icon className="size-3.5" aria-hidden />}
+                              {busy === key ? "Working…" : x.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 }
 
 /** What the open source holds. Loaded when opened; the row never waits for it. */
-function SourceBody({ row, sessionId, onUsePart }: { row: WorkingSource; sessionId: string; onUsePart: () => void }) {
+function SourceBody({ row, sessionId, artifactId, onUsePart }: { row: WorkingSource; sessionId: string; artifactId: string; onUsePart: () => void }) {
   const sound = useSoundtrack();
   const [detail, setDetail] = useState<{ text: string | null; audioUrl: string | null; durationSeconds: number | null } | null>(null);
   useEffect(() => {
@@ -234,7 +306,7 @@ function SourceBody({ row, sessionId, onUsePart }: { row: WorkingSource; session
       ) : null}
       <p className="flex flex-wrap gap-x-4 text-[13px]">
         {row.href ? (
-          <Link href={row.href} className="inline-flex min-h-9 items-center font-medium text-accent-ink hover:underline">
+          <Link href={`${row.href}${row.href.includes("?") ? "&" : "?"}from=studio:${artifactId}`} className="inline-flex min-h-9 items-center font-medium text-accent-ink hover:underline">
             See more
           </Link>
         ) : null}

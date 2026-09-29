@@ -1,5 +1,5 @@
 import { audit, DomainError, log } from "@wonder/core";
-import { inspectUpload } from "@wonder/core/server";
+import { inspectUpload, mediaLink } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
 import { buildImagePrompt, contextHash, directionsFor, hasMeaningfulContext, IMAGE_SYSTEM, PROMPT_VERSION, slideDirections, type ImageDirection, type ImageGenerationContext } from "./context";
 import { defaultQualityFor, resolveImageModel, ROUTING_VERSION } from "./router";
@@ -122,6 +122,12 @@ export async function generationView(db: Db, service: Db, generationId: string, 
   const { data: objs } = ids.length ? await service.from("storage_objects").select("id, bucket, path").in("id", ids) : { data: [] };
   const urls = new Map<string, string>();
   for (const o of objs ?? []) {
+    // A stable link (same all day) so the browser keeps the picture; a signed URL only without a server secret.
+    const stable = mediaLink(o.id);
+    if (stable) {
+      urls.set(o.id, stable);
+      continue;
+    }
     const s = await service.storage.from(o.bucket).createSignedUrl(o.path, 900);
     if (s.data?.signedUrl) urls.set(o.id, s.data.signedUrl);
   }
