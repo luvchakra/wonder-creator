@@ -63,9 +63,15 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 <p className="text-ink-subtle">@{c.handle}</p>
               </div>
               {isMe ? (
-                <Link href="/settings" className={buttonClasses({ variant: "secondary" })}>
-                  <PenLine className="size-4" aria-hidden /> Edit profile
-                </Link>
+                <span className="flex flex-wrap gap-2">
+                  <Link href="/settings" className={buttonClasses({ variant: "secondary" })}>
+                    <PenLine className="size-4" aria-hidden /> Edit profile
+                  </Link>
+                  {/* The public home is curated separately from this Profile (CreatorPublish §39). */}
+                  <Link href="/creator-page" className={buttonClasses({ variant: "ghost" })}>
+                    Your Creator Page
+                  </Link>
+                </span>
               ) : (
                 <ProfileActions creatorId={c.id} following={!!follow.data} myLiveHuddleId={myLive[0]?.huddleId ?? null} canMessage={messageable} />
               )}

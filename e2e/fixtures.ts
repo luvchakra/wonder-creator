@@ -312,7 +312,33 @@ interface Fixtures {
   openContext: (label: string) => Promise<{ context: BrowserContext; page: Page }>;
 }
 
+/**
+ * While a page streams in (the app shell has a loading boundary), React briefly keeps the incoming content in a hidden
+ * holder (`div[hidden][id^="S:"]`) after it's already on screen. Readers never see it, but Playwright's strict text
+ * matching counts hidden elements, so a check right after a load could find the same words twice. After goto/reload,
+ * wait (briefly) for those holders to empty before the test looks.
+ */
+export async function settleStreaming(page: Page) {
+  await page
+    .waitForFunction(() => ![...document.querySelectorAll('div[hidden][id^="S:"]')].some((d) => d.childElementCount > 0), undefined, { timeout: 5_000 })
+    .catch(() => undefined);
+}
+function settleOnLoad(page: Page) {
+  for (const method of ["goto", "reload"] as const) {
+    const original = page[method].bind(page) as (...a: unknown[]) => Promise<unknown>;
+    (page as unknown as Record<string, unknown>)[method] = async (...args: unknown[]) => {
+      const res = await original(...args);
+      await settleStreaming(page);
+      return res;
+    };
+  }
+}
+
 export const test = base.extend<Fixtures>({
+  page: async ({ page }, use) => {
+    settleOnLoad(page);
+    await use(page);
+  },
   consoleGuard: [
     async ({ context }, use, testInfo) => {
       const guard = createConsoleGuard();
@@ -332,7 +358,9 @@ export const test = base.extend<Fixtures>({
     await use(async (label: string) => {
       const context = await newWatchedContext(browser, consoleGuard, label);
       opened.push(context);
-      return { context, page: await context.newPage() };
+      const page = await context.newPage();
+      settleOnLoad(page);
+      return { context, page };
     });
     for (const c of opened) await c.close();
   },

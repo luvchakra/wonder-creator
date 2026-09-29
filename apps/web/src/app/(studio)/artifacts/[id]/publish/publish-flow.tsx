@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { LocalTime, RelativeTime } from "@/components/client-time";
 import { ConnectWebhookDialog as ConnectDialog } from "@/components/connect-webhook-dialog";
 import { api, errorMessage } from "@/lib/client";
+import { PublishOnPage } from "@/components/publish/publish-on-page";
 
 type Destination = { id: string; name: string; url: string; secret: string };
 type Attempt = { attempt_no: number; started_at: string; finished_at: string | null; outcome: string | null; http_status: number | null; error: string | null };
@@ -198,6 +199,10 @@ export function PublishFlow(props: {
         </Link>
         .
       </p>
+      {/* CreatorPublish first (docs/creator-publish.md §40): your own page is the canonical home; other destinations follow. */}
+      <div className="mt-4">
+        <PublishOnPage artifactId={artifact.id} title={artifact.title} />
+      </div>
 
       {blocked ? <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">{blocked}</p> : null}
       {error ? (

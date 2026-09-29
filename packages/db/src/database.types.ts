@@ -1180,6 +1180,25 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_pages": {
+                  Row: {
+                    "creator_id": string,"headline": string | null,"intro": string | null,"is_published": boolean,"links": NonNullable<Json>,"public_dejavu_ids": (string)[],"public_moment_ids": (string)[],"sections": NonNullable<Json>,"updated_at": string
+                  }
+                  Insert: {
+                    "creator_id": string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Update: {
+                    "creator_id"?: string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_pages_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_relationships": {
                   Row: {
                     "created_at": string,"creator_a": string,"creator_b": string,"last_met_at": string | null,"met_in_huddle_count": number
@@ -2941,6 +2960,93 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"published_revisions": {
+                  Row: {
+                    "artifact_id": string,"creator_id": string,"id": string,"manifest": NonNullable<Json>,"provenance_snapshot": NonNullable<Json>,"published_at": string,"revision_number": number,"rights_snapshot": NonNullable<Json>,"snapshot": NonNullable<Json>,"version_id": string | null,"work_id": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"creator_id": string,"id"?: string,"manifest": NonNullable<Json>,"provenance_snapshot"?: NonNullable<Json>,"published_at"?: string,"revision_number": number,"rights_snapshot"?: NonNullable<Json>,"snapshot": NonNullable<Json>,"version_id"?: string | null,"work_id": string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"creator_id"?: string,"id"?: string,"manifest"?: NonNullable<Json>,"provenance_snapshot"?: NonNullable<Json>,"published_at"?: string,"revision_number"?: number,"rights_snapshot"?: NonNullable<Json>,"snapshot"?: NonNullable<Json>,"version_id"?: string | null,"work_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "published_revisions_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "published_revisions_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "published_revisions_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "published_revisions_work_id_fkey"
+      columns: ["work_id"]
+isOneToOne: false
+      referencedRelation: "published_works"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"published_work_stats": {
+                  Row: {
+                    "completions": number,"day": string,"shares": number,"views": number,"work_id": string
+                  }
+                  Insert: {
+                    "completions"?: number,"day"?: string,"shares"?: number,"views"?: number,"work_id": string
+                  }
+                  Update: {
+                    "completions"?: number,"day"?: string,"shares"?: number,"views"?: number,"work_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "published_work_stats_work_id_fkey"
+      columns: ["work_id"]
+isOneToOne: false
+      referencedRelation: "published_works"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"published_works": {
+                  Row: {
+                    "artifact_id": string,"created_at": string,"creator_id": string,"current_revision_id": string | null,"featured": boolean,"id": string,"settings": NonNullable<Json>,"slug": string,"unpublished_at": string | null,"updated_at": string,"visibility": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"created_at"?: string,"creator_id": string,"current_revision_id"?: string | null,"featured"?: boolean,"id"?: string,"settings"?: NonNullable<Json>,"slug": string,"unpublished_at"?: string | null,"updated_at"?: string,"visibility"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"current_revision_id"?: string | null,"featured"?: boolean,"id"?: string,"settings"?: NonNullable<Json>,"slug"?: string,"unpublished_at"?: string | null,"updated_at"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "published_works_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: true
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "published_works_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "published_works_current_revision_fk"
+      columns: ["current_revision_id"]
+isOneToOne: false
+      referencedRelation: "published_revisions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"publishing_destinations": {
                   Row: {
                     "created_at": string,"creator_id": string,"id": string,"kind": string,"last_used_at": string | null,"name": string,"signing_secret": string,"status": string,"url": string
@@ -3874,6 +3980,15 @@ isOneToOne: false
               "detail": string,"item_id": string,"kind": string,"mine": boolean,"shared_at": string,"shared_by": string,"shared_by_name": string,"title": string
             }[]
                            },
+"public_creator_page":
+{ Args: { "p_handle": string }; Returns: Json
+                           },
+"public_dejavu":
+{ Args: { "p_dejavu": string,"p_handle": string }; Returns: Json
+                           },
+"public_work":
+{ Args: { "p_handle": string,"p_slug": string }; Returns: Json
+                           },
 "publication_signoff_status":
 { Args: { "p_artifact": string }; Returns: {
               "creator_id": string,"decided_at": string,"decision": string,"name": string,"note": string
@@ -3887,6 +4002,9 @@ isOneToOne: false
                            },
 "record_domain_event":
 { Args: { "p_aggregate_id": string,"p_aggregate_type": string,"p_correlation_id"?: string,"p_event_type": string,"p_payload"?: Json }; Returns: string
+                           },
+"record_publication_event":
+{ Args: { "p_kind": string,"p_work": string }; Returns: undefined
                            },
 "reopen_project":
 { Args: { "p_project": string }; Returns: undefined
