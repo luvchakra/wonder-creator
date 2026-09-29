@@ -1,4 +1,5 @@
 import { DomainError, fromDbError, must, publishEvent } from "@wonder/core";
+import { mediaLink } from "@wonder/core/server";
 import type { Db, Enums, JsonValue, Tables, TablesInsert, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
 
@@ -214,6 +215,9 @@ export async function signedUrlFor(db: Db, storageObjectId: string, expiresIn = 
   const obj = await db.from("storage_objects").select("bucket, path, security_status").eq("id", storageObjectId).maybeSingle();
   if (obj.error) throw fromDbError(obj.error);
   if (!obj.data || obj.data.security_status === "quarantined" || obj.data.security_status === "rejected") return null;
+  // A stable link for a checked file, so the browser keeps it (see mediaLink).
+  const stable = obj.data.security_status === "clean" ? mediaLink(storageObjectId) : null;
+  if (stable) return stable;
   const { data, error } = await db.storage.from(obj.data.bucket).createSignedUrl(obj.data.path, expiresIn);
   if (error) return null;
   return data.signedUrl;
@@ -247,6 +251,10 @@ export async function signedUrlsFor(db: Db, ids: Array<string | null | undefined
   const clean = (objs.data ?? []).filter((o) => o.security_status === "clean");
   const out: Record<string, string> = {};
   if (!clean.length) return out;
+  // Stable links (the same all day) so the browser keeps pictures instead of downloading them again; access was just
+  // checked above under the viewer's own RLS.
+  const stable = clean.map((o) => [o.id, mediaLink(o.id)] as const);
+  if (stable.every(([, l]) => l)) return Object.fromEntries(stable) as Record<string, string>;
   const { data } = await db.storage.from(MATERIAL_BUCKET).createSignedUrls(clean.map((o) => o.path), expiresIn);
   for (const o of clean) {
     const hit = data?.find((d) => d.path === o.path);

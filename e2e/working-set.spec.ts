@@ -120,9 +120,9 @@ test.describe("CreativeStudio Working Set", () => {
 
     await page.goto(`/artifacts/${art.id}/studio`);
     const panel = page.getByRole("region", { name: /^Used materials/ });
-    const rows = panel.locator("button[aria-expanded]");
+    const rows = panel.locator("li > button[aria-expanded]");
     await expect(rows).toHaveCount(2);
-    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(0);
+    await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(0);
     // Just brought in: marked New, with its own one-tap uses.
     await expect(panel.getByText("New", { exact: true })).toHaveCount(2);
     await expect(panel.getByRole("group", { name: /^Use The chai seller's radio/ }).getByRole("button", { name: "Add to draft" })).toBeVisible();
@@ -132,24 +132,24 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(radio).toHaveAttribute("aria-expanded", "true");
     await expect(panel.getByText("Old film songs, half heard.")).toBeVisible();
     await rows.filter({ hasText: "Rain on the platform roof" }).click();
-    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
+    await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(1);
     await page.reload();
     await expect(
       page
         .getByRole("region", { name: /^Used materials/ })
-        .locator("button[aria-expanded]")
+        .locator("li > button[aria-expanded]")
         .filter({ hasText: "Rain on the platform roof" }),
     ).toHaveAttribute("aria-expanded", "true");
     // Closing the open one leaves them all closed, and that's remembered too.
     await page
       .getByRole("region", { name: /^Used materials/ })
-      .locator("button[aria-expanded]")
+      .locator("li > button[aria-expanded]")
       .filter({ hasText: "Rain on the platform roof" })
       .click();
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(0);
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('li > button[aria-expanded="true"]')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator("button[aria-expanded]")).toHaveCount(2);
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(0);
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator("li > button[aria-expanded]")).toHaveCount(2);
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('li > button[aria-expanded="true"]')).toHaveCount(0);
   });
 
   test("Use this asks how: options from what the source is, or the creator's own words, and the row says so", async ({ page }) => {
@@ -310,5 +310,50 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Lamps/ })).toBeVisible();
     // Used now: the row says how.
     await expect(panel).toContainText("Its shape");
+  });
+  test("the Used materials sheet slides down and back; See more leads back to the Studio; pictures come through stable, cached links", async ({ page }) => {
+    const tag = uid();
+    const name = `window-${tag}`;
+    await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes(64) }]);
+    const item = sendItem(page, name);
+    await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+    const photo = (await item.getByRole("link", { name, exact: true }).getAttribute("href"))!.split("/").pop()!;
+    const title = `Platform ${tag}`;
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title, content: "Every Sunday." } })).json()).artifact as { id: string };
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: photo }] } });
+    await page.goto(`/artifacts/${art.id}/studio`);
+    const panel = page.getByRole("region", { name: /^Used materials/ });
+
+    // The picture is a stable link (the same on every load), privately cacheable.
+    const img = panel.locator("img").first();
+    await expect(img).toHaveAttribute("src", /^\/api\/v1\/media\/[0-9a-f-]{36}\?e=\d+&s=/);
+    const src = (await img.getAttribute("src"))!;
+    const res = await page.request.get(src, { maxRedirects: 0 });
+    expect(res.status()).toBe(302);
+    expect(res.headers()["cache-control"]).toMatch(/^private, max-age=\d+, immutable$/);
+    expect((await page.request.get(src.replace(/s=[^&]+/, "s=forged"), { maxRedirects: 0 })).status()).toBe(404);
+    await page.reload();
+    await expect(
+      page
+        .getByRole("region", { name: /^Used materials/ })
+        .locator("img")
+        .first(),
+    ).toHaveAttribute("src", src);
+
+    // Slide the sheet down; it stays down after a reload; bring it back.
+    await panel.getByRole("button", { name: "Slide used materials down" }).click();
+    await expect(panel.getByRole("group", { name: new RegExp(`^Use ${name}`) })).toBeHidden();
+    await page.reload();
+    await expect(panel.getByRole("button", { name: "Show used materials" })).toBeVisible();
+    await panel.getByRole("button", { name: /^Show$/ }).click();
+    await expect(panel.getByRole("group", { name: new RegExp(`^Use ${name}`) })).toBeVisible();
+
+    // See more → the material, with a way back to this Studio.
+    await panel.locator("li > button[aria-expanded]").filter({ hasText: name }).click();
+    await panel.getByRole("link", { name: "See more" }).click();
+    await expect(page).toHaveURL(new RegExp(`/space/materials/${photo}\\?from=studio:${art.id}$`));
+    await page.getByRole("link", { name: `Back to ${title}` }).click();
+    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/studio$`));
   });
 });

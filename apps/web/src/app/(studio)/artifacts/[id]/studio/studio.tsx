@@ -367,26 +367,12 @@ export function Studio({
   }
 
   /* ------------------------------------------------------------ CreativeMind: one bubble at a time */
-  const [connections, setConnections] = useState<Array<{ sourceIds: string[]; insight: string; why: string }> | null>(null);
+  // The "Possible connection" popup is gone (owner, 29 Sep 2026); only the quiet unused nudge remains.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    if (!set || offline || sources.filter((s) => s.available).length < 2 || connections) return;
-    api<{ live: boolean; connections: Array<{ sourceIds: string[]; insight: string; why: string }> }>(`/api/v1/studio-sessions/${set.sessionId}/connections`, { method: "POST", json: {} })
-      .then((r) => setConnections(r.connections))
-      .catch(() => setConnections([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [set?.sessionId, offline]);
-  const connection = (connections ?? []).find((c) => !dismissed.has(c.insight) && c.sourceIds.every((id) => sources.some((s) => s.id === id)));
-  const nudge = !connection && inUse > 0 ? unusedNudge(sources) : null;
+  const nudge = inUse > 0 ? unusedNudge(sources) : null;
   const nudgeKey = nudge ? `nudge:${nudge.count}` : null;
   const thumbs = sources.filter((x) => x.available && x.state !== "available" && x.thumbnailUrl).slice(0, 4);
   const showNudge = nudge && nudgeKey && !dismissed.has(nudgeKey);
-  async function useConnection() {
-    if (!set || !connection) return;
-    setDismissed((d) => new Set(d).add(connection.insight));
-    const r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}/states`, { method: "POST", json: { ids: connection.sourceIds, state: "in_use" } }).catch(() => null);
-    if (r) setSet(r.workingSet);
-  }
 
   const modeLabel = OUTPUT_MODES.find((m) => m.key === outputModeOf(artifact.type))?.label ?? "Writing";
   const editorFont = artifact.format === "screenplay" ? "font-mono text-[14px] leading-7" : artifact.format === "verse" ? "font-display text-[19px] leading-8" : "font-display text-[18px] leading-8";
@@ -660,43 +646,24 @@ export function Studio({
         </section>
       ) : null}
 
-      {/* One CreativeMind bubble at a time (§27–32): a connection, else a quiet nudge about what's unused. */}
-      {connection || showNudge ? (
+      {/* One quiet CreativeMind nudge about what's unused (§31–32). */}
+      {showNudge ? (
         <div className="fixed inset-x-3 bottom-[4.75rem] z-20 mx-auto max-w-3xl motion-safe:animate-[fade-in_160ms_ease-out]" role="status">
           <div className="flex items-start gap-2.5 rounded-2xl border border-border-soft bg-surface/95 p-3 pr-2 shadow-[var(--shadow-card)] backdrop-blur">
             <KitArt art={KIT.iconChip.sparkles} sizes="2rem" className="size-8 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-ink">{connection ? "Possible connection" : "Unused possibilities"}</p>
-              <p className="text-[13.5px] leading-snug text-ink">{connection ? connection.insight : nudge!.text}</p>
-              {connection ? (
-                <p className="mt-0.5 flex items-center gap-1 text-[12px] text-ink-subtle">
-                  <span className="flex -space-x-1.5" aria-hidden>
-                    {connection.sourceIds
-                      .map((id) => sources.find((s) => s.id === id))
-                      .filter((s): s is WorkingSource => !!s)
-                      .map((s) => (
-                        <SourceIcon key={s.id} s={s} size="size-5" ring />
-                      ))}
-                  </span>
-                  {connection.why}
-                </p>
-              ) : null}
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-ink">Unused possibilities</p>
+              <p className="text-[13.5px] leading-snug text-ink">{nudge!.text}</p>
               <div className="mt-1.5">
-                {connection ? (
-                  <Button size="sm" onClick={useConnection}>
-                    Use this connection
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="secondary" onClick={() => setSheet("set")}>
-                    See them
-                  </Button>
-                )}
+                <Button size="sm" variant="secondary" onClick={() => setSheet("set")}>
+                  See them
+                </Button>
               </div>
             </div>
             <button
               type="button"
               aria-label="Dismiss"
-              onClick={() => setDismissed((d) => new Set(d).add(connection ? connection.insight : nudgeKey!))}
+              onClick={() => setDismissed((d) => new Set(d).add(nudgeKey!))}
               className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink-subtle hover:bg-black/5"
             >
               <X className="size-4" aria-hidden />
@@ -726,7 +693,7 @@ export function Studio({
 
       {/* In-use visuals (owner board "Fan + Preview Bubble"): a compact strip of the pictures on the table, above the
           Sources pill, in the cover view only. Tapping a picture opens the Working Set on what's In use; + brings more in. */}
-      {mode === "view" && !isCarousel && !proposal && !connection && !showNudge && thumbs.length ? (
+      {mode === "view" && !isCarousel && !proposal && !showNudge && thumbs.length ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-20 mx-auto flex max-w-3xl">
           <ul className="pointer-events-auto flex items-center gap-1 rounded-xl border border-border-soft bg-surface/85 p-1 shadow-[var(--shadow-card)] backdrop-blur" aria-label="Pictures in use">
             {thumbs.map((t) => (

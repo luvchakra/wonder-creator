@@ -13,7 +13,7 @@ import {
 } from "@wonder/creator-studio/carousel";
 import type { Db } from "@wonder/db";
 import { z } from "zod";
-import { inspectUpload } from "@wonder/core/server";
+import { inspectUpload, mediaLink } from "@wonder/core/server";
 import { GENERATED_BUCKET, orderedSet, requestImageGeneration, type ImageDeps } from "./service";
 
 /**
@@ -80,6 +80,12 @@ async function signed(service: Db, ids: string[]): Promise<Map<string, string>> 
   if (!ids.length) return out;
   const { data: objs } = await service.from("storage_objects").select("id, bucket, path").in("id", ids);
   for (const o of objs ?? []) {
+    // A stable link (same all day) so the browser keeps the picture; a signed URL only without a server secret.
+    const stable = mediaLink(o.id);
+    if (stable) {
+      out.set(o.id, stable);
+      continue;
+    }
     const s = await service.storage.from(o.bucket).createSignedUrl(o.path, 900);
     if (s.data?.signedUrl) out.set(o.id, s.data.signedUrl);
   }
