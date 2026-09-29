@@ -5,4 +5,4 @@ import { requireUuid, withApi } from "@/lib/api";
 export const DELETE = withApi<{ replyId: string }>(async ({ db }, { replyId }) => {
   await deleteOwnReply(db, requireUuid(replyId, "reply"));
   return { ok: true };
-});
+}, { feature: "open_conversations_enabled" });

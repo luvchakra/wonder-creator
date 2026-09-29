@@ -16,9 +16,9 @@ export const GET = withApi(async ({ db, req }) => {
     cursor: p.get("cursor"),
     limit: Number(p.get("limit")) || undefined,
   });
-});
+}, { feature: "moments_enabled" });
 
 export const POST = withApi(async ({ db, creatorId, req }) => {
   const b = z.object({ entityType: z.string().max(40), entityId: z.string().uuid() }).parse(await readJson(req));
   return { moment: await ensureMomentForEntity(db, creatorId, b) };
-});
+}, { feature: "moments_enabled" });

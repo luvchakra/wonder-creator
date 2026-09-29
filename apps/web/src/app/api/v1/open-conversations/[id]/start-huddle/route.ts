@@ -3,6 +3,7 @@ import { getConversation, huddleContext } from "@wonder/creator-community";
 import { startHuddle } from "@wonder/creator-huddle";
 import { z } from "zod";
 import { readJson, requireUuid, withApi } from "@/lib/api";
+import { track } from "@/lib/telemetry";
 
 /**
  * POST — "Start Huddle about this" (§14): a live Huddle with the conversation's title and a short context drawn only
@@ -22,7 +23,8 @@ export const POST = withApi<{ id: string }>(
     const huddleId = await startHuddle(db, { topic: ctx.topic, description: ctx.description || undefined, discoverability: limited ? "invite_only" : "public", invite });
     const { error } = await db.rpc("open_conversation_link", { p_conversation: cid, p_kind: "huddle", p_target: huddleId });
     if (error) throw new DomainError("internal", "The Huddle started, but we couldn't link it to the conversation.", { cause: error });
+    track("huddle_from_conversation", creatorId);
     return { huddleId };
   },
-  { rateLimit: 6 },
+  { feature: "open_conversations_enabled", rateLimit: 6 },
 );

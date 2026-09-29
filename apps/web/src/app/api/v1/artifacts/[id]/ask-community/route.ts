@@ -3,6 +3,7 @@ import { createConversation } from "@wonder/creator-community";
 import { z } from "zod";
 import { checkBudget, readJson, withApi } from "@/lib/api";
 import { assertUuid } from "@/lib/studio";
+import { track } from "@/lib/telemetry";
 
 const schema = z.object({
   question: z.string().trim().min(3, "Ask a short question.").max(1000),
@@ -40,7 +41,8 @@ export const POST = withApi<{ id: string }>(
       fragment: b.fragment,
       invite,
     });
+    track("ask_community_sent", creatorId);
     return { conversation };
   },
-  { rateLimit: 6 },
+  { feature: "ask_community_enabled", rateLimit: 6 },
 );

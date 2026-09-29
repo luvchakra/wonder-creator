@@ -316,7 +316,39 @@ export function CommunityResponsesSheet({
       setBusy(null);
     }
   }
-  const list = data?.responses ?? [];
+  // Grouped by what they suggest (Phase 05 §10) — asked for once the sheet is open, never waited on, never applied.
+  const [groups, setGroups] = useState<Array<{ label: string; replyIds: string[] }>>([]);
+  const [only, setOnly] = useState<string[] | null>(null);
+  const triageKey = open && sessionId && (data?.responses.length ?? 0) >= 3 ? `${sessionId}:${data!.responses.map((r) => r.id).join(",")}` : null;
+  useEffect(() => {
+    if (!triageKey) return;
+    let live = true;
+    api<{ groups: Array<{ label: string; replyIds: string[] }> }>(`/api/v1/studio-sessions/${triageKey.split(":")[0]}/community-responses/triage`)
+      .then((r) => live && setGroups(r.groups))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [triageKey]);
+  async function takeGroup(ids: string[]) {
+    if (!sessionId) return;
+    setBusy("group");
+    setError(null);
+    try {
+      let next: WorkingSetView | null = null;
+      for (const rid of ids) next = (await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${sessionId}/community-responses/${rid}/use`, { method: "POST" })).workingSet;
+      if (next) onSet(next);
+      void api("/api/v1/telemetry", { method: "POST", json: { event: "community_triage_used" } }).catch(() => undefined);
+      setNote(`${ids.length} ${ids.length === 1 ? "reply is" : "replies are"} on the Working Table as feedback.`);
+      onChanged();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  const all = data?.responses ?? [];
+  const list = only ? all.filter((r) => only.includes(r.id)) : all;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Community responses" description={responsesLine(data) ?? "Replies to what you asked about this Creation."} art={KIT.painted.leafSprigSage} wide>
@@ -330,6 +362,28 @@ export function CommunityResponsesSheet({
             <p role="alert" className="text-sm text-danger">
               {error}
             </p>
+          ) : null}
+          {groups.length && !only ? (
+            <ul aria-label="What the replies suggest" className="divide-y divide-border-soft rounded-2xl bg-surface-muted/60">
+              {groups.map((g) => (
+                <li key={g.label} className="flex flex-wrap items-center gap-x-2 px-3 py-1">
+                  <span className="min-w-0 flex-1 text-[13.5px] text-ink">
+                    <span className="font-semibold">{g.replyIds.length}</span> {g.label}
+                  </span>
+                  <button type="button" onClick={() => setOnly(g.replyIds)} className="inline-flex min-h-11 items-center text-[12.5px] font-medium text-accent-ink hover:underline">
+                    View replies
+                  </button>
+                  <button type="button" disabled={!!busy} onClick={() => void takeGroup(g.replyIds)} className="inline-flex min-h-11 items-center text-[12.5px] font-medium text-ink hover:underline disabled:opacity-60">
+                    Use idea in Studio
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {only ? (
+            <button type="button" onClick={() => setOnly(null)} className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent-ink hover:underline">
+              ← All replies
+            </button>
           ) : null}
           {!list.length ? <p className="text-sm text-ink-muted">No replies yet. They’ll show here as they come in.</p> : null}
           <ul className="space-y-2" aria-label="Responses">

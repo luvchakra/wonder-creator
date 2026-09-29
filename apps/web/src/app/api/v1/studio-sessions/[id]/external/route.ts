@@ -79,5 +79,5 @@ export const POST = withApi<{ id: string }>(
       message: `${EXTERNAL_PROVIDER_LABEL[b.provider]} image added${b.use === "slide" ? " as a new slide" : b.use === "mood" ? " for mood" : ""}`,
     };
   },
-  { rateLimit: 30 },
+  { feature: "external_image_sources_enabled", rateLimit: 30 },
 );

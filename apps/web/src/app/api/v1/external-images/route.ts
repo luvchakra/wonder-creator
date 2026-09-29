@@ -12,5 +12,5 @@ export const GET = withApi(
     const r = await searchExternalImages(provider, q, keys);
     return { ...r, providers: EXTERNAL_PROVIDERS.map((p) => ({ provider: p, connected: externalConnected(p, keys) })) };
   },
-  { rateLimit: 60 },
+  { feature: "external_image_sources_enabled", rateLimit: 60 },
 );

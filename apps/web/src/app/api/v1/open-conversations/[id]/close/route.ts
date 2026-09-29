@@ -5,4 +5,4 @@ import { readJson, requireUuid, withApi } from "@/lib/api";
 export const POST = withApi<{ id: string }>(async ({ db, req }, { id }) => {
   const { closed } = (await readJson(req)) as { closed?: boolean };
   return { conversation: await setConversationClosed(db, requireUuid(id, "conversation"), closed !== false) };
-});
+}, { feature: "open_conversations_enabled" });

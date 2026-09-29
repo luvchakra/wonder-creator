@@ -9,14 +9,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
+import { useFeature } from "@/components/features";
 import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
+import type { ConversationSummaryView } from "@/lib/conversation-summary";
 
 type Props = {
   detail: ConversationDetail;
   viewerId: string;
   attachments: Record<string, { title: string; href: string }>;
   dejavus: { momentId: string | null; dejavus: DejaVu[] };
+  summary?: ConversationSummaryView | null;
 };
 
 /**
@@ -24,7 +27,7 @@ type Props = {
  * one reply box. Conversions (Huddle, Creative Room), DejaVu, reporting, muting and blocking sit under More; the owner's
  * controls (edit, close, visibility, remove a reply) only appear for the owner.
  */
-export function ConversationView({ detail, viewerId, attachments, dejavus }: Props) {
+export function ConversationView({ detail, viewerId, attachments, dejavus, summary }: Props) {
   const router = useRouter();
   const c = detail.conversation;
   const [reply, setReply] = useState("");
@@ -32,6 +35,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [studio, setStudio] = useState<StudioNote | null>(null);
+  const toStudio = useFeature("community_to_studio_enabled");
   const [sheet, setSheet] = useState<null | "edit" | "report" | "block">(null);
   const [reportTarget, setReportTarget] = useState<{ type: "open_conversation" | "open_conversation_reply"; id: string; creatorId: string } | null>(null);
 
@@ -97,7 +101,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
             </button>
           </MenuTrigger>
           <MenuContent>
-            {!c.removedAt ? (
+            {!c.removedAt && toStudio ? (
               <MenuItem onSelect={() => void act("studio", async () => setStudio(await bringToStudio("conversation", c.id)))}>
                 <PenTool className="size-4" aria-hidden /> Bring to Studio
               </MenuItem>
@@ -239,13 +243,35 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
         </p>
       ) : null}
 
+      {summary?.points.length ? (
+        <section aria-label="Conversation so far" className="rounded-2xl border border-border-soft bg-surface/90 px-3 py-2">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">Conversation so far</h2>
+          <ul className="mt-1 space-y-1">
+            {summary.points.map((p) => {
+              const first = p.replyIds.find((rid) => detail.replies.some((r) => r.id === rid && !r.deleted && !r.removed));
+              return (
+                <li key={p.text} className="text-[14px] leading-snug text-ink">
+                  {p.text}{" "}
+                  {first ? (
+                    <a href={`#reply-${first}`} className="whitespace-nowrap text-[12.5px] font-medium text-accent-ink hover:underline">
+                      {p.replyIds.length === 1 ? "See the reply" : `See ${p.replyIds.length} replies`}
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          {summary.stale ? <p className="mt-1 text-[12px] text-ink-subtle">Summary from earlier · {summary.newer} newer {summary.newer === 1 ? "reply" : "replies"} below</p> : null}
+        </section>
+      ) : null}
+
       <section aria-label="Replies" className="space-y-2">
         <h2 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
           {c.replyCount} {c.replyCount === 1 ? "reply" : "replies"}
         </h2>
         <ul className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90">
           {detail.replies.map((r) => (
-            <li key={r.id} className="flex items-start gap-2.5 px-3 py-2.5">
+            <li key={r.id} id={`reply-${r.id}`} className="flex scroll-mt-20 items-start gap-2.5 px-3 py-2.5">
               <Avatar name={r.author.name} size={28} />
               <div className="min-w-0 flex-1">
                 <p className="text-[12.5px] text-ink-muted">
@@ -274,9 +300,11 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
                     </button>
                   </MenuTrigger>
                   <MenuContent>
-                    <MenuItem onSelect={() => void act("studio", async () => setStudio(await bringToStudio("conversation_reply", r.id)))}>
-                      <PenTool className="size-4" aria-hidden /> Use in Studio
-                    </MenuItem>
+                    {toStudio ? (
+                      <MenuItem onSelect={() => void act("studio", async () => setStudio(await bringToStudio("conversation_reply", r.id)))}>
+                        <PenTool className="size-4" aria-hidden /> Use in Studio
+                      </MenuItem>
+                    ) : null}
                     {r.creatorId !== viewerId ? (
                       <MenuItem
                         onSelect={() =>

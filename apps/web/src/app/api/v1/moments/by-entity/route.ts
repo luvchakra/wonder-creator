@@ -5,4 +5,4 @@ import { requireUuid, withApi } from "@/lib/api";
 export const GET = withApi(async ({ db, req }) => {
   const p = req.nextUrl.searchParams;
   return entityDejaVus(db, (p.get("entityType") ?? "").slice(0, 40), requireUuid(p.get("entityId") ?? undefined));
-});
+}, { feature: "moments_enabled" });

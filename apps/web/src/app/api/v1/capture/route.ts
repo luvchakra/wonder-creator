@@ -1,6 +1,6 @@
 import { DomainError, isDomainError, log } from "@wonder/core";
 import { MAX_UPLOAD_BYTES } from "@wonder/core/server";
-import { suggestDejaVusFromText } from "@wonder/creator-moments";
+import { suggestDejaVusFromText, suggestNewDejaVu } from "@wonder/creator-moments";
 import type { Db } from "@wonder/db";
 import { processIntake, receiveFile, receiveText, type IntakeDeps } from "@wonder/creator-send";
 import { after } from "next/server";
@@ -9,6 +9,7 @@ import { withApi } from "@/lib/api";
 import { providerFor } from "@/lib/brain";
 import { serviceClient } from "@/lib/supabase/service";
 import { track } from "@/lib/telemetry";
+import { flagOn } from "@/lib/features";
 
 export const maxDuration = 120;
 
@@ -101,6 +102,8 @@ export const POST = withApi(
         const { data: moment } = await service.from("moment_references").select("id").eq("creator_id", creatorId).eq("entity_type", "material").eq("entity_id", materialId).maybeSingle();
         const text = [m?.text_content, m?.extracted_text].filter(Boolean).join("\n");
         if (moment && text) await suggestDejaVusFromText(service, creatorId, moment.id, text);
+        // A recurring human theme that isn't a DejaVu yet (Phase 05 §6) — suggested, never created on its own.
+        if (moment && flagOn("dejavu_ai_suggestions_enabled")) await suggestNewDejaVu(service, creatorId, moment.id, materialId);
       } catch (e) {
         log("warn", "capture.suggest_failed", { code: isDomainError(e) ? e.code : "internal" });
       }

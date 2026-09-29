@@ -17,6 +17,20 @@ export const TELEMETRY_EVENTS = [
   "home_connection_opened",
   "home_dejavu_opened",
   "home_spark_opened",
+  // Phase 05 §18 — suggestion and connection outcomes (accepted, dismissed, opened, used later), not engagement.
+  "connection_opened",
+  "connection_dismissed",
+  "connection_used",
+  "connection_why_opened",
+  "dejavu_suggestion_accepted",
+  "dejavu_suggestion_dismissed",
+  "community_reply_used_in_studio",
+  "community_thought_saved",
+  "community_triage_used",
+  "conversation_summary_shown",
+  "huddle_from_conversation",
+  "creative_room_from_conversation",
+  "ask_community_sent",
 ] as const;
 export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];
 export const isTelemetryEvent = (e: unknown): e is TelemetryEvent => typeof e === "string" && (TELEMETRY_EVENTS as readonly string[]).includes(e);

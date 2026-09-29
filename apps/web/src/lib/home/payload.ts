@@ -3,11 +3,12 @@ import { log } from "@wonder/core";
 import { helpHeadline, homeCommunitySignals, knownCollaborators } from "@wonder/creator-community";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts, signedUrlsFor } from "@wonder/creator-library";
-import { filterOf } from "@wonder/creator-moments";
+import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
 import { artifactType } from "@wonder/creator-studio/types";
 import type { Db } from "@wonder/db";
 import { avatarUrls } from "../avatars";
 import { coverUrls } from "../covers";
+import { flags } from "../features";
 import { agoPhrase, pickSpark, splitHomeItems, SPARK_MIN_AGE_DAYS, type HomeItem } from "../home-sections";
 import { listNotifications } from "../notifications";
 import { homeContextLine, homeMode, pickContinue, selectSlots, summarizeAway, type AwayItem, type HomeCandidateKind, type HomeMode, type HomeSlot, type HomeSummary } from "./ranking";
@@ -44,6 +45,9 @@ export interface HomeConnectionCard {
   href: string;
   /** A CreativeMind suggestion the creator can accept or ignore (never attached on its own). */
   suggestion?: { momentId: string; suggestionId: string; name: string } | null;
+  /** A found connection (Phase 05 §5): can be dismissed, and says why it's here. */
+  connectionId?: string;
+  why?: string[];
 }
 
 export interface HomeDejaVuCard {
@@ -117,6 +121,8 @@ const UPDATE_CANDIDATE: Record<string, HomeCandidateKind> = {
 const DECISION_KINDS = new Set(["proposal", "proposal_review", "license_request", "rights_claim"]);
 
 export async function buildHomePayload(db: Db, creatorId: string, now = Date.now()): Promise<HomePayload> {
+  // Rollout (Phase 05 §19): without orchestration, Home is its calm fallback — Continue, Quick Capture, recent work.
+  if (!flags().home_orchestration_enabled) return fallback(db, creatorId, now);
   try {
     return await build(db, creatorId, now);
   } catch (e) {
@@ -176,7 +182,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     safe("feed", listPosts(db, creatorId, { scope: "following", creatorId }, { limit: 8 })),
     safe("materials", async () => (await db.from("creative_materials").select("id", { count: "exact", head: true }).eq("creator_id", creatorId)).count ?? 0),
   ]);
-  const community = await safe("community", () => homeCommunitySignals(db, creatorId));
+  const f = flags();
+  const community = f.community_enabled && f.community_home_cards_enabled ? await safe("community", () => homeCommunitySignals(db, creatorId)) : null;
 
   /* ------------------------------------------------------------------ Continue */
   const titleOf = new Map((works ?? []).map((w) => [w.id, w.title]));
@@ -252,7 +259,13 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const singleReady = awayItems.length === 1 && awayItems[0]!.kind === "visuals_ready" ? "Your visuals are ready" : null;
 
   /* ------------------------------------------------------------------ Connections, DejaVu, spark */
-  const [links, spark] = await Promise.all([safe("connections", () => connections(db, lastVisit, now)), safe("spark", () => sparkCard(db, creatorId, now))]);
+  const [found, links, spark] = await Promise.all([
+    f.semantic_connections_enabled ? safe("semantic-connection", () => foundConnection(db, now)) : null,
+    f.dejavu_enabled ? safe("connections", () => connections(db, lastVisit, now)) : null,
+    safe("spark", () => sparkCard(db, creatorId, now)),
+  ]);
+  // CreativeMind's found connection leads "Your world is connecting"; the deterministic one stands in when there's none.
+  if (found && links) links.connection = found;
 
   /* ------------------------------------------------------------------ Community (Phase 03 plugs in here) */
   const huddle = live?.[0] ?? null;
@@ -301,7 +314,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   /* ------------------------------------------------------------------ Mode, slots, line */
   const available: Partial<Record<HomeSlot, HomeCandidateKind>> = {};
   if (whileAway) available.whileAway = whileAway.candidate;
-  if (links?.connection) available.worldConnecting = "moment_connection";
+  const worldConnection = links?.connection ?? found ?? null;
+  if (worldConnection) available.worldConnecting = "moment_connection";
   if (links?.dejavu) available.dejavu = "creative_memory";
   if (spark) available.spark = "creative_memory";
   // A live Huddle is *relevant* when someone you follow or have worked with is in it; a stranger's is just activity.
@@ -352,9 +366,9 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     continue: cont,
     start,
     beginning: !cont && !start ? { hasMaterials: (materialCount ?? 0) > 0 } : undefined,
-    quickCapture: { textEnabled: true, voiceEnabled: true },
+    quickCapture: { textEnabled: true, voiceEnabled: flags().quick_capture_voice_enabled },
     whileAway: slots.has("whileAway") ? whileAway : undefined,
-    worldConnecting: slots.has("worldConnecting") ? links!.connection! : undefined,
+    worldConnecting: slots.has("worldConnecting") ? worldConnection! : undefined,
     dejavu: slots.has("dejavu") ? links!.dejavu! : undefined,
     spark: slots.has("spark") ? spark! : undefined,
     worthHearing: slots.has("worthHearing") ? worthHearing : undefined,
@@ -382,6 +396,21 @@ const monthOf = (iso: string, now: number) => {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { month: "long", ...(d.getUTCFullYear() !== new Date(now).getUTCFullYear() ? { year: "numeric" } : {}), timeZone: "UTC" });
 };
+
+/**
+ * The connection CreativeMind found (Phase 05 §5), as a Home card: its plain explanation, why it's here, and where it
+ * leads — the unfinished Creation for a creative opportunity, else the newest of its Moments.
+ */
+async function foundConnection(db: Db, now: number): Promise<HomeConnectionCard | null> {
+  const c = await currentConnection(db, now);
+  if (!c) return null;
+  const { data: ms } = await db.from("moment_references").select("id, entity_type, entity_id, occurred_at").in("id", c.momentIds);
+  const list = (ms ?? []).sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const target = c.connectionType === "creative_opportunity" ? (list.find((m) => m.entity_type === "creation") ?? list[0]) : list[0];
+  const href = target ? momentHref({ entityType: target.entity_type as never, entityId: target.entity_id }) : null;
+  if (!href) return null;
+  return { text: c.shortExplanation, href: c.connectionType === "creative_opportunity" && target?.entity_type === "creation" ? `${href}/studio` : href, connectionId: c.id, why: c.evidence };
+}
 
 /**
  * "Your world is connecting" and "A DejaVu surfaced" (§10–11), deterministic in this phase: Moments that recently
@@ -521,7 +550,7 @@ async function fallback(db: Db, creatorId: string, now: number): Promise<HomePay
         }
       : undefined,
     beginning: first ? undefined : { hasMaterials: true },
-    quickCapture: { textEnabled: true, voiceEnabled: true },
+    quickCapture: { textEnabled: true, voiceEnabled: flags().quick_capture_voice_enabled },
     recent: rest.map((r) => ({ id: r.id, title: r.title, typeLabel: artifactType(r.artifact_type).label })),
     avatars: {},
     generatedAt: new Date(now).toISOString(),

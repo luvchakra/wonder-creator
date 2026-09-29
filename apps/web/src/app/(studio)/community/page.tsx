@@ -7,6 +7,8 @@ import { PaletteScope } from "@/components/creative-palette";
 import { ExploreNav } from "@/components/explore-nav";
 import { communityView } from "@/lib/community";
 import { requireSession } from "@/lib/session";
+import { flagOn } from "@/lib/features";
+import { notFound } from "next/navigation";
 
 export const metadata = { title: "Community" };
 
@@ -23,6 +25,7 @@ const EMPTY: Record<CommunityFilter, { title: string; body: string }> = {
  * endless scroll. Muted and blocked creators never appear.
  */
 export default async function CommunityPage({ searchParams }: { searchParams: Promise<{ filter?: string; before?: string }> }) {
+  if (!flagOn("community_enabled")) notFound();
   const sp = await searchParams;
   const filter: CommunityFilter = sp.filter && (COMMUNITY_FILTERS as readonly string[]).includes(sp.filter) ? (sp.filter as CommunityFilter) : "for_you";
   const { db, creator } = await requireSession();

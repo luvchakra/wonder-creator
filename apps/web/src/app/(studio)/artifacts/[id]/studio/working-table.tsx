@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Columns2, Compass, Eye, Image as ImageIcon, 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSoundtrack } from "@/components/soundtrack/audio-provider";
+import { useFeature } from "@/components/features";
 import { api, errorMessage } from "@/lib/client";
 import { responsesLine, type ResponsesSummary } from "./studio-community";
 import { SourceIcon } from "./working-set";
@@ -193,10 +194,11 @@ function TableBody({
   const all = (set?.sources ?? []).filter((s) => s.available);
   const inUse = all.filter((s) => s.state !== "available");
   const available = all.filter((s) => s.state === "available");
+  const externalOn = useFeature("external_image_sources_enabled");
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     { key: "in_use", label: "In use", count: inUse.length },
     { key: "available", label: "Available", count: available.length },
-    { key: "external", label: "External" },
+    ...(externalOn ? [{ key: "external" as const, label: "External" }] : []),
   ];
   return (
     <div className="space-y-3">

@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 import { AppNav } from "@/components/app-nav";
+import { FeaturesProvider } from "@/components/features";
 import { PaletteProvider } from "@/components/creative-palette";
 import { NavMemory } from "@/components/nav-memory";
 import { AudioProvider } from "@/components/soundtrack/audio-provider";
 import { MiniPlayer, SoundtrackPanel } from "@/components/soundtrack/soundtrack-ui";
 import { avatarUrls } from "@/lib/avatars";
 import { preloadPaletteButton } from "@/lib/brand-preload";
+import { flags } from "@/lib/features";
 import { requireSession } from "@/lib/session";
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +16,7 @@ export default async function StudioLayout({ children }: { children: React.React
   preloadPaletteButton();
   return (
     // CreativeRadio lives above every route so music keeps playing while the creator moves around (music-player §18).
+    <FeaturesProvider value={flags()}>
     <AudioProvider>
       <PaletteProvider>
         <AppNav me={{ name: s.creator.display_name || "You", handle: s.creator.handle, avatarUrl: avatars[s.creator.id] ?? null }} />
@@ -27,5 +30,6 @@ export default async function StudioLayout({ children }: { children: React.React
         <SoundtrackPanel />
       </PaletteProvider>
     </AudioProvider>
+    </FeaturesProvider>
   );
 }

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { ConversationView } from "./view";
+import { readSummary, refreshSummaryLater } from "@/lib/conversation-summary";
+import { flagOn } from "@/lib/features";
 
 export const metadata = { title: "Conversation" };
 
@@ -12,6 +14,7 @@ export const metadata = { title: "Conversation" };
  * viewer can open them — publicly visible is never the same as free to reuse, and a private attachment stays private.
  */
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
+  if (!flagOn("open_conversations_enabled")) notFound();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
@@ -31,11 +34,15 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   for (const m of mats.data ?? []) visible[m.id] = { title: m.title || "A Material", href: `/space/materials/${m.id}` };
   for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/artifacts/${a.id}` };
   const dejavus = await entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] }));
+  // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
+  const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;
+  const summary = await readSummary(db, id, liveReplies).catch(() => null);
+  refreshSummaryLater(id, liveReplies, summary);
 
   return (
     <>
       <PaletteScope context={{ page: "explore" }} />
-      <ConversationView detail={detail} viewerId={creator.id} attachments={visible} dejavus={dejavus} />
+      <ConversationView detail={detail} viewerId={creator.id} attachments={visible} dejavus={dejavus} summary={summary} />
     </>
   );
 }

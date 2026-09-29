@@ -25,6 +25,7 @@ import { ArrowLeft, ArrowRight, Check, MoreHorizontal, Pin, Plus, Scissors, Sear
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { useFeature } from "@/components/features";
 import { DejaVuIntake } from "./studio-community";
 
 /**
@@ -663,6 +664,9 @@ type Only = SourceType | "community";
 
 function BringInBody({ sessionId, onAdded, onExternal }: { sessionId: string | null; onAdded: (next: WorkingSetView) => void; onExternal: () => void }) {
   const router = useRouter();
+  // Rollout flags (Phase 05 §19): a door that's off isn't shown.
+  const doors = { dejavu: useFeature("dejavu_enabled"), community: useFeature("community_to_studio_enabled"), external: useFeature("external_image_sources_enabled") };
+  const kinds = BRING_IN_KINDS.filter((k) => !(k.key in doors) || doors[k.key as keyof typeof doors]);
   const [q, setQ] = useState("");
   const [only, setOnly] = useState<Only | null>(null);
   const [dejavu, setDejavu] = useState(false);
@@ -766,7 +770,7 @@ function BringInBody({ sessionId, onAdded, onExternal }: { sessionId: string | n
         {!searching ? (
           <>
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Kinds of source">
-              {BRING_IN_KINDS.map((k) => (
+              {kinds.map((k) => (
                 <li key={k.key}>
                   <button
                     type="button"

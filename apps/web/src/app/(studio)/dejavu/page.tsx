@@ -2,6 +2,8 @@ import { listDejaVus } from "@wonder/creator-moments";
 import { EmptyState, buttonClasses } from "@wonder/ui";
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
+import { flagOn } from "@/lib/features";
+import { notFound } from "next/navigation";
 
 export const metadata = { title: "DejaVus" };
 
@@ -9,6 +11,7 @@ const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { d
 
 /** Every recurring thread, most recently used first (docs/moments-dejavu.md). One list, no dashboard. */
 export default async function DejaVusPage() {
+  if (!flagOn("dejavu_enabled")) notFound();
   const { db } = await requireSession();
   const all = await listDejaVus(db);
   return (

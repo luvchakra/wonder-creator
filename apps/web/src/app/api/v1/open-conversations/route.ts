@@ -18,5 +18,5 @@ export const POST = withApi(
     }
     return { conversation: await createConversation(db, creatorId, { ...body, invite }) };
   },
-  { rateLimit: 6 },
+  { feature: "open_conversations_enabled", rateLimit: 6 },
 );

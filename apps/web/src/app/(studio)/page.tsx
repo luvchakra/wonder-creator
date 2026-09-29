@@ -5,10 +5,11 @@ import Link from "next/link";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
-import { ConnectionActions } from "@/components/home/connection-actions";
+import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
+import { scheduleDiscovery } from "@/lib/home/discover";
 import { buildHomePayload, type HomeContinueItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
@@ -31,6 +32,7 @@ export default async function HomePage() {
   after(sweepStalePresence);
 
   const home = await buildHomePayload(db, creator.id);
+  scheduleDiscovery(db, creator.id);
   const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp].filter(Boolean).length;
   after(() => {
     track("home_opened", creator.id);
@@ -110,7 +112,9 @@ export default async function HomePage() {
 
             {home.worldConnecting ? (
               <section id="connecting" aria-label="Your world is connecting">
-                {home.worldConnecting.suggestion ? (
+                {home.worldConnecting.connectionId ? (
+                  <FoundConnection id={home.worldConnecting.connectionId} text={home.worldConnecting.text} href={home.worldConnecting.href} why={home.worldConnecting.why ?? []} />
+                ) : home.worldConnecting.suggestion ? (
                   <div className="px-3 py-2">
                     <RowBody icon={<Link2 className="size-5 text-accent" aria-hidden />} title="Your world is connecting" summary={home.worldConnecting.text} />
                     <div className="pl-12">

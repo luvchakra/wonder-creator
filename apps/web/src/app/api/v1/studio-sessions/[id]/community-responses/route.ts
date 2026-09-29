@@ -6,4 +6,4 @@ import { assertUuid } from "@/lib/studio";
 export const GET = withApi<{ id: string }>(async ({ db }, { id }) => {
   assertUuid(id);
   return await communityResponses(db, id);
-});
+}, { feature: "community_to_studio_enabled" });

@@ -16,7 +16,9 @@ export type TaskKind =
   | "message_draft" // draft a message for the creator to review and send (never sent automatically)
   | "publish_plan" // propose where/how/when to publish a piece (suggestions only; the creator approves)
   | "describe_image"
-  | "context_line"; // one short navbar line about the current creative moment (presentation only, never stored)
+  | "context_line" // one short navbar line about the current creative moment (presentation only, never stored)
+  | "conversation_summary" // the points of a long Open Conversation (viewpoints, never a winner)
+  | "reply_triage"; // group Ask Community replies by what they suggest (never applied automatically)
 
 export type ContentPart =
   | { type: "text"; text: string }
