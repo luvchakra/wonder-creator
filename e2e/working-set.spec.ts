@@ -110,12 +110,17 @@ test.describe("CreativeStudio Working Set", () => {
 
     // Change format: a new Creation from the same ingredients; its Studio has the same table plus this one.
     await page.getByRole("button", { name: /Writing/ }).click();
-    const format = page.getByRole("dialog", { name: "Change format" });
+    const format = page.getByRole("dialog", { name: "Make a new Creation" });
     await format.getByRole("radio", { name: /Carousel/ }).click();
-    await format.getByRole("button", { name: "Make it a carousel" }).click();
+    await format.getByRole("button", { name: "Create a new carousel" }).click();
     await page.waitForURL((u) => /\/artifacts\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
     await expect(page.getByRole("button", { name: /^Working Table: 4 sources · 4 in use/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
+    // A separate Creation: it says so and links back; the original is still the poem it was.
+    await page.getByRole("status").filter({ hasText: "is unchanged" }).getByRole("link", { name: "open it" }).click();
+    await page.waitForURL(new RegExp(`/artifacts/${art.id}/studio$`));
+    const original = (await (await page.request.get(`/api/v1/artifacts/${art.id}`)).json()) as { artifact: { artifact_type: string } };
+    expect(original.artifact.artifact_type).toBe("poem");
   });
 
   test("every source is a card on the Working Table; any can be opened or closed (all closed too), and the device remembers", async ({ page }) => {
@@ -263,12 +268,12 @@ test.describe("CreativeStudio Working Set", () => {
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await expect(how.getByRole("radio", { name: /Use it as a slide image/ })).toHaveAttribute("aria-checked", "true");
     await how.getByRole("button", { name: /Use it/ }).click();
-    // Offered, not replaced: the slide shows it with Keep current / Use new.
-    const choice = editor.getByRole("region", { name: "New image for this slide" });
-    await expect(choice).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("status").filter({ hasText: "Your photo is on the slide" })).toBeVisible();
-    await choice.getByRole("button", { name: "Use new" }).click();
-    await expect(choice).toHaveCount(0);
+    // Chosen, so placed: straight onto the slide, no Keep current / Use new step.
+    await expect(page.getByRole("status").filter({ hasText: "Your photo is on the slide" })).toBeVisible({ timeout: 30_000 });
+    await expect(editor.getByRole("region", { name: "New image for this slide" })).toHaveCount(0);
+    const before = (await (await page.request.get(`/api/v1/carousels/${id}`)).json()) as { slides: Array<{ pending: unknown; image: { url: string } | null }> };
+    expect(before.slides[0]!.pending).toBeNull();
+    expect(before.slides[0]!.image).not.toBeNull();
 
     // Words onto the slide on screen.
     await openSet(page);
@@ -277,6 +282,9 @@ test.describe("CreativeStudio Working Set", () => {
     await how.getByRole("radio", { name: /Put its words on this slide/ }).click();
     await how.getByRole("button", { name: /Use it/ }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 2: Lamps and steam/ })).toBeVisible({ timeout: 15_000 });
+    // …and onto the image: the overlay is switched on.
+    const after = (await (await page.request.get(`/api/v1/carousels/${id}`)).json()) as { slides: Array<{ overlay: { enabled: boolean } }> };
+    expect(after.slides[0]!.overlay.enabled).toBe(true);
   });
   test("one-tap uses under each material act on the carousel: add as new slide, split into slides, set as cover", async ({ page, creator }) => {
     const tag = uid();

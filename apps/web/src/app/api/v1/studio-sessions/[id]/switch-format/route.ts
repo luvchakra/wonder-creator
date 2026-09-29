@@ -20,7 +20,7 @@ export const POST = withApi<{ id: string }>(
     const target = b.artifactType && isKnownArtifactType(b.artifactType) ? b.artifactType : MODE_DEFAULT_TYPE[(b.mode ?? "writing") as keyof typeof MODE_DEFAULT_TYPE];
     const res = await transform(await brainDeps(db, creatorId, { correlationId: requestId }), { artifactId: set.artifactId, targetType: target, instruction: b.instruction || `Make this a ${target.replace(/_/g, " ")} from the same ingredients.`, versionId: null });
     const sessionId = await copyWorkingSet(db, creatorId, id, res.artifact.id);
-    return { artifactId: res.artifact.id, sessionId, offline: res.offline };
+    return { artifactId: res.artifact.id, fromArtifactId: set.artifactId, sessionId, offline: res.offline };
   },
   { rateLimit: 20, reindex: true },
 );

@@ -499,8 +499,8 @@ function UseTogether({ set, chosen, onClose, onDone }: { set: WorkingSetView; ch
     if (!switching) return;
     setBusy(true);
     try {
-      const res = await api<{ artifactId: string }>(`/api/v1/studio-sessions/${set.sessionId}/switch-format`, { method: "POST", json: { artifactType: switching.artifactType } });
-      router.push(`/artifacts/${res.artifactId}/studio`);
+      const res = await api<{ artifactId: string; fromArtifactId: string }>(`/api/v1/studio-sessions/${set.sessionId}/switch-format`, { method: "POST", json: { artifactType: switching.artifactType } });
+      router.push(`/artifacts/${res.artifactId}/studio?from=${res.fromArtifactId}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -1006,13 +1006,15 @@ export function ChangeFormatSheet({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Change format" description="Same ingredients, a different lens. This Creation stays; the new one keeps a link back." art={KIT.mark.sun}>
+      <DialogContent title="Make a new Creation" description="This one stays exactly as it is. A separate new Creation is made from the same ingredients, with a link back." art={KIT.mark.sun}>
         {open ? <ChangeFormatBody sessionId={sessionId} currentType={cur} aiLive={aiLive} /> : null}
       </DialogContent>
     </Dialog>
   );
 }
 
+// Never changes this Creation (owner, 29 Sep 2026: "should create a new creation completely, not destroy the existing
+// one"): the switch makes a new, derived Creation, and its Studio says where it came from.
 function ChangeFormatBody({ sessionId, currentType: cur, aiLive }: { sessionId: string | null; currentType: string; aiLive: boolean }) {
   const router = useRouter();
   const [pick, setPick] = useState<(typeof OUTPUT_MODES)[number]["key"] | "auto" | null>(null);
@@ -1024,11 +1026,11 @@ function ChangeFormatBody({ sessionId, currentType: cur, aiLive }: { sessionId: 
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ artifactId: string }>(`/api/v1/studio-sessions/${sessionId}/switch-format`, {
+      const res = await api<{ artifactId: string; fromArtifactId: string }>(`/api/v1/studio-sessions/${sessionId}/switch-format`, {
         method: "POST",
         json: pick === "auto" ? { instruction: "Choose the format that suits these ingredients best." } : { mode: pick },
       });
-      router.push(`/artifacts/${res.artifactId}/studio`);
+      router.push(`/artifacts/${res.artifactId}/studio?from=${res.fromArtifactId}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -1037,19 +1039,6 @@ function ChangeFormatBody({ sessionId, currentType: cur, aiLive }: { sessionId: 
   const label = pick && pick !== "auto" ? OUTPUT_MODES.find((m) => m.key === pick)?.label : null;
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        role="radio"
-        aria-checked={pick === null}
-        onClick={() => setPick(null)}
-        className={cn("flex min-h-12 w-full items-center gap-2.5 rounded-2xl border p-2.5 text-left", pick === null ? "border-accent bg-accent-softer" : "border-border-soft bg-surface")}
-      >
-        <KitArt art={KIT.iconChip[MODE_CHIP[current]]} sizes="2.25rem" className="size-9 shrink-0" />
-        <span>
-          <span className="block text-[13.5px] font-medium text-ink">Keep current ({OUTPUT_MODES.find((m) => m.key === current)?.label})</span>
-          <span className="block text-[11.5px] text-ink-subtle">{OUTPUT_MODES.find((m) => m.key === current)?.hint}</span>
-        </span>
-      </button>
       <ul className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Format">
         {OUTPUT_MODES.map((m) => {
           const isCurrent = m.key === current;
@@ -1103,7 +1092,7 @@ function ChangeFormatBody({ sessionId, currentType: cur, aiLive }: { sessionId: 
       ) : null}
       {pick ? (
         <Button className="w-full" loading={busy} onClick={go}>
-          {pick === "auto" ? "Make it" : `Make it a ${label?.toLowerCase()}`} <ArrowRight className="size-4" aria-hidden />
+          {pick === "auto" ? "Create a new Creation" : `Create a new ${label?.toLowerCase()}`} <ArrowRight className="size-4" aria-hidden />
         </Button>
       ) : null}
     </div>

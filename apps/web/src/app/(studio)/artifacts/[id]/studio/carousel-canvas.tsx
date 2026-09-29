@@ -10,6 +10,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { SlideFrame } from "@/components/carousel/slide-render";
 import { api, errorMessage } from "@/lib/client";
 import { AddOneSheet, Arrange, CarouselComposer } from "../carousel/composer";
+import { DirectText } from "./direct-text";
 
 /**
  * The Carousel on the Studio canvas (owner board, 28 Sep 2026): one slide fills the canvas with its words on it, "1 / N",
@@ -39,6 +40,7 @@ export function CarouselCanvas({
   onSlides?: (s: { current: string | null; ids: string[] }) => void;
   news?: CanvasNews | null;
 }) {
+  const router = useRouter();
   const [view, setView] = useState(initial);
   const [current, setCurrent] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -164,13 +166,14 @@ export function CarouselCanvas({
   // never below 9rem, and never wider than the canvas. Larger screens have room and use the full width.
   const [aw, ah] = view.settings.aspectRatio.split(":").map(Number) as [number, number];
   const caption = !slide.overlay.enabled && !!words.trim();
-  const phoneWidth = `max(9rem, calc((100dvh - ${caption ? "25.5rem" : "21rem"} - var(--canvas-extra, 0rem)) * ${(aw && ah ? aw / ah : 0.8).toFixed(3)}))`;
+  const direct = view.canEdit && slide.overlay.enabled && !!words.trim();
+  const phoneWidth = `max(9rem, calc((100dvh - ${caption ? "26.5rem" : "22rem"} - var(--canvas-extra, 0rem)) * ${(aw && ah ? aw / ah : 0.8).toFixed(3)}))`;
 
   return (
     <div
       className="space-y-2"
       onKeyDown={(e) => {
-        if (e.shiftKey || (e.target as HTMLElement).closest("[data-slide-thumb]")) return;
+        if (e.shiftKey || (e.target as HTMLElement).closest("[data-slide-thumb], [data-overlay-text]")) return;
         if (e.key === "ArrowLeft") go(idx - 1);
         if (e.key === "ArrowRight") go(idx + 1);
       }}
@@ -186,8 +189,12 @@ export function CarouselCanvas({
             className="block focus-visible:outline-2 focus-visible:outline-accent"
             aria-label={`Edit slide ${idx + 1} of ${n}: ${words.slice(0, 60)}`}
           >
-            <SlideFrame image={image} overlay={slide.overlay} text={words} transform={slide.transform} aspect={view.settings.aspectRatio} className="w-full" />
+            {/* Editable words are drawn by DirectText (below) so they can be moved and pinched right here. */}
+            <SlideFrame image={image} overlay={slide.overlay} text={words} transform={slide.transform} aspect={view.settings.aspectRatio} className="w-full">
+              {direct ? <></> : undefined}
+            </SlideFrame>
           </Link>
+          {direct ? <DirectText slideId={slide.id} overlay={slide.overlay} text={words} onOpen={() => router.push(`/artifacts/${artifactId}/slides/${slide.id}`)} onSaved={refresh} onError={setError} /> : null}
           <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[11.5px] font-medium text-white backdrop-blur" aria-hidden>
             {idx + 1} / {n}
           </span>

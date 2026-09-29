@@ -287,7 +287,7 @@ function Cards({
             </button>
             {open && set ? <SourceBody row={row} sessionId={set.sessionId} artifactId={artifactId} onUsePart={() => onUsePart(row)} /> : null}
             {actions.length ? (
-              <div className="grid grid-cols-2 gap-2 px-3 pb-3" role="group" aria-label={`Use ${row.title}`}>
+              <div className="flex flex-wrap gap-x-1.5 px-3 pb-2" role="group" aria-label={`Use ${row.title}`}>
                 {actions.map((x) => {
                   const Icon = ACTION_ICON[x.action];
                   const key = `${row.id}:${x.action}`;
@@ -304,10 +304,13 @@ function Cards({
                           setBusy(null);
                         }
                       }}
-                      className="flex min-h-11 items-center gap-2 rounded-xl border border-border-soft px-3 text-left text-[12.5px] font-medium text-ink hover:bg-accent-softer disabled:opacity-60"
+                      className="group inline-flex min-h-11 items-center disabled:opacity-60"
                     >
-                      {busy === key ? <Loader2 className="size-4 shrink-0 text-accent motion-safe:animate-spin" aria-hidden /> : <Icon className="size-4 shrink-0 text-accent-ink" aria-hidden />}
-                      <span className="truncate">{busy === key ? "Working…" : x.label}</span>
+                      {/* Content-sized, wrapping pills: a label is never cut off (owner, 29 Sep 2026). */}
+                      <span className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-border-soft px-3 text-[12.5px] font-medium text-ink group-hover:bg-accent-softer">
+                        {busy === key ? <Loader2 className="size-4 shrink-0 text-accent motion-safe:animate-spin" aria-hidden /> : <Icon className="size-4 shrink-0 text-accent-ink" aria-hidden />}
+                        {busy === key ? "Working…" : x.label}
+                      </span>
                     </button>
                   );
                 })}

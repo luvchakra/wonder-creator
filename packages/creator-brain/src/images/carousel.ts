@@ -401,6 +401,16 @@ const slidePatch = z.object({
   transform: transformSchema.optional(),
 });
 
+/**
+ * A source's words go onto the slide and onto its image: the overlay is switched on, keeping its place and style (owner,
+ * 29 Sep 2026: "place it directly on image, make the flag true"). Runs as the person (RLS).
+ */
+export async function wordsOnSlide(db: Db, slideId: string, text: string) {
+  const { data: s, error } = await db.from("carousel_slides").select("overlay").eq("id", slideId).maybeSingle();
+  if (error || !s) throw new DomainError("not_found", "That slide isn't available.", { cause: error });
+  await updateCarouselSlide(db, slideId, { displayText: text.slice(0, 2000), overlay: { ...asOverlay(s.overlay), enabled: true, text: null } });
+}
+
 /** Autosaved edits (§34): words, overlay and crop. Runs as the person (RLS: owner or edit access). */
 export async function updateCarouselSlide(db: Db, slideId: string, raw: unknown) {
   const p = slidePatch.parse(raw);
@@ -585,13 +595,16 @@ async function copyMaterialIntoSet(deps: Pick<ImageDeps, "db" | "service" | "cre
   return fresh.id;
 }
 
-/** "Replace slide image": the photo is offered on the slide — pending, so it shows "Use new / Keep current". */
+/**
+ * "Replace slide image": the creator chose this photo, so it goes straight onto the slide (owner, 29 Sep 2026: "when a
+ * material is selected to use, place it directly on image"). The previous image stays in the set; nothing is deleted.
+ */
 export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">, slideId: string, materialId: string): Promise<{ slideId: string }> {
   const s = await slideFor(deps, slideId);
   await requireEditor(deps, s.artifact_id);
   const g = await carouselGeneration(deps, s.artifact_id);
   const assetId = await copyMaterialIntoSet(deps, g, materialId, s.asset_id);
-  await deps.service.from("carousel_slides").update({ pending_asset_id: assetId }).eq("id", slideId);
+  await deps.service.from("carousel_slides").update({ asset_id: assetId, pending_asset_id: null }).eq("id", slideId);
   await audit(deps.db, { action: "carousel.slide_photo", objectType: "artifact", objectId: s.artifact_id, metadata: { slideId, materialId } });
   return { slideId };
 }
@@ -620,7 +633,7 @@ export async function newSlideFromMaterial(
  */
 export async function splitTextIntoSlides(deps: Deps, artifactId: string, text: string, fromSlideId: string | null): Promise<{ slideId: string | null; slides: number }> {
   await requireEditor(deps, artifactId);
-  const { data: slides } = await deps.db.from("carousel_slides").select("id, order_index").eq("artifact_id", artifactId).order("order_index");
+  const { data: slides } = await deps.db.from("carousel_slides").select("id, order_index, overlay").eq("artifact_id", artifactId).order("order_index");
   const all = slides ?? [];
   const from = Math.max(
     0,
@@ -637,13 +650,13 @@ export async function splitTextIntoSlides(deps: Deps, artifactId: string, text: 
     if (target) {
       const { error } = await deps.db
         .from("carousel_slides")
-        .update({ source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000) })
+        .update({ source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000), overlay: { ...asOverlay(target.overlay), enabled: true, text: null } as never })
         .eq("id", target.id);
       if (error) throw new DomainError("not_found", "You can't change this Carousel.", { cause: error });
       first ??= target.id;
     } else {
-      const id = await insertAfter(deps, { artifact_id: artifactId, order_index: last?.order_index ?? -1 }, { asset_id: null, source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000) });
-      last = { id, order_index: (last?.order_index ?? -1) + 1 };
+      const id = await insertAfter(deps, { artifact_id: artifactId, order_index: last?.order_index ?? -1 }, { asset_id: null, source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000), overlay: { ...DEFAULT_OVERLAY, enabled: true } });
+      last = { id, order_index: (last?.order_index ?? -1) + 1, overlay: {} };
       first ??= id;
     }
   }

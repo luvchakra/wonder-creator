@@ -146,6 +146,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
   const forceCollapsed = Object.values(constraints).some((c) => c.forceCollapsed);
+  // Immersive screens start with the player tucked in (the remembered choice isn't touched), but a tap still opens it
+  // (owner, 29 Sep 2026: "the music player is not maximizing" in the Studio).
+  const [seenForce, setSeenForce] = useState(false);
+  if (forceCollapsed !== seenForce) {
+    setSeenForce(forceCollapsed);
+    if (forceCollapsed) setUi("collapsed");
+  }
   const [interruption, setInterruption] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ open: boolean; view: PanelView; detailsId: string | null }>({ open: false, view: "songs", detailsId: null });
   const restored = useRef(false);

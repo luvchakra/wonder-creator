@@ -176,7 +176,8 @@ export function MiniPlayer() {
   const s = useSoundtrack();
   const panel = useRef<HTMLDivElement>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
-  const wantExpanded = s?.playerUi === "expanded" && !s.forceCollapsed;
+  // Immersive screens (forceCollapsed) start tucked in; the creator's own tap still opens it.
+  const wantExpanded = s?.playerUi === "expanded";
   const [override, setOverride] = useState(false);
   const dock = useEdgeDock("wc.player.dock", {
     height: TAB_H,
