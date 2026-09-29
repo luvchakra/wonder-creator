@@ -74,10 +74,13 @@ export function CarouselCanvas({
   }, [busy, refresh]);
 
   // News from "Use this" (adjusted while rendering; the fetch runs in the effect below).
+  const [jumpTo, setJumpTo] = useState<string | null>(null);
   if (news && news.key !== seenNews) {
     setSeenNews(news.key);
     const i = view.slides.findIndex((s) => s.id === news.slideId);
     if (i >= 0) setCurrent(i);
+    // A slide that doesn't exist yet (just added): jump when the refresh brings it.
+    else setJumpTo(news.slideId);
     setIncoming(news.proposal ? { slideId: news.slideId, proposal: news.proposal } : null);
   }
   const newsKey = news?.key ?? null;
@@ -87,6 +90,13 @@ export function CarouselCanvas({
     return () => clearTimeout(t);
   }, [newsKey, refresh]);
 
+  if (jumpTo) {
+    const i = view.slides.findIndex((s) => s.id === jumpTo);
+    if (i >= 0) {
+      setJumpTo(null);
+      setCurrent(i);
+    }
+  }
   const slideIds = view.slides.map((s) => s.id).join(",");
   const currentId = view.slides[Math.min(current, Math.max(0, view.slides.length - 1))]?.id ?? null;
   useEffect(() => {

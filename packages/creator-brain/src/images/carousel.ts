@@ -289,18 +289,16 @@ export async function adoptCarouselSet(deps: Deps, artifactId: string, generatio
   const count = Math.min(CAROUSEL_MAX_SLIDES, orderedSet(rows ?? []).length);
   if (!count) throw new DomainError("not_found", "Those images aren't available.");
   const aspect = (["1:1", "4:5", "16:9"] as const).find((x) => x === g.aspect_ratio) ?? "4:5";
-  const { error } = await deps.service
-    .from("carousels")
-    .upsert({
-      artifact_id: artifactId,
-      creator_id: deps.creatorId,
-      requested_count: count,
-      aspect_ratio: aspect,
-      visual_style: "auto",
-      source_version: a.version,
-      generation_id: g.id,
-      seeded_at: null,
-    });
+  const { error } = await deps.service.from("carousels").upsert({
+    artifact_id: artifactId,
+    creator_id: deps.creatorId,
+    requested_count: count,
+    aspect_ratio: aspect,
+    visual_style: "auto",
+    source_version: a.version,
+    generation_id: g.id,
+    seeded_at: null,
+  });
   if (error) throw new DomainError("internal", "Couldn't set up the slides.", { cause: error });
   await seedSlides(deps.service, artifactId, g.id, a.content);
 }
@@ -510,18 +508,11 @@ export async function suggestSlideChunks(deps: Deps, slideId: string) {
 const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
- * "Use it as a slide image" (Studio, owner 28 Sep 2026): one of the creator's own photos becomes the new image offered
- * for a slide — pending, so the slide shows "Use new / Keep current" and nothing is replaced until they choose. The
- * photo is copied (slide-sized, with a thumbnail) into the Carousel's own set with the Material recorded as its source;
- * no image is generated and nothing is charged. The Material must be one the creator can see (RLS read).
+ * One of the creator's own photos into a Carousel's own image set (Studio, owner 28 Sep 2026): copied slide-sized with
+ * a thumbnail, the Material recorded as a source of the set. No image is generated and nothing is charged. The
+ * Material must be one the creator can see (RLS read) and an image that passed the upload checks.
  */
-export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">, slideId: string, materialId: string): Promise<{ slideId: string }> {
-  const { data: slide } = await deps.db.from("carousel_slides").select("id, artifact_id, asset_id").eq("id", slideId).maybeSingle();
-  if (!slide) throw new DomainError("not_found", "That slide isn't available.");
-  const level = await access(deps.db, slide.artifact_id);
-  if (level !== "owner" && level !== "edit") throw new DomainError("forbidden", "You can't change this Carousel.");
-  const { data: c } = await deps.db.from("carousels").select("generation_id").eq("artifact_id", slide.artifact_id).maybeSingle();
-  if (!c?.generation_id) throw new DomainError("conflict", "Create the Carousel's images first.");
+async function copyMaterialIntoSet(deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">, generationId: string, materialId: string, revisionOf: string | null): Promise<string> {
   const { data: m } = await deps.db.from("creative_materials").select("id, type, title, storage_object_id").eq("id", materialId).maybeSingle();
   if (!m || !["image", "sketch"].includes(m.type) || !m.storage_object_id) throw new DomainError("validation", "That isn't a photo you can use here.");
   const { data: o } = await deps.db.from("storage_objects").select("bucket, path, security_status").eq("id", m.storage_object_id).maybeSingle();
@@ -531,7 +522,7 @@ export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "servi
   const bytes = new Uint8Array(await dl.data.arrayBuffer());
   if ((await inspectUpload(bytes)).kind !== "image") throw new DomainError("validation", "That isn't a photo you can use here.");
   const derived = await deps.derive(bytes);
-  const g = c.generation_id;
+  const g = generationId;
   const { data: seqs } = await deps.service.from("image_generation_assets").select("sequence").eq("generation_id", g).order("sequence", { ascending: false }).limit(1);
   const seq = (seqs?.[0]?.sequence ?? -1) + 1;
   if (seq > 99) throw new DomainError("validation", "This Carousel's image set is full.");
@@ -573,7 +564,7 @@ export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "servi
       height: derived.height,
       sequence: seq,
       direction_label: "Your photo",
-      revision_of: slide.asset_id,
+      revision_of: revisionOf,
       replaced_by: null,
     })
     .select("id")
@@ -581,9 +572,75 @@ export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "servi
   if (error || !fresh) throw new DomainError("internal", "Couldn't record the photo.", { cause: error });
   // Lineage: the set now also comes from this Material ("Used in slides …" reads it).
   const { data: gen } = await deps.service.from("image_generations").select("source_material_ids").eq("id", g).single();
-  const ids = [...new Set([...(gen?.source_material_ids ?? []), materialId])];
-  await deps.service.from("image_generations").update({ source_material_ids: ids }).eq("id", g);
-  await deps.service.from("carousel_slides").update({ pending_asset_id: fresh.id }).eq("id", slideId);
-  await audit(deps.db, { action: "carousel.slide_photo", objectType: "artifact", objectId: slide.artifact_id, metadata: { slideId, materialId } });
+  await deps.service
+    .from("image_generations")
+    .update({ source_material_ids: [...new Set([...(gen?.source_material_ids ?? []), materialId])] })
+    .eq("id", g);
+  return fresh.id;
+}
+
+/** "Replace slide image": the photo is offered on the slide — pending, so it shows "Use new / Keep current". */
+export async function slideImageFromMaterial(deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">, slideId: string, materialId: string): Promise<{ slideId: string }> {
+  const s = await slideFor(deps, slideId);
+  await requireEditor(deps, s.artifact_id);
+  const g = await carouselGeneration(deps, s.artifact_id);
+  const assetId = await copyMaterialIntoSet(deps, g, materialId, s.asset_id);
+  await deps.service.from("carousel_slides").update({ pending_asset_id: assetId }).eq("id", slideId);
+  await audit(deps.db, { action: "carousel.slide_photo", objectType: "artifact", objectId: s.artifact_id, metadata: { slideId, materialId } });
   return { slideId };
+}
+
+/** "Add as new slide": a new slide right after the one on screen (or at the end), with the photo as its image. */
+export async function newSlideFromMaterial(
+  deps: Pick<ImageDeps, "db" | "service" | "creatorId" | "derive">,
+  artifactId: string,
+  materialId: string,
+  afterSlideId: string | null,
+): Promise<{ slideId: string }> {
+  await requireEditor(deps, artifactId);
+  const g = await carouselGeneration(deps, artifactId);
+  const { data: slides } = await deps.db.from("carousel_slides").select("id, order_index").eq("artifact_id", artifactId).order("order_index");
+  const after = slides?.find((x) => x.id === afterSlideId) ?? slides?.at(-1);
+  const assetId = await copyMaterialIntoSet(deps, g, materialId, null);
+  const slideId = await insertAfter(deps, { artifact_id: artifactId, order_index: after?.order_index ?? -1 }, { asset_id: assetId, source_text: "", display_text: "" });
+  await audit(deps.db, { action: "carousel.slide_added_from_photo", objectType: "artifact", objectId: artifactId, metadata: { slideId, materialId } });
+  return { slideId };
+}
+
+/**
+ * "Split into slides": a text source's passages go onto the slides from the one on screen onward, one passage per
+ * slide; passages left over become new slides after the last one (no image yet — "Regenerate this image" fills it).
+ * Nothing is generated here.
+ */
+export async function splitTextIntoSlides(deps: Deps, artifactId: string, text: string, fromSlideId: string | null): Promise<{ slideId: string | null; slides: number }> {
+  await requireEditor(deps, artifactId);
+  const { data: slides } = await deps.db.from("carousel_slides").select("id, order_index").eq("artifact_id", artifactId).order("order_index");
+  const all = slides ?? [];
+  const from = Math.max(
+    0,
+    all.findIndex((x) => x.id === fromSlideId),
+  );
+  const stanzas = cleanSource(text).length;
+  const room = CAROUSEL_MAX_SLIDES - all.length + (all.length - from);
+  const chunks = chunkText(text, Math.max(1, Math.min(room, stanzas || 1))).filter((c) => c.trim());
+  if (!chunks.length) throw new DomainError("validation", "There are no words to split.");
+  let first: string | null = null;
+  let last = all.at(-1);
+  for (const [i, chunk] of chunks.entries()) {
+    const target = all[from + i];
+    if (target) {
+      const { error } = await deps.db
+        .from("carousel_slides")
+        .update({ source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000) })
+        .eq("id", target.id);
+      if (error) throw new DomainError("not_found", "You can't change this Carousel.", { cause: error });
+      first ??= target.id;
+    } else {
+      const id = await insertAfter(deps, { artifact_id: artifactId, order_index: last?.order_index ?? -1 }, { asset_id: null, source_text: chunk.slice(0, 2000), display_text: chunk.slice(0, 2000) });
+      last = { id, order_index: (last?.order_index ?? -1) + 1 };
+      first ??= id;
+    }
+  }
+  await audit(deps.db, { action: "carousel.split_text", objectType: "artifact", objectId: artifactId, metadata: { slides: chunks.length } });
+  return { slideId: first, slides: chunks.length };
 }

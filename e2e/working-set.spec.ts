@@ -103,7 +103,7 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
   });
 
-  test("every source shows under the canvas, collapsed but for the last one opened — and the device remembers which", async ({ page }) => {
+  test("every source shows under the canvas; any can be opened or closed (all closed too), and the device remembers", async ({ page }) => {
     const tag = uid();
     const a = await saveNote(page, `Rain on the platform roof ${tag}\nA slow drip into the puddles.`);
     const b = await saveNote(page, `The chai seller's radio ${tag}\nOld film songs, half heard.`);
@@ -120,27 +120,38 @@ test.describe("CreativeStudio Working Set", () => {
 
     await page.goto(`/artifacts/${art.id}/studio`);
     const panel = page.getByRole("region", { name: /^Used materials/ });
-    const rows = panel.getByRole("button", { expanded: undefined }).filter({ has: page.locator("[aria-expanded]") });
-    void rows;
-    const all = panel.locator("button[aria-expanded]");
-    await expect(all).toHaveCount(2);
-    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
+    const rows = panel.locator("button[aria-expanded]");
+    await expect(rows).toHaveCount(2);
+    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(0);
+    // Just brought in: marked New, with its own one-tap uses.
+    await expect(panel.getByText("New", { exact: true })).toHaveCount(2);
+    await expect(panel.getByRole("group", { name: /^Use The chai seller's radio/ }).getByRole("button", { name: "Add to draft" })).toBeVisible();
 
-    // Opening another closes the first and shows what it holds; the choice survives a reload.
-    const radio = panel.locator("button[aria-expanded]").filter({ hasText: "The chai seller's radio" });
-    if ((await radio.getAttribute("aria-expanded")) !== "true") await radio.click();
+    const radio = rows.filter({ hasText: "The chai seller's radio" });
+    await radio.click();
     await expect(radio).toHaveAttribute("aria-expanded", "true");
-    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
     await expect(panel.getByText("Old film songs, half heard.")).toBeVisible();
+    await rows.filter({ hasText: "Rain on the platform roof" }).click();
+    await expect(panel.locator('button[aria-expanded="true"]')).toHaveCount(1);
     await page.reload();
     await expect(
       page
         .getByRole("region", { name: /^Used materials/ })
         .locator("button[aria-expanded]")
-        .filter({ hasText: "The chai seller's radio" }),
+        .filter({ hasText: "Rain on the platform roof" }),
     ).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(1);
+    // Closing the open one leaves them all closed, and that's remembered too.
+    await page
+      .getByRole("region", { name: /^Used materials/ })
+      .locator("button[aria-expanded]")
+      .filter({ hasText: "Rain on the platform roof" })
+      .click();
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator("button[aria-expanded]")).toHaveCount(2);
+    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('button[aria-expanded="true"]')).toHaveCount(0);
   });
+
   test("Use this asks how: options from what the source is, or the creator's own words, and the row says so", async ({ page }) => {
     const tag = uid();
     const a = await saveNote(page, `Rain on the platform roof ${tag}\nA slow drip into the puddles.`);
@@ -252,5 +263,52 @@ test.describe("CreativeStudio Working Set", () => {
     await how.getByRole("radio", { name: /Put its words on this slide/ }).click();
     await how.getByRole("button", { name: /Use it/ }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 2: Lamps and steam/ })).toBeVisible({ timeout: 15_000 });
+  });
+  test("one-tap uses under each material act on the carousel: add as new slide, split into slides, set as cover", async ({ page, creator }) => {
+    const tag = uid();
+    const name = `platform-${tag}`;
+    await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes(64) }]);
+    const item = sendItem(page, name);
+    await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+    const photo = (await item.getByRole("link", { name, exact: true }).getAttribute("href"))!.split("/").pop()!;
+    const note = await saveNote(page, `Lamps ${tag}\nsteam on the glass\n\nThe platform hums\nand nobody leaves\n\nA whistle, then silence`);
+    const id = (
+      (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Station ${tag}`, content: "First light\n\nSecond wind" } })).json()).artifact as { id: string }
+    ).id;
+    await seedCarousel(creator.id, id, ["First light", "Second wind"]);
+    const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: id } })).json()) as { workingSet: { sessionId: string } };
+    await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, {
+      data: {
+        items: [
+          { type: "material", id: photo },
+          { type: "material", id: note },
+        ],
+      },
+    });
+
+    await page.goto(`/artifacts/${id}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    const panel = page.getByRole("region", { name: /^Used materials/ });
+    const photoActions = panel.getByRole("group", { name: new RegExp(`^Use ${name}`) });
+    await expect(photoActions.getByRole("button")).toHaveText(["Add as new slide", "Replace slide image", "Set as cover"]);
+
+    // Add as new slide: a slide right after this one, with the photo, and the canvas moves to it.
+    await photoActions.getByRole("button", { name: "Add as new slide" }).click();
+    await expect(editor.getByText("2 / 3")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status").filter({ hasText: "A new slide with your photo" })).toBeVisible();
+
+    // Set as cover.
+    await photoActions.getByRole("button", { name: "Set as cover" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "is the cover now" })).toBeVisible();
+
+    // Split into slides: the note's three passages go onto slides from the one on screen onward.
+    await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).click();
+    const noteActions = panel.getByRole("group", { name: new RegExp(`^Use Lamps ${tag}`) });
+    await expect(noteActions.getByRole("button")).toHaveText(["Use on slide", "Split into slides", "Refine slide text"]);
+    await noteActions.getByRole("button", { name: "Split into slides" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Split across 3 slides" })).toBeVisible({ timeout: 15_000 });
+    await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Lamps/ })).toBeVisible();
+    // Used now: the row says how.
+    await expect(panel).toContainText("Its shape");
   });
 });
