@@ -1,4 +1,4 @@
-import { DomainError } from "@wonder/core";
+import { DomainError, isDomainError, log } from "@wonder/core";
 import { safeFetch } from "@wonder/core/server";
 
 /**
@@ -26,6 +26,8 @@ export interface ExternalImage {
   license: string;
   licenseUrl: string | null;
   sourceUrl: string;
+  /** Other copies of the same picture to try if the original host refuses us (e.g. Openverse's own proxy). */
+  fallbackUrls?: string[];
 }
 
 export interface ExternalKeys {
@@ -72,6 +74,8 @@ const fromOpenverse = (r: Openverse): ExternalImage => ({
   license: `${r.license.toUpperCase() === "CC0" || r.license === "pdm" ? r.license.toUpperCase() : `CC ${r.license.toUpperCase()}`}${r.license_version ? ` ${r.license_version}` : ""}`,
   licenseUrl: r.license_url ?? null,
   sourceUrl: r.foreign_landing_url || r.url,
+  // Original hosts (Flickr, museums…) sometimes refuse server requests; Openverse serves the same picture itself.
+  fallbackUrls: [`https://api.openverse.org/v1/images/${r.id}/thumb/?full_size=true&compressed=false`, `https://api.openverse.org/v1/images/${r.id}/thumb/`],
 });
 const fromPixabay = (r: Pixabay): ExternalImage => ({
   provider: "pixabay",
@@ -130,9 +134,27 @@ export async function lookupExternalImage(provider: ExternalProvider, id: string
   return fromPexels((await getJson(`https://api.pexels.com/v1/photos/${id}`, { authorization: keys.pexels! })) as Pexels);
 }
 
-/** The picture's bytes (up to 12 MB), fetched through the SSRF guard. The upload checks still run on them. */
+// Image hosts (Flickr among them) refuse requests that don't look like a browser-compatible client; this still says
+// who we are. Openverse's own copy only answers when any type is acceptable.
+const IMAGE_UA = "Mozilla/5.0 (compatible; WonderCreator/1.0; royalty-free image import)";
+const IMAGE_ACCEPT = "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5";
+
+/**
+ * The picture's bytes (up to 12 MB), fetched through the SSRF guard: the original first, then any other copy of the same
+ * picture the provider serves itself. Only an image answer counts. The upload checks still run on the bytes.
+ */
 export async function downloadExternalImage(img: ExternalImage): Promise<Uint8Array> {
-  const res = await safeFetch(img.imageUrl, { maxBytes: 12 * 1024 * 1024, accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8" });
-  if (res.status < 200 || res.status >= 300 || res.truncated || !res.body.byteLength) throw new DomainError("provider_failed", "Couldn't bring that picture in. Try another.");
-  return res.body;
+  const tried: Array<{ host: string; status: number | string }> = [];
+  for (const url of [img.imageUrl, ...(img.fallbackUrls ?? [])]) {
+    try {
+      const res = await safeFetch(url, { maxBytes: 12 * 1024 * 1024, timeoutMs: 15_000, accept: IMAGE_ACCEPT, userAgent: IMAGE_UA });
+      const ok = res.status >= 200 && res.status < 300 && !res.truncated && res.body.byteLength > 0 && (!res.contentType || res.contentType.startsWith("image/"));
+      if (ok) return res.body;
+      tried.push({ host: new URL(url).host, status: res.truncated ? "too_large" : res.status });
+    } catch (e) {
+      tried.push({ host: new URL(url).host, status: isDomainError(e) ? e.code : "error" });
+    }
+  }
+  log("warn", "external_image.download_failed", { provider: img.provider, tried });
+  throw new DomainError("provider_failed", "Couldn't bring that picture in. Try another.");
 }
