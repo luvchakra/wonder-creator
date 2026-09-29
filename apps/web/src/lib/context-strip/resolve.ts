@@ -35,6 +35,8 @@ export function resolveContextStrip({ page, lifecycle, facts = {}, signals = [],
   if (f.importingCount) c.push({ id: "importing", text: `${f.importingCount} importing…`, tone: "active", priority: PRIORITY.save });
   if (f.processing) c.push({ id: "processing", text: f.processing, tone: "active", priority: PRIORITY.save });
 
+  // Meaningful Home context (phase 02 §12): below every operational state, above lifecycle and metadata.
+  if (page === "home" && f.homeLine) c.push({ id: "home", text: f.homeLine, tone: f.homeLine === "Nothing urgent" ? "neutral" : "active", priority: PRIORITY.semantic });
   const life = lifecycleItem(lifecycle, f);
   if (life) c.push(life);
   if (f.collaboratorCount && f.collaboratorCount > 0)

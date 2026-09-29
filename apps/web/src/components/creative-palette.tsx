@@ -132,7 +132,8 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
   }, [signals]);
   // The Adaptive Context Line's AI layer (ai-context-line.md §14): the deterministic line renders at once; for the
   // creator's own Creation, Material or Home, a short semantic line may crossfade in later. Never a loading state.
-  const semanticKey = context && (context.page === "creation" || context.page === "studio" || context.page === "material" || context.page === "home") ? `${context.page}:${context.ids?.artifactId ?? context.ids?.materialId ?? ""}` : null;
+  // Home brings its own deterministic line (phase 02 §12), so it doesn't ask for one.
+  const semanticKey = context && (context.page === "creation" || context.page === "studio" || context.page === "material" || (context.page === "home" && !context.strip?.homeLine)) ? `${context.page}:${context.ids?.artifactId ?? context.ids?.materialId ?? ""}` : null;
   useEffect(() => {
     if (!semanticKey) return;
     const [page, id] = semanticKey.split(":");

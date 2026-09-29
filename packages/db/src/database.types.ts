@@ -531,6 +531,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"capture_receipts": {
+                  Row: {
+                    "client_id": string,"created_at": string,"creator_id": string,"kind": string,"material_id": string | null
+                  }
+                  Insert: {
+                    "client_id": string,"created_at"?: string,"creator_id": string,"kind": string,"material_id"?: string | null
+                  }
+                  Update: {
+                    "client_id"?: string,"created_at"?: string,"creator_id"?: string,"kind"?: string,"material_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "capture_receipts_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "capture_receipts_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"carousel_slides": {
                   Row: {
                     "artifact_id": string,"asset_id": string | null,"created_at": string,"creator_id": string,"display_text": string,"id": string,"image_transform": NonNullable<Json>,"order_index": number,"overlay": NonNullable<Json>,"pending_asset_id": string | null,"source_text": string,"updated_at": string

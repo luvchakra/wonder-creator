@@ -66,6 +66,8 @@ export interface StripFacts {
   /** Home: the Creation in progress, or a waiting CreativeMind idea. */
   continueTitle?: string | null;
   ideasWaiting?: number;
+  /** Home's one current truth ("3 things changed", "Nothing urgent", "Railways surfaced again"), 2–7 words. */
+  homeLine?: string | null;
   /** A settings section, or a plain label when nothing richer applies ("Choose how to begin"). */
   label?: string | null;
 }

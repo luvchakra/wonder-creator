@@ -1,16 +1,18 @@
 import { greetingFor } from "@wonder/core";
-import { artifactType } from "@wonder/creator-studio/types";
-import { Avatar, BACKGROUNDS, KIT, KitArt, Watercolor, buttonClasses, cn } from "@wonder/ui";
-import { ArrowRight, AudioLines, ChevronRight, FileCheck, Heart, Images, MessageCircle, Play, Share2, Sparkles, SunMedium, UserPlus, CheckCircle2 } from "lucide-react";
+import { Avatar, BACKGROUNDS, Watercolor, buttonClasses, cn } from "@wonder/ui";
+import { ArrowRight, Check, ChevronRight, Heart, Link2, Play, Sparkles, Sun } from "lucide-react";
 import Link from "next/link";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
+import { ConnectionActions } from "@/components/home/connection-actions";
+import { QuickCapture } from "@/components/home/quick-capture";
+import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
-import { loadHome } from "@/lib/home";
-import { agoPhrase } from "@/lib/home-sections";
+import { buildHomePayload, type HomeContinueItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
+import { track } from "@/lib/telemetry";
 import { HomeBegin } from "./home-begin";
 
 export const metadata = { title: "Home" };
@@ -18,267 +20,300 @@ export const metadata = { title: "Home" };
 const CORNER_SIZES = "(min-width: 640px) 11rem, 8.5rem";
 
 /**
- * Home (owner's board, 28 Sep 2026: "A calmer home for bolder ideas"): a warm welcome with what changed since you were
- * last here, the Creation you're in the middle of as the one clear focus, then compact bubbles — what happened while
- * you were away, a little spark from your own past Materials, something worth hearing from people you follow, and who
- * could use your help. Every section is real data or isn't shown; nothing is ranked by popularity.
+ * Home — the orchestration layer of the creator's life (docs/phases/02-home-quick-capture.md). It answers: what
+ * matters now, what to continue, what changed, what might inspire, how the creator's world is connecting, and where
+ * they could help. Active, Return or Quiet; one dominant action (Continue); Quick Capture always in reach; a handful of
+ * modules chosen on the server, each shown only when it has something real. Never a feed, a dashboard or a chat.
  */
 export default async function HomePage() {
   const { db, creator } = await requireSession();
   preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
 
-  const { lastVisit, creation, version, cover, away, asks, spark, sparkUrl, post, huddle, avatars, hasMaterials } = await loadHome(db, creator.id);
+  const home = await buildHomePayload(db, creator.id);
+  const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp].filter(Boolean).length;
+  after(() => {
+    track("home_opened", creator.id);
+    track("home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
+  });
   const first = (creator.display_name || "Creator").split(" ")[0];
-  const type = creation ? artifactType(creation.artifact_type) : null;
-  const playable = type?.category === "audio" || type?.category === "video";
-  const postImage = post?.attachments.find((a) => a.fileUrl && a.mimeType?.startsWith("image/"))?.fileUrl ?? null;
+  const quiet = home.mode === "quiet";
 
   return (
     <>
       <PaletteScope
         context={{
           page: "home",
-          strip: {
-            continueTitle: creation && (creation.status === "draft" || creation.status === "in_review") ? creation.title : null,
-          },
+          strip: { continueTitle: home.continue ? home.continue.title : null, homeLine: home.contextLine },
         }}
       />
-      <div className="mx-auto max-w-3xl space-y-4">
-        {/* A. Warm welcome: who you are to it, and what changed. */}
+      <div id="home" className="mx-auto max-w-3xl space-y-3" data-home-mode={home.mode}>
         <header className="relative isolate">
           {/* The supplied floral corner behind the welcome — decoration only, outside the layout. */}
           <div aria-hidden className="pointer-events-none absolute -right-4 -top-3 -z-10 w-[8.5rem] sm:-right-2 sm:w-[11rem]">
             <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="h-auto w-full opacity-80" />
           </div>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-ink">
-                <span className="block font-display text-lg text-ink-muted sm:text-xl">{greetingFor(new Date())},</span>
-                <span className="mt-0.5 flex items-center gap-2 font-display text-[30px] leading-none sm:text-[40px]">
-                  <span className="break-words">{first}</span>
-                  <KitArt art={KIT.mark.sun} sizes="2.5rem" priority className="size-8 shrink-0 sm:size-10" />
-                </span>
-              </h1>
-              {lastVisit ? (
-                <p className="mt-1.5 text-[13px] text-ink-muted">
-                  You were last here <RelativeTime iso={lastVisit} />.
-                </p>
-              ) : null}
-            </div>
-            {away.length ? (
-              <Link
-                href="#while-away"
-                className="flex size-[4.75rem] shrink-0 flex-col items-center justify-center rounded-full bg-surface/85 text-center shadow-[var(--shadow-card)] ring-1 ring-border-soft backdrop-blur hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                <span className="font-display text-[22px] leading-none text-ink">{away.length}</span>
-                <span className="mt-0.5 text-[10.5px] leading-tight text-ink-muted">
-                  {away.length === 1 ? "thing" : "things"}
-                  <br />
-                  changed
-                </span>
-                <ChevronRight className="size-3.5 text-accent" aria-hidden />
-              </Link>
-            ) : null}
-          </div>
+          <h1 className="pr-24 font-display text-[26px] leading-tight text-ink sm:text-[30px]">
+            {greetingFor(new Date())}, <span className="break-words">{first}</span>
+          </h1>
+          {/* One short truth, as in the navbar: "3 things changed", "Nothing needs your attention." */}
+          <p className="mt-0.5 text-[13px] text-ink-muted">{quiet ? "Nothing needs your attention." : home.contextLine}</p>
         </header>
 
-        {/* The one clear focus: the Creation you're in the middle of. */}
-        {creation ? (
-          <section aria-labelledby="current-creation" className="rounded-2xl border border-border-soft bg-surface/90 p-2 shadow-[var(--shadow-card)]">
-            <Link href={`/artifacts/${creation.id}`} tabIndex={-1} aria-hidden className="relative block overflow-hidden rounded-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={cover ?? BACKGROUNDS.sunsetCoast} alt="" className="h-40 w-full object-cover sm:h-56" />
-              {playable ? (
-                <span className="absolute left-1/2 top-1/2 inline-flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-ink shadow-[var(--shadow-card)]">
-                  <Play className="size-5 translate-x-px fill-current" />
-                </span>
-              ) : null}
+        {/* The one dominant action: continue (or something worth starting, or a calm beginning). */}
+        {home.continue ? (
+          <ContinueCard c={home.continue} quiet={quiet} />
+        ) : home.start ? (
+          <section aria-labelledby="start-title" className="rounded-2xl border border-border-soft bg-surface/90 p-3 shadow-[var(--shadow-card)]">
+            <p id="start-title" className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+              Something worth starting
+            </p>
+            <p className="mt-1 font-display text-[17px] leading-snug text-ink">{home.start.text}</p>
+            <Link href={home.start.href} data-primary-action className={buttonClasses({ className: "mt-2.5 w-full" })}>
+              Explore this idea <ArrowRight className="size-4" aria-hidden />
             </Link>
-            <div className="px-2 pb-1.5 pt-2.5">
-              <h2 id="current-creation" className="font-display text-xl leading-tight text-ink">
-                <Link href={`/artifacts/${creation.id}`} className="hover:underline">
-                  {creation.title}
-                </Link>
-              </h2>
-              <p className="mt-0.5 text-[12.5px] text-ink-muted">
-                {version ? `v${version} · ` : ""}
-                {type!.label} · Edited <RelativeTime iso={creation.updated_at} />
-              </p>
-              <Link href={`/artifacts/${creation.id}/studio`} data-primary-action className={buttonClasses({ className: "mt-2.5 w-full" })}>
-                Continue Creating <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </div>
           </section>
         ) : (
-          <HomeBegin hasMaterials={hasMaterials} />
+          <HomeBegin hasMaterials={home.beginning?.hasMaterials ?? false} />
         )}
 
-        {/* B. Compact bubbles — each only when there's something real to show. */}
-        {away.length ? (
-          <section id="while-away" aria-labelledby="while-away-title" className="scroll-mt-20">
-            <SectionTitle id="while-away-title" icon={<SunMedium className="size-[18px] text-orange" aria-hidden />} title="While you were away">
-              <span className="rounded-full bg-accent-softer px-2 py-0.5 text-[11.5px] font-medium text-accent-ink">
-                {away.length} {away.length === 1 ? "update" : "updates"}
-              </span>
-            </SectionTitle>
-            <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
-              {away.slice(0, 8).map((i) => (
-                <li key={i.id} className="w-[10.5rem] shrink-0 snap-start">
-                  <Link
-                    href={i.href}
-                    className="flex h-full min-h-[5.5rem] flex-col justify-between gap-1.5 rounded-2xl border border-border-soft bg-surface/90 p-2.5 shadow-[var(--shadow-card)] hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  >
-                    <span className="flex items-start gap-2">
-                      <KindIcon kind={i.kind} />
-                      <span className="line-clamp-3 text-[12.5px] leading-snug text-ink">{i.title}</span>
-                    </span>
-                    <span className="flex items-center justify-between gap-1 text-[11.5px] text-ink-subtle">
-                      <RelativeTime iso={i.at} />
-                      {i.actor ? <Avatar name={i.actor.name} src={i.actor.id ? avatars[i.actor.id] : null} size={20} /> : null}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+        {home.quickCapture.textEnabled || home.quickCapture.voiceEnabled ? <QuickCapture /> : null}
 
-        {spark ? (
-          <section aria-labelledby="spark-title">
-            <SectionTitle id="spark-title" icon={<Sparkles className="size-[18px] text-orange" aria-hidden />} title="A little spark" />
-            <Bubble href={`/space/materials/${spark.id}`}>
-              {sparkUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={sparkUrl} alt="" className="h-[4.75rem] w-28 shrink-0 rounded-xl object-cover" />
-              ) : null}
-              <span className="min-w-0 flex-1">
-                <span className="line-clamp-3 font-display text-[14.5px] italic leading-snug text-ink">
-                  “{agoPhrase(spark.created_at)} you saved {spark.title || "this"}.”
-                </span>
-                <span className="mt-1 block text-[12px] text-ink-muted">Bring it into something new.</span>
-              </span>
-            </Bubble>
-          </section>
-        ) : null}
-
-        {huddle || post ? (
-          <section aria-labelledby="hearing-title">
-            <SectionTitle id="hearing-title" icon={<AudioLines className="size-[18px] text-accent" aria-hidden />} title="Worth hearing" />
-            {huddle ? (
-              <Bubble href={`/huddles/${huddle.huddleId}`}>
-                <span className="flex h-[4.75rem] w-24 shrink-0 items-center justify-center rounded-xl bg-accent-softer">
-                  <Avatar name={huddle.participantNames[0] ?? "Creator"} src={huddle.participantIds[0] ? avatars[huddle.participantIds[0]] : null} size={40} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[11.5px] font-medium text-live">Live Huddle</span>
-                  <span className="line-clamp-2 text-[14px] leading-snug text-ink">{huddle.topic ?? `${huddle.participantNames[0] ?? "A creator"}'s Huddle`}</span>
-                  <span className="mt-0.5 block text-[12px] text-ink-subtle">
-                    {huddle.participantCount} here · started <RelativeTime iso={huddle.startedAt} />
-                  </span>
-                </span>
-              </Bubble>
-            ) : post ? (
-              <Bubble href={`/scrapbook/${post.id}`}>
-                {postImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={postImage} alt="" className="h-[4.75rem] w-24 shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <span className="flex h-[4.75rem] w-24 shrink-0 items-center justify-center rounded-xl bg-accent-softer">
-                    <Avatar name={post.author.name} src={avatars[post.author.id]} size={40} />
-                  </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[11.5px] font-medium text-accent-ink">From the Scrapbook</span>
-                  <span className="line-clamp-2 text-[14px] leading-snug text-ink">{post.body || post.attachments[0]?.title || "A new fragment"}</span>
-                  <span className="mt-0.5 block text-[12px] text-ink-subtle">
-                    {post.author.name} · <RelativeTime iso={post.createdAt} />
-                  </span>
-                </span>
-              </Bubble>
+        {/* The rest, as compact rows (owner board, 29 Sep 2026): what it is, one line of why, nothing more. */}
+        {home.whileAway || home.worldConnecting || home.dejavu || home.spark || home.worthHearing || home.couldHelp ? (
+          <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
+            {home.whileAway ? (
+              <Expandable id="while-away" label="While you were away" summary={home.whileAway.lines.map((l) => l.text).join(" · ")} count={home.whileAway.total} icon={<Sun className="size-5 text-orange" aria-hidden />}>
+                {home.whileAway.lines.map((l) => (
+                  <li key={l.text}>
+                    <Link href={l.href} className="flex min-h-11 items-center gap-2 text-[13.5px] leading-snug text-ink hover:underline">
+                      <span className="min-w-0 flex-1">{l.text}</span>
+                      <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
+                    </Link>
+                  </li>
+                ))}
+              </Expandable>
             ) : null}
-          </section>
+
+            {home.worldConnecting ? (
+              <section id="connecting" aria-label="Your world is connecting">
+                {home.worldConnecting.suggestion ? (
+                  <div className="px-3 py-2">
+                    <RowBody icon={<Link2 className="size-5 text-accent" aria-hidden />} title="Your world is connecting" summary={home.worldConnecting.text} />
+                    <div className="pl-12">
+                      <ConnectionActions {...home.worldConnecting.suggestion} />
+                    </div>
+                  </div>
+                ) : (
+                  <TrackedLink event="home_connection_opened" href={home.worldConnecting.href} className="block px-3 py-2 hover:bg-surface-muted">
+                    <RowBody icon={<Link2 className="size-5 text-accent" aria-hidden />} title="Your world is connecting" summary={home.worldConnecting.text} chevron />
+                  </TrackedLink>
+                )}
+              </section>
+            ) : null}
+
+            {home.dejavu ? (
+              <section id="dejavu" aria-label="A DejaVu surfaced">
+                <TrackedLink event="home_dejavu_opened" href={`/dejavu/${home.dejavu.id}`} className="block px-3 py-2 hover:bg-surface-muted">
+                  <RowBody
+                    icon={<Check className="size-5 text-success" aria-hidden />}
+                    title="A DejaVu surfaced"
+                    summary={`${home.dejavu.name} · ${home.dejavu.newCount} new, ${home.dejavu.newCount + home.dejavu.olderCount} Moments`}
+                    chevron
+                  />
+                </TrackedLink>
+              </section>
+            ) : null}
+
+            {home.spark ? (
+              <section id="spark" aria-label="A little spark">
+                {/* For its own sake: the row opens the Material; nothing asks for anything. */}
+                <TrackedLink event="home_spark_opened" href={`/space/materials/${home.spark.materialId}`} className="block px-3 py-2 hover:bg-surface-muted">
+                  <RowBody
+                    icon={
+                      home.spark.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={home.spark.imageUrl} alt="" className="size-10 rounded-lg object-cover" />
+                      ) : (
+                        <Sparkles className="size-5 text-orange" aria-hidden />
+                      )
+                    }
+                    title="A little spark"
+                    summary={home.spark.text}
+                    italic
+                  />
+                </TrackedLink>
+              </section>
+            ) : null}
+
+            {home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null}
+
+            {home.couldHelp ? (
+              <Expandable
+                id="help"
+                label="You could help"
+                summary={home.couldHelp.items[0]!.title}
+                count={home.couldHelp.items.length}
+                icon={
+                  home.couldHelp.items[0]!.actor ? (
+                    <Avatar name={home.couldHelp.items[0]!.actor.name} src={home.couldHelp.items[0]!.actor.id ? home.avatars[home.couldHelp.items[0]!.actor.id] : null} size={36} />
+                  ) : (
+                    <Heart className="size-5 fill-pink text-pink" aria-hidden />
+                  )
+                }
+              >
+                {home.couldHelp.items.map((i) => (
+                  <li key={i.id}>
+                    <Link href={i.href} className="flex min-h-11 items-center gap-2 text-[13.5px] leading-snug text-ink hover:underline">
+                      <span className="min-w-0 flex-1">{i.title}</span>
+                      <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
+                    </Link>
+                  </li>
+                ))}
+              </Expandable>
+            ) : null}
+          </div>
         ) : null}
 
-        {asks.length ? (
-          <section aria-labelledby="help-title">
-            <SectionTitle id="help-title" icon={<Heart className="size-[18px] fill-pink text-pink" aria-hidden />} title="You could help" />
-            <ul className="grid grid-cols-2 gap-2">
-              {asks.slice(0, 4).map((i) => (
-                <li key={i.id}>
-                  <Link
-                    href={i.href}
-                    className="flex h-full min-h-[4.25rem] items-center gap-2 rounded-2xl border border-border-soft bg-surface/90 p-2 shadow-[var(--shadow-card)] hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  >
-                    {i.actor ? (
-                      <Avatar name={i.actor.name} src={i.actor.id ? avatars[i.actor.id] : null} size={34} />
-                    ) : (
-                      <span className="inline-flex size-[34px] shrink-0 items-center justify-center rounded-full bg-accent-softer text-accent">
-                        <Sparkles className="size-4" aria-hidden />
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-3 text-[12.5px] leading-snug text-ink">{i.title}</span>
-                      <span className="block text-[11.5px] text-ink-subtle">
-                        <RelativeTime iso={i.at} />
-                      </span>
-                    </span>
-                    <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
+        {home.recent?.length ? (
+          <Module id="recent" label="Recent Creations">
+            <ul className="-my-1">
+              {home.recent.map((r) => (
+                <li key={r.id}>
+                  <Link href={`/artifacts/${r.id}`} className="flex min-h-11 items-center gap-2 text-[14px] text-ink hover:underline">
+                    <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                    <span className="text-[12.5px] text-ink-subtle">{r.typeLabel}</span>
                   </Link>
                 </li>
               ))}
             </ul>
-          </section>
+          </Module>
         ) : null}
       </div>
     </>
   );
 }
 
-function SectionTitle({ id, icon, title, children }: { id: string; icon: React.ReactNode; title: string; children?: React.ReactNode }) {
+function ContinueCard({ c, quiet }: { c: HomeContinueItem; quiet: boolean }) {
   return (
-    <div className="mb-1.5 flex min-h-8 items-center gap-2">
-      {icon}
-      <h2 id={id} className="font-display text-[17px] text-ink">
-        {title}
-      </h2>
-      {children ? <span className="ml-auto">{children}</span> : null}
-    </div>
+    <section aria-labelledby="current-creation" className="relative isolate overflow-hidden rounded-2xl shadow-[var(--shadow-card)]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={c.coverUrl ?? BACKGROUNDS.sunsetCoast} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
+      <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.15)_40%,rgba(20,18,40,0.8)_100%)]" />
+      <div className="flex min-h-[10.5rem] flex-col justify-between p-3 text-white">
+        <p className="flex items-center justify-between text-[11.5px] font-semibold uppercase tracking-[0.12em] text-white/85">
+          Continue
+          {c.playable ? (
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-white/85 text-ink">
+              <Play className="size-3.5 translate-x-px fill-current" aria-hidden />
+            </span>
+          ) : null}
+        </p>
+        <div className="flex items-end gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 id="current-creation" className="font-display text-[21px] leading-tight">
+              <Link href={`/artifacts/${c.id}`} className="break-words hover:underline">
+                {c.title}
+              </Link>
+            </h2>
+            <p className="text-[12.5px] text-white/85">
+              {c.version ? `v${c.version} · ` : ""}
+              {c.typeLabel} · Edited <RelativeTime iso={c.updatedAt} />
+            </p>
+            <p className="mt-0.5 text-[13px] text-white">
+              {quiet ? "Where you left it." : (c.hint.text ?? "Pick up where you left off.")}
+              {c.sources ? (
+                <span className="text-white/80">
+                  {" "}
+                  · {c.sources.total} {c.sources.total === 1 ? "source" : "sources"}
+                  {c.sources.unused ? ` · ${c.sources.unused} unused` : ""}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          {/* The one dominant action. */}
+          <TrackedLink
+            event="home_continue_clicked"
+            href={`/artifacts/${c.id}/studio`}
+            data-primary-action
+            aria-label="Continue Creating"
+            className="inline-flex size-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/15 text-white backdrop-blur hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <ArrowRight className="size-5" aria-hidden />
+          </TrackedLink>
+        </div>
+      </div>
+    </section>
   );
 }
 
-function Bubble({ href, children }: { href: string; children: React.ReactNode }) {
+/** A compact row: a small picture or icon, what it is, one line of why. */
+function RowBody({ icon, title, summary, chevron, italic }: { icon: React.ReactNode; title: string; summary: string; chevron?: boolean; italic?: boolean }) {
   return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-2xl border border-border-soft bg-surface/90 p-2 pr-3 shadow-[var(--shadow-card)] hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
-      {children}
-      <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
-    </Link>
-  );
-}
-
-const KIND_ICON: Record<string, { icon: typeof Share2; tone: string }> = {
-  shared_with_you: { icon: Share2, tone: "bg-accent-softer text-accent" },
-  message: { icon: MessageCircle, tone: "bg-accent-softer text-accent" },
-  proposal_decided: {
-    icon: CheckCircle2,
-    tone: "bg-success-soft text-success-ink",
-  },
-  collaborator_added: { icon: UserPlus, tone: "bg-accent-softer text-accent" },
-  license_response: {
-    icon: FileCheck,
-    tone: "bg-success-soft text-success-ink",
-  },
-  visuals_ready: { icon: Images, tone: "bg-success-soft text-success-ink" },
-};
-
-function KindIcon({ kind }: { kind: string }) {
-  const k = KIND_ICON[kind] ?? KIND_ICON.message!;
-  return (
-    <span className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-full", k.tone)}>
-      <k.icon className="size-4" aria-hidden />
+    <span className="flex min-h-12 items-center gap-3">
+      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-medium text-ink">{title}</span>
+        <span className={cn("line-clamp-2 text-[12.5px] leading-snug text-ink-muted", italic && "font-display text-[13.5px] italic")}>{summary}</span>
+      </span>
+      {chevron ? <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden /> : null}
     </span>
+  );
+}
+
+/** A row that opens in place (no extra page): a summary first, the items when asked for. */
+function Expandable({ id, label, summary, count, icon, children }: { id: string; label: string; summary: string; count: number; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section id={id} aria-label={label} className="scroll-mt-20">
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center px-3 py-2 hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
+          <span className="flex min-h-12 min-w-0 flex-1 items-center gap-3">
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted">{icon}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-medium text-ink">{label}</span>
+              <span className="line-clamp-1 text-[12.5px] text-ink-muted">{summary}</span>
+            </span>
+          </span>
+          <span className="ml-2 inline-flex items-center gap-0.5 text-[12.5px] text-ink-subtle">
+            {count}
+            <ChevronRight className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
+          </span>
+        </summary>
+        <ul className="px-3 pb-2 pl-16">{children}</ul>
+      </details>
+    </section>
+  );
+}
+
+function Module({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-2xl border border-border-soft bg-surface/90 px-3 py-2.5 shadow-[var(--shadow-card)]">
+      <h2 id={`${id}-title`} className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+        {label}
+      </h2>
+      <div className="mt-1">{children}</div>
+    </section>
+  );
+}
+
+function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing"]>; avatars: Record<string, string> }) {
+  return (
+    <section id="hearing" aria-label="Worth hearing">
+      <Link href={w.kind === "huddle" ? `/huddles/${w.huddleId}` : `/scrapbook/${w.postId}`} className="block px-3 py-2 hover:bg-surface-muted">
+        <RowBody
+          icon={
+            w.kind === "post" && w.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
+            ) : (
+              <Avatar name={w.kind === "huddle" ? w.participantName : w.authorName} src={(w.kind === "huddle" ? w.participantId : w.authorId) ? avatars[(w.kind === "huddle" ? w.participantId : w.authorId)!] : null} size={40} />
+            )
+          }
+          title="Worth hearing"
+          summary={w.kind === "huddle" ? `Live Huddle · ${w.topic} · ${w.participantCount} here` : `${w.authorName}: ${w.body}`}
+          chevron
+        />
+      </Link>
+    </section>
   );
 }
