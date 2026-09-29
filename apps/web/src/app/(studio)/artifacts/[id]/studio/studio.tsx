@@ -11,6 +11,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
+import { lastPageOutside } from "@/components/nav-memory";
 import { CarouselCanvas, type CanvasNews, type SlidesState } from "./carousel-canvas";
 import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommunityResponses, type AskFragment } from "./studio-community";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
@@ -450,7 +451,20 @@ export function Studio({
     <div className="mx-auto -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] max-w-3xl pb-[calc(4.25rem+env(safe-area-inset-bottom))]" style={{ ["--canvas-extra" as string]: offline ? "4rem" : "0rem" }}>
       {/* Top bar (§6, §65): back · the Creation and its version · autosaved · who's on it · more. */}
       <header className="mb-2 flex items-center gap-1.5">
-        <Link href={`/artifacts/${artifact.id}`} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-black/5" aria-label="Back to Creation">
+        {/* A Carousel's Creation page is this Studio, so Back leaves the Creation: to the page the creator came from,
+            else their Creations (owner, 29 Sep 2026: "back button on carousel is not working"). */}
+        <Link
+          href={isCarousel ? "/space?tab=creations" : `/artifacts/${artifact.id}`}
+          onClick={(e) => {
+            if (!isCarousel) return;
+            const to = lastPageOutside(`/artifacts/${artifact.id}`);
+            if (!to) return;
+            e.preventDefault();
+            router.push(to);
+          }}
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-black/5"
+          aria-label={isCarousel ? "Back" : "Back to Creation"}
+        >
           <ArrowLeft className="size-5" aria-hidden />
         </Link>
         <div className="flex min-w-0 flex-1 items-center gap-2">

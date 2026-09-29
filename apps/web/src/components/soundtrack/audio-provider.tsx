@@ -5,8 +5,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 /**
  * The CreativeRadio engine (docs/ui-redesign/music-player.md §18–23; presentation name only — code, tables and APIs keep
  * "soundtrack"). One <audio> element lives here, above every route, so
- * music keeps playing across navigation. Track, mood, queue, history, volume and position are saved locally and
- * restored after a reload (paused — browsers need a tap before sound).
+ * music keeps playing across navigation. Track, mood, queue, history, volume, position and whether it was playing are
+ * saved locally; a reload carries on from the same spot (owner, 29 Sep 2026: "the playing music should not stop on page
+ * refresh"). A browser that won't start sound without a tap continues it on the creator's first tap. A locked phone
+ * keeps playing: the next song starts inside the ended event itself, and the lock screen's play/pause do what they say.
  */
 
 export type LibraryTrack = Track & { audioUrl: string };
@@ -25,6 +27,8 @@ interface Persisted {
   seed: number;
   /** Songs the creator queued themselves (Play next, Add to queue, More like this): kept whatever the mood. */
   pinned: string[];
+  /** It was playing when the page went away (a reload carries on). */
+  wasPlaying?: boolean;
 }
 
 const KEY = "wc.soundtrack.v1";
@@ -161,6 +165,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   /** The creator asked to play: honoured once the library and the track's source are in place. */
   const wantPlay = useRef(false);
   const playWhenReady = useRef(false);
+  /** Where a reloaded track picks up. */
+  const resumeAt = useRef(0);
+  /** Latest state, for event handlers that must act synchronously (a song ending on a locked phone). */
+  const pRef = useRef(p);
+  useEffect(() => {
+    pRef.current = p;
+  }, [p]);
 
   const byId = useCallback((id: string | null | undefined) => (id ? tracks.find((t) => t.id === id) : undefined), [tracks]);
   const current = byId(p.trackId);
@@ -173,6 +184,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       restored.current = true;
       setP(saved);
       setTime(saved.position);
+      resumeAt.current = saved.position;
+      // It was playing before the reload: carry on (from the same spot) once the track's source is in place.
+      if (saved.wasPlaying && saved.trackId) wantPlay.current = true;
     }, 0);
     return () => clearTimeout(t);
   }, []);
@@ -201,12 +215,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!restored.current) return;
     try {
-      localStorage.setItem(KEY, JSON.stringify({ ...p, position: Math.floor(time) }));
+      localStorage.setItem(KEY, JSON.stringify({ ...p, position: Math.floor(time), wasPlaying: playing || wantPlay.current }));
     } catch {
       // Private mode or full storage: playback still works, it just won't be remembered.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p, Math.floor(time / 5)]);
+  }, [p, playing, Math.floor(time / 5)]);
+  // The exact spot, as the page goes away (a reload, closing the tab).
+  useEffect(() => {
+    const save = () => {
+      const el = audio.current;
+      if (!restored.current || !el) return;
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ ...pRef.current, position: Math.floor(el.currentTime || 0), wasPlaying: !el.paused || wantPlay.current }));
+      } catch {
+        /* not remembered */
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => window.removeEventListener("pagehide", save);
+  }, []);
 
   useEffect(() => {
     if (audio.current) audio.current.volume = p.volume;
@@ -222,8 +250,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setPlaying(false);
         // A browser that blocks playback outside a tap says so; never fail silently.
         if (e instanceof DOMException && e.name === "NotAllowedError") {
-          wantPlay.current = false;
-          setNotice("Tap play to start the music.");
+          // After a reload the browser wants a tap first: the music carries on with the creator's first tap anywhere.
+          if (wantPlay.current && el.dataset.trackId) {
+            const go = () => {
+              document.removeEventListener("pointerdown", go, true);
+              document.removeEventListener("keydown", go, true);
+              if (wantPlay.current && el.paused) void el.play().catch(() => undefined);
+            };
+            document.addEventListener("pointerdown", go, true);
+            document.addEventListener("keydown", go, true);
+            setNotice("The music carries on when you tap.");
+          } else {
+            wantPlay.current = false;
+            setNotice("Tap play to start the music.");
+          }
           setTimeout(() => setNotice(null), 4000);
         }
       },
@@ -244,7 +284,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (el.dataset.trackId !== current.id) {
       el.dataset.trackId = current.id;
       el.src = current.audioUrl;
-      el.currentTime = 0;
+      el.currentTime = resumeAt.current;
+      resumeAt.current = 0;
       // Play was asked for before this source was set (a new track): start it now.
       if (wantPlay.current) startPlayback();
     }
@@ -283,32 +324,40 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [tracks],
   );
 
-  // The next track starts from the source effect once its src is set. That has to be decided now, synchronously: a
-  // requestAnimationFrame never fires while the tab is hidden or the phone is locked, which is exactly when a song ends
-  // unattended — so the music stopped after one song. Playing from the `ended` handler's own turn also keeps the
-  // browser's permission to continue without a tap.
+  // The next track is chosen and started right here, synchronously — not after a React render: a locked phone may run
+  // nothing more once the `ended` event returns, which is exactly when a song ends unattended (owner, 29 Sep 2026: "music
+  // should not stop if phone is locked"). Playing from the `ended` handler's own turn also keeps the browser's permission
+  // to continue without a tap. State follows; the source effect then finds the element already on the new track.
   const next = useCallback(() => {
     wantPlay.current = true;
-    setP((s) => {
-      const kept = tracks.length ? moodQueue(s) : s.queue;
-      let queue = kept.length ? kept : freshQueue(s, s.mood, s.seed + 1);
-      if (!queue.length) return s;
-      const i = s.shuffle ? Math.floor(Math.random() * queue.length) : 0;
-      const id = queue[i]!;
-      queue = queue.filter((_, j) => j !== i);
-      // The same track again (a one-song mood): the source doesn't change, so restart it here.
-      if (id === s.trackId) queueMicrotask(restart);
-      return {
-        ...s,
-        trackId: id,
-        queue,
-        pinned: s.pinned.filter((x) => x !== id && queue.includes(x)),
-        history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history,
-        seed: kept.length ? s.seed : s.seed + 1,
-      };
-    });
+    const s = pRef.current;
+    const kept = tracks.length ? moodQueue(s) : s.queue;
+    let queue = kept.length ? kept : freshQueue(s, s.mood, s.seed + 1);
+    if (!queue.length) return;
+    const i = s.shuffle ? Math.floor(Math.random() * queue.length) : 0;
+    const id = queue[i]!;
+    queue = queue.filter((_, j) => j !== i);
+    const el = audio.current;
+    const track = tracks.find((t) => t.id === id);
+    if (id === s.trackId) restart();
+    else if (el && track) {
+      el.dataset.trackId = id;
+      el.src = track.audioUrl;
+      el.currentTime = 0;
+      startPlayback();
+    }
+    const after: Persisted = {
+      ...s,
+      trackId: id,
+      queue,
+      pinned: s.pinned.filter((x) => x !== id && queue.includes(x)),
+      history: s.trackId ? [s.trackId, ...s.history].slice(0, 30) : s.history,
+      seed: kept.length ? s.seed : s.seed + 1,
+    };
+    pRef.current = after;
+    setP(after);
     setTime(0);
-  }, [freshQueue, moodQueue, restart, tracks.length]);
+  }, [freshQueue, moodQueue, restart, startPlayback, tracks]);
 
   // Honour a play that was asked for while the library was loading.
   const playRef = useRef<() => void>(() => undefined);
@@ -500,8 +549,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         // Unsupported action on this platform.
       }
     };
-    set("play", () => apiRef.current.toggle());
-    set("pause", () => apiRef.current.toggle());
+    // Play plays and pause pauses — never a toggle, so a lock-screen "play" can't stop the music.
+    set("play", () => {
+      if (!apiRef.current.state.playing) apiRef.current.play();
+    });
+    set("pause", () => {
+      const el = audio.current;
+      wantPlay.current = false;
+      el?.pause();
+      setPlaying(false);
+    });
     set("nexttrack", () => apiRef.current.next());
     set("previoustrack", () => apiRef.current.previous());
     return () => ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => set(a as MediaSessionAction, null));

@@ -214,7 +214,7 @@ export interface SlideOverlay {
   shadow: boolean;
   background: "none" | "shade" | "band";
 }
-export const DEFAULT_OVERLAY: SlideOverlay = { enabled: false, x: 0.5, y: 0.8, width: 0.84, font: "serif", size: 0.07, align: "center", color: "#ffffff", shadow: true, background: "shade" };
+export const DEFAULT_OVERLAY: SlideOverlay = { enabled: true, x: 0.5, y: 0.8, width: 0.84, font: "serif", size: 0.07, align: "center", color: "#ffffff", shadow: true, background: "shade" };
 export const OVERLAY_COLORS = ["#ffffff", "#fbf7f0", "#1f2a44", "#000000", "#c98a3c", "#2c5a7a"] as const;
 export const OVERLAY_FONTS = [
   { value: "editorial", label: "Editorial" },

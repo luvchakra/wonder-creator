@@ -51,7 +51,6 @@ test.describe("CreativeRadio", () => {
 
     // The mini player docks right-middle as a slim tab (awareness + expand); it opens leftward from there.
     const esc = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // (A full page load restores the track paused — browsers need a tap before sound — so the tab may say either.)
     const tab = page.getByRole("button", { name: new RegExp(`^Open audio player — (playing|paused): ${esc}$`) });
     const mini = page.getByRole("region", { name: "CreativeRadio" });
     await expect(page.getByRole("button", { name: `Open audio player — playing: ${title}` })).toBeVisible();
@@ -91,8 +90,9 @@ test.describe("CreativeRadio", () => {
     await mini.focus();
     await page.keyboard.press("Escape");
     await expect(tab).toBeVisible();
+    // A reload doesn't stop the music (owner, 29 Sep 2026): it carries on from the same song.
     await page.reload();
-    await expect(page.getByRole("button", { name: /^Open audio player — paused: / })).toBeVisible();
+    await expect(page.getByRole("button", { name: `Open audio player — playing: ${title}` })).toBeVisible();
     await expect(mini).toHaveCount(0);
 
     // In the Creative Studio (an immersive screen) it starts tucked in, but a tap still opens it (owner, 29 Sep 2026).
@@ -235,5 +235,84 @@ test.describe("CreativeRadio", () => {
     expect(s.mood).toBe("nature");
     expect(moodOf(s.trackId)).toBe("nature");
     expect(s.queue.every((id) => moodOf(id) === "nature")).toBe(true);
+  });
+
+  test("music survives a reload and a locked phone: same song, same spot; paused stays paused; lock-screen play never pauses", async ({ page }) => {
+    // Capture the lock-screen handlers the page registers.
+    await page.addInitScript(() => {
+      const handlers: Record<string, () => void> = {};
+      (window as unknown as { __ms: typeof handlers }).__ms = handlers;
+      if (navigator.mediaSession) navigator.mediaSession.setActionHandler = (a: MediaSessionAction, h: MediaSessionActionHandler | null) => void (h ? (handlers[a] = h as () => void) : delete handlers[a]);
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    const panel = page.getByRole("dialog", { name: "CreativeRadio" });
+    const first = panel.getByRole("list", { name: "Songs for Calm" }).getByRole("button", { name: /^Play / }).first();
+    const title = ((await first.getAttribute("aria-label")) ?? "").replace(/^Play /, "");
+    await first.click();
+    await page.keyboard.press("Escape");
+    const playing = page.getByRole("button", { name: `Open audio player — playing: ${title}` });
+    await expect(playing).toBeVisible();
+
+    // The spot is kept as the page goes away, and the reload picks up there, still playing.
+    await page.evaluate(() => {
+      const el = document.querySelector("audio")!;
+      Object.defineProperty(el, "currentTime", { configurable: true, value: 42, writable: true });
+    });
+    await page.reload();
+    await expect(playing).toBeVisible();
+    expect(await page.evaluate(() => (JSON.parse(localStorage.getItem("wc.soundtrack.v1") ?? "{}") as { position: number }).position)).toBe(42);
+
+    // Lock screen: "play" while playing never pauses; "pause" pauses and "play" plays.
+    await page.evaluate(() => (window as unknown as { __ms: Record<string, () => void> }).__ms.play!());
+    await expect(playing).toBeVisible();
+    await page.evaluate(() => (window as unknown as { __ms: Record<string, () => void> }).__ms.pause!());
+    await expect(page.getByRole("button", { name: `Open audio player — paused: ${title}` })).toBeVisible();
+    // Paused stays paused across a reload.
+    await page.reload();
+    await expect(page.getByRole("button", { name: `Open audio player — paused: ${title}` })).toBeVisible();
+    await page.evaluate(() => (window as unknown as { __ms: Record<string, () => void> }).__ms.play!());
+    await expect(playing).toBeVisible();
+
+    // A song ending on a locked phone: the next one is loaded and started inside the ended event itself.
+    const started = await page.evaluate(() => {
+      const el = document.querySelector("audio")!;
+      const before = el.dataset.trackId;
+      let played = false;
+      const orig = el.play.bind(el);
+      el.play = () => {
+        played = true;
+        return orig();
+      };
+      el.dispatchEvent(new Event("ended"));
+      return { changed: el.dataset.trackId !== before, played };
+    });
+    expect(started).toEqual({ changed: true, played: true });
+  });
+
+  test("a browser that wants a tap first: the music carries on with the first tap after a reload", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: /Set the mood/ }).click();
+    const first = page.getByRole("dialog", { name: "CreativeRadio" }).getByRole("list", { name: "Songs for Calm" }).getByRole("button", { name: /^Play / }).first();
+    const title = ((await first.getAttribute("aria-label")) ?? "").replace(/^Play /, "");
+    await first.click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: `Open audio player — playing: ${title}` })).toBeVisible();
+    // After the reload, sound is refused until a tap.
+    await page.addInitScript(() => {
+      let tapped = false;
+      document.addEventListener("pointerdown", () => (tapped = true), true);
+      HTMLMediaElement.prototype.play = function () {
+        if (!tapped) return Promise.reject(new DOMException("needs a tap", "NotAllowedError"));
+        this.dispatchEvent(new Event("play"));
+        return Promise.resolve();
+      };
+    });
+    await page.reload();
+    await expect(page.getByRole("button", { name: `Open audio player — paused: ${title}` })).toBeVisible();
+    await page.mouse.click(10, 300);
+    await expect(page.getByRole("button", { name: `Open audio player — playing: ${title}` })).toBeVisible();
   });
 });
