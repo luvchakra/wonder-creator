@@ -36,7 +36,7 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
   const def = artifactType(a.artifact_type);
   // Just made from another Creation (Change format): name it, so it's clear the original is untouched.
   const { data: madeFrom } = from && /^[0-9a-f-]{36}$/i.test(from) && from !== id ? await db.from("artifacts").select("id, title").eq("id", from).maybeSingle() : { data: null };
-  const safeAdd = add && /^(material|creation|collection|comment|huddle_moment):[0-9a-f-]{36}$/i.test(add) ? add : null;
+  const safeAdd = add && /^(material|creation|collection|comment|huddle_moment|conversation|conversation_reply|scrapbook_entry):[0-9a-f-]{36}$/i.test(add) ? add : null;
   return (
     <>
       {/* The Creation Palette during active work (palette-spec §9.16). */}

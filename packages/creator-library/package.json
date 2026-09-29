@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./suggestions": "./src/suggestions.ts",
-    "./scrapbook-options": "./src/scrapbook-options.ts"
+    "./scrapbook-options": "./src/scrapbook-options.ts",
+    "./source-rights": "./src/source-rights.ts"
   }
 }

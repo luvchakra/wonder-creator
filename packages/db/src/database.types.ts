@@ -2359,13 +2359,13 @@ isOneToOne: false
                   ]
                 },"open_conversations": {
                   Row: {
-                    "body": string | null,"closed_at": string | null,"created_at": string,"creator_id": string,"id": string,"intent": string,"last_reply_at": string | null,"participant_count": number,"removed_at": string | null,"removed_reason": string | null,"reply_count": number,"source_entity_id": string | null,"source_entity_type": string | null,"title": string,"updated_at": string,"visibility": string
+                    "body": string | null,"closed_at": string | null,"created_at": string,"creator_id": string,"id": string,"intent": string,"last_reply_at": string | null,"participant_count": number,"removed_at": string | null,"removed_reason": string | null,"reply_count": number,"source_entity_id": string | null,"source_entity_type": string | null,"source_fragment": Json | null,"title": string,"updated_at": string,"visibility": string
                   }
                   Insert: {
-                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"intent": string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"title": string,"updated_at"?: string,"visibility"?: string
+                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"intent": string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"source_fragment"?: Json | null,"title": string,"updated_at"?: string,"visibility"?: string
                   }
                   Update: {
-                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"intent"?: string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"title"?: string,"updated_at"?: string,"visibility"?: string
+                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"intent"?: string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"source_fragment"?: Json | null,"title"?: string,"updated_at"?: string,"visibility"?: string
                   }
                   Relationships: [
                     {
@@ -3244,13 +3244,13 @@ isOneToOne: false
                   ]
                 },"studio_sessions": {
                   Row: {
-                    "artifact_id": string,"created_at": string,"creator_id": string,"draft": string | null,"draft_base_version_id": string | null,"draft_saved_at": string | null,"id": string,"intent": NonNullable<Json>,"output_mode": string,"status": string,"updated_at": string
+                    "artifact_id": string,"created_at": string,"creator_id": string,"dejavu_id": string | null,"dismissed_replies": (string)[],"draft": string | null,"draft_base_version_id": string | null,"draft_saved_at": string | null,"id": string,"intent": NonNullable<Json>,"last_opened_source_id": string | null,"output_mode": string,"status": string,"updated_at": string
                   }
                   Insert: {
-                    "artifact_id": string,"created_at"?: string,"creator_id": string,"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                    "artifact_id": string,"created_at"?: string,"creator_id": string,"dejavu_id"?: string | null,"dismissed_replies"?: (string)[],"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"last_opened_source_id"?: string | null,"output_mode"?: string,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"output_mode"?: string,"status"?: string,"updated_at"?: string
+                    "artifact_id"?: string,"created_at"?: string,"creator_id"?: string,"dejavu_id"?: string | null,"dismissed_replies"?: (string)[],"draft"?: string | null,"draft_base_version_id"?: string | null,"draft_saved_at"?: string | null,"id"?: string,"intent"?: NonNullable<Json>,"last_opened_source_id"?: string | null,"output_mode"?: string,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3266,10 +3266,22 @@ isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "studio_sessions_dejavu_id_fkey"
+      columns: ["dejavu_id"]
+isOneToOne: false
+      referencedRelation: "dejavus"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "studio_sessions_draft_base_version_id_fkey"
       columns: ["draft_base_version_id"]
 isOneToOne: false
       referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_sessions_last_opened_source_id_fkey"
+      columns: ["last_opened_source_id"]
+isOneToOne: false
+      referencedRelation: "studio_sources"
       referencedColumns: ["id"]
     }
                   ]

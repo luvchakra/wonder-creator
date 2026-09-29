@@ -11,7 +11,8 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
-import { CarouselCanvas, type CanvasNews } from "./carousel-canvas";
+import { CarouselCanvas, type CanvasNews, type SlidesState } from "./carousel-canvas";
+import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommunityResponses, type AskFragment } from "./studio-community";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 import { WorkingTable, type ExternalAdded } from "./working-table";
@@ -65,7 +66,7 @@ export function Studio({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "table" | "table-available" | "set" | "influence" | "bring" | "format" | "save" | "more">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -74,7 +75,9 @@ export function Studio({
         let r = await api<{ workingSet: WorkingSetView }>("/api/v1/studio-sessions", { method: "POST", json: { artifactId: artifact.id } });
         if (addOnOpen) {
           const [type, id] = addOnOpen.split(":");
-          r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${r.workingSet.sessionId}/sources`, { method: "POST", json: { items: [{ type, id }], state: "in_use" } });
+          // Community things arrive Available (Phase 04 §7): someone else's words wait until the creator chooses a use.
+          const community = type === "conversation" || type === "conversation_reply" || type === "scrapbook_entry";
+          r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${r.workingSet.sessionId}/sources`, { method: "POST", json: { items: [{ type, id }], state: community ? "available" : "in_use" } });
           router.replace(`/artifacts/${artifact.id}/studio`);
         }
         if (!live) return;
@@ -96,6 +99,9 @@ export function Studio({
   }, [artifact.id]);
   const sources = set?.sources ?? [];
   const inUse = sources.filter((s) => s.state !== "available").length;
+  // Replies to what the creator asked Community about this Creation (Phase 04 §14).
+  const [respKey, setRespKey] = useState(0);
+  const [responses] = useCommunityResponses(set?.sessionId ?? null, respKey);
   const change = useCallback(
     async (row: WorkingSource, body: { state?: WorkingSource["state"] } | "remove") => {
       if (!set) return;
@@ -109,14 +115,37 @@ export function Studio({
     },
     [set],
   );
-  // The navbar's quiet line (§45, §65): "3 sources · 2 unused".
+  // The slide on screen (Carousel), reported by the canvas.
+  const [slides, setSlides] = useState<SlidesState>({ current: null, ids: [], index: 0, text: "" });
+  // Which slides each source is used in (derived on the server from what's recorded), for "Slide 2 · 3 sources".
+  const [usage, setUsage] = useState<Record<string, number[]>>({});
+  const usageKey = set ? `${set.sessionId}:${sources.map((s) => `${s.id}${s.state}`).join(",")}` : null;
+  useEffect(() => {
+    if (!usageKey || artifact.type !== "carousel") return;
+    let live = true;
+    const t = setTimeout(() => {
+      api<{ usage: Record<string, number[]> }>(`/api/v1/studio-sessions/${usageKey.split(":")[0]}/usage`)
+        .then((r) => live && setUsage(r.usage))
+        .catch(() => undefined);
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [usageKey, artifact.type]);
+  // The navbar's quiet line (§45, §65): "3 sources · 2 unused" — on a Carousel, what's shaping the slide on screen
+  // (Phase 04 §17): "Slide 2 · 3 sources" (the ones used in it, plus pinned ones, which hold everywhere).
+  const slideNo = slides.current ? slides.index + 1 : null;
+  const onSlide = slideNo ? sources.filter((s) => s.available && (s.state === "pinned" || usage[s.id]?.includes(slideNo))).length : 0;
   useEffect(() => {
     if (!set) return;
     const unused = sources.filter((s) => s.state === "available").length;
-    strip("sources", sources.length ? { text: `${workingSetSummary(sources)}${unused ? ` · ${unused} unused` : ""}`, shortText: `${sources.length} sources`, tone: "neutral", priority: 9 } : null);
+    if (artifact.type === "carousel" && slideNo)
+      strip("sources", { text: `Slide ${slideNo} · ${onSlide} ${onSlide === 1 ? "source" : "sources"}`, shortText: `Slide ${slideNo}`, tone: "neutral", priority: 9 });
+    else strip("sources", sources.length ? { text: `${workingSetSummary(sources)}${unused ? ` · ${unused} unused` : ""}`, shortText: `${sources.length} sources`, tone: "neutral", priority: 9 } : null);
     return () => strip("sources", null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [set]);
+  }, [set, slideNo, onSlide]);
 
   /* ------------------------------------------------------------ Canvas + autosave */
   const dirty = content !== (base?.content ?? "");
@@ -215,7 +244,6 @@ export function Studio({
   }
 
   // "Use this" results (owner, 28 Sep 2026): what the chosen uses did, said once; and news for the carousel canvas.
-  const [slides, setSlides] = useState<{ current: string | null; ids: string[] }>({ current: null, ids: [] });
   const [news, setNews] = useState<CanvasNews | null>(null);
   const newsSeq = useRef(0);
   const [usedNote, setUsedNote] = useState<string | null>(null);
@@ -403,6 +431,17 @@ export function Studio({
   // "Arrange slides" (More sheet) asks the carousel canvas to open Arrange; each ask is a new number.
   const [arrangeReq, setArrangeReq] = useState(0);
   const saveLabel = saving ? "Saving…" : savedAt ? "Autosaved" : dirty ? "Unsaved" : "Saved";
+  // Ask Community (Phase 04 §13) is about one part: the slide on screen, the selected passage, or the opening.
+  const opening = content.split(/\n\s*\n/).find((p) => p.trim())?.trim() ?? "";
+  const askFragment: AskFragment | null = isCarousel
+    ? slides.current && slides.text
+      ? { label: `Slide ${slides.index + 1}`, text: slides.text, slideId: slides.current }
+      : null
+    : selection.trim()
+      ? { label: "A passage", text: selection.trim() }
+      : opening
+        ? { label: "The opening", text: opening }
+        : null;
 
   return (
     // --canvas-extra: what else takes height above the canvas (the offline notice), so the carousel canvas can size itself.
@@ -807,6 +846,12 @@ export function Studio({
                   · <Sparkles className="inline size-3.5 align-[-2px]" aria-hidden /> {nudge!.count} unused
                 </span>
               ) : null}
+              {responses?.fresh ? (
+                <span className="font-normal text-accent-ink">
+                  {" "}
+                  · {responses.fresh} new {responses.fresh === 1 ? "reply" : "replies"}
+                </span>
+              ) : null}
             </span>
             <ChevronUp className="size-4 shrink-0 text-ink-subtle" aria-hidden />
           </span>
@@ -815,9 +860,9 @@ export function Studio({
 
       {/* Sheets */}
       <WorkingTable
-        open={sheet === "table" || sheet === "table-available"}
+        open={sheet === "table" || sheet === "table-available" || sheet === "table-external"}
         onOpenChange={(o) => !o && setSheet(null)}
-        initialTab={sheet === "table-available" || (sources.length > 0 && !inUse) ? "available" : "in_use"}
+        initialTab={sheet === "table-external" ? "external" : sheet === "table-available" || (sources.length > 0 && !inUse) ? "available" : "in_use"}
         set={set}
         artifactId={artifact.id}
         creationTitle={title || artifact.title}
@@ -832,7 +877,29 @@ export function Studio({
         onManage={() => setSheet("set")}
         onBringIn={() => setSheet("bring")}
         onExternalAdded={(r) => void externalAdded(r)}
+        responses={responses}
+        onResponses={() => setSheet("responses")}
+        onDejaVu={() => setSheet("dejavu")}
       />
+      <DejaVuIntakeSheet
+        open={sheet === "dejavu"}
+        onOpenChange={(o) => !o && setSheet(null)}
+        sessionId={set?.sessionId ?? null}
+        dejavuId={set?.dejavu?.id ?? null}
+        onAdded={(next) => {
+          setSet(next);
+          setSheet("table-available");
+        }}
+      />
+      <CommunityResponsesSheet
+        open={sheet === "responses"}
+        onOpenChange={(o) => !o && setSheet(null)}
+        sessionId={set?.sessionId ?? null}
+        data={responses}
+        onChanged={() => setRespKey((k) => k + 1)}
+        onSet={setSet}
+      />
+      <AskCommunitySheet open={sheet === "ask"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} fragment={askFragment} onAsked={() => setRespKey((k) => k + 1)} />
       <WorkingSetSheet
         open={sheet === "set" || sheet === "influence"}
         onOpenChange={(o) => !o && setSheet(null)}
@@ -852,6 +919,7 @@ export function Studio({
           setSet(next);
           setSheet("table-available");
         }}
+        onExternal={() => setSheet("table-external")}
       />
       <ChangeFormatSheet open={sheet === "format"} onOpenChange={(o) => !o && setSheet(null)} sessionId={set?.sessionId ?? null} currentType={artifact.type} aiLive={!offline} />
       {fragmentsFor && set ? <FragmentsSheet sessionId={set.sessionId} row={fragmentsFor} onClose={() => setFragmentsFor(null)} onAdded={(next) => setSet(next)} /> : null}
@@ -873,6 +941,7 @@ export function Studio({
                   ]
                 : []),
               { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+              ...(askFragment ? [{ label: "Ask Community", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
               { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/artifacts/${artifact.id}?tab=versions`) },
               { label: "Transform / Derive", hint: "Make a carousel, video, etc.", act: () => setSheet("format") },
               { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/artifacts/${artifact.id}/share`) },

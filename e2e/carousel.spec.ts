@@ -76,6 +76,8 @@ test.describe("Carousel Composer", () => {
     await expect(editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ })).toBeVisible();
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 3 of 3" }).click();
     await expect(editor.getByText("3 / 3")).toBeVisible();
+    // The navbar names the slide on screen and what's shaping it (Phase 04 §17).
+    await expect(page.getByRole("banner").getByRole("status")).toHaveAttribute("aria-label", /Slide 3 · 0 sources/);
     // Arrange lives under More; the order is kept.
     await page.getByRole("button", { name: "More", exact: true }).click();
     await page
@@ -83,6 +85,8 @@ test.describe("Carousel Composer", () => {
       .getByRole("button", { name: /Arrange slides/ })
       .click();
     const order = page.getByRole("list", { name: "Slide order" });
+    // The navbar says what's happening (Phase 04 §12).
+    await expect(page.getByRole("banner").getByRole("status")).toHaveAttribute("aria-label", /Arrange 3 slides/);
     await order.getByRole("button", { name: "Move slide 1 down" }).click();
     await page.getByRole("button", { name: "Done" }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Second wind/ })).toBeVisible();

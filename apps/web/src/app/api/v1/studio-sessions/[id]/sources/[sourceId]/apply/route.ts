@@ -1,6 +1,6 @@
 import { DomainError } from "@wonder/core";
 import { newSlideFromMaterial, refineSlideWords, slideImageFromMaterial, splitTextIntoSlides, wordsOnSlide } from "@wonder/creator-brain";
-import { outputModeOf, sourceDetail, updateSource, USAGE_LABEL, workingSetView, type UsageIntent } from "@wonder/creator-studio";
+import { canInsert, INSERTING_ACTIONS, isCommunitySource, outputModeOf, RIGHTS_HINT, RIGHTS_LABEL, sourceDetail, updateSource, USAGE_LABEL, workingSetView, type UsageIntent } from "@wonder/creator-studio";
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
 import { brainDeps } from "@/lib/brain";
@@ -10,7 +10,7 @@ import { serviceClient } from "@/lib/supabase/service";
 
 export const maxDuration = 60;
 
-const ACTIONS = ["new_slide", "slide_image", "cover", "slide_words", "split_slides", "refine_slide", "draft_words", "refine_draft", "part"] as const;
+const ACTIONS = ["new_slide", "slide_image", "cover", "slide_words", "split_slides", "refine_slide", "draft_words", "refine_draft", "part", "direction", "visual_ref", "pin"] as const;
 const schema = z.object({ slideId: z.string().uuid().nullish(), action: z.enum(ACTIONS).nullish() });
 
 /** How each one-tap action counts as a use of the material (shown on its row; In use from now on). */
@@ -24,6 +24,9 @@ const ACTION_INTENT: Record<(typeof ACTIONS)[number], UsageIntent> = {
   draft_words: "content",
   refine_draft: "style",
   part: "quote",
+  direction: "constraint",
+  visual_ref: "style",
+  pin: "constraint",
 };
 
 /** Words that only steer (a tone, a shape, a fact) rather than being used as they are. */
@@ -53,13 +56,43 @@ export const POST = withApi<{ id: string; sourceId: string }>(
     const text = (row.fragment?.text ?? detail.text ?? "").trim();
     const isPhoto = row.sourceType === "material" && (row.mediaType === "image" || row.mediaType === "sketch");
     const carousel = outputModeOf(a.artifact_type) === "carousel";
+    // Rights gate (Phase 04 §8): only what may be reused goes into the piece itself; the rest can still steer it. The
+    // Working Table hides these actions already — this is the check that counts.
+    const mayInsert = canInsert(row.rights);
+    const refused = { kind: "kept" as const, message: `${RIGHTS_LABEL[row.rights]}: ${RIGHTS_HINT[row.rights]}` };
+    if (row.rights === "restricted") throw new DomainError("forbidden", `${RIGHTS_LABEL.restricted}: ${RIGHTS_HINT.restricted}`);
+    if (b.action && INSERTING_ACTIONS.includes(b.action) && !mayInsert) throw new DomainError("forbidden", `${RIGHTS_LABEL[row.rights]}: ${RIGHTS_HINT[row.rights]}`);
+    const steerLabel = row.sourceType === "comment" ? "Feedback to apply" : isCommunitySource(row.sourceType) ? "Creative direction" : "Its words and tone";
+    const steerInstruction =
+      row.sourceType === "comment"
+        ? "Apply this feedback to the words."
+        : isCommunitySource(row.sourceType) && !mayInsert
+          ? "Take this creative direction into account. Don't copy its wording."
+          : "Rework these words drawing on the source.";
 
     // One-tap actions under a material's row (owner board, 29 Sep 2026): do exactly what the button says.
     if (b.action) {
       const act = b.action;
       const done = async () =>
-        updateSource(db, sourceId, { state: row.state === "pinned" ? "pinned" : "in_use", usageIntent: row.sourceType === "comment" ? "constraint" : ACTION_INTENT[act], usageNote: null });
+        updateSource(db, sourceId, {
+          state: row.state === "pinned" ? "pinned" : "in_use",
+          usageIntent: row.sourceType === "comment" || (isCommunitySource(row.sourceType) && !mayInsert) ? "constraint" : ACTION_INTENT[act],
+          usageNote: null,
+        });
       const service = serviceClient();
+      // Steering, not copying (Phase 04 §11): the source shapes what CreativeMind does next; nothing is placed yet.
+      if (act === "direction") {
+        await updateSource(db, sourceId, { state: row.state === "pinned" ? "pinned" : "in_use", roles: ["creative_direction"], usageIntent: "constraint", usageNote: null });
+        return { kind: "kept" as const, message: "It's steering the piece now. Refine to work it in." };
+      }
+      if (act === "visual_ref") {
+        await updateSource(db, sourceId, { state: row.state === "pinned" ? "pinned" : "in_use", roles: ["visual", "style"], usageIntent: "style", usageNote: null });
+        return { kind: "kept" as const, message: "A visual reference now — it guides the look and isn't placed in the piece." };
+      }
+      if (act === "pin") {
+        await updateSource(db, sourceId, { state: "pinned", roles: [...new Set([...row.roles, "constraint" as const])].slice(0, 4), usageIntent: "constraint", usageNote: null });
+        return { kind: "kept" as const, message: "Pinned. It will be kept to when things change." };
+      }
       if (act === "cover") {
         if (!isPhoto) throw new DomainError("validation", "Only a photo can be the cover.");
         const { error } = await db.from("artifacts").update({ cover_material_id: row.sourceId }).eq("id", a.id);
@@ -103,8 +136,8 @@ export const POST = withApi<{ id: string; sourceId: string }>(
           creationTitle: a.title,
           words: slide.display_text || slide.source_text,
           sourceText: slide.source_text,
-          instruction: row.sourceType === "comment" ? "Apply this feedback to the words." : "Rework these words drawing on the source.",
-          from: { title: row.title, use: row.sourceType === "comment" ? "Feedback to apply" : "Its words and tone", text },
+          instruction: steerInstruction,
+          from: { title: row.title, use: steerLabel, text },
         });
         await done();
         return { kind: "slide_proposal" as const, slideId: slide.id, text: r.text, live: r.live };
@@ -125,6 +158,7 @@ export const POST = withApi<{ id: string; sourceId: string }>(
       if (!b.slideId) throw new DomainError("validation", "Pick a slide first.");
       const { data: slide } = await db.from("carousel_slides").select("id, display_text, source_text").eq("id", b.slideId).eq("artifact_id", a.id).maybeSingle();
       if (!slide) throw new DomainError("not_found", "That slide isn't available.");
+      if (!mayInsert && (intent === "visual" || intent === "content" || intent === "quote")) return refused;
       if (isPhoto && (intent === "visual" || intent === "content")) {
         await slideImageFromMaterial({ db, service: serviceClient(), creatorId, derive: deriveImages }, slide.id, row.sourceId);
         return { kind: "slide_image" as const, slideId: slide.id, message: "Your photo is on the slide." };
@@ -150,6 +184,7 @@ export const POST = withApi<{ id: string; sourceId: string }>(
     }
 
     if (isPhoto && !row.usageNote && (intent === "visual" || intent === "reference")) return { kind: "kept" as const, message: `Saved as “${use}”.` };
+    if (!mayInsert && (intent === "content" || intent === "quote")) return refused;
     if ((intent === "content" || (intent === "quote" && row.fragment)) && text) return { kind: "draft_words" as const, text };
     if (intent === "quote") return { kind: "choose_part" as const };
     if (!text && !isPhoto) return { kind: "kept" as const, message: `Saved as “${use}”. This source has no words to use yet.` };

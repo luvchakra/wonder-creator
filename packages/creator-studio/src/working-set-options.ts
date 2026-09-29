@@ -1,7 +1,11 @@
+import { canInsert, type RightsState } from "@wonder/creator-library/source-rights";
+
 /**
  * CreativeStudio Working Set (docs/ui-redesign/creative-studio-working-set.md): the words and shapes shared by the
  * server and the Studio UI. Client-safe — no database access here.
  */
+
+export { RIGHTS_LABEL, RIGHTS_HINT, canInsert, type RightsState } from "@wonder/creator-library/source-rights";
 
 export const SOURCE_STATES = ["pinned", "in_use", "available"] as const;
 export type SourceState = (typeof SOURCE_STATES)[number];
@@ -24,7 +28,7 @@ export const USAGE_LABEL: Record<UsageIntent, string> = {
   constraint: "Feedback to apply",
 };
 
-export const SOURCE_ROLES = ["story", "visual", "mood", "reference", "fact", "voice", "style", "constraint", "character", "structure", "sound", "quote"] as const;
+export const SOURCE_ROLES = ["story", "visual", "mood", "reference", "fact", "voice", "style", "constraint", "character", "structure", "sound", "quote", "feedback", "creative_direction"] as const;
 export type SourceRole = (typeof SOURCE_ROLES)[number];
 export const ROLE_LABEL: Record<SourceRole, string> = {
   story: "Story",
@@ -39,10 +43,15 @@ export const ROLE_LABEL: Record<SourceRole, string> = {
   structure: "Structure",
   sound: "Sound",
   quote: "Quote",
+  feedback: "Feedback",
+  creative_direction: "Creative direction",
 };
 
-export const SOURCE_TYPES = ["material", "creation", "collection", "comment", "huddle_moment"] as const;
+export const SOURCE_TYPES = ["material", "creation", "collection", "comment", "huddle_moment", "conversation", "conversation_reply", "scrapbook_entry"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
+/** Things from Community (Phase 04 §6–7): someone's Open Conversation, a reply in one, a Scrapbook entry. */
+export const COMMUNITY_SOURCE_TYPES: readonly SourceType[] = ["conversation", "conversation_reply", "scrapbook_entry"];
+export const isCommunitySource = (t: SourceType) => COMMUNITY_SOURCE_TYPES.includes(t);
 
 /** A usable piece of a source (§19–21, §42). */
 export interface Fragment {
@@ -77,6 +86,14 @@ export interface WorkingSource {
   usageNote?: string | null;
   /** Brought in within the last half hour and not used yet: shows "New". */
   fresh?: boolean;
+  /** What may be done with it (Phase 04 §8) — recorded facts only, never inferred. */
+  rights: RightsState;
+  /** The credit kept with it ("By Maya · CC BY 4.0 · Openverse"), when there is one. */
+  attribution?: string | null;
+  /** Who made it, for someone else's Community words ("Maya · Open Conversation"). */
+  author?: string | null;
+  /** When the thing itself was made (a reply's date), for provenance. */
+  createdAt?: string | null;
 }
 
 export interface StudioIntent {
@@ -96,6 +113,10 @@ export interface WorkingSetView {
   /** The autosaved canvas draft, if it differs from the current version (§44–46). */
   draft: { text: string; baseVersionId: string | null; savedAt: string } | null;
   sources: WorkingSource[];
+  /** The source row opened last on the Working Table (it opens again next time; none when all were closed). */
+  lastOpenedSourceId: string | null;
+  /** The DejaVu being explored here (§5): its Moments are available to bring in; none were imported. */
+  dejavu: { id: string; name: string; count: number } | null;
 }
 
 export const OUTPUT_MODES = [
@@ -193,6 +214,9 @@ export const BRING_IN_KINDS = [
   { key: "collection", label: "Collection", hint: "Saved references" },
   { key: "huddle_moment", label: "Huddle moment", hint: "Ideas and discussions" },
   { key: "comment", label: "Person / Comment", hint: "Use feedback" },
+  { key: "dejavu", label: "DejaVu", hint: "Moments you connected" },
+  { key: "community", label: "Community", hint: "Conversations, replies" },
+  { key: "external", label: "Royalty-free images", hint: "Openverse, Pixabay…" },
   { key: "browse", label: "Browse", hint: "Explore and discover" },
 ] as const;
 
@@ -204,6 +228,7 @@ export interface BringInResult {
   mediaType: string | null;
   thumbnailUrl: string | null;
   inSet: boolean;
+  rights?: RightsState;
 }
 
 /** Sections in the order the spec gives (§56): Pinned, In use, Available — empty ones aren't shown. */
@@ -259,10 +284,25 @@ const DOC_TYPES = new Set(["pdf", "document", "research", "url", "reference", "l
  * "How do you want to use this?" — 3–4 plain options from what the source is and what the Creation is becoming
  * (owner, 28 Sep 2026). Deterministic: no model, nothing invented. The sheet always adds "Something else…".
  */
-export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "fragment">, creationType: string): UsageOption[] {
+export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "fragment"> & { rights?: RightsState }, creationType: string): UsageOption[] {
   const mode = outputModeOf(creationType);
   const visualOut = mode === "carousel" || mode === "image" || mode === "video" || mode === "presentation";
   const t = s.mediaType ?? "";
+  // Someone else's Community words steer; they aren't copied in (Phase 04 §8).
+  if (isCommunitySource(s.sourceType) && s.rights && !canInsert(s.rights)) {
+    return [
+      { key: "direction", intent: "constraint", label: "Use as creative direction", hint: "Let it steer how you shape the piece" },
+      { key: "mood", intent: "mood", label: "Take its mood", hint: "The feeling, not the words" },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
+  if (s.rights && !canInsert(s.rights) && IMAGE_TYPES.has(t)) {
+    return [
+      { key: "style", intent: "style", label: "Use as visual reference", hint: "Light, colour and texture for the visuals" },
+      { key: "mood", intent: "mood", label: "Take its mood", hint: "The feeling, not the picture" },
+      { key: "ref", intent: "reference", label: "Keep it for reference", hint: "Nearby, not steering anything" },
+    ];
+  }
   if (s.sourceType === "comment") {
     return [
       { key: "apply", intent: "constraint", label: "Apply this feedback", hint: "Keep it in mind as you shape the piece" },
@@ -315,35 +355,58 @@ export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType
   ];
 }
 
-/** A one-tap way to use a material in the Creation, shown under its row (owner board, 29 Sep 2026). */
-export type MaterialAction = "new_slide" | "slide_image" | "cover" | "slide_words" | "split_slides" | "refine_slide" | "draft_words" | "refine_draft" | "part";
+/** A one-tap way to use a source in the Creation, shown under its row (owner board, 29 Sep 2026; Phase 04 §11). */
+export type MaterialAction =
+  | "new_slide"
+  | "slide_image"
+  | "cover"
+  | "slide_words"
+  | "split_slides"
+  | "refine_slide"
+  | "draft_words"
+  | "refine_draft"
+  | "part"
+  | "direction"
+  | "visual_ref"
+  | "pin";
 export interface MaterialActionOption {
   action: MaterialAction;
   label: string;
 }
 
+/** Actions that place the source itself into the output — allowed only when its rights permit (§8). */
+export const INSERTING_ACTIONS: readonly MaterialAction[] = ["new_slide", "slide_image", "cover", "slide_words", "split_slides", "draft_words", "part"];
+
 /**
- * Up to three context-based buttons for a material on the table: what it is × what the Creation is. Carousels get
- * slide actions (add as a new slide, replace the slide image, use the words on the slide, split into slides); written
- * pieces get draft actions. Deterministic; each one does exactly what it says (the Studio's apply endpoint).
+ * Up to three context-based buttons for a source on the table, generated from what it is × what the Creation is ×
+ * what its rights allow (Phase 04 §11) — never a global list. Carousels get slide actions, written pieces draft
+ * actions. Anything that would copy the source into the piece is offered only when its rights permit; otherwise the
+ * source can still steer (refine with it, use it as direction or visual reference). Deterministic; each one does
+ * exactly what it says (the Studio's apply endpoint, which checks the rights again).
  */
-export function materialActionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "available" | "fragment">, creationType: string): MaterialActionOption[] {
-  if (!s.available) return [];
+export function materialActionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "available" | "fragment" | "rights" | "state">, creationType: string): MaterialActionOption[] {
+  if (!s.available || s.rights === "restricted") return [];
   const carousel = outputModeOf(creationType) === "carousel";
+  const insert = canInsert(s.rights);
   const t = s.mediaType ?? "";
+  const pin: MaterialActionOption[] = s.state === "pinned" ? [] : [{ action: "pin", label: "Pin as constraint" }];
   const photo = s.sourceType === "material" && (t === "image" || t === "sketch");
   if (photo) {
+    if (!insert) return [{ action: "visual_ref", label: "Use as visual reference" }, ...pin.map((p) => ({ ...p, label: "Pin visual" }))];
     return carousel
       ? [
           { action: "new_slide", label: "Add as new slide" },
           { action: "slide_image", label: "Replace slide image" },
           { action: "cover", label: "Set as cover" },
         ]
-      : [{ action: "cover", label: "Set as cover" }];
+      : [{ action: "cover", label: "Set as cover" }, { action: "visual_ref", label: "Use as visual reference" }];
   }
   if (s.sourceType === "collection") return [];
   if (s.sourceType === "comment") return [carousel ? { action: "refine_slide", label: "Apply to slide text" } : { action: "refine_draft", label: "Apply feedback" }];
-  // Words: a note, voice (its transcript), a document, a Creation, a Huddle moment, or a fragment of one.
+  const refine: MaterialActionOption = carousel ? { action: "refine_slide", label: "Refine slide with this" } : { action: "refine_draft", label: "Rework draft with it" };
+  // Someone else's words (Community, a shared Creation, a link with no licence): they steer, they aren't copied in.
+  if (!insert) return [{ action: "direction", label: "Use as creative direction" }, refine, ...pin];
+  // Words: a note, voice (its transcript), a document, a Creation, a Huddle moment, your own Community words, or a fragment of one.
   return carousel
     ? [
         { action: "slide_words", label: "Use on slide" },

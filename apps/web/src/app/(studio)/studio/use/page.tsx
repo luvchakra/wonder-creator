@@ -10,7 +10,7 @@ export default async function UseInStudioPage({ searchParams }: { searchParams: 
   const { add } = await searchParams;
   const { db, creator } = await requireSession();
   const active = await activeStudioSession(db, creator.id);
-  const safe = add && /^(material|creation|collection|comment|huddle_moment):[0-9a-f-]{36}$/i.test(add) ? add : null;
+  const safe = add && /^(material|creation|collection|comment|huddle_moment|conversation|conversation_reply|scrapbook_entry):[0-9a-f-]{36}$/i.test(add) ? add : null;
   if (!active) redirect("/space?tab=creations");
   redirect(`/artifacts/${active.artifactId}/studio${safe ? `?add=${encodeURIComponent(safe)}` : ""}`);
 }

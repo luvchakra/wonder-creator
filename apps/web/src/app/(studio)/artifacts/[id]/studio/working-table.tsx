@@ -1,11 +1,12 @@
 "use client";
-import { USAGE_LABEL, materialActionsFor, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
+import { RIGHTS_HINT, RIGHTS_LABEL, USAGE_LABEL, canInsert, materialActionsFor, type MaterialAction, type RightsState, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import { Dialog, DialogContent, KIT, cn } from "@wonder/ui";
-import { ChevronDown, Columns2, Image as ImageIcon, ImagePlus, Loader2, PenLine, Plus, RefreshCw, Scissors, Search, Settings2, Sparkles, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Columns2, Compass, Eye, Image as ImageIcon, ImagePlus, Loader2, MessagesSquare, PenLine, Pin, Plus, RefreshCw, Scissors, Search, Settings2, Sparkles, Type } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSoundtrack } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
+import { responsesLine, type ResponsesSummary } from "./studio-community";
 import { SourceIcon } from "./working-set";
 
 /**
@@ -18,7 +19,8 @@ import { SourceIcon } from "./working-set";
 
 type Tab = "in_use" | "available" | "external";
 
-// Which card is open, remembered per Creation on this device (any can be closed — all closed too).
+// Which card is open (any can be closed — all closed too). Kept in the Studio session so it survives navigation and
+// devices (Phase 04 §10, §19); this device's copy answers instantly, "none" meaning all were closed on purpose.
 const listeners = new Set<() => void>();
 const keyFor = (artifactId: string) => `wc.studio.open-source:${artifactId}`;
 function readOpen(artifactId: string): string | null {
@@ -28,14 +30,14 @@ function readOpen(artifactId: string): string | null {
     return null;
   }
 }
-function writeOpen(artifactId: string, id: string | null) {
+function writeOpen(artifactId: string, id: string | null, sessionId: string | null) {
   try {
-    if (id) localStorage.setItem(keyFor(artifactId), id);
-    else localStorage.removeItem(keyFor(artifactId));
+    localStorage.setItem(keyFor(artifactId), id ?? "none");
   } catch {
-    /* private mode: it just won't be remembered */
+    /* private mode: the session still remembers */
   }
   listeners.forEach((l) => l());
+  if (sessionId) void api(`/api/v1/studio-sessions/${sessionId}`, { method: "PATCH", json: { lastOpenedSourceId: id } }).catch(() => undefined);
 }
 const subscribe = (l: () => void) => {
   listeners.add(l);
@@ -71,6 +73,9 @@ const ACTION_ICON: Record<MaterialAction, typeof ImageIcon> = {
   draft_words: PenLine,
   refine_draft: Sparkles,
   part: Scissors,
+  direction: Compass,
+  visual_ref: Eye,
+  pin: Pin,
 };
 
 export interface ExternalAdded {
@@ -94,6 +99,9 @@ export function WorkingTable({
   onManage,
   onBringIn,
   onExternalAdded,
+  responses,
+  onResponses,
+  onDejaVu,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -109,6 +117,11 @@ export function WorkingTable({
   onManage: () => void;
   onBringIn: () => void;
   onExternalAdded: (r: ExternalAdded) => void;
+  /** Replies to what the creator asked Community about this Creation ("7 community responses · 2 new"). */
+  responses: ResponsesSummary | null;
+  onResponses: () => void;
+  /** The DejaVu being explored here: its Moments, one tap away. */
+  onDejaVu: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,6 +147,9 @@ export function WorkingTable({
               onOpenChange(false);
               onExternalAdded(r);
             }}
+            responses={responses}
+            onResponses={onResponses}
+            onDejaVu={onDejaVu}
           />
         ) : null}
       </DialogContent>
@@ -153,6 +169,9 @@ function TableBody({
   onManage,
   onBringIn,
   onExternalAdded,
+  responses,
+  onResponses,
+  onDejaVu,
 }: {
   initialTab: Tab;
   set: WorkingSetView | null;
@@ -165,8 +184,12 @@ function TableBody({
   onManage: () => void;
   onBringIn: () => void;
   onExternalAdded: (r: ExternalAdded) => void;
+  responses: ResponsesSummary | null;
+  onResponses: () => void;
+  onDejaVu: () => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const line = responsesLine(responses);
   const all = (set?.sources ?? []).filter((s) => s.available);
   const inUse = all.filter((s) => s.state !== "available");
   const available = all.filter((s) => s.state === "available");
@@ -177,6 +200,31 @@ function TableBody({
   ];
   return (
     <div className="space-y-3">
+      {/* Groups that stay closed until asked for (Phase 04 §5, §14): a DejaVu being explored, and Community replies. */}
+      {set?.dejavu || line ? (
+        <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface/70" aria-label="More on the table">
+          {set?.dejavu ? (
+            <li>
+              <button type="button" onClick={onDejaVu} className="flex min-h-12 w-full items-center gap-2.5 px-3 py-1.5 text-left">
+                <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+                  <span className="font-medium">{set.dejavu.name}</span> · {set.dejavu.count} {set.dejavu.count === 1 ? "Moment" : "Moments"} available
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+              </button>
+            </li>
+          ) : null}
+          {line ? (
+            <li>
+              <button type="button" onClick={onResponses} className="flex min-h-12 w-full items-center gap-2.5 px-3 py-1.5 text-left">
+                <MessagesSquare className="size-4 shrink-0 text-accent" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{line}</span>
+                <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+              </button>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
       <div role="tablist" aria-label="Working Table" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
         {tabs.map((t) => (
           <button
@@ -258,21 +306,24 @@ function Cards({
     };
   }, [sessionId]);
   if (!rows.length) return <p className="rounded-2xl bg-surface-muted/60 px-4 py-5 text-center text-[13.5px] text-ink-muted">Nothing here yet.</p>;
-  const openId = remembered && rows.some((r) => r.id === remembered) ? remembered : null;
+  const want = remembered === "none" ? null : (remembered ?? set?.lastOpenedSourceId ?? null);
+  const openId = want && rows.some((r) => r.id === want) ? want : null;
   return (
     <ul className="space-y-2" aria-label="Materials">
       {rows.map((row) => {
         const open = row.id === openId;
         const actions = materialActionsFor(row, creationType);
         const how = row.usageNote ? `“${row.usageNote}”` : row.usageIntent ? USAGE_LABEL[row.usageIntent] : null;
-        const sub = row.fresh && !how ? "Freshly brought in" : ([how, usedIn(usage[row.id])].filter(Boolean).join(" · ") || row.kind);
+        const sub = row.fresh && !how ? `Freshly brought in · ${row.kind}` : [how, usedIn(usage[row.id])].filter(Boolean).join(" · ") || row.kind;
+        // Rights show only when they limit what can be done (Phase 04 §8) — never a badge on your own things.
+        const limit = row.rights !== "reuse_permitted" ? RIGHTS_LABEL[row.rights] : null;
         return (
           <li key={row.id} className="rounded-2xl border border-border-soft bg-surface">
             <button
               type="button"
               aria-expanded={open}
               aria-controls={`source-${row.id}`}
-              onClick={() => writeOpen(artifactId, open ? null : row.id)}
+              onClick={() => writeOpen(artifactId, open ? null : row.id, sessionId)}
               className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left"
             >
               <SourceIcon s={row} size="size-11" />
@@ -281,7 +332,10 @@ function Cards({
                   {row.fresh ? <span className="shrink-0 rounded-full bg-accent-softer px-1.5 py-px text-[11px] font-semibold text-accent-ink">New</span> : null}
                   <span className="truncate text-[14.5px] font-semibold text-ink">{row.title}</span>
                 </span>
-                <span className="block truncate text-[12.5px] text-ink-subtle">{sub}</span>
+                <span className="block truncate text-[12.5px] text-ink-subtle">
+                  {limit ? <span className={cn("font-medium", canInsert(row.rights) ? "text-ink-muted" : "text-accent-ink")}>{limit} · </span> : null}
+                  {sub}
+                </span>
               </span>
               <ChevronDown className={cn("size-4 shrink-0 text-ink-subtle transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden />
             </button>
@@ -350,6 +404,13 @@ function SourceBody({ row, sessionId, artifactId, onUsePart }: { row: WorkingSou
         <audio controls preload="none" src={detail.audioUrl} onPlay={() => sound?.pauseFor("source")} className="h-9 w-full max-w-sm" aria-label={`Play ${row.title}`} />
       ) : null}
       {!row.thumbnailUrl && !text && !detail?.audioUrl ? <p className="text-[12.5px] text-ink-subtle">{detail ? "Nothing to show here yet." : "Loading…"}</p> : null}
+      {row.attribution || row.author || row.rights !== "reuse_permitted" ? (
+        <p className="text-[12px] leading-snug text-ink-subtle">
+          {row.attribution ?? (row.author && row.author !== "You" ? `By ${row.author}` : null)}
+          {row.attribution || (row.author && row.author !== "You") ? " · " : ""}
+          {RIGHTS_HINT[row.rights]}
+        </p>
+      ) : null}
       <p className="flex flex-wrap gap-x-4 text-[13px]">
         {row.href ? (
           <Link href={`${row.href}${row.href.includes("?") ? "&" : "?"}from=studio:${artifactId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
@@ -370,7 +431,7 @@ function SourceBody({ row, sessionId, artifactId, onUsePart }: { row: WorkingSou
 
 type Provider = "openverse" | "pixabay" | "pexels";
 const PROVIDER_LABEL: Record<Provider, string> = { openverse: "Openverse", pixabay: "Pixabay", pexels: "Pexels" };
-type Pic = { provider: Provider; id: string; title: string; thumbUrl: string; creator: string | null; license: string; sourceUrl: string };
+type Pic = { provider: Provider; id: string; title: string; thumbUrl: string; creator: string | null; license: string; sourceUrl: string; rights: RightsState; attribution: string | null };
 
 /** Royalty-free pictures, searched right here (board 3). Every picture shows its licence; nothing is used until tapped. */
 function External({ sessionId, creationTitle, carousel, slideId, onAdded }: { sessionId: string | null; creationTitle: string; carousel: boolean; slideId: string | null; onAdded: (r: ExternalAdded) => void }) {
@@ -472,14 +533,20 @@ function External({ sessionId, creationTitle, carousel, slideId, onAdded }: { se
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={pic.thumbUrl} alt={pic.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="aspect-[4/3] w-full object-cover" />
               </div>
-              <p className="truncate px-2.5 pt-1.5 text-[11.5px] text-ink-subtle" title={`${pic.creator ?? ""} · ${pic.license}`}>
+              <p className="truncate px-2.5 pt-1.5 text-[11.5px] text-ink-subtle" title={`${pic.creator ?? ""} · ${pic.license} · ${RIGHTS_LABEL[pic.rights]}`}>
                 {pic.creator ? `${pic.creator} · ` : ""}
                 {pic.license}
+              </p>
+              <p className="truncate px-2.5 text-[11.5px] text-ink-subtle">
+                {RIGHTS_LABEL[pic.rights]} ·{" "}
+                <a href={pic.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+                  {PROVIDER_LABEL[pic.provider]}
+                </a>
               </p>
               <div className="px-2 pb-1">
                 <button
                   type="button"
-                  disabled={!!busy}
+                  disabled={!!busy || (carousel && !canInsert(pic.rights))}
                   onClick={() => add(pic, carousel ? "slide" : "mood")}
                   className="group flex min-h-11 w-full items-center disabled:opacity-60"
                 >
