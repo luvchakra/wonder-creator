@@ -136,7 +136,16 @@ export async function receiveUploadedObject(
 
 export async function receiveFile(
   deps: IntakeDeps,
-  input: { batchId: string; bytes: Uint8Array; filename?: string | null; kind?: "camera" | "voice" | null; instruction?: string | null; existingPath?: string },
+  input: {
+    batchId: string;
+    bytes: Uint8Array;
+    filename?: string | null;
+    kind?: "camera" | "voice" | null;
+    instruction?: string | null;
+    existingPath?: string;
+    /** A royalty-free picture brought in from outside: where it came from, who made it, under which licence. */
+    external?: { provider: string; sourceUrl: string; title: string; creator: string | null; license: string; licenseUrl: string | null } | null;
+  },
 ) {
   const name = safeFilename(input.filename);
   const item0 = await newIntake(deps, { batchId: input.batchId, kind: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice" : "document", instruction: input.instruction });
@@ -193,13 +202,22 @@ export async function receiveFile(
   );
 
   const type: MaterialType = input.kind === "voice" ? "voice" : KIND_TO_TYPE[inspected.kind];
+  const ext = input.external ?? null;
   const material = await createMaterial(deps.db, deps.creatorId, {
     type,
-    title: name ? name.replace(/\.[a-z0-9]{1,5}$/i, "") : input.kind === "camera" ? "Photo" : input.kind === "voice" ? "Voice note" : "Untitled",
+    title: ext ? ext.title.slice(0, 200) : name ? name.replace(/\.[a-z0-9]{1,5}$/i, "") : input.kind === "camera" ? "Photo" : input.kind === "voice" ? "Voice note" : "Untitled",
     storageObjectId: obj.id,
-    sourceType: input.kind ?? "upload",
-    metadata: { mime: inspected.mime, size: inspected.size, malwareScan: { provider: scan.provider, verdict: scan.verdict } },
-    provenance: { origin: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice_recording" : "upload", originalFilename: name, sha256: inspected.sha256 },
+    sourceType: ext ? "external" : (input.kind ?? "upload"),
+    ...(ext ? { sourceUrl: ext.sourceUrl } : {}),
+    metadata: {
+      mime: inspected.mime,
+      size: inspected.size,
+      malwareScan: { provider: scan.provider, verdict: scan.verdict },
+      ...(ext ? { license: { name: ext.license, url: ext.licenseUrl, creator: ext.creator, provider: ext.provider } } : {}),
+    },
+    provenance: ext
+      ? { origin: "import", sourceUrl: ext.sourceUrl, originalFilename: name, sha256: inspected.sha256, details: { provider: ext.provider, license: ext.license, licenseUrl: ext.licenseUrl, creator: ext.creator } }
+      : { origin: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice_recording" : "upload", originalFilename: name, sha256: inspected.sha256 },
   });
   await deps.service.from("creative_materials").update({ security_status: "clean" }).eq("id", material.id).eq("creator_id", deps.creatorId);
   item = must(await deps.service.from("intake_items").update({ material_id: material.id, storage_object_id: obj.id }).eq("id", item.id).select("*").single());

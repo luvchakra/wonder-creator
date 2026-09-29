@@ -3,7 +3,7 @@ import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, ChevronDown, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,8 +13,8 @@ import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { CarouselCanvas, type CanvasNews } from "./carousel-canvas";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
-import { SourcesPanel } from "./sources-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
+import { WorkingTable, type ExternalAdded } from "./working-table";
 
 /**
  * The Creative Studio canvas (creative-studio-working-set.md §5–7, §44–47, §64–68): the Creation is the screen. One
@@ -62,7 +62,7 @@ export function Studio({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "set" | "influence" | "bring" | "format" | "save" | "more">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "set" | "influence" | "bring" | "format" | "save" | "more">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -285,6 +285,25 @@ export function Studio({
       } else if (r.kind === "choose_part") setFragmentsFor(row);
       else if (r.message) setUsedNote(r.message);
       if (r.kind === "cover") router.refresh();
+      const fresh = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}`);
+      setSet(fresh.workingSet);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  // A royalty-free picture brought in from the Working Table's External tab: a short toast, then the table catches up.
+  const [toast, setToast] = useState<{ key: number; text: string; thumbUrl: string } | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast((x) => (x?.key === toast.key ? null : x)), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+  async function externalAdded(r: ExternalAdded) {
+    setToast({ key: Date.now(), text: r.message, thumbUrl: r.thumbUrl });
+    if (r.slideId) setNews({ key: ++newsSeq.current, slideId: r.slideId, proposal: null });
+    if (!set) return;
+    try {
       const fresh = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}`);
       setSet(fresh.workingSet);
     } catch (e) {
@@ -591,11 +610,6 @@ export function Studio({
         </section>
       )}
 
-      {/* Every source on the table, collapsed but for the last one opened (owner, 28 Sep 2026). */}
-      {!proposal ? (
-        <SourcesPanel set={set} artifactId={artifact.id} creationType={artifact.type} onSeeAll={() => setSheet("set")} onUsePart={(row) => setFragmentsFor(row)} onAction={runAction} />
-      ) : null}
-
       {/* Refine + quality stay contextual to the canvas, below it (§15.2), never a pane. */}
       {!isCarousel ? (
         <section id="creativemind" aria-labelledby="creativemind-title" className="mt-4 scroll-mt-20 space-y-3">
@@ -655,7 +669,7 @@ export function Studio({
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-ink">Unused possibilities</p>
               <p className="text-[13.5px] leading-snug text-ink">{nudge!.text}</p>
               <div className="mt-1.5">
-                <Button size="sm" variant="secondary" onClick={() => setSheet("set")}>
+                <Button size="sm" variant="secondary" onClick={() => setSheet("table-available")}>
                   See them
                 </Button>
               </div>
@@ -700,8 +714,8 @@ export function Studio({
               <li key={t.id}>
                 <button
                   type="button"
-                  onClick={() => setSheet("influence")}
-                  aria-label={`${t.title} — in the Working Set`}
+                  onClick={() => setSheet("table")}
+                  aria-label={`${t.title} — on the Working Table`}
                   className="block h-11 w-14 overflow-hidden rounded-lg border border-border-soft bg-cream-deep focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -714,7 +728,17 @@ export function Studio({
         </div>
       ) : null}
 
-      {/* Bottom bar (§7, §64): pen · Sources N · M in use */}
+      {toast ? (
+        <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-30 mx-auto flex max-w-3xl justify-center" role="status">
+          <p className="flex items-center gap-2 rounded-full border border-border-soft bg-surface/95 py-1 pl-1 pr-3.5 text-[13px] text-ink shadow-[var(--shadow-card)] backdrop-blur motion-safe:animate-[fade-in_160ms_ease-out]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={toast.thumbUrl} alt="" className="size-8 rounded-full object-cover" />
+            {toast.text}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Bottom bar (§7, §64): pen · the Working Table bar (Sources N · M in use ^) */}
       <div className="pointer-events-none fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-3xl items-center gap-2">
         {!isCarousel && !proposal ? (
           <button
@@ -727,31 +751,60 @@ export function Studio({
             <PenLine className="size-4" aria-hidden />
           </button>
         ) : null}
+        {/* The Working Table bar (owner board "Working Table Redesign", 29 Sep 2026): pulls the table up. It stops short
+            of the corner so the Palette never covers it. */}
         <button
           type="button"
-          onClick={() => setSheet("set")}
+          onClick={() => setSheet("table")}
           aria-haspopup="dialog"
-          aria-label={`Working Set: ${workingSetSummary(sources)}`}
-          className="pointer-events-auto inline-flex min-h-11 items-center"
+          aria-label={`Working Table: ${workingSetSummary(sources)}`}
+          className="pointer-events-auto mr-16 inline-flex min-h-11 min-w-0 flex-1 items-center"
         >
-          <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border-soft bg-surface/95 py-1 pl-1.5 pr-3.5 text-[13.5px] font-medium text-ink shadow-[var(--shadow-card)] backdrop-blur hover:bg-surface">
-            <span aria-hidden className="flex -space-x-2">
+          <span className="inline-flex h-11 w-full min-w-0 items-center gap-2 rounded-2xl border border-border-soft bg-surface/95 py-1 pl-1.5 pr-3 text-[13.5px] font-medium text-ink shadow-[var(--shadow-card)] backdrop-blur hover:bg-surface">
+            <span aria-hidden className="flex shrink-0 -space-x-2">
               {sources.length ? (
-                sources.slice(0, 3).map((s) => <SourceIcon key={s.id} s={s} size="size-7" ring />)
+                sources.slice(0, 3).map((s) => <SourceIcon key={s.id} s={s} size="size-8" ring />)
               ) : (
-                <span className="inline-flex size-7 items-center justify-center rounded-full bg-accent-softer">
+                <span className="inline-flex size-8 items-center justify-center rounded-full bg-accent-softer">
                   <Sparkles className="size-3.5 text-accent" />
                 </span>
               )}
             </span>
-            {set && sources.length ? `Sources ${sources.length}${inUse ? ` · ${inUse} in use` : ""}` : "Sources"}
+            <span className="min-w-0 flex-1 truncate text-left">
+              {set && sources.length ? (
+                <>
+                  Sources {sources.length}
+                  {inUse ? <span className="font-normal text-ink-muted"> · {inUse} in use</span> : null}
+                </>
+              ) : (
+                "Sources"
+              )}
+            </span>
+            <ChevronUp className="size-4 shrink-0 text-ink-subtle" aria-hidden />
           </span>
         </button>
-        <span className="flex-1" />
-        {/* No separate "+": Bring in lives inside Sources (owner, 28 Sep 2026), so there's one way in. */}
       </div>
 
       {/* Sheets */}
+      <WorkingTable
+        open={sheet === "table" || sheet === "table-available"}
+        onOpenChange={(o) => !o && setSheet(null)}
+        initialTab={sheet === "table-available" || (sources.length > 0 && !inUse) ? "available" : "in_use"}
+        set={set}
+        artifactId={artifact.id}
+        creationTitle={title || artifact.title}
+        creationType={artifact.type}
+        slideId={slides.current}
+        onAction={async (row, a) => {
+          // Collapsed after use (board): the canvas shows what happened.
+          setSheet(null);
+          await runAction(row, a);
+        }}
+        onUsePart={(row) => setFragmentsFor(row)}
+        onManage={() => setSheet("set")}
+        onBringIn={() => setSheet("bring")}
+        onExternalAdded={(r) => void externalAdded(r)}
+      />
       <WorkingSetSheet
         open={sheet === "set" || sheet === "influence"}
         onOpenChange={(o) => !o && setSheet(null)}
@@ -769,7 +822,7 @@ export function Studio({
         sessionId={set?.sessionId ?? null}
         onAdded={(next) => {
           setSet(next);
-          setSheet("set");
+          setSheet("table-available");
         }}
       />
       <ChangeFormatSheet open={sheet === "format"} onOpenChange={(o) => !o && setSheet(null)} sessionId={set?.sessionId ?? null} currentType={artifact.type} aiLive={!offline} />
