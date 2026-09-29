@@ -1105,6 +1105,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_mutes": {
+                  Row: {
+                    "created_at": string,"muted_creator_id": string,"muter_creator_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"muted_creator_id": string,"muter_creator_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"muted_creator_id"?: string,"muter_creator_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_mutes_muted_creator_id_fkey"
+      columns: ["muted_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "creator_mutes_muter_creator_id_fkey"
+      columns: ["muter_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"creator_open_to": {
+                  Row: {
+                    "creator_id": string,"preferences": (string)[],"updated_at": string
+                  }
+                  Insert: {
+                    "creator_id": string,"preferences"?: (string)[],"updated_at"?: string
+                  }
+                  Update: {
+                    "creator_id"?: string,"preferences"?: (string)[],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_open_to_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_relationships": {
                   Row: {
                     "created_at": string,"creator_a": string,"creator_b": string,"last_met_at": string | null,"met_in_huddle_count": number
@@ -2207,6 +2251,131 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"open_conversation_invites": {
+                  Row: {
+                    "conversation_id": string,"creator_id": string,"invited_at": string
+                  }
+                  Insert: {
+                    "conversation_id": string,"creator_id": string,"invited_at"?: string
+                  }
+                  Update: {
+                    "conversation_id"?: string,"creator_id"?: string,"invited_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversation_invites_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "open_conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "open_conversation_invites_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"open_conversation_links": {
+                  Row: {
+                    "conversation_id": string,"created_at": string,"huddle_id": string | null,"id": string,"kind": string,"project_id": string | null,"started_by": string
+                  }
+                  Insert: {
+                    "conversation_id": string,"created_at"?: string,"huddle_id"?: string | null,"id"?: string,"kind": string,"project_id"?: string | null,"started_by": string
+                  }
+                  Update: {
+                    "conversation_id"?: string,"created_at"?: string,"huddle_id"?: string | null,"id"?: string,"kind"?: string,"project_id"?: string | null,"started_by"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversation_links_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "open_conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "open_conversation_links_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "open_conversation_links_started_by_fkey"
+      columns: ["started_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"open_conversation_reads": {
+                  Row: {
+                    "conversation_id": string,"creator_id": string,"last_read_at": string
+                  }
+                  Insert: {
+                    "conversation_id": string,"creator_id": string,"last_read_at"?: string
+                  }
+                  Update: {
+                    "conversation_id"?: string,"creator_id"?: string,"last_read_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversation_reads_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "open_conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "open_conversation_reads_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"open_conversation_replies": {
+                  Row: {
+                    "attachment_entity_id": string | null,"attachment_type": string | null,"body": string,"conversation_id": string,"created_at": string,"creator_id": string,"deleted_at": string | null,"id": string,"removed_at": string | null,"updated_at": string
+                  }
+                  Insert: {
+                    "attachment_entity_id"?: string | null,"attachment_type"?: string | null,"body": string,"conversation_id": string,"created_at"?: string,"creator_id": string,"deleted_at"?: string | null,"id"?: string,"removed_at"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "attachment_entity_id"?: string | null,"attachment_type"?: string | null,"body"?: string,"conversation_id"?: string,"created_at"?: string,"creator_id"?: string,"deleted_at"?: string | null,"id"?: string,"removed_at"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversation_replies_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "open_conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "open_conversation_replies_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"open_conversations": {
+                  Row: {
+                    "body": string | null,"closed_at": string | null,"created_at": string,"creator_id": string,"id": string,"intent": string,"last_reply_at": string | null,"participant_count": number,"removed_at": string | null,"removed_reason": string | null,"reply_count": number,"source_entity_id": string | null,"source_entity_type": string | null,"title": string,"updated_at": string,"visibility": string
+                  }
+                  Insert: {
+                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id": string,"id"?: string,"intent": string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"title": string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Update: {
+                    "body"?: string | null,"closed_at"?: string | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"intent"?: string,"last_reply_at"?: string | null,"participant_count"?: number,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_count"?: number,"source_entity_id"?: string | null,"source_entity_type"?: string | null,"title"?: string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversations_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ownership_assertions": {
                   Row: {
                     "artifact_id": string,"claim": string,"created_at": string,"creator_id": string,"id": string,"project_id": string,"responded_at": string | null,"responded_by": string | null,"response_note": string | null,"share_percent": number | null,"statement": string,"status": string
@@ -2240,6 +2409,25 @@ isOneToOne: false
       foreignKeyName: "ownership_assertions_responded_by_fkey"
       columns: ["responded_by"]
 isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"platform_moderators": {
+                  Row: {
+                    "appointed_at": string,"creator_id": string
+                  }
+                  Insert: {
+                    "appointed_at"?: string,"creator_id": string
+                  }
+                  Update: {
+                    "appointed_at"?: string,"creator_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "platform_moderators_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: true
       referencedRelation: "creators"
       referencedColumns: ["id"]
     }
@@ -3568,6 +3756,15 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"open_conversation_link":
+{ Args: { "p_conversation": string,"p_kind": string,"p_target": string }; Returns: string
+                           },
+"open_conversation_moderate":
+{ Args: { "p_conversation": string,"p_reason"?: string,"p_remove": boolean }; Returns: undefined
+                           },
+"open_conversation_remove_reply":
+{ Args: { "p_reason"?: string,"p_reply": string }; Returns: undefined
+                           },
 "open_creator_share":
 { Args: { "p_share": string }; Returns: Json
                            },

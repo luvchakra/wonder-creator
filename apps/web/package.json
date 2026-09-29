@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "@wonder/core": "^0.1.0",
     "@wonder/creator-brain": "^0.1.0",
+    "@wonder/creator-community": "^0.1.0",
     "@wonder/creator-huddle": "^0.1.0",
     "@wonder/creator-identity": "^0.1.0",
     "@wonder/creator-library": "^0.1.0",

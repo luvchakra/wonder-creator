@@ -7,6 +7,7 @@ import { MaterialCard } from "@/components/cards";
 import { EMPTY_RESULTS, isSearchable, MATERIAL_KINDS, parseSearch, SEARCH_WHEN, topTags, unifiedSearch, type SearchTab, type SearchWhen } from "@/lib/search";
 import { requireSession } from "@/lib/session";
 import { PaletteScope } from "@/components/creative-palette";
+import { ExploreNav } from "@/components/explore-nav";
 
 export const metadata = { title: "Search" };
 
@@ -47,6 +48,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <>
       <PaletteScope context={{ page: "search", strip: searchable ? { count: [total, "result", "results"] } : undefined }} />
       <div>
+        <ExploreNav current={s.tab === "material" ? "materials" : "ideas"} />
         <PageTitle art={KIT.painted.blossomSprig} title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
 
         <form action="/search" role="search" className="relative">

@@ -15,6 +15,7 @@ import { ScrapbookPostCard } from "@/components/scrapbook-post";
 import { requireSession } from "@/lib/session";
 import { ProfileActions } from "./profile-actions";
 import { PaletteScope } from "@/components/creative-palette";
+import { OPEN_TO_LABEL, openToOf } from "@wonder/creator-community";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -35,7 +36,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   // Own profile shows everything you own; others see only public, final work.
   let q = db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, privacy, featured_on_profile").eq("creator_id", c.id).neq("status", "archived").order("featured_on_profile", { ascending: false }).order("updated_at", { ascending: false }).limit(12);
   if (!isMe) q = q.eq("privacy", "public").in("status", ["final", "published"]);
-  const [{ data: artifacts }, live, myLive, follow, avatars, messageable, collab, brand] = await Promise.all([
+  const [{ data: artifacts }, live, myLive, follow, avatars, messageable, collab, brand, openTo] = await Promise.all([
     q,
     liveCards(db, { creatorId: c.id, limit: 3 }),
     isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }),
@@ -44,6 +45,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     isMe ? Promise.resolve(false) : canMessage(db, c.id),
     collaborationProfileOf(db, c.id).catch(() => null),
     brandSummaryOf(db, c.id).catch(() => null),
+    openToOf(db, [c.id]).then((m) => m.get(c.id) ?? []).catch(() => []),
   ]);
   const [covers, scrapbook] = await Promise.all([coverUrls(db, artifacts ?? []), listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 3 })]);
 
@@ -79,6 +81,16 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               {profile.languages.length ? <span>Creates in {profile.languages.join(", ")}</span> : null}
               <Badge tone={c.collaboration_availability === "open" ? "success" : "neutral"}>{AVAILABILITY[c.collaboration_availability]}</Badge>
             </div>
+            {openTo.length ? (
+              <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[13px]" aria-label="Open to">
+                <span className="font-medium text-ink">Open to</span>
+                {openTo.map((o) => (
+                  <span key={o} className="rounded-full bg-surface-muted px-2.5 py-0.5 text-ink-muted">
+                    {OPEN_TO_LABEL[o]}
+                  </span>
+                ))}
+              </p>
+            ) : null}
             {profile.skills.length ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {profile.skills.map((s) => (

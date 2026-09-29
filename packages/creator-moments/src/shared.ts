@@ -26,7 +26,7 @@ export const MOMENT_ENTITY_TYPES = [
 export type MomentEntityType = (typeof MOMENT_ENTITY_TYPES)[number];
 
 /** The kinds wired in this phase (each has an adapter); the rest are reserved and refused. */
-export const LIVE_MOMENT_TYPES = ["material", "creation"] as const satisfies readonly MomentEntityType[];
+export const LIVE_MOMENT_TYPES = ["material", "creation", "conversation", "scrapbook_entry"] as const satisfies readonly MomentEntityType[];
 export type LiveMomentType = (typeof LIVE_MOMENT_TYPES)[number];
 export const isLiveMomentType = (t: string): t is LiveMomentType => (LIVE_MOMENT_TYPES as readonly string[]).includes(t);
 
@@ -100,5 +100,7 @@ export function periodOf(occurredAt: string | Date, now: Date = new Date()): str
 export function momentHref(m: Pick<MomentReference, "entityType" | "entityId">): string | null {
   if (m.entityType === "material") return `/space/materials/${m.entityId}`;
   if (m.entityType === "creation") return `/artifacts/${m.entityId}`;
+  if (m.entityType === "conversation") return `/community/conversations/${m.entityId}`;
+  if (m.entityType === "scrapbook_entry") return `/scrapbook/${m.entityId}`;
   return null;
 }

@@ -7,7 +7,9 @@ const hoursAgo = (h: number) => new Date(NOW - h * 3600_000).toISOString();
 describe("Home modes", () => {
   it("quiet when nothing needs attention — a memory or someone's post alone doesn't count", () => {
     expect(homeMode({ lastVisit: hoursAgo(100), now: NOW, available: {} })).toBe("quiet");
-    expect(homeMode({ lastVisit: hoursAgo(100), now: NOW, available: { spark: "creative_memory", worthHearing: "relevant_conversation" } })).toBe("quiet");
+    expect(homeMode({ lastVisit: hoursAgo(100), now: NOW, available: { spark: "creative_memory", worthHearing: "general_activity" } })).toBe("quiet");
+    // …but something live right now is.
+    expect(homeMode({ lastVisit: hoursAgo(1), now: NOW, available: { worthHearing: "relevant_huddle" } })).toBe("active");
   });
   it("return after a real absence with something to show; active otherwise (and on a first visit)", () => {
     expect(homeMode({ lastVisit: hoursAgo(49), now: NOW, available: { whileAway: "collaborator_response" } })).toBe("return");
@@ -27,6 +29,10 @@ describe("which modules earn a place", () => {
     expect(s).toHaveLength(5);
     expect(s).not.toContain("spark"); // lowest significance, and placed after the DejaVu on ties
     expect(s[0]).toBe("whileAway");
+  });
+  it("replies to your own question count as a human signal and outrank others' asks", () => {
+    expect(selectSlots("active", { yourQuestion: "collaborator_response", couldHelp: "help_opportunity", worthHearing: "relevant_conversation" })).toEqual(["yourQuestion"]);
+    expect(homeMode({ lastVisit: hoursAgo(2), now: NOW, available: { yourQuestion: "collaborator_response" } })).toBe("active");
   });
   it("quiet: at most one memory; empty modules never render", () => {
     expect(selectSlots("quiet", all)).toEqual(["spark"]);

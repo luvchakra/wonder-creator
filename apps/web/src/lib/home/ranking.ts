@@ -36,7 +36,7 @@ export const CANDIDATE_ORDER: readonly HomeCandidateKind[] = [
 export const candidateRank = (k: HomeCandidateKind) => CANDIDATE_ORDER.indexOf(k);
 
 /** Home's optional modules, in the order they sit on the page (stable placement; rank decides only who's in). */
-export const HOME_SLOTS = ["whileAway", "worldConnecting", "dejavu", "spark", "worthHearing", "couldHelp"] as const;
+export const HOME_SLOTS = ["whileAway", "yourQuestion", "worldConnecting", "dejavu", "spark", "worthHearing", "couldHelp"] as const;
 export type HomeSlot = (typeof HOME_SLOTS)[number];
 
 /** After this long away, Home is a "Return Home" (§3). */
@@ -45,15 +45,17 @@ export const RETURN_AFTER_HOURS = 48;
 export const MAX_MODULES = { active: 3, return: 5, quiet: 1 } as const;
 
 const DISCOVERY: HomeSlot[] = ["worldConnecting", "dejavu", "spark"];
-const HUMAN: HomeSlot[] = ["couldHelp", "worthHearing"];
+const HUMAN: HomeSlot[] = ["yourQuestion", "couldHelp", "worthHearing"];
 
 /**
  * Which mode Home is in. Quiet when nothing needs attention (a memory alone doesn't count, and neither does someone
- * else's post); Return after a real absence with something to show; Active otherwise. First visit: Active.
+ * else's post — but a live Huddle does); Return after a real absence with something to show; Active otherwise. First visit: Active.
  */
 export function homeMode(input: { lastVisit: string | null; now: number; available: Partial<Record<HomeSlot, HomeCandidateKind>> }): HomeMode {
   const a = input.available;
-  const meaningful = !!(a.whileAway || a.couldHelp || a.worldConnecting || a.dejavu);
+  // Something live right now, or a conversation with a reason to hear it, is worth a look; someone's post alone isn't.
+  const live = a.worthHearing === "relevant_huddle" || a.worthHearing === "relevant_conversation";
+  const meaningful = !!(a.whileAway || a.yourQuestion || a.couldHelp || a.worldConnecting || a.dejavu || live);
   if (!meaningful) return "quiet";
   if (input.lastVisit && input.now - Date.parse(input.lastVisit) >= RETURN_AFTER_HOURS * 3600_000) return "return";
   return "active";
@@ -139,6 +141,7 @@ export function homeContextLine(input: {
   whileAway?: HomeSummary | null;
   singleReady?: string | null;
   waiting?: number;
+  questionReplies?: number;
   connection?: boolean;
   dejavuName?: string | null;
 }): string {
@@ -147,6 +150,7 @@ export function homeContextLine(input: {
     if (input.whileAway.total === 1 && input.singleReady) return input.singleReady;
     return `${input.whileAway.total} ${input.whileAway.total === 1 ? "thing" : "things"} changed`;
   }
+  if (input.questionReplies) return `${input.questionReplies} ${input.questionReplies === 1 ? "reply" : "replies"} to your question`;
   if (input.waiting) return `${input.waiting} waiting on you`;
   if (input.connection) return "A new connection was found";
   if (input.dejavuName) return `${input.dejavuName.length > 24 ? `${input.dejavuName.slice(0, 23)}…` : input.dejavuName} surfaced again`;
