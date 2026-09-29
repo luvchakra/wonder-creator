@@ -27,8 +27,10 @@ test.describe("Carousel Composer", () => {
     const id = await carousel(page);
     await seedSlideVisuals(creator.id, id, 3, 64);
     await page.goto(`/artifacts/${id}`);
-    await expect(page.getByText("You already have 3 images for this Carousel.")).toBeVisible();
-    await page.getByRole("button", { name: "Use these" }).click();
+    // The Creation page opens the Studio; look inside its canvas (the redirect briefly holds both pages).
+    const composer = page.getByRole("region", { name: "Editor" });
+    await expect(composer.getByText("You already have 3 images for this Carousel.")).toBeVisible();
+    await composer.getByRole("button", { name: "Use these" }).click();
     // The owner is on the Studio canvas: the slides appear there, each with its matched words.
     await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
     const editor = page.getByRole("region", { name: "Editor" });
@@ -122,6 +124,39 @@ test.describe("Carousel Composer", () => {
     expect(Math.abs(frame.height / frame.width - 1.25)).toBeLessThan(0.05);
   });
 
+  test("on a phone @mobile: words sit on the image from the start, the slide strip scrolls both ways, and Back leaves the Carousel", async ({ page, creator }) => {
+    const id = await carousel(page);
+    await seedCarousel(creator.id, id, ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]);
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto("/space?tab=creations");
+    await page.goto(`/artifacts/${id}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    // Text on the image by default (owner, 29 Sep 2026) — draggable right there, not a caption under the frame.
+    await expect(editor.getByRole("button", { name: /^Words on the image/ })).toContainText("One");
+
+    // The strip is wider than the phone: › and ‹ move it; the current thumbnail follows the slide on screen.
+    const strip = editor.getByRole("list", { name: "Slides" });
+    const scrolled = () => strip.evaluate((el) => el.scrollLeft);
+    await expect(editor.getByRole("button", { name: "Scroll slides left" })).toHaveCount(0);
+    await editor.getByRole("button", { name: "Scroll slides right" }).click();
+    await expect.poll(scrolled).toBeGreaterThan(0);
+    await editor.getByRole("button", { name: "Scroll slides left" }).click();
+    await expect.poll(scrolled).toBe(0);
+    // A finger swipe scrolls it too (thumbnails no longer lock horizontal panning for a reorder).
+    expect(await strip.getByRole("button", { name: "Slide 2 of 8" }).evaluate((el) => getComputedStyle(el).touchAction)).toBe("auto");
+    await editor.getByRole("button", { name: "Previous slide" }).click();
+    await expect(strip.getByRole("button", { name: "Slide 8 of 8" })).toBeInViewport();
+
+    // Back goes where the creator came from, never round into the Studio again.
+    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=creations$/);
+    await page.goto("/");
+    await page.goto(`/artifacts/${id}`); // a Carousel's Creation page opens its Studio
+    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
+    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test("slide editor: edit words, place and style them on the image, split, and it all autosaves", async ({ page, creator }) => {
     const id = await carousel(page);
     const [, second] = await seedCarousel(creator.id, id, ["First light", "In the mirror—\nonly loneliness.", "Third act"]);
@@ -138,7 +173,8 @@ test.describe("Carousel Composer", () => {
     // Text: edit the words and place them on the image (read mode keeps them as real text).
     await page.getByRole("toolbar", { name: "Edit slide" }).getByRole("button", { name: "Text" }).click();
     await page.getByLabel("Words for this slide").fill("In the mirror —\nonly loneliness.");
-    await page.getByRole("switch", { name: "Place on image" }).click();
+    // Words are on the image from the start (owner, 29 Sep 2026).
+    await expect(page.getByRole("switch", { name: "Place on image" })).toHaveAttribute("aria-checked", "true");
     const words = page.getByRole("application", { name: /Words on the image/ });
     await expect(words).toHaveText("In the mirror —\nonly loneliness.");
     // Drag the words up, and nudge them with the keyboard.

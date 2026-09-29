@@ -7,6 +7,12 @@
 **Primary behavior:** collapsed right-edge tab ↔ expanded floating mini player  
 **Visual direction:** compact, calm, artistic, non-blocking, consistent with Wonder Creator
 
+> **Owner update (29 Sep 2026): reloads and locked phones.** A page refresh doesn't stop the music: whether it was
+> playing, the song and the exact position are saved as the page goes away, and the reload carries on from there. A
+> browser that refuses sound until a tap continues it on the creator's first tap (and says so). Paused stays paused. On a
+> locked phone the next song is loaded and started inside the `ended` event itself, and the lock-screen Play and Pause
+> do exactly that (never a toggle). Implementation: `apps/web/src/components/soundtrack/audio-provider.tsx`.
+
 ---
 
 # 1. Product Intent

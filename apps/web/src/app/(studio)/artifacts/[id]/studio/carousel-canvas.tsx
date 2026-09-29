@@ -1,8 +1,23 @@
 "use client";
 import type { CarouselView } from "@wonder/creator-brain";
 import { CAROUSEL_MAX_SLIDES } from "@wonder/creator-studio/carousel";
-import { Button, Menu, MenuContent, MenuItem, MenuTrigger, cn } from "@wonder/ui";
-import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, PenLine, Plus, Sparkles } from "lucide-react";
+import {
+  Button,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuTrigger,
+  cn,
+} from "@wonder/ui";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  PenLine,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -65,7 +80,10 @@ export function CarouselCanvas({
     if (view.slides.length > 1) setArranging(true);
   }
 
-  const [incoming, setIncoming] = useState<{ slideId: string; proposal: { text: string; live: boolean } } | null>(null);
+  const [incoming, setIncoming] = useState<{
+    slideId: string;
+    proposal: { text: string; live: boolean };
+  } | null>(null);
   const [seenNews, setSeenNews] = useState<number | null>(news?.key ?? null);
 
   const refresh = useCallback(async () => {
@@ -77,7 +95,10 @@ export function CarouselCanvas({
   }, [artifactId]);
 
   // Follow anything in flight; the page never waits on it.
-  const busy = !!view.generating || view.adding > 0 || view.slides.some((s) => s.change && s.change.status !== "failed");
+  const busy =
+    !!view.generating ||
+    view.adding > 0 ||
+    view.slides.some((s) => s.change && s.change.status !== "failed");
   useEffect(() => {
     if (!busy) return;
     const t = setInterval(refresh, 3000);
@@ -92,7 +113,9 @@ export function CarouselCanvas({
     if (i >= 0) setCurrent(i);
     // A slide that doesn't exist yet (just added): jump when the refresh brings it.
     else setJumpTo(news.slideId);
-    setIncoming(news.proposal ? { slideId: news.slideId, proposal: news.proposal } : null);
+    setIncoming(
+      news.proposal ? { slideId: news.slideId, proposal: news.proposal } : null,
+    );
   }
   const newsKey = news?.key ?? null;
   useEffect(() => {
@@ -112,21 +135,50 @@ export function CarouselCanvas({
   const currentIndex = Math.min(current, Math.max(0, view.slides.length - 1));
   const currentSlide = view.slides[currentIndex];
   const currentId = currentSlide?.id ?? null;
-  const currentText = (currentSlide?.displayText || currentSlide?.sourceText || "").trim();
+  const currentText = (
+    currentSlide?.displayText ||
+    currentSlide?.sourceText ||
+    ""
+  ).trim();
   useEffect(() => {
-    onSlides?.({ current: currentId, ids: slideIds ? slideIds.split(",") : [], index: currentIndex, text: currentText });
+    onSlides?.({
+      current: currentId,
+      ids: slideIds ? slideIds.split(",") : [],
+      index: currentIndex,
+      text: currentText,
+    });
   }, [currentId, slideIds, currentIndex, currentText, onSlides]);
+
+  // The slide strip: the one on screen is scrolled into view as the creator moves between slides.
+  const stripRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const ol = stripRef.current;
+    const el = ol?.querySelector<HTMLElement>(
+      '[data-slide-thumb][aria-current="true"]',
+    );
+    if (!ol || !el) return;
+    // Only the strip moves (never the page).
+    const left = el.offsetLeft - ol.offsetLeft;
+    if (left < ol.scrollLeft) ol.scrollTo({ left: left - 8 });
+    else if (left + el.offsetWidth > ol.scrollLeft + ol.clientWidth)
+      ol.scrollTo({ left: left + el.offsetWidth - ol.clientWidth + 8 });
+  }, [currentIndex]);
 
   // The navbar says what's happening while arranging (Phase 04 §12): "Arrange 5 slides".
   const count = view.slides.length;
   useEffect(() => {
     if (!arranging) return;
-    strip("arrange", { text: `Arrange ${count} slides`, tone: "active", priority: 5.5 });
+    strip("arrange", {
+      text: `Arrange ${count} slides`,
+      tone: "active",
+      priority: 5.5,
+    });
     return () => strip("arrange", null);
   }, [arranging, count, strip]);
 
   useEffect(() => {
-    if (view.adding) strip("carousel", { text: "Creating one more slide…", tone: "active" });
+    if (view.adding)
+      strip("carousel", { text: "Creating one more slide…", tone: "active" });
     else strip("carousel", null);
     return () => strip("carousel", null);
   }, [view.adding, strip]);
@@ -143,7 +195,10 @@ export function CarouselCanvas({
       setCurrent(to);
       setNotice(`Slide moved to position ${to + 1} of ${n}`);
       try {
-        await api(`/api/v1/carousels/${artifactId}/order`, { method: "POST", json: { slideIds: order.map((x) => x.id) } });
+        await api(`/api/v1/carousels/${artifactId}/order`, {
+          method: "POST",
+          json: { slideIds: order.map((x) => x.id) },
+        });
       } catch (e) {
         setError(errorMessage(e));
         await refresh();
@@ -154,7 +209,17 @@ export function CarouselCanvas({
 
   // Before there are slides, the Composer's steps (how many, generating, failed) are the canvas.
   if (!view.settings || !view.slides.length || view.generating || view.failed) {
-    return <CarouselComposer artifactId={artifactId} title="" meta="" source={null} initial={view} hideHeader onView={setView} />;
+    return (
+      <CarouselComposer
+        artifactId={artifactId}
+        title=""
+        meta=""
+        source={null}
+        initial={view}
+        hideHeader
+        onView={setView}
+      />
+    );
   }
 
   if (arranging) {
@@ -184,7 +249,10 @@ export function CarouselCanvas({
   // On phones the slide shrinks so the strip below it stays above the bottom bar on the first screen: its width follows
   // the height left after the app's chrome (header, top bar, format chip, strip, bottom bar; more with a caption),
   // never below 9rem, and never wider than the canvas. Larger screens have room and use the full width.
-  const [aw, ah] = view.settings.aspectRatio.split(":").map(Number) as [number, number];
+  const [aw, ah] = view.settings.aspectRatio.split(":").map(Number) as [
+    number,
+    number,
+  ];
   const caption = !slide.overlay.enabled && !!words.trim();
   const direct = view.canEdit && slide.overlay.enabled && !!words.trim();
   const phoneWidth = `max(9rem, calc((100dvh - ${caption ? "26.5rem" : "22rem"} - var(--canvas-extra, 0rem)) * ${(aw && ah ? aw / ah : 0.8).toFixed(3)}))`;
@@ -193,7 +261,13 @@ export function CarouselCanvas({
     <div
       className="space-y-2"
       onKeyDown={(e) => {
-        if (e.shiftKey || (e.target as HTMLElement).closest("[data-slide-thumb], [data-overlay-text]")) return;
+        if (
+          e.shiftKey ||
+          (e.target as HTMLElement).closest(
+            "[data-slide-thumb], [data-overlay-text]",
+          )
+        )
+          return;
         if (e.key === "ArrowLeft") go(idx - 1);
         if (e.key === "ArrowRight") go(idx + 1);
       }}
@@ -210,12 +284,33 @@ export function CarouselCanvas({
             aria-label={`Edit slide ${idx + 1} of ${n}: ${words.slice(0, 60)}`}
           >
             {/* Editable words are drawn by DirectText (below) so they can be moved and pinched right here. */}
-            <SlideFrame image={image} overlay={slide.overlay} text={words} transform={slide.transform} aspect={view.settings.aspectRatio} className="w-full">
+            <SlideFrame
+              image={image}
+              overlay={slide.overlay}
+              text={words}
+              transform={slide.transform}
+              aspect={view.settings.aspectRatio}
+              className="w-full"
+            >
               {direct ? <></> : undefined}
             </SlideFrame>
           </Link>
-          {direct ? <DirectText slideId={slide.id} overlay={slide.overlay} text={words} onOpen={() => router.push(`/artifacts/${artifactId}/slides/${slide.id}`)} onSaved={refresh} onError={setError} /> : null}
-          <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[11.5px] font-medium text-white backdrop-blur" aria-hidden>
+          {direct ? (
+            <DirectText
+              slideId={slide.id}
+              overlay={slide.overlay}
+              text={words}
+              onOpen={() =>
+                router.push(`/artifacts/${artifactId}/slides/${slide.id}`)
+              }
+              onSaved={refresh}
+              onError={setError}
+            />
+          ) : null}
+          <span
+            className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[11.5px] font-medium text-white backdrop-blur"
+            aria-hidden
+          >
             {idx + 1} / {n}
           </span>
           <p className="sr-only" aria-live="polite">
@@ -248,55 +343,88 @@ export function CarouselCanvas({
               slideId={slide.id}
               words={words}
               onChanged={refresh}
-              initial={incoming?.slideId === slide.id ? incoming.proposal : null}
+              initial={
+                incoming?.slideId === slide.id ? incoming.proposal : null
+              }
             />
           ) : null}
         </div>
-        {slide.pending && view.canEdit ? <PendingChoice key={slide.id} slideId={slide.id} onDone={refresh} /> : null}
+        {slide.pending && view.canEdit ? (
+          <PendingChoice key={slide.id} slideId={slide.id} onDone={refresh} />
+        ) : null}
         {/* Words that aren't on the image: two lines on a phone (the slide editor has them all), under the frame. */}
-        {caption ? <p className="line-clamp-2 whitespace-pre-line px-4 py-3 font-display text-[15px] leading-snug text-ink sm:line-clamp-none">{words}</p> : null}
+        {caption ? (
+          <p className="line-clamp-2 whitespace-pre-line px-4 py-3 font-display text-[15px] leading-snug text-ink sm:line-clamp-none">
+            {words}
+          </p>
+        ) : null}
       </div>
 
-      {/* Every slide at a glance: numbered, with a grip to drag; "+" makes exactly one more (§7). */}
-      <ol className="flex items-center gap-1.5 overflow-x-auto px-0.5 pb-1 pt-1 [scrollbar-width:none]" aria-label="Slides">
-        {view.slides.map((s, i) => (
-          <Thumb
-            key={s.id}
-            index={i}
-            total={n}
-            current={i === idx}
-            thumbnail={s.image?.thumbnailUrl ?? s.pending?.thumbnailUrl ?? null}
-            onSelect={() => setCurrent(i)}
-            onMove={(to) => void move(i, to)}
-            canMove={view.canEdit && n > 1}
-          />
-        ))}
-        {view.adding > 0 ? <li className="h-[3.75rem] w-[4.5rem] shrink-0 rounded-xl bg-surface-muted motion-safe:animate-pulse" role="status" aria-label="Creating one more slide" /> : null}
-        {view.isOwner && n < CAROUSEL_MAX_SLIDES ? (
-          <li className="shrink-0">
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              disabled={view.adding > 0}
-              aria-label="Add slide"
-              className="flex h-[3.75rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-accent/50 bg-surface text-[11px] font-medium text-accent-ink hover:bg-accent-softer disabled:opacity-50"
-            >
-              <Plus className="size-4" aria-hidden />
-              Add slide
-            </button>
-          </li>
-        ) : null}
-      </ol>
+      {/* Every slide at a glance: numbered, with a grip to drag; "+" makes exactly one more (§7). Swipe it, or use ‹ ›. */}
+      <div className="relative">
+        <StripScroll target={stripRef} />
+        <ol
+          ref={stripRef}
+          className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth px-0.5 pb-1 pt-1 [scrollbar-width:none] motion-reduce:scroll-auto"
+          aria-label="Slides"
+        >
+          {view.slides.map((s, i) => (
+            <Thumb
+              key={s.id}
+              index={i}
+              total={n}
+              current={i === idx}
+              thumbnail={
+                s.image?.thumbnailUrl ?? s.pending?.thumbnailUrl ?? null
+              }
+              onSelect={() => setCurrent(i)}
+              onMove={(to) => void move(i, to)}
+              canMove={view.canEdit && n > 1}
+            />
+          ))}
+          {view.adding > 0 ? (
+            <li
+              className="h-[3.75rem] w-[4.5rem] shrink-0 rounded-xl bg-surface-muted motion-safe:animate-pulse"
+              role="status"
+              aria-label="Creating one more slide"
+            />
+          ) : null}
+          {view.isOwner && n < CAROUSEL_MAX_SLIDES ? (
+            <li className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                disabled={view.adding > 0}
+                aria-label="Add slide"
+                className="flex h-[3.75rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-accent/50 bg-surface text-[11px] font-medium text-accent-ink hover:bg-accent-softer disabled:opacity-50"
+              >
+                <Plus className="size-4" aria-hidden />
+                Add slide
+              </button>
+            </li>
+          ) : null}
+        </ol>
+      </div>
       <p className="sr-only" aria-live="polite">
         {notice}
       </p>
-      {view.addFailed && !view.adding ? <p className="text-[13px] text-ink-muted">Couldn&apos;t create one more slide. Try again.</p> : null}
+      {view.addFailed && !view.adding ? (
+        <p className="text-[13px] text-ink-muted">
+          Couldn&apos;t create one more slide. Try again.
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       ) : null}
-      {adding ? <AddOneSheet artifactId={artifactId} onClose={() => setAdding(false)} onQueued={refresh} /> : null}
+      {adding ? (
+        <AddOneSheet
+          artifactId={artifactId}
+          onClose={() => setAdding(false)}
+          onQueued={refresh}
+        />
+      ) : null}
     </div>
   );
 }
@@ -319,11 +447,19 @@ function Thumb({
   onMove: (to: number) => void;
   canMove: boolean;
 }) {
-  const drag = useRef<{ x: number; y: number; started: boolean; to: number } | null>(null);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    started: boolean;
+    to: number;
+  } | null>(null);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const targetOf = (el: HTMLElement, clientX: number) => {
-    const thumbs = Array.from(el.closest("ol")?.querySelectorAll<HTMLElement>("[data-slide-thumb]") ?? []);
+    const thumbs = Array.from(
+      el.closest("ol")?.querySelectorAll<HTMLElement>("[data-slide-thumb]") ??
+        [],
+    );
     let to = index;
     thumbs.forEach((t, i) => {
       const r = t.getBoundingClientRect();
@@ -346,7 +482,19 @@ function Thumb({
         }}
         onPointerDown={(e) => {
           if (!canMove || (e.pointerType === "mouse" && e.button !== 0)) return;
-          drag.current = { x: e.clientX, y: e.clientY, started: false, to: index };
+          // A finger swipe scrolls the row (owner, 29 Sep 2026: "it's not sliding"); a finger reorders from the grip. A
+          // mouse can drag from anywhere (it doesn't scroll by dragging).
+          if (
+            e.pointerType !== "mouse" &&
+            !(e.target as HTMLElement).closest("[data-grip]")
+          )
+            return;
+          drag.current = {
+            x: e.clientX,
+            y: e.clientY,
+            started: false,
+            to: index,
+          };
         }}
         onPointerMove={(e) => {
           const d = drag.current;
@@ -397,7 +545,7 @@ function Thumb({
         aria-current={current ? "true" : undefined}
         style={offset ? { transform: `translateX(${offset}px)` } : undefined}
         className={cn(
-          "relative block h-[3.75rem] w-[4.5rem] touch-pan-y select-none overflow-hidden rounded-xl border-2 bg-surface-muted focus-visible:outline-2 focus-visible:outline-accent",
+          "relative block h-[3.75rem] w-[4.5rem] select-none overflow-hidden rounded-xl border-2 bg-surface-muted focus-visible:outline-2 focus-visible:outline-accent",
           current ? "border-accent" : "border-transparent",
           dragging && "z-10 shadow-[var(--shadow-lift)]",
           canMove && "cursor-grab active:cursor-grabbing",
@@ -405,18 +553,35 @@ function Thumb({
       >
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnail} alt="" draggable={false} className="size-full object-cover" />
+          <img
+            src={thumbnail}
+            alt=""
+            draggable={false}
+            className="size-full object-cover"
+          />
         ) : (
           <span className="block size-full bg-cream-deep" />
         )}
-        <span aria-hidden className="absolute bottom-1 left-1 inline-flex size-5 items-center justify-center rounded-md bg-accent text-[11px] font-semibold text-white">
+        <span
+          aria-hidden
+          className="absolute bottom-1 left-1 inline-flex size-5 items-center justify-center rounded-md bg-accent text-[11px] font-semibold text-white"
+        >
           {index + 1}
         </span>
-        {canMove ? <GripVertical aria-hidden className="absolute left-1 top-1 size-3.5 text-white/85 drop-shadow" /> : null}
+        {canMove ? (
+          <span
+            data-grip=""
+            aria-hidden
+            className="absolute left-0 top-0 inline-flex size-7 touch-none items-start justify-start p-1"
+          >
+            <GripVertical className="size-3.5 text-white/85 drop-shadow" />
+          </span>
+        ) : null}
       </button>
       {index === 0 && canMove ? (
         <span id="slide-thumb-hint" hidden>
-          Drag to reorder, or hold Shift and press the left or right arrow.
+          Drag by the grip to reorder, or hold Shift and press the left or right
+          arrow.
         </span>
       ) : null}
     </li>
@@ -424,10 +589,26 @@ function Thumb({
 }
 
 const REFINES: Array<{ key: string; label: string; instruction: string }> = [
-  { key: "rewrite", label: "Rewrite", instruction: "Rewrite these words with the same meaning, fresher." },
-  { key: "shorten", label: "Shorten", instruction: "Make these words shorter and sharper, keeping the meaning." },
-  { key: "expand", label: "Expand", instruction: "Say a little more, in the same voice." },
-  { key: "tone", label: "Change tone", instruction: "Change the tone: warmer and more intimate, same meaning." },
+  {
+    key: "rewrite",
+    label: "Rewrite",
+    instruction: "Rewrite these words with the same meaning, fresher.",
+  },
+  {
+    key: "shorten",
+    label: "Shorten",
+    instruction: "Make these words shorter and sharper, keeping the meaning.",
+  },
+  {
+    key: "expand",
+    label: "Expand",
+    instruction: "Say a little more, in the same voice.",
+  },
+  {
+    key: "tone",
+    label: "Change tone",
+    instruction: "Change the tone: warmer and more intimate, same meaning.",
+  },
 ];
 
 /** "Refine text" on the slide: one menu, one suggestion at a time, the creator's choice to use it (carousel-composer.md §11). */
@@ -446,13 +627,21 @@ function RefineText({
 }) {
   const router = useRouter();
   const [working, setWorking] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<{ text: string; live: boolean } | null>(initial);
+  const [proposal, setProposal] = useState<{
+    text: string;
+    live: boolean;
+  } | null>(initial);
   const [error, setError] = useState<string | null>(null);
   async function ask(r: (typeof REFINES)[number]) {
     setWorking(r.key);
     setError(null);
     try {
-      setProposal(await api<{ live: boolean; text: string }>(`/api/v1/carousel-slides/${slideId}/refine-text`, { method: "POST", json: { instruction: r.instruction } }));
+      setProposal(
+        await api<{ live: boolean; text: string }>(
+          `/api/v1/carousel-slides/${slideId}/refine-text`,
+          { method: "POST", json: { instruction: r.instruction } },
+        ),
+      );
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -463,7 +652,10 @@ function RefineText({
     if (!proposal) return;
     setWorking("use");
     try {
-      await api(`/api/v1/carousel-slides/${slideId}`, { method: "PATCH", json: { displayText: proposal.text } });
+      await api(`/api/v1/carousel-slides/${slideId}`, {
+        method: "PATCH",
+        json: { displayText: proposal.text },
+      });
       setProposal(null);
       await onChanged();
     } catch (e) {
@@ -490,17 +682,26 @@ function RefineText({
           <MenuContent>
             {REFINES.map((r) => (
               <MenuItem key={r.key} onSelect={() => void ask(r)}>
-                <Sparkles className="size-4 text-accent" aria-hidden /> {r.label}
+                <Sparkles className="size-4 text-accent" aria-hidden />{" "}
+                {r.label}
               </MenuItem>
             ))}
-            <MenuItem onSelect={() => router.push(`/artifacts/${artifactId}/slides/${slideId}`)}>
+            <MenuItem
+              onSelect={() =>
+                router.push(`/artifacts/${artifactId}/slides/${slideId}`)
+              }
+            >
               <PenLine className="size-4" aria-hidden /> Edit the words…
             </MenuItem>
           </MenuContent>
         </Menu>
       </div>
       {proposal || error ? (
-        <div className="border-t border-border-soft px-4 py-3" role="region" aria-label="New words for this slide">
+        <div
+          className="border-t border-border-soft px-4 py-3"
+          role="region"
+          aria-label="New words for this slide"
+        >
           {error ? (
             <p role="alert" className="text-sm text-danger">
               {error}
@@ -508,14 +709,25 @@ function RefineText({
           ) : null}
           {proposal ? (
             <>
-              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-subtle">New words {proposal.live ? "" : "· offline placeholder, not real writing"}</p>
-              <p className="mt-1 whitespace-pre-line text-[14px] leading-snug text-ink">{proposal.text}</p>
-              <p className="mt-1 line-clamp-2 text-[12.5px] text-ink-subtle">Current: {words}</p>
+              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-subtle">
+                New words{" "}
+                {proposal.live ? "" : "· offline placeholder, not real writing"}
+              </p>
+              <p className="mt-1 whitespace-pre-line text-[14px] leading-snug text-ink">
+                {proposal.text}
+              </p>
+              <p className="mt-1 line-clamp-2 text-[12.5px] text-ink-subtle">
+                Current: {words}
+              </p>
               <div className="mt-2 flex gap-2">
                 <Button size="sm" loading={working === "use"} onClick={useNew}>
                   Use new
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setProposal(null)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setProposal(null)}
+                >
                   Keep current
                 </Button>
               </div>
@@ -528,14 +740,23 @@ function RefineText({
 }
 
 /** "Use new / Keep current" for an image waiting on this slide (carousel-composer.md §27). Nothing replaces until chosen. */
-function PendingChoice({ slideId, onDone }: { slideId: string; onDone: () => Promise<void> }) {
+function PendingChoice({
+  slideId,
+  onDone,
+}: {
+  slideId: string;
+  onDone: () => Promise<void>;
+}) {
   const [busy, setBusy] = useState<"use" | "keep" | null>(null);
   const [error, setError] = useState<string | null>(null);
   async function choose(choice: "use" | "keep") {
     setBusy(choice);
     setError(null);
     try {
-      await api(`/api/v1/carousel-slides/${slideId}/choose`, { method: "POST", json: { choice } });
+      await api(`/api/v1/carousel-slides/${slideId}/choose`, {
+        method: "POST",
+        json: { choice },
+      });
       await onDone();
     } catch (e) {
       setError(errorMessage(e));
@@ -544,19 +765,100 @@ function PendingChoice({ slideId, onDone }: { slideId: string; onDone: () => Pro
     }
   }
   return (
-    <div role="region" aria-label="New image for this slide" className="flex flex-wrap items-center gap-2 border-t border-border-soft px-4 py-2.5">
-      <span className="flex-1 text-[13px] text-ink">New image on this slide</span>
+    <div
+      role="region"
+      aria-label="New image for this slide"
+      className="flex flex-wrap items-center gap-2 border-t border-border-soft px-4 py-2.5"
+    >
+      <span className="flex-1 text-[13px] text-ink">
+        New image on this slide
+      </span>
       {error ? (
         <span role="alert" className="w-full text-[12.5px] text-danger">
           {error}
         </span>
       ) : null}
-      <Button size="sm" variant="ghost" loading={busy === "keep"} disabled={!!busy} onClick={() => choose("keep")}>
+      <Button
+        size="sm"
+        variant="ghost"
+        loading={busy === "keep"}
+        disabled={!!busy}
+        onClick={() => choose("keep")}
+      >
         Keep current
       </Button>
-      <Button size="sm" loading={busy === "use"} disabled={!!busy} onClick={() => choose("use")}>
+      <Button
+        size="sm"
+        loading={busy === "use"}
+        disabled={!!busy}
+        onClick={() => choose("use")}
+      >
         Use new
       </Button>
     </div>
+  );
+}
+
+/**
+ * ‹ › for the slide strip when it's wider than the screen: each tap moves it most of a screen. Shown only on the side
+ * there's more to see; swiping works too.
+ */
+function StripScroll({
+  target,
+}: {
+  target: React.RefObject<HTMLOListElement | null>;
+}) {
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = target.current;
+    if (!el) return;
+    const update = () =>
+      setEdges({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+      });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    const mo = new MutationObserver(update);
+    mo.observe(el, { childList: true });
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [target]);
+  const by = (dir: -1 | 1) =>
+    target.current?.scrollBy({
+      left: dir * Math.max(120, target.current.clientWidth * 0.8),
+    });
+  return (
+    <>
+      {edges.left ? (
+        <button
+          type="button"
+          onClick={() => by(-1)}
+          aria-label="Scroll slides left"
+          className="absolute left-0 top-1/2 z-10 inline-flex size-11 -translate-x-1 -translate-y-1/2 items-center justify-center"
+        >
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-surface/95 text-ink shadow-[var(--shadow-card)] ring-1 ring-border-soft">
+            <ChevronLeft className="size-4" aria-hidden />
+          </span>
+        </button>
+      ) : null}
+      {edges.right ? (
+        <button
+          type="button"
+          onClick={() => by(1)}
+          aria-label="Scroll slides right"
+          className="absolute right-0 top-1/2 z-10 inline-flex size-11 translate-x-1 -translate-y-1/2 items-center justify-center"
+        >
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-surface/95 text-ink shadow-[var(--shadow-card)] ring-1 ring-border-soft">
+            <ChevronRight className="size-4" aria-hidden />
+          </span>
+        </button>
+      ) : null}
+    </>
   );
 }

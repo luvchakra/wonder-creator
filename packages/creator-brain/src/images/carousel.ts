@@ -471,7 +471,7 @@ async function insertAfter(
       asset_id: row.asset_id,
       source_text: row.source_text,
       display_text: row.display_text,
-      overlay: (row.overlay ?? { enabled: false }) as never,
+      overlay: (row.overlay ?? { enabled: true }) as never,
       image_transform: (row.image_transform ?? {}) as never,
     })
     .select("id")
