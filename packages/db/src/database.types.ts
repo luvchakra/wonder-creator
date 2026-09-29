@@ -1367,6 +1367,93 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"dejavu_moments": {
+                  Row: {
+                    "added_by": string | null,"created_at": string,"creator_id": string,"dejavu_id": string,"id": string,"moment_id": string,"source": string
+                  }
+                  Insert: {
+                    "added_by"?: string | null,"created_at"?: string,"creator_id": string,"dejavu_id": string,"id"?: string,"moment_id": string,"source"?: string
+                  }
+                  Update: {
+                    "added_by"?: string | null,"created_at"?: string,"creator_id"?: string,"dejavu_id"?: string,"id"?: string,"moment_id"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dejavu_moments_added_by_fkey"
+      columns: ["added_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dejavu_moments_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dejavu_moments_dejavu_id_fkey"
+      columns: ["dejavu_id"]
+isOneToOne: false
+      referencedRelation: "dejavus"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dejavu_moments_moment_id_fkey"
+      columns: ["moment_id"]
+isOneToOne: false
+      referencedRelation: "moment_references"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dejavu_suggestions": {
+                  Row: {
+                    "confidence": number | null,"created_at": string,"creator_id": string,"id": string,"moment_id": string,"rationale": string | null,"resolved_at": string | null,"status": string,"suggested_dejavu_id": string | null,"suggested_name": string | null
+                  }
+                  Insert: {
+                    "confidence"?: number | null,"created_at"?: string,"creator_id": string,"id"?: string,"moment_id": string,"rationale"?: string | null,"resolved_at"?: string | null,"status"?: string,"suggested_dejavu_id"?: string | null,"suggested_name"?: string | null
+                  }
+                  Update: {
+                    "confidence"?: number | null,"created_at"?: string,"creator_id"?: string,"id"?: string,"moment_id"?: string,"rationale"?: string | null,"resolved_at"?: string | null,"status"?: string,"suggested_dejavu_id"?: string | null,"suggested_name"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dejavu_suggestions_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dejavu_suggestions_moment_id_fkey"
+      columns: ["moment_id"]
+isOneToOne: false
+      referencedRelation: "moment_references"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dejavu_suggestions_suggested_dejavu_id_fkey"
+      columns: ["suggested_dejavu_id"]
+isOneToOne: false
+      referencedRelation: "dejavus"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dejavus": {
+                  Row: {
+                    "archived_at": string | null,"created_at": string,"creator_id": string,"description": string | null,"id": string,"last_used_at": string,"name": string,"normalized_name": string | null,"updated_at": string
+                  }
+                  Insert: {
+                    "archived_at"?: string | null,"created_at"?: string,"creator_id": string,"description"?: string | null,"id"?: string,"last_used_at"?: string,"name": string,"normalized_name"?: never,"updated_at"?: string
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"created_at"?: string,"creator_id"?: string,"description"?: string | null,"id"?: string,"last_used_at"?: string,"name"?: string,"normalized_name"?: never,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dejavus_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"direct_messages": {
                   Row: {
                     "artifact_id": string | null,"body": string,"created_at": string,"creator_id": string | null,"drafted_by_ai": boolean,"id": string,"project_id": string | null,"thread_id": string
@@ -2059,6 +2146,37 @@ isOneToOne: false
     },{
       foreignKeyName: "moderation_reports_reporter_creator_id_fkey"
       columns: ["reporter_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"moment_references": {
+                  Row: {
+                    "attribution_required": boolean,"created_at": string,"creator_id": string,"deleted_at": string | null,"entity_id": string,"entity_type": string,"excerpt": string | null,"id": string,"occurred_at": string,"preview_asset_id": string | null,"preview_kind": string | null,"rights_state": string | null,"source_creator_id": string | null,"source_url": string | null,"subtype": string | null,"title": string | null,"updated_at": string,"visibility": string
+                  }
+                  Insert: {
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id": string,"deleted_at"?: string | null,"entity_id": string,"entity_type": string,"excerpt"?: string | null,"id"?: string,"occurred_at"?: string,"preview_asset_id"?: string | null,"preview_kind"?: string | null,"rights_state"?: string | null,"source_creator_id"?: string | null,"source_url"?: string | null,"subtype"?: string | null,"title"?: string | null,"updated_at"?: string,"visibility"?: string
+                  }
+                  Update: {
+                    "attribution_required"?: boolean,"created_at"?: string,"creator_id"?: string,"deleted_at"?: string | null,"entity_id"?: string,"entity_type"?: string,"excerpt"?: string | null,"id"?: string,"occurred_at"?: string,"preview_asset_id"?: string | null,"preview_kind"?: string | null,"rights_state"?: string | null,"source_creator_id"?: string | null,"source_url"?: string | null,"subtype"?: string | null,"title"?: string | null,"updated_at"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "moment_references_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "moment_references_preview_asset_id_fkey"
+      columns: ["preview_asset_id"]
+isOneToOne: false
+      referencedRelation: "storage_objects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "moment_references_source_creator_id_fkey"
+      columns: ["source_creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]

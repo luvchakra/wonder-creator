@@ -1,6 +1,8 @@
 import { getMaterial, listCollections, listShelves, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
+import { entityDejaVus } from "@wonder/creator-moments";
 import { notFound } from "next/navigation";
 import { ContextBack } from "@/components/context-back";
+import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
 import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { MaterialDetail } from "./detail";
@@ -41,6 +43,7 @@ export default async function MaterialPage({ params, searchParams }: { params: P
     db.from("material_collection_items").select("collection_id").eq("material_id", id),
     similarMaterials(db, id).catch(() => []),
   ]);
+  const dejavus = await entityDejaVus(db, "material", id).catch(() => ({ momentId: null, dejavus: [] }));
   const thumbs = await signedUrlsFor(
     db,
     similar.filter((s) => s.type === "image" || s.type === "sketch").map((s) => s.storage_object_id),
@@ -82,6 +85,7 @@ export default async function MaterialPage({ params, searchParams }: { params: P
         }}
       />
       <MaterialDetail
+        dejavu={<DejaVuChips entityType="material" entityId={id} initial={dejavus} />}
         canGenerate={m.creator_id === creator.id}
         m={{
           id: m.id,

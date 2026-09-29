@@ -1,0 +1,10 @@
+{
+  "name": "@wonder/creator-moments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./shared": "./src/shared.ts"
+  }
+}
