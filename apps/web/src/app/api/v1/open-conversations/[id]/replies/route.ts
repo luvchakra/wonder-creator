@@ -7,5 +7,5 @@ export const POST = withApi<{ id: string }>(
     await checkBudget(`community:reply:${creatorId}`, 120);
     return { reply: await replyToConversation(db, creatorId, requireUuid(id, "conversation"), await readJson(req, 10_000)) };
   },
-  { rateLimit: 20 },
+  { feature: "open_conversations_enabled", rateLimit: 20 },
 );

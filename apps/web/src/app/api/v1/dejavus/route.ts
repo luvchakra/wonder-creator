@@ -13,7 +13,7 @@ export const GET = withApi(async ({ db, req }) => {
   // With counts ("Railways · 23 Moments"), for the Studio's Bring in → DejaVu.
   if (p.get("counts") === "1" && !p.get("q")) return { dejavus: await listDejaVus(db) };
   return { dejavus: await searchDejaVus(db, (p.get("q") ?? "").slice(0, 60), Number(p.get("limit")) || 12) };
-});
+}, { feature: "dejavu_enabled" });
 
 export const POST = withApi(async ({ db, creatorId, req }) => {
   const body = (await readJson(req)) as Record<string, unknown>;
@@ -21,4 +21,4 @@ export const POST = withApi(async ({ db, creatorId, req }) => {
   const r = await createDejaVu(db, creatorId, { name: body.name, description: body.description });
   const moment = attach ? await attachEntity(db, creatorId, r.dejavu.id, attach) : null;
   return { ...r, momentId: moment?.id ?? null };
-});
+}, { feature: "dejavu_enabled" });

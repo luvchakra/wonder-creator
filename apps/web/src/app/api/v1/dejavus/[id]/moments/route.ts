@@ -19,7 +19,7 @@ export const GET = withApi<{ id: string }>(async ({ db, req }, { id }) => {
     limit: Number(p.get("limit")) || undefined,
   });
   return withThumbs(db, page);
-});
+}, { feature: "dejavu_enabled" });
 
 export const POST = withApi<{ id: string }>(async ({ db, creatorId, req }, { id }) => {
   const dejavuId = requireUuid(id, "DejaVu");
@@ -31,4 +31,4 @@ export const POST = withApi<{ id: string }>(async ({ db, creatorId, req }, { id 
   if (!b.entityType || !b.entityId) throw new DomainError("validation", "Say what to add.");
   const moment = await attachEntity(db, creatorId, dejavuId, { entityType: b.entityType, entityId: b.entityId });
   return { momentId: moment.id };
-});
+}, { feature: "dejavu_enabled" });

@@ -8,4 +8,4 @@ export const GET = withApi(async ({ db, creatorId, req }) => {
   const f = p.get("filter");
   const filter: CommunityFilter = f && (COMMUNITY_FILTERS as readonly string[]).includes(f) ? (f as CommunityFilter) : "for_you";
   return communityView(db, await communityFeed(db, creatorId, filter, { before: p.get("before") }));
-});
+}, { feature: "community_enabled" });

@@ -823,3 +823,43 @@ export async function slideUsage(db: Db, sessionId: string): Promise<Record<stri
   }
   return out;
 }
+
+/**
+ * Made from (Phase 05 §10, Scenario C; creative-studio-working-set.md §38): when a version is saved in the Studio, the
+ * sources actually in use or pinned are recorded against it — with their roles, how they were used and the rights and
+ * credit they carried at that moment. Materials and Creations also get lineage edges ("references"). Available sources
+ * and Studio experiments are never recorded. Idempotent per version.
+ */
+export async function commitStudioSources(db: Db, creatorId: string, sessionId: string, versionId: string): Promise<number> {
+  const view = await workingSetView(db, sessionId);
+  const { data: v } = await db.from("artifact_versions").select("id, artifact_id").eq("id", versionId).maybeSingle();
+  if (!v || v.artifact_id !== view.artifactId) throw new DomainError("not_found", "That version isn't part of this Creation.");
+  const used = view.sources.filter((s) => s.available && s.state !== "available");
+  if (!used.length) return 0;
+  const rows = [...new Map(used.map((s) => [`${s.sourceType}:${s.sourceId}`, s])).values()].map((s) => ({
+    artifact_id: view.artifactId,
+    version_id: versionId,
+    creator_id: creatorId,
+    source_type: s.sourceType,
+    source_id: s.sourceId,
+    fragment: (s.fragment ?? null) as never,
+    roles: s.roles,
+    usage_intent: s.usageIntent ?? null,
+    rights_state: s.rights,
+    attribution: s.attribution ?? (s.author && s.author !== "You" ? `By ${s.author}` : null),
+  }));
+  const res = await db.from("artifact_version_sources").upsert(rows, { onConflict: "version_id,source_type,source_id", ignoreDuplicates: true }).select("id");
+  if (res.error) throw fromDbError(res.error);
+  const edges = used
+    .filter((s) => s.sourceType === "material" || s.sourceType === "creation")
+    .map((s) => ({ creator_id: creatorId, source_type: s.sourceType === "creation" ? "artifact" : "material", source_id: s.sourceId, target_type: "artifact", target_id: view.artifactId, relationship: "references" as const }));
+  if (edges.length) await db.from("lineage_edges").upsert(edges, { onConflict: "source_type,source_id,target_type,target_id,relationship", ignoreDuplicates: true });
+  return res.data?.length ?? 0;
+}
+
+/** What a version was made from, for "Made from" and provenance. */
+export async function versionSources(db: Db, versionId: string) {
+  const { data, error } = await db.from("artifact_version_sources").select("source_type, source_id, roles, usage_intent, rights_state, attribution, fragment").eq("version_id", versionId);
+  if (error) throw fromDbError(error);
+  return data ?? [];
+}

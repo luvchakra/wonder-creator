@@ -68,13 +68,13 @@ test.describe("Community", () => {
     // C sees A's open conversation, mutes A, and A is gone from C's Community.
     const open = (await (await page.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `Open idea ${tag}` } })).json()).conversation.id as string;
     await c.goto("/community?filter=conversations");
-    await expect(c.getByText(`Open idea ${tag}`)).toBeVisible();
+    await expect(c.locator("#main").getByText(`Open idea ${tag}`)).toBeVisible();
     await c.goto(`/community/conversations/${open}`);
     await c.getByRole("button", { name: "More for this conversation" }).click();
     await c.getByRole("menuitem", { name: /^Mute / }).click();
     await expect(c.getByText(/is muted/)).toBeVisible();
     await c.goto("/community?filter=conversations");
-    await expect(c.getByText(`Open idea ${tag}`)).toHaveCount(0);
+    await expect(c.locator("#main").getByText(`Open idea ${tag}`)).toHaveCount(0);
   });
 
   test("a conversation grows into a Huddle and a Creative Room, both linked back; a reader gives it their own DejaVu", async ({ page, creator, openContext }) => {

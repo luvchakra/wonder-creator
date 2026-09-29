@@ -295,6 +295,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"artifact_version_sources": {
+                  Row: {
+                    "artifact_id": string,"attribution": string | null,"created_at": string,"creator_id": string,"fragment": Json | null,"id": string,"rights_state": string,"roles": (string)[],"source_id": string,"source_type": string,"usage_intent": string | null,"version_id": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"attribution"?: string | null,"created_at"?: string,"creator_id": string,"fragment"?: Json | null,"id"?: string,"rights_state": string,"roles"?: (string)[],"source_id": string,"source_type": string,"usage_intent"?: string | null,"version_id": string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"attribution"?: string | null,"created_at"?: string,"creator_id"?: string,"fragment"?: Json | null,"id"?: string,"rights_state"?: string,"roles"?: (string)[],"source_id"?: string,"source_type"?: string,"usage_intent"?: string | null,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "artifact_version_sources_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_version_sources_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "artifact_version_sources_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"artifact_versions": {
                   Row: {
                     "artifact_id": string,"author_kind": string,"change_summary": string | null,"content": string,"created_at": string,"created_by_ai_run_id": string | null,"created_by_creator_id": string | null,"creator_id": string,"generation_metadata": Json | null,"id": string,"label": string,"parent_version_id": string | null,"restored_from_version_id": string | null,"structured_content": Json | null,"version_number": number
@@ -2220,6 +2251,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"moment_connections": {
+                  Row: {
+                    "confidence_internal": number,"connection_type": string,"created_at": string,"creator_id": string,"evidence": NonNullable<Json>,"expires_at": string | null,"id": string,"moment_ids": (string)[],"resolved_at": string | null,"short_explanation": string,"signature": string,"status": string
+                  }
+                  Insert: {
+                    "confidence_internal"?: number,"connection_type": string,"created_at"?: string,"creator_id": string,"evidence"?: NonNullable<Json>,"expires_at"?: string | null,"id"?: string,"moment_ids": (string)[],"resolved_at"?: string | null,"short_explanation": string,"signature": string,"status"?: string
+                  }
+                  Update: {
+                    "confidence_internal"?: number,"connection_type"?: string,"created_at"?: string,"creator_id"?: string,"evidence"?: NonNullable<Json>,"expires_at"?: string | null,"id"?: string,"moment_ids"?: (string)[],"resolved_at"?: string | null,"short_explanation"?: string,"signature"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "moment_connections_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"moment_references": {
                   Row: {
                     "attribution_required": boolean,"created_at": string,"creator_id": string,"deleted_at": string | null,"entity_id": string,"entity_type": string,"excerpt": string | null,"id": string,"occurred_at": string,"preview_asset_id": string | null,"preview_kind": string | null,"rights_state": string | null,"source_creator_id": string | null,"source_url": string | null,"subtype": string | null,"title": string | null,"updated_at": string,"visibility": string
@@ -2354,6 +2404,25 @@ isOneToOne: false
       columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"open_conversation_summaries": {
+                  Row: {
+                    "conversation_id": string,"generated_at": string,"points": NonNullable<Json>,"reply_count_at": number
+                  }
+                  Insert: {
+                    "conversation_id": string,"generated_at"?: string,"points": NonNullable<Json>,"reply_count_at": number
+                  }
+                  Update: {
+                    "conversation_id"?: string,"generated_at"?: string,"points"?: NonNullable<Json>,"reply_count_at"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "open_conversation_summaries_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: true
+      referencedRelation: "open_conversations"
       referencedColumns: ["id"]
     }
                   ]

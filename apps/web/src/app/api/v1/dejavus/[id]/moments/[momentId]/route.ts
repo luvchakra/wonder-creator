@@ -5,4 +5,4 @@ import { requireUuid, withApi } from "@/lib/api";
 export const DELETE = withApi<{ id: string; momentId: string }>(async ({ db }, { id, momentId }) => {
   await removeMomentFromDejaVu(db, requireUuid(id, "DejaVu"), requireUuid(momentId, "Moment"));
   return { ok: true };
-});
+}, { feature: "dejavu_enabled" });

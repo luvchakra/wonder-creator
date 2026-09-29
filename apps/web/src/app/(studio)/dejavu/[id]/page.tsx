@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { withThumbs } from "@/lib/moments";
 import { DejaVuView } from "./view";
+import { flagOn } from "@/lib/features";
 
 export const metadata = { title: "DejaVu" };
 
@@ -12,6 +13,7 @@ export const metadata = { title: "DejaVu" };
  * owning domain, server-side).
  */
 export default async function DejaVuPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ filter?: string; from?: string; to?: string }> }) {
+  if (!flagOn("dejavu_enabled")) notFound();
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();

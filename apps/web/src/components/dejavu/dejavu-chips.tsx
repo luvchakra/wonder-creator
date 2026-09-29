@@ -5,6 +5,7 @@ import { Check, Plus, Search, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { useFeature } from "@/components/features";
 
 /**
  * DejaVu chips (docs/moments-dejavu.md §10): the recurring threads this Material or Creation carries. Up to three
@@ -21,11 +22,13 @@ export function DejaVuChips({
   initial: { momentId: string | null; dejavus: DejaVu[] };
   className?: string;
 }) {
+  const on = useFeature("dejavu_enabled");
   const [state, setState] = useState(initial);
   const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const shown = all ? state.dejavus : state.dejavus.slice(0, 3);
   const more = state.dejavus.length - shown.length;
+  if (!on) return null;
   return (
     <div role="group" aria-label="DejaVus" className={cn("flex flex-wrap items-center gap-x-1.5", className)}>
       {shown.map((d) => (

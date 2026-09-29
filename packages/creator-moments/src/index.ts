@@ -3,3 +3,4 @@ export * from "./adapters";
 export * from "./moments";
 export * from "./dejavus";
 export * from "./suggest";
+export * from "./connections";

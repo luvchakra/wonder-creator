@@ -7,4 +7,4 @@ export const POST = withApi<{ replyId: string }>(async ({ db, req }, { replyId }
   const { reason } = z.object({ reason: z.string().trim().max(300).optional() }).parse(await readJson(req));
   await removeReply(db, requireUuid(replyId, "reply"), reason);
   return { ok: true };
-});
+}, { feature: "open_conversations_enabled" });

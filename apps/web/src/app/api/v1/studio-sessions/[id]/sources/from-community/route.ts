@@ -2,6 +2,7 @@ import { addSources, COMMUNITY_SOURCE_TYPES, workingSetView, type SourceType } f
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
 import { assertUuid, studioSigner } from "@/lib/studio";
+import { track } from "@/lib/telemetry";
 
 const schema = z.object({ type: z.enum(COMMUNITY_SOURCE_TYPES as [SourceType, ...SourceType[]]), id: z.string().uuid() });
 
@@ -15,7 +16,8 @@ export const POST = withApi<{ id: string }>(
     assertUuid(id);
     const b = schema.parse(await readJson(req));
     const added = await addSources(db, creatorId, id, [{ type: b.type, id: b.id }], "available");
+    track("community_reply_used_in_studio", creatorId);
     return { added, workingSet: await workingSetView(db, id, studioSigner(db)) };
   },
-  { rateLimit: 60 },
+  { feature: "community_to_studio_enabled", rateLimit: 60 },
 );

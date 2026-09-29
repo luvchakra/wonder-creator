@@ -7,4 +7,4 @@ export const GET = withApi<{ id: string }>(async ({ db }, { id }) => {
   const moment = await getMoment(db, requireUuid(id, "Moment"));
   if (!moment) throw new DomainError("not_found", "We couldn't find that Moment.");
   return { moment };
-});
+}, { feature: "moments_enabled" });

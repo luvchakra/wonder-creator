@@ -24,5 +24,5 @@ export const POST = withApi<{ id: string }>(
     await exploreDejaVuIn(db, s.id, dv.id);
     return { artifactId, sessionId: s.id };
   },
-  { rateLimit: 20 },
+  { feature: "dejavu_enabled", rateLimit: 20 },
 );

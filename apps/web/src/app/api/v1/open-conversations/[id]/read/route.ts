@@ -5,4 +5,4 @@ import { requireUuid, withApi } from "@/lib/api";
 export const POST = withApi<{ id: string }>(async ({ db, creatorId }, { id }) => {
   await markRead(db, creatorId, requireUuid(id, "conversation"));
   return { ok: true };
-});
+}, { feature: "open_conversations_enabled" });

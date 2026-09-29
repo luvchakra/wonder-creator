@@ -8,5 +8,5 @@ export const POST = withApi<{ id: string }>(
     const { creatorIds } = z.object({ creatorIds: z.array(z.string().uuid()).min(1).max(20) }).parse(await readJson(req));
     return { added: await inviteToConversation(db, requireUuid(id, "conversation"), creatorIds) };
   },
-  { rateLimit: 20 },
+  { feature: "open_conversations_enabled", rateLimit: 20 },
 );

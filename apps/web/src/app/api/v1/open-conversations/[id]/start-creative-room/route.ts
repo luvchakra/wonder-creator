@@ -2,6 +2,7 @@ import { DomainError } from "@wonder/core";
 import { getConversation } from "@wonder/creator-community";
 import { createProject } from "@wonder/creator-projects";
 import { requireUuid, withApi } from "@/lib/api";
+import { track } from "@/lib/telemetry";
 
 /**
  * POST — "Start Creative Room" (§15) through the existing Projects domain: a Creative Room of the caller's own, briefed
@@ -16,7 +17,8 @@ export const POST = withApi<{ id: string }>(
     const project = await createProject(db, creatorId, { title: d.conversation.title.slice(0, 120), brief });
     const { error } = await db.rpc("open_conversation_link", { p_conversation: cid, p_kind: "project", p_target: project.id });
     if (error) throw new DomainError("internal", "The Creative Room was made, but we couldn't link it to the conversation.", { cause: error });
+    track("creative_room_from_conversation", creatorId);
     return { projectId: project.id };
   },
-  { rateLimit: 6 },
+  { feature: "open_conversations_enabled", rateLimit: 6 },
 );

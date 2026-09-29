@@ -432,3 +432,13 @@ export async function creatorIdOf(userId: string): Promise<string> {
   if (!row) throw new Error("creatorIdOf: no creator");
   return row.id;
 }
+
+/** Test setup only: insert rows with the service key (pipeline-written data such as tags or a stored summary). */
+export async function adminInsert(table: string, rows: unknown): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json" },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(`adminInsert ${table}: ${res.status} ${await res.text()}`);
+}

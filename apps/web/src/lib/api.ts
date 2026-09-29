@@ -6,6 +6,8 @@ import type { Db } from "@wonder/db";
 import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
 import { after, NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { flagOn, requireFeature } from "./features";
+import type { Flag } from "./flags";
 import { createClient } from "./supabase/server";
 import { serviceClient, serviceConfigured } from "./supabase/service";
 
@@ -33,6 +35,8 @@ export interface ApiOptions {
   public?: boolean;
   /** After a successful response, refresh semantic-search embeddings for the caller's changed content. */
   reindex?: boolean;
+  /** A rollout flag (Phase 05 §19): while it's off, the route answers as if it didn't exist. */
+  feature?: Flag;
 }
 
 function problem(status: number, code: string, message: string, requestId: string, details?: unknown) {
@@ -52,6 +56,7 @@ export function withApi<P = Record<string, string>>(
     const requestId = req.headers.get("x-request-id")?.slice(0, 64) || randomUUID();
     const started = Date.now();
     try {
+      if (opts.feature) requireFeature(flagOn(opts.feature));
       // Cross-site request protection for cookie-authenticated mutations.
       if (req.method !== "GET" && req.method !== "HEAD") {
         const origin = req.headers.get("origin");

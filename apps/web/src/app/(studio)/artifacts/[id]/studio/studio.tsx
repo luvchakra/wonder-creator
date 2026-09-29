@@ -11,6 +11,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
+import { useFeature } from "@/components/features";
 import { lastPageOutside } from "@/components/nav-memory";
 import { CarouselCanvas, type CanvasNews, type SlidesState } from "./carousel-canvas";
 import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommunityResponses, type AskFragment } from "./studio-community";
@@ -102,7 +103,9 @@ export function Studio({
   const inUse = sources.filter((s) => s.state !== "available").length;
   // Replies to what the creator asked Community about this Creation (Phase 04 §14).
   const [respKey, setRespKey] = useState(0);
-  const [responses] = useCommunityResponses(set?.sessionId ?? null, respKey);
+  const communityOn = useFeature("community_to_studio_enabled");
+  const askOn = useFeature("ask_community_enabled");
+  const [responses] = useCommunityResponses(communityOn ? (set?.sessionId ?? null) : null, respKey);
   const change = useCallback(
     async (row: WorkingSource, body: { state?: WorkingSource["state"] } | "remove") => {
       if (!set) return;
@@ -224,6 +227,8 @@ export function Studio({
       });
       setBase({ id: r.version.id, number: r.version.version_number, content: r.version.content });
       if (set) {
+        // What this version was made from: the sources in use or pinned (Phase 05, Scenario C).
+        await api(`/api/v1/studio-sessions/${set.sessionId}/commit`, { method: "POST", json: { versionId: r.version.id } }).catch(() => undefined);
         await api(`/api/v1/studio-sessions/${set.sessionId}`, { method: "PATCH", json: { draft: null } });
         if (!opts.keepUnused) {
           const unused = sources.filter((s) => s.state === "available");
@@ -955,7 +960,7 @@ export function Studio({
                   ]
                 : []),
               { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
-              ...(askFragment ? [{ label: "Ask Community", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
+              ...(askFragment && askOn ? [{ label: "Ask Community", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
               { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/artifacts/${artifact.id}?tab=versions`) },
               { label: "Transform / Derive", hint: "Make a carousel, video, etc.", act: () => setSheet("format") },
               { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/artifacts/${artifact.id}/share`) },

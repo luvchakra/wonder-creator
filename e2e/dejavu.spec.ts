@@ -40,7 +40,7 @@ test.describe("DejaVu", () => {
     // The chip opens the DejaVu: both Moments, newest first, with type filters for the types present.
     await page.getByRole("group", { name: "DejaVus" }).getByRole("link", { name: thread }).click();
     await expect(page.getByRole("heading", { level: 1, name: thread })).toBeVisible();
-    await expect(page.getByText("2 Moments")).toBeVisible();
+    await expect(page.locator("#main").getByText("2 Moments")).toBeVisible();
     await expect(page.getByRole("region", { name: "Today" }).getByRole("link")).toHaveCount(2);
     const types = page.getByRole("navigation", { name: "Types" });
     await expect(types.getByRole("link")).toHaveText(["All", "Notes1", "Creations1"]);
@@ -55,16 +55,16 @@ test.describe("DejaVu", () => {
     // Take one off; Undo puts it back.
     await page.getByRole("button", { name: `More for A Life in Moments ${tag}` }).click();
     await page.getByRole("menuitem", { name: `Take off ${thread}` }).click();
-    await expect(page.getByText("1 Moment", { exact: true })).toBeVisible();
+    await expect(page.locator("#main").getByText("1 Moment", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Undo" }).click();
-    await expect(page.getByText("2 Moments")).toBeVisible();
+    await expect(page.locator("#main").getByText("2 Moments")).toBeVisible();
     await page.reload();
     await expect(page.getByRole("region", { name: "Today" }).getByRole("link")).toHaveCount(2);
 
     // A deleted Material leaves safely; the DejaVu and the rest stay.
     expect((await page.request.delete(`/api/v1/materials/${note}?confirm=true`)).ok()).toBe(true);
     await page.reload();
-    await expect(page.getByText("1 Moment", { exact: true })).toBeVisible();
+    await expect(page.locator("#main").getByText("1 Moment", { exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Today" }).getByRole("link")).toHaveCount(1);
     // One type left: no type filters.
     await expect(page.getByRole("navigation", { name: "Types" })).toHaveCount(0);

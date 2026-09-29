@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { ScrapbookPostCard } from "@/components/scrapbook-post";
+import { useFeature } from "@/components/features";
 import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
 
@@ -23,6 +24,7 @@ export function PostDetail({ initial }: { initial: Data }) {
   const [reporting, setReporting] = useState<{ replyId?: string } | null>(null);
   const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
   const [studio, setStudio] = useState<StudioNote | null>(null);
+  const toStudio = useFeature("community_to_studio_enabled");
   const { post } = data;
   const inspire = () => act("studio", async () => setStudio(await bringToStudio("scrapbook_entry", post.id)));
 
@@ -71,7 +73,7 @@ export function PostDetail({ initial }: { initial: Data }) {
             <Button variant="ghost" className="self-end text-danger" onClick={() => setConfirmDelete(true)}>
               Delete post
             </Button>
-            {post.body ? (
+            {post.body && toStudio ? (
               <Button variant="ghost" className="self-end" onClick={() => void inspire()}>
                 Bring to Studio
               </Button>
@@ -83,7 +85,7 @@ export function PostDetail({ initial }: { initial: Data }) {
               <MoreHorizontal className="size-5" aria-hidden />
             </MenuTrigger>
             <MenuContent align="start">
-              {post.body ? <MenuItem onSelect={() => void inspire()}>Use as inspiration</MenuItem> : null}
+              {post.body && toStudio ? <MenuItem onSelect={() => void inspire()}>Use as inspiration</MenuItem> : null}
               <MenuItem onSelect={() => setReporting({})}>Report this post</MenuItem>
               <MenuItem destructive onSelect={() => setBlocking({ id: post.author.id, name: post.author.name })}>
                 Block {post.author.name}

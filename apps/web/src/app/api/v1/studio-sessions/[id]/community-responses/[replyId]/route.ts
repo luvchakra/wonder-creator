@@ -7,4 +7,4 @@ export const DELETE = withApi<{ id: string; replyId: string }>(async ({ db }, { 
   assertUuid(id, replyId);
   await dismissCommunityResponse(db, id, replyId);
   return { ok: true };
-});
+}, { feature: "community_to_studio_enabled" });
