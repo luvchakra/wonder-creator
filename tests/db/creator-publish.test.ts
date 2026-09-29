@@ -1,99 +1,153 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { planPublishing, selectProvider } from "@wonder/creator-brain";
-import { setAutonomy } from "@wonder/creator-identity";
-import {
-  addWebhookDestination,
-  approvePublication,
-  attemptPublication,
-  cancelPublication,
-  createArtifact,
-  getPublishingPreferences,
-  preparePublications,
-  publishingOverview,
-  savePublishingPreferences,
-  updatePublication,
-} from "@wonder/creator-studio";
+import { createMaterial } from "@wonder/creator-library";
+import { createArtifact, publishCreation, saveCreatorPage, saveCreatorVersion, unpublishCreation, updatePublishedWork, type PublishedSnapshot } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
-import { adminClient, cleanupTestCreators, createTestCreator, expectOk, type TestCreator } from "./helpers";
+import { adminClient, anonClient, cleanupTestCreators, createTestCreator, expectDenied, expectOk, loose, registerStorageObject, type TestCreator } from "./helpers";
 
+// CreatorPublish: frozen published revisions at stable addresses, Private / Unlisted / Public, a curated Creator Page,
+// public DejaVus that never leak private Moments — all reached by signed-out readers only through publication-safe
+// functions.
+const admin = adminClient();
+const anon = anonClient();
 let a: TestCreator;
 let b: TestCreator;
-let piece: string;
-let hook: string;
+let handle: string;
 const db = (x: TestCreator) => x.client as unknown as AppDb;
-const service = adminClient() as unknown as AppDb;
-const provider = selectProvider({ WONDERCREATOR_AI_PROVIDER: "offline" });
-const bodies: string[] = [];
-const fetchImpl = (async (_url: URL, init: RequestInit) => {
-  bodies.push(String(init.body));
-  return Response.json({ id: "post-9", url: "https://example.com/p/9" });
-}) as unknown as typeof fetch;
-const deps = () => ({ service, creatorId: a.creatorId, appOrigin: "https://app.example", fetchOptions: { resolve: async () => ["93.184.216.34"], fetchImpl } });
+const work = async (h: string, slug: string) => (await anon.rpc("public_work", { p_handle: h, p_slug: slug })).data as { snapshot: PublishedSnapshot; revision: { number: number }; manifest: { experience: string; poem?: boolean } } | null;
 
 beforeAll(async () => {
-  [a, b] = await Promise.all([createTestCreator("cpOwner"), createTestCreator("cpOther")]);
-  piece = (await createArtifact(db(a), a.creatorId, { artifactType: "poem", title: "Tide Tables", content: "The sea keeps its own hours.", authorKind: "creator", provenance: { origin: "typed" } })).id;
-  hook = (await addWebhookDestination(db(a), a.creatorId, { name: "My site", url: "https://hooks.example.com/wonder" })).id;
+  [a, b] = await Promise.all([createTestCreator("pubA"), createTestCreator("pubB")]);
+  handle = `pub${Date.now().toString(36)}`;
+  expectOk(await admin.from("creators").update({ handle }).eq("id", a.creatorId).select("id"));
 });
 afterAll(cleanupTestCreators);
 
-describe("preferences", () => {
-  it("are private, validated and only prefill", async () => {
-    expect(await getPublishingPreferences(db(a), a.creatorId)).toMatchObject({ defaultDestinations: [], defaultTags: [], preferredTime: null });
-    await expect(savePublishingPreferences(db(a), a.creatorId, { timeZone: "Mars/Olympus" })).rejects.toThrow();
-    await savePublishingPreferences(db(a), a.creatorId, { defaultDestinations: [hook], defaultTags: ["#poetry", "sea", "poetry"], preferredTime: "18:30", timeZone: "Asia/Kolkata", captionStyle: "Short." });
-    expect(await getPublishingPreferences(db(a), a.creatorId)).toMatchObject({ defaultDestinations: [hook], defaultTags: ["poetry", "sea"], preferredTime: "18:30", timeZone: "Asia/Kolkata" });
-    expect(expectOk(await b.client.from("publishing_preferences").select("creator_id"))).toEqual([]);
-    const forged = await b.client.from("publishing_preferences").insert({ creator_id: a.creatorId });
-    expect(forged.error).toBeTruthy();
+describe("published revisions", () => {
+  it("freeze what readers see: edits stay private until the creator updates the published version, under the same address", async () => {
+    const poem = await createArtifact(db(a), a.creatorId, { artifactType: "poem", title: "Chand Amavas", content: "The moon wanes,\n  slipping into the new moon's pocket.\n\nIn the mirror\nonly stubble.", authorKind: "creator", provenance: { origin: "typed" } });
+    const pub = await publishCreation(db(a), a.creatorId, poem.id, { visibility: "public" });
+    expect(pub.slug).toBe("chand-amavas");
+    let seen = await work(handle, "chand-amavas");
+    expect(seen?.manifest).toMatchObject({ experience: "read", poem: true });
+    // Line breaks, indentation and stanza spacing survive.
+    expect(seen?.snapshot.content).toBe("The moon wanes,\n  slipping into the new moon's pocket.\n\nIn the mirror\nonly stubble.");
+
+    const { data: cur } = await admin.from("artifacts").select("current_version_id").eq("id", poem.id).single();
+    await saveCreatorVersion(db(a), poem.id, { content: "A private rewrite.", baseVersionId: cur!.current_version_id, label: "Rewrite" });
+    seen = await work(handle, "chand-amavas");
+    expect(seen?.snapshot.content).not.toContain("private rewrite");
+    expect(seen?.revision.number).toBe(1);
+
+    const again = await publishCreation(db(a), a.creatorId, poem.id, { visibility: "public" });
+    expect(again.slug).toBe("chand-amavas");
+    seen = await work(handle, "chand-amavas");
+    expect(seen?.snapshot.content).toBe("A private rewrite.");
+    expect(seen?.revision.number).toBe(2);
+
+    // Revisions are immutable and the creator's alone.
+    expectDenied(await loose(a.client).from("published_revisions").update({ revision_number: 9 }).eq("artifact_id", poem.id).select("id"));
+    expect(expectOk(await b.client.from("published_revisions").select("id").eq("artifact_id", poem.id))).toEqual([]);
+    expectDenied(await b.client.from("published_works").insert({ artifact_id: poem.id, creator_id: b.creatorId, slug: "stolen" }));
+    // The working Creation itself stays private.
+    expect(expectOk(await anon.from("artifacts").select("id").eq("id", poem.id))).toEqual([]);
+  });
+
+  it("Private, Unlisted, Public — and unpublishing takes it down everywhere", async () => {
+    const essay = await createArtifact(db(a), a.creatorId, { artifactType: "essay", title: "Waiting Rooms", content: "Sometimes a place remains inside you.", authorKind: "creator", provenance: { origin: "typed" } });
+    await publishCreation(db(a), a.creatorId, essay.id, { visibility: "unlisted" });
+    expect(await work(handle, "waiting-rooms")).not.toBeNull();
+    await updatePublishedWork(db(a), essay.id, { visibility: "private" });
+    expect(await work(handle, "waiting-rooms")).toBeNull();
+    await updatePublishedWork(db(a), essay.id, { visibility: "public" });
+    expect(await work(handle, "waiting-rooms")).not.toBeNull();
+    await unpublishCreation(db(a), essay.id);
+    expect(await work(handle, "waiting-rooms")).toBeNull();
+  });
+
+  it("a Carousel publishes as a Swipe with its slides, words and overlays", async () => {
+    const c = await createArtifact(db(a), a.creatorId, { artifactType: "carousel", title: "A Life in Moments", content: "One. Two.", authorKind: "creator", provenance: { origin: "typed" } });
+    expectOk(await admin.from("carousels").insert({ artifact_id: c.id, creator_id: a.creatorId, requested_count: 2, aspect_ratio: "4:5", visual_style: "auto" }).select("artifact_id"));
+    expectOk(await admin.from("carousel_slides").insert([
+      { artifact_id: c.id, creator_id: a.creatorId, order_index: 0, source_text: "One", display_text: "One" },
+      { artifact_id: c.id, creator_id: a.creatorId, order_index: 1, source_text: "Two", display_text: "Two" },
+    ]));
+    await publishCreation(db(a), a.creatorId, c.id, {});
+    const seen = await work(handle, "a-life-in-moments");
+    expect(seen?.manifest).toMatchObject({ experience: "swipe", descriptor: "Visual story · 2 slides" });
+    expect(seen?.snapshot.slides?.map((s) => [s.text, s.overlay.enabled])).toEqual([
+      ["One", true],
+      ["Two", true],
+    ]);
   });
 });
 
-describe("per-destination preparation and metadata", () => {
-  it("shares copy, customizes per destination, sends metadata with the webhook, and freezes it on approval", async () => {
-    const drafts = await preparePublications(db(a), a.creatorId, piece, {
-      destinations: [{ kind: "profile" }, { kind: "webhook", id: hook }],
-      title: "Tide Tables",
-      caption: "A new poem.",
-      metadata: { tags: ["poetry"], altText: "Waves at dusk" },
-      perDestination: { [hook]: { caption: "New on the blog: a poem about the sea.", metadata: { tags: ["sea"], link: "https://example.com/tide" } } },
-    });
-    const byKind = Object.fromEntries(drafts.map((d) => [d.destination_kind, d]));
-    expect(byKind.profile).toMatchObject({ caption: "A new poem.", metadata: { tags: ["poetry"], altText: "Waves at dusk" } });
-    expect(byKind.webhook).toMatchObject({ caption: "New on the blog: a poem about the sea.", metadata: { tags: ["sea"], altText: "Waves at dusk", link: "https://example.com/tide" } });
-    await expect(preparePublications(db(a), a.creatorId, piece, { destinations: [{ kind: "profile" }], title: "x", metadata: { link: "http://insecure" } })).rejects.toThrow();
-
-    // Editing tags keeps the rest of the metadata.
-    await updatePublication(db(a), byKind.webhook!.id, { metadata: { tags: ["sea", "poetry"] } });
-    await approvePublication(db(a), byKind.webhook!.id);
-    const done = await attemptPublication(deps(), byKind.webhook!.id);
-    expect(done.status).toBe("published");
-    expect(JSON.parse(bodies.at(-1)!).metadata).toEqual({ tags: ["sea", "poetry"], altText: "Waves at dusk", link: "https://example.com/tide" });
-    await expect(updatePublication(db(a), byKind.webhook!.id, { metadata: { tags: ["late"] } })).rejects.toThrow(/already approved/);
-    await cancelPublication(db(a), byKind.profile!.id);
+describe("the Creator Page", () => {
+  it("shows only what the creator chose, and only once they publish it", async () => {
+    expect((await anon.rpc("public_creator_page", { p_handle: handle })).data).toBeNull();
+    await saveCreatorPage(db(a), a.creatorId, { isPublished: true, headline: "Writer · Photographer" });
+    const page = (await anon.rpc("public_creator_page", { p_handle: handle })).data as { works: Array<{ slug: string }>; dejavus: unknown[]; moments: unknown[]; headline: string };
+    expect(page.headline).toBe("Writer · Photographer");
+    // Public works only (the unlisted and unpublished ones never appear).
+    expect(page.works.map((w) => w.slug).sort()).toEqual(["a-life-in-moments", "chand-amavas"]);
+    expect(page.dejavus).toEqual([]);
+    expect(page.moments).toEqual([]);
+    // Someone else's DejaVu or Scrapbook entry can't be put on this page.
+    const theirs = expectOk(await b.client.from("dejavus").insert({ creator_id: b.creatorId, name: "Theirs" }).select("id").single()).id;
+    await expect(saveCreatorPage(db(a), a.creatorId, { publicDejaVuIds: [theirs] })).rejects.toThrow();
   });
 
-  it("the overview shows the queue and history across pieces, and only the creator's own", async () => {
-    const [p] = await preparePublications(db(a), a.creatorId, piece, { destinations: [{ kind: "profile" }], title: "Again" });
-    const o = await publishingOverview(db(a));
-    expect(o.queue.map((q) => q.id)).toContain(p!.id);
-    expect(o.queue.find((q) => q.id === p!.id)!.artifacts).toMatchObject({ title: "Tide Tables" });
-    expect(o.history.map((h) => h.status).sort()).toEqual(["cancelled", "published"]);
-    expect((await publishingOverview(db(b))).queue).toEqual([]);
+  it("a public DejaVu holds public works and chosen Moments — never the private Moments beside them", async () => {
+    const dv = expectOk(await a.client.from("dejavus").insert({ creator_id: a.creatorId, name: "Railways" }).select("id").single()).id;
+    const privateNote = await createMaterial(db(a), a.creatorId, { type: "note", title: "Dad's private letter", textContent: "private", provenance: { origin: "typed" } });
+    const { data: poem } = await admin.from("published_works").select("artifact_id").eq("slug", "chand-amavas").eq("creator_id", a.creatorId).single();
+    const post = expectOk(await a.client.from("scrapbook_posts").insert({ creator_id: a.creatorId, body: "Platform 3 at dawn.", visibility: "public" }).select("id").single()).id;
+    const moments = await Promise.all([
+      admin.from("moment_references").select("id").eq("entity_type", "creation").eq("entity_id", poem!.artifact_id).single(),
+      admin.from("moment_references").select("id").eq("entity_type", "material").eq("entity_id", privateNote.id).single(),
+    ]);
+    let postMoment = (await admin.from("moment_references").select("id").eq("entity_type", "scrapbook_entry").eq("entity_id", post).maybeSingle()).data?.id;
+    postMoment ??= expectOk(await a.client.from("moment_references").insert({ creator_id: a.creatorId, entity_type: "scrapbook_entry", entity_id: post, visibility: "public" }).select("id").single()).id;
+    for (const m of [moments[0].data!.id, moments[1].data!.id, postMoment]) expectOk(await a.client.from("dejavu_moments").insert({ dejavu_id: dv, moment_id: m, creator_id: a.creatorId, added_by: a.creatorId }));
+
+    // Not on the page yet: not public.
+    expect((await anon.rpc("public_dejavu", { p_handle: handle, p_dejavu: dv })).data).toBeNull();
+    await saveCreatorPage(db(a), a.creatorId, { publicDejaVuIds: [dv], publicMomentIds: [post] });
+    const d = (await anon.rpc("public_dejavu", { p_handle: handle, p_dejavu: dv })).data as { items: Array<{ kind: string; card?: { slug: string }; moment?: { body: string } }> };
+    expect(d.items.map((i) => i.kind).sort()).toEqual(["creation", "moment"]);
+    expect(JSON.stringify(d)).not.toContain("private letter");
+  });
+});
+
+describe("light analytics", () => {
+  it("counts views and shares per day — no visitor data — readable only by the creator", async () => {
+    const { data: w } = await admin.from("published_works").select("id").eq("slug", "chand-amavas").eq("creator_id", a.creatorId).single();
+    await anon.rpc("record_publication_event", { p_work: w!.id, p_kind: "view" });
+    await anon.rpc("record_publication_event", { p_work: w!.id, p_kind: "view" });
+    await anon.rpc("record_publication_event", { p_work: w!.id, p_kind: "share" });
+    await anon.rpc("record_publication_event", { p_work: w!.id, p_kind: "like" });
+    const rows = expectOk(await a.client.from("published_work_stats").select("views, shares, completions").eq("work_id", w!.id));
+    expect(rows).toEqual([{ views: 2, shares: 1, completions: 0 }]);
+    expect(expectOk(await b.client.from("published_work_stats").select("views").eq("work_id", w!.id))).toEqual([]);
   });
 });
 
-describe("CreativeMind publishing plan", () => {
-  it("offline, follows preferences; owner only; governed by Publishing autonomy; prepares nothing", async () => {
-    const before = expectOk(await service.from("publications").select("id").eq("artifact_id", piece)).length;
-    const plan = await planPublishing({ db: db(a), creatorId: a.creatorId, provider }, piece);
-    expect(plan.offline).toBe(true);
-    expect(plan.destinations.map((d) => d.key)).toEqual([hook]);
-    expect(plan.adaptations[0]).toMatchObject({ key: hook, tags: ["poetry", "sea"] });
-    expect(Date.parse(plan.schedule[0]!.at!)).toBeGreaterThan(Date.now());
-    expect(expectOk(await service.from("publications").select("id").eq("artifact_id", piece)).length).toBe(before);
-    await expect(planPublishing({ db: db(b), creatorId: b.creatorId, provider }, piece)).rejects.toThrow(/couldn't find/);
-    await setAutonomy(db(a), a.creatorId, "publishing", "never");
-    await expect(planPublishing({ db: db(a), creatorId: a.creatorId, provider }, piece)).rejects.toThrow(/Creator Autonomy/);
+describe("type-aware snapshots", () => {
+  it("a photo essay becomes a Journey of its words and pictures — only files that passed the upload checks", async () => {
+    const essay = await createArtifact(db(a), a.creatorId, { artifactType: "photo_essay", title: "Coastal Notes", content: "A week along the coast.\n\nSalt air, warmer light.\n\nA slower rhythm.", authorKind: "creator", provenance: { origin: "typed" } });
+    const [clean, dirty] = [await registerStorageObject(a), await registerStorageObject(a)];
+    expectOk(await admin.from("storage_objects").update({ security_status: "clean" }).eq("id", clean).select("id"));
+    const pics = await Promise.all([
+      createMaterial(db(a), a.creatorId, { type: "image", title: "Cliffs at dusk", storageObjectId: clean, provenance: { origin: "typed" } }),
+      createMaterial(db(a), a.creatorId, { type: "image", title: "Unscanned", storageObjectId: dirty, provenance: { origin: "typed" } }),
+    ]);
+    for (const p of pics) expectOk(await admin.from("lineage_edges").insert({ creator_id: a.creatorId, source_type: "material", source_id: p.id, target_type: "artifact", target_id: essay.id, relationship: "contains_material" }).select("id"));
+    await publishCreation(db(a), a.creatorId, essay.id, {});
+    const seen = await work(handle, "coastal-notes");
+    expect(seen?.manifest.experience).toBe("journey");
+    const blocks = seen!.snapshot.blocks!;
+    expect(blocks.map((b) => b.kind)).toEqual(["image", "text", "text", "text"]);
+    expect(JSON.stringify(seen)).not.toContain(dirty);
+    expect(blocks[0]).toMatchObject({ kind: "image", objectId: clean, alt: "Cliffs at dusk" });
   });
 });
+

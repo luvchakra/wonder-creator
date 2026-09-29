@@ -11,6 +11,7 @@
     "./commercial": "./src/commercial.ts",
     "./carousel": "./src/carousel.ts",
     "./business": "./src/business.ts",
-    "./working-set": "./src/working-set-options.ts"
+    "./working-set": "./src/working-set-options.ts",
+    "./publish": "./src/publish-options.ts"
   }
 }

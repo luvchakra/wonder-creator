@@ -1,0 +1,168 @@
+import "server-only";
+import { mediaLink } from "@wonder/core/server";
+import type { PublicRights, PublicationManifest, PublicationVisibility, PublishSettings, PublishedSnapshot } from "@wonder/creator-studio/publish";
+import { headers } from "next/headers";
+import { createClient } from "./supabase/server";
+
+/**
+ * Loading CreatorPublish's public pages (docs/creator-publish.md §35). Signed-out readers go only through the database's
+ * publication-safe functions (`public_work`, `public_creator_page`, `public_dejavu`) — never through app state. Storage
+ * objects named in a published snapshot become stable media links here, minted per view.
+ */
+
+export interface PublicCard {
+  slug: string;
+  featured: boolean;
+  title: string;
+  creationType: string;
+  typeLabel: string;
+  experience: PublicationManifest["experience"];
+  descriptor: string;
+  coverUrl: string | null;
+  durationSeconds: number | null;
+  itemCount: number | null;
+  publishedAt: string;
+  href: string;
+}
+
+export interface PublicWorkView {
+  workId: string;
+  slug: string;
+  visibility: PublicationVisibility;
+  settings: PublishSettings;
+  revision: { number: number; publishedAt: string };
+  manifest: PublicationManifest;
+  snapshot: PublishedSnapshot;
+  rights: PublicRights;
+  provenance: { versionNumber: number | null; revisionNumber: number; madeFrom: Record<string, number> };
+  creator: { handle: string; name: string; avatarUrl: string | null; pagePublished: boolean };
+  more: PublicCard[];
+  conversation: { id: string; title: string; replyCount: number } | null;
+  /** Media links for every storage object in the snapshot. */
+  media: Record<string, string>;
+  /** Only the creator is looking (a private work, or a preview). */
+  preview: boolean;
+}
+
+type RawCard = Omit<PublicCard, "coverUrl" | "href"> & { coverObjectId: string | null };
+const link = (id: string | null | undefined) => (id ? mediaLink(id) : null);
+const card = (handle: string, c: RawCard): PublicCard => ({ ...c, coverUrl: link(c.coverObjectId), href: `/p/${handle}/${c.slug}` });
+
+/** Every storage object a snapshot names. */
+export function snapshotObjects(s: PublishedSnapshot): string[] {
+  const ids = [s.coverObjectId, s.media?.objectId, s.media?.posterObjectId, s.voice?.objectId, ...(s.slides ?? []).map((x) => x.objectId), ...(s.images ?? []).map((x) => x.objectId)];
+  for (const b of s.blocks ?? []) if (b.kind !== "text") ids.push(b.objectId, b.kind === "video" ? b.posterObjectId : null);
+  return [...new Set(ids.filter((x): x is string => !!x))];
+}
+
+type RawWork = Omit<PublicWorkView, "more" | "media" | "preview" | "creator"> & { creator: { handle: string; name: string; avatarObjectId: string | null; pagePublished: boolean }; more: RawCard[] };
+
+function toView(raw: RawWork, preview: boolean): PublicWorkView {
+  const media: Record<string, string> = {};
+  for (const id of snapshotObjects(raw.snapshot)) {
+    const l = mediaLink(id);
+    if (l) media[id] = l;
+  }
+  return {
+    ...raw,
+    creator: { handle: raw.creator.handle, name: raw.creator.name, avatarUrl: link(raw.creator.avatarObjectId), pagePublished: raw.creator.pagePublished },
+    more: (raw.more ?? []).filter(Boolean).map((c) => card(raw.creator.handle, c)),
+    media,
+    preview,
+  };
+}
+
+/**
+ * A published work for any reader. A private work (or one taken down) is visible only to its creator, as a preview —
+ * read through their own access, never the public function.
+ */
+export async function loadPublicWork(handle: string, slug: string): Promise<PublicWorkView | null> {
+  const db = await createClient();
+  const { data } = await db.rpc("public_work", { p_handle: handle, p_slug: slug });
+  if (data) return toView(data as unknown as RawWork, false);
+  // The creator's own preview.
+  const { data: claims } = await db.auth.getClaims();
+  if (!claims?.claims?.sub) return null;
+  const { data: me } = await db.from("creators").select("id, handle, display_name, avatar_object_id").eq("user_id", claims.claims.sub as string).maybeSingle();
+  if (!me || me.handle !== handle.toLowerCase()) return null;
+  const { data: w } = await db.from("published_works").select("id, slug, visibility, settings, current_revision_id").eq("creator_id", me.id).eq("slug", slug.toLowerCase()).maybeSingle();
+  if (!w?.current_revision_id) return null;
+  const { data: r } = await db.from("published_revisions").select("revision_number, published_at, manifest, snapshot, rights_snapshot, provenance_snapshot").eq("id", w.current_revision_id).maybeSingle();
+  if (!r) return null;
+  const { data: page } = await db.from("creator_pages").select("is_published").eq("creator_id", me.id).maybeSingle();
+  return toView(
+    {
+      workId: w.id,
+      slug: w.slug,
+      visibility: w.visibility as PublicationVisibility,
+      settings: w.settings as PublishSettings,
+      revision: { number: r.revision_number, publishedAt: r.published_at },
+      manifest: r.manifest as unknown as PublicationManifest,
+      snapshot: r.snapshot as unknown as PublishedSnapshot,
+      rights: r.rights_snapshot as unknown as PublicRights,
+      provenance: r.provenance_snapshot as unknown as RawWork["provenance"],
+      creator: { handle: me.handle ?? handle, name: me.display_name, avatarObjectId: me.avatar_object_id, pagePublished: !!page?.is_published },
+      more: [],
+      conversation: null,
+    },
+    true,
+  );
+}
+
+export interface PublicCreatorPage {
+  creator: { id: string; handle: string; name: string; bio: string | null; location: string | null; avatarUrl: string | null };
+  headline: string | null;
+  intro: string | null;
+  sections: Array<{ section: string; enabled: boolean }>;
+  links: Array<{ label: string; url: string }>;
+  works: PublicCard[];
+  dejavus: Array<{ id: string; name: string; description: string | null; count: number }>;
+  moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageUrl: string | null }>;
+  conversations: Array<{ id: string; title: string; replyCount: number; createdAt: string }>;
+  openTo: string[];
+}
+
+export async function loadCreatorPage(handle: string): Promise<PublicCreatorPage | null> {
+  const db = await createClient();
+  const { data } = await db.rpc("public_creator_page", { p_handle: handle });
+  if (!data) return null;
+  const raw = data as unknown as Omit<PublicCreatorPage, "works" | "moments" | "creator"> & {
+    creator: PublicCreatorPage["creator"] & { avatarObjectId: string | null };
+    works: RawCard[];
+    moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageObjectId: string | null }>;
+  };
+  return {
+    ...raw,
+    creator: { ...raw.creator, avatarUrl: link(raw.creator.avatarObjectId) },
+    works: (raw.works ?? []).filter(Boolean).map((c) => card(raw.creator.handle, c)),
+    moments: (raw.moments ?? []).map((m) => ({ ...m, imageUrl: link(m.imageObjectId) })),
+  };
+}
+
+export interface PublicDejaVuPage {
+  creator: { handle: string; name: string };
+  dejavu: { id: string; name: string; description: string | null };
+  items: Array<{ kind: "creation"; at: string; card: PublicCard } | { kind: "moment"; at: string; moment: { id: string; body: string; kind: string; imageUrl: string | null } }>;
+}
+
+export async function loadPublicDejaVu(handle: string, id: string): Promise<PublicDejaVuPage | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const db = await createClient();
+  const { data } = await db.rpc("public_dejavu", { p_handle: handle, p_dejavu: id });
+  if (!data) return null;
+  const raw = data as unknown as { creator: PublicDejaVuPage["creator"]; dejavu: PublicDejaVuPage["dejavu"]; items: Array<{ kind: string; at: string; card?: RawCard; moment?: { id: string; body: string; kind: string; imageObjectId: string | null } }> };
+  return {
+    ...raw,
+    items: (raw.items ?? []).map((i) =>
+      i.kind === "creation" ? { kind: "creation" as const, at: i.at, card: card(raw.creator.handle, i.card!) } : { kind: "moment" as const, at: i.at, moment: { ...i.moment!, imageUrl: link(i.moment!.imageObjectId) } },
+    ),
+  };
+}
+
+/** The site's own origin, for canonical URLs and share previews. */
+export async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+  return `${proto}://${host}`;
+}
