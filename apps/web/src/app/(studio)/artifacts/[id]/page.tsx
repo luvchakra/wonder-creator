@@ -1,7 +1,9 @@
+import { entityDejaVus } from "@wonder/creator-moments";
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { ContextBack } from "@/components/context-back";
+import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -66,13 +68,14 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     );
   }
 
-  const [versions, graph, rights, contributors, quality, owner] = await Promise.all([
+  const [versions, graph, rights, contributors, quality, owner, dejavus] = await Promise.all([
     listVersions(db, id),
     lineageGraph(db, id),
     getRights(db, id),
     db.from("artifact_contributors").select("role, contributor_creator_id, creators!artifact_contributors_contributor_creator_id_fkey(display_name, handle)").eq("artifact_id", id),
     db.from("quality_reports").select("*").eq("artifact_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("creators").select("id, display_name, handle").eq("id", artifact.creator_id).maybeSingle(),
+    entityDejaVus(db, "creation", id).catch(() => ({ momentId: null, dejavus: [] })),
   ]);
 
   const materialIds = graph.nodes.filter((n) => n.type === "material").map((n) => n.id);
@@ -120,6 +123,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
         }}
       />
       <ArtifactView
+        dejavu={<DejaVuChips entityType="creation" entityId={id} initial={dejavus} />}
         initialTab={tab}
         artifact={artifact}
         typeLabel={artifactType(artifact.artifact_type).label}

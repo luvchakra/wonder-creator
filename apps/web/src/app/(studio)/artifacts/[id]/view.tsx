@@ -83,6 +83,8 @@ function downloadFile(href: string) {
 }
 
 export function ArtifactView(props: {
+  /** DejaVu chips (docs/moments-dejavu.md §10). */
+  dejavu?: React.ReactNode;
   artifact: { id: string; title: string; description: string | null; status: string; privacy: string; artifact_type: string; current_version_id: string | null; created_at: string; updated_at: string; featured_on_profile: boolean };
   typeLabel: string;
   isOwner: boolean;
@@ -163,6 +165,7 @@ export function ArtifactView(props: {
           </Badge>
           <Badge tone={a.privacy === "public" ? "accent" : "neutral"}>{a.privacy === "public" ? "Public" : a.privacy === "shared" ? "Shared" : "Private"}</Badge>
         </div>
+        {props.dejavu}
         {a.description ? <p className="text-sm text-ink-muted">{a.description}</p> : null}
         {/* Grouped metadata, not a tile per fact (density §38). */}
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-ink-muted">

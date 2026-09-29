@@ -45,6 +45,7 @@ const META_LABEL: Record<string, string> = {
 
 export function MaterialDetail({
   m,
+  dejavu,
   url,
   file,
   intake,
@@ -94,6 +95,8 @@ export function MaterialDetail({
   } | null;
   intake: { id: string; state: string; error_message: string | null } | null;
   shelves: Array<{ id: string; name: string }>;
+  /** DejaVu chips (docs/moments-dejavu.md §10). */
+  dejavu?: React.ReactNode;
   usedIn: Array<{ id: string; title: string; artifact_type: string }>;
   collections: Array<{ id: string; name: string }>;
   inCollections: string[];
@@ -205,6 +208,7 @@ export function MaterialDetail({
             </div>
           ) : null}
           <div className="space-y-4 p-5 sm:p-6">
+            {dejavu ? <div className="-my-2">{dejavu}</div> : null}
             {m.understanding?.summary ? (
               <CreativeMindInsight kind="insight">
                 <span className="block">{m.understanding.summary}</span>
