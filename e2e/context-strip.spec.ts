@@ -28,7 +28,8 @@ test.describe("navbar Context Strip", () => {
 
     // Home now points at the Creation in progress.
     await page.goto("/");
-    await expect(strip).toHaveAttribute("aria-label", `${title} · In progress`);
+    // Home leads with its one truth (phase 02 §12); the Creation in progress follows.
+    await expect(strip).toHaveAttribute("aria-label", `Nothing urgent, ${title} · In progress`);
 
     // Lists say how many; the Approval Center says whether anything waits.
     await page.goto("/space?tab=ideas");

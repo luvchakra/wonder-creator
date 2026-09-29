@@ -414,3 +414,21 @@ export async function seedCarousel(userId: string, artifactId: string, texts: st
   );
   return slides.sort((a, b) => a.order_index - b.order_index).map((s) => s.id);
 }
+
+/** Test setup only: patch rows with the service key (e.g. to make a visit or a Moment look older than it is). */
+export async function adminPatch(table: string, query: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: "PATCH",
+    headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`adminPatch ${table}: ${res.status} ${await res.text()}`);
+}
+
+/** Test setup only: the creator row id for an auth user. */
+export async function creatorIdOf(userId: string): Promise<string> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/creators?user_id=eq.${userId}&select=id`, { headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}` } });
+  const [row] = (await res.json()) as Array<{ id: string }>;
+  if (!row) throw new Error("creatorIdOf: no creator");
+  return row.id;
+}

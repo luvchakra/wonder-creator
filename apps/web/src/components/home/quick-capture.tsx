@@ -1,0 +1,585 @@
+"use client";
+import { Button, Dialog, DialogContent, KIT, Textarea, cn } from "@wonder/ui";
+import type { DejaVu } from "@wonder/creator-moments/shared";
+import { ArrowRight, Check, Mic, PenLine, Play, Pause, Plus, Square, X } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useStripSignal } from "@/components/creative-palette";
+import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
+import { api, errorMessage } from "@/lib/client";
+import { PRIORITY } from "@/lib/context-strip/types";
+import { trackClient } from "@/lib/track";
+
+/**
+ * Quick Capture (docs/phases/02-home-quick-capture.md §6–7, §17): a quick note or a voice note in seconds. Capture
+ * first, organise later — no title, Project, tags or DejaVu asked for. Each capture carries an id made on the device,
+ * so a retry lands exactly once. Afterwards a quiet line says it's saved; any DejaVu suggestions appear later, only as
+ * suggestions. A note written offline is kept on this device and sent when the connection returns.
+ */
+
+type Suggestion = { id: string; name: string };
+type CaptureStatus = { done: boolean; transcription: "pending" | "done" | "unavailable" | null; momentId: string | null; suggestions: Suggestion[] };
+type Pending = { clientId: string; text: string; at: string };
+
+const QUEUE_KEY = "wc.capture.pending";
+const readQueue = (): Pending[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((p) => p && typeof p.clientId === "string" && typeof p.text === "string") : [];
+  } catch {
+    return [];
+  }
+};
+const writeQueue = (q: Pending[]) => {
+  try {
+    if (q.length) localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+    else localStorage.removeItem(QUEUE_KEY);
+  } catch {
+    /* storage unavailable: the note stays in memory for this visit */
+  }
+};
+/** A fetch that never reached the server (offline, dropped connection), as opposed to a refusal. */
+const unreachable = (e: unknown) => e instanceof TypeError || !navigator.onLine;
+
+type Saved = { kind: "note" | "voice"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null };
+
+/** Follows a saved capture quietly until it has settled (transcribed or not) and any suggestions are in. */
+function useCaptureStatus(materialId: string | null) {
+  const [status, setStatus] = useState<{ id: string; s: CaptureStatus } | null>(null);
+  useEffect(() => {
+    if (!materialId) return;
+    let live = true;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try {
+        const s = await api<CaptureStatus>(`/api/v1/capture/${materialId}`);
+        if (!live) return;
+        setStatus({ id: materialId, s });
+        if (s.done && (tries > 2 || s.suggestions.length)) return;
+      } catch {
+        /* the saved line stays; nothing to add */
+      }
+      if (live && ++tries < 12) timer = setTimeout(tick, 2500);
+    };
+    timer = setTimeout(tick, 1200);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [materialId]);
+  const current = status && status.id === materialId ? status.s : null;
+  const drop = (id: string) => setStatus((cur) => (cur ? { ...cur, s: { ...cur.s, suggestions: cur.s.suggestions.filter((x) => x.id !== id) } } : cur));
+  return { status: current, drop };
+}
+
+export function QuickCapture() {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"text" | "voice">("text");
+  const [saved, setSaved] = useState<Saved | null>(null);
+  const [savedInSheet, setSavedInSheet] = useState(false);
+  const [synced, setSynced] = useState(0);
+  const strip = useStripSignal();
+
+  // Send notes kept on this device while offline, oldest first; each keeps its id, so nothing lands twice.
+  const flush = useCallback(async () => {
+    const queue = readQueue();
+    if (!queue.length || !navigator.onLine) return;
+    let sent = 0;
+    for (const p of queue) {
+      try {
+        await api("/api/v1/capture", { method: "POST", json: { kind: "note", clientId: p.clientId, text: p.text } });
+        writeQueue(readQueue().filter((x) => x.clientId !== p.clientId));
+        sent++;
+      } catch (e) {
+        if (unreachable(e)) break;
+        // Refused for good (empty, too long): don't retry forever.
+        writeQueue(readQueue().filter((x) => x.clientId !== p.clientId));
+      }
+    }
+    if (!readQueue().length) strip("capture", null);
+    if (sent) {
+      setSynced(sent);
+      // The "saved on this device" line has done its job.
+      setSaved((cur) => (cur?.offline ? null : cur));
+    }
+  }, [strip]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (readQueue().length && !navigator.onLine) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
+      void flush();
+    }, 0);
+    const online = () => void flush();
+    window.addEventListener("online", online);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("online", online);
+    };
+  }, [flush, strip]);
+
+  const { status } = useCaptureStatus(saved?.materialId ?? null);
+  const begin = (which: "text" | "voice") => {
+    setTab(which);
+    setSavedInSheet(false);
+    setOpen(true);
+    trackClient(which === "text" ? "quick_note_started" : "voice_note_started");
+  };
+  const onSaved = (r: Saved) => {
+    setSaved((old) => {
+      if (old?.url && old.url !== r.url) URL.revokeObjectURL(old.url);
+      return r;
+    });
+    setSavedInSheet(true);
+    if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
+  };
+
+  const savedLine = saved
+    ? saved.offline
+      ? "Note saved on this device. It'll sync when you're back online."
+      : saved.kind === "voice" && status?.transcription === "unavailable"
+        ? "Voice note saved · Transcription unavailable"
+        : saved.kind === "voice"
+          ? "Voice note saved"
+          : "Note saved"
+    : synced
+      ? `${synced === 1 ? "Your offline note is" : `${synced} offline notes are`} saved now.`
+      : null;
+
+  return (
+    <section aria-label="Quick Capture" className="space-y-1">
+      <div className="grid grid-cols-2 gap-2">
+        {(["text", "voice"] as const).map((k) => (
+          <button key={k} type="button" onClick={() => begin(k)} aria-haspopup="dialog" className="group inline-flex min-h-11 items-center">
+            <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border-soft bg-surface/90 text-[14px] font-medium text-ink shadow-[var(--shadow-card)] group-hover:bg-surface">
+              {k === "text" ? <PenLine className="size-4 text-accent" aria-hidden /> : <Mic className="size-4 text-accent" aria-hidden />}
+              {k === "text" ? "Quick note" : "Voice note"}
+            </span>
+          </button>
+        ))}
+      </div>
+      {/* After the sheet closes, a quiet line says it's safe. */}
+      <p role="status" className="px-1 text-[13px] text-ink-muted">
+        {!open && savedLine ? (
+          <span className="flex items-center gap-1.5">
+            <Check className="size-4 shrink-0 text-success" aria-hidden />
+            <span className="min-w-0 flex-1">{savedLine}</span>
+            {saved?.materialId ? (
+              <Link href={`/space/materials/${saved.materialId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
+                Open
+              </Link>
+            ) : null}
+          </span>
+        ) : null}
+      </p>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Quick Capture" art={KIT.iconChip.pencil}>
+          {!open ? null : savedInSheet && saved ? (
+            <SavedPanel saved={saved} line={savedLine ?? ""} onDone={() => setOpen(false)} onAnother={() => setSavedInSheet(false)} />
+          ) : (
+            <div className="space-y-3">
+              <div role="tablist" aria-label="Capture" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
+                {(["text", "voice"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === k}
+                    onClick={() => setTab(k)}
+                    className={cn("inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full text-[14px] font-medium", tab === k ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink")}
+                  >
+                    {k === "text" ? <PenLine className="size-4" aria-hidden /> : <Mic className="size-4" aria-hidden />}
+                    {k === "text" ? "Text" : "Voice"}
+                  </button>
+                ))}
+              </div>
+              {tab === "text" ? (
+                <NoteBody key="text" onCancel={() => setOpen(false)} onSaved={(r) => onSaved({ kind: "note", ...r })} />
+              ) : (
+                <VoiceBody key="voice" onWriteInstead={() => setTab("text")} onSaved={(r) => onSaved({ kind: "voice", ...r })} />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
+/** Saved: a quiet confirmation, then — only if they arrive — DejaVu suggestions to accept or ignore, and "+ Add". */
+function SavedPanel({ saved, line, onDone, onAnother }: { saved: Saved; line: string; onDone: () => void; onAnother: () => void }) {
+  const { status, drop } = useCaptureStatus(saved.materialId);
+  const [attached, setAttached] = useState<DejaVu[]>([]);
+  const [momentId, setMomentId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const audio = useRef<HTMLAudioElement>(null);
+  const moment = momentId ?? status?.momentId ?? null;
+  async function resolve(s: Suggestion, accept: boolean) {
+    if (!moment) return;
+    try {
+      const r = await api<{ dejavu?: DejaVu }>(`/api/v1/moments/${moment}/dejavu-suggestions/${s.id}/${accept ? "accept" : "dismiss"}`, { method: "POST" });
+      if (r.dejavu) setAttached((a) => (a.some((d) => d.id === r.dejavu!.id) ? a : [...a, r.dejavu!]));
+      drop(s.id);
+    } catch {
+      /* it stays offered */
+    }
+  }
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2.5 rounded-2xl bg-surface-muted/70 px-3 py-2">
+        <Check className="size-5 shrink-0 text-success" aria-hidden />
+        <p className="min-w-0 flex-1 text-[14px] text-ink" role="status">
+          {line}
+          {saved.kind === "voice" && saved.seconds ? <span className="block text-[12.5px] text-ink-muted">{clock(saved.seconds)}</span> : null}
+        </p>
+        {saved.url ? (
+          <>
+            <audio ref={audio} src={saved.url} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} className="hidden" />
+            <button type="button" onClick={() => (playing ? audio.current?.pause() : void audio.current?.play())} aria-label={playing ? "Pause" : "Play"} className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-black/5">
+              {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+            </button>
+          </>
+        ) : null}
+      </div>
+
+      {saved.materialId ? (
+        <section aria-labelledby="suggested-dv" className="space-y-1">
+          <h3 id="suggested-dv" className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+            {status?.suggestions.length ? "Suggested DejaVu" : "DejaVu"}
+          </h3>
+          <div className="flex flex-wrap items-center gap-x-1.5">
+            {attached.map((d) => (
+              <span key={d.id} className="inline-flex min-h-11 items-center">
+                <span className="inline-flex h-8 items-center gap-1 rounded-full bg-accent px-3 text-[13px] font-medium text-white">
+                  <Check className="size-3.5" aria-hidden /> {d.name}
+                </span>
+              </span>
+            ))}
+            {(status?.suggestions ?? []).map((s) => (
+              <span key={s.id} className="inline-flex min-h-11 items-center">
+                <span className="inline-flex h-8 items-center overflow-hidden rounded-full border border-border-soft bg-surface text-[13px] font-medium text-ink">
+                  <button type="button" onClick={() => resolve(s, true)} aria-label={`Add to ${s.name}`} className="h-full px-3 hover:bg-accent-softer">
+                    {s.name}
+                  </button>
+                  <button type="button" onClick={() => resolve(s, false)} aria-label={`Not ${s.name}`} className="h-full border-l border-border-soft px-2 text-ink-subtle hover:bg-surface-muted">
+                    <X className="size-3.5" aria-hidden />
+                  </button>
+                </span>
+              </span>
+            ))}
+            <button type="button" onClick={() => setAdding(true)} aria-haspopup="dialog" className="inline-flex min-h-11 items-center">
+              <span className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-accent-ink hover:bg-accent-softer">
+                <Plus className="size-4" aria-hidden /> Add
+              </span>
+            </button>
+          </div>
+          <AddDejaVuSheet
+            open={adding}
+            onOpenChange={setAdding}
+            entityType="material"
+            entityId={saved.materialId}
+            momentId={moment}
+            attached={attached}
+            onChanged={(next) => {
+              setMomentId(next.momentId);
+              setAttached(next.dejavus);
+            }}
+          />
+        </section>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="ghost" onClick={onAnother}>
+          Capture another
+        </Button>
+        <Button type="button" onClick={onDone}>
+          Done
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------------- Quick note */
+
+function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { materialId: string | null; offline?: boolean }) => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // One id per note, made when it's first saved, so a retry is the same note.
+  const clientId = useRef<string | null>(null);
+  async function save() {
+    const body = text.trim();
+    if (!body || busy) return;
+    clientId.current ??= crypto.randomUUID();
+    const keepLocally = () => {
+      writeQueue([...readQueue().filter((p) => p.clientId !== clientId.current), { clientId: clientId.current!, text: body, at: new Date().toISOString() }]);
+      onSaved({ materialId: null, offline: true });
+    };
+    if (!navigator.onLine) return keepLocally();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ materialId: string | null }>("/api/v1/capture", { method: "POST", json: { kind: "note", clientId: clientId.current, text: body } });
+      onSaved({ materialId: r.materialId });
+    } catch (e) {
+      if (unreachable(e)) keepLocally();
+      else setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      <label htmlFor="quick-note" className="sr-only">
+        Quick note
+      </label>
+      <Textarea
+        id="quick-note"
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+        placeholder="Anything — a line, an idea, something you noticed…"
+        className="min-h-36 font-display text-[16px]"
+        maxLength={200000}
+      />
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <span className="text-[12px] tabular-nums text-ink-subtle" aria-hidden>
+          {text.length || ""}
+        </span>
+        <Button type="submit" loading={busy} disabled={!text.trim()}>
+          Save note <ArrowRight className="size-4" aria-hidden />
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------------- Voice note */
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const MAX_SECONDS = 20 * 60;
+
+type VoiceState =
+  | { phase: "starting" }
+  | { phase: "recording" }
+  | { phase: "recorded"; blob: Blob; url: string; seconds: number }
+  | { phase: "blocked"; message: string };
+
+function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: string | null; seconds: number; url: string }) => void; onWriteInstead: () => void }) {
+  const [state, setState] = useState<VoiceState>({ phase: "starting" });
+  const [seconds, setSeconds] = useState(0);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const rec = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const level = useRef<HTMLSpanElement>(null);
+  const player = useRef<HTMLAudioElement | null>(null);
+  const clientId = useRef<string>(crypto.randomUUID());
+  const startedAt = useRef(0);
+
+  const release = useCallback(() => {
+    stream.current?.getTracks().forEach((t) => t.stop());
+    stream.current = null;
+  }, []);
+
+  // Recording starts as soon as the sheet opens (§6.2).
+  useEffect(() => {
+    let cancelled = false;
+    let raf = 0;
+    let tick: ReturnType<typeof setInterval> | undefined;
+    let ctx: AudioContext | null = null;
+    (async () => {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+        setState({ phase: "blocked", message: "This browser can't record audio. Try another browser, or write a quick note instead." });
+        return;
+      }
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) return s.getTracks().forEach((t) => t.stop());
+        stream.current = s;
+        const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported?.(t));
+        const r = new MediaRecorder(s, type ? { mimeType: type } : undefined);
+        const chunks: Blob[] = [];
+        r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        r.onstop = () => {
+          const blob = new Blob(chunks, { type: r.mimeType || type || "audio/webm" });
+          const secs = Math.max(1, Math.round((Date.now() - startedAt.current) / 1000));
+          release();
+          setState({ phase: "recorded", blob, url: URL.createObjectURL(blob), seconds: secs });
+        };
+        rec.current = r;
+        startedAt.current = Date.now();
+        r.start(250);
+        setState({ phase: "recording" });
+        tick = setInterval(() => {
+          const secs = Math.floor((Date.now() - startedAt.current) / 1000);
+          setSeconds(secs);
+          if (secs >= MAX_SECONDS && r.state === "recording") r.stop();
+        }, 250);
+        // A live level, drawn straight onto the bar (no re-render per frame).
+        try {
+          ctx = new AudioContext();
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          ctx.createMediaStreamSource(s).connect(analyser);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          const draw = () => {
+            analyser.getByteTimeDomainData(data);
+            let peak = 0;
+            for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+            if (level.current) level.current.style.transform = `scaleX(${Math.min(1, 0.06 + peak / 70).toFixed(3)})`;
+            raf = requestAnimationFrame(draw);
+          };
+          draw();
+        } catch {
+          /* no meter; recording still works */
+        }
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : "";
+        setState({
+          phase: "blocked",
+          message:
+            name === "NotAllowedError" || name === "SecurityError"
+              ? "Microphone access is off. Allow it for this site in your browser, or write a quick note instead."
+              : name === "NotFoundError"
+                ? "No microphone was found. Connect one, or write a quick note instead."
+                : "The microphone couldn't start. Try again, or write a quick note instead.",
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (tick) clearInterval(tick);
+      cancelAnimationFrame(raf);
+      void ctx?.close().catch(() => undefined);
+      if (rec.current?.state === "recording") {
+        rec.current.onstop = null;
+        rec.current.stop();
+      }
+      release();
+    };
+  }, [release]);
+
+  const recorded = state.phase === "recorded" ? state : null;
+  // The recording's address is handed to the saved panel for playback; otherwise it's released.
+  const kept = useRef(false);
+  useEffect(() => {
+    if (!recorded) return;
+    return () => {
+      if (!kept.current) URL.revokeObjectURL(recorded.url);
+    };
+  }, [recorded]);
+
+  // Upload with progress, so a slow connection shows movement; the recording stays here until it's saved.
+  function save() {
+    if (!recorded) return;
+    setError(null);
+    setProgress(0);
+    const form = new FormData();
+    form.set("clientId", clientId.current);
+    form.set("seconds", String(recorded.seconds));
+    form.set("file", new File([recorded.blob], "voice-note", { type: recorded.blob.type }));
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/v1/capture");
+    xhr.upload.onprogress = (e) => e.lengthComputable && setProgress(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      setProgress(null);
+      let body: { materialId?: string | null; error?: { message?: string } } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        /* handled below */
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        kept.current = true;
+        onSaved({ materialId: body.materialId ?? null, seconds: recorded.seconds, url: recorded.url });
+      } else
+        setError(`${body.error?.message ?? "We couldn't save it."} Your recording is still here — try again.`);
+    };
+    xhr.onerror = () => {
+      setProgress(null);
+      setError(navigator.onLine ? "The connection dropped. Your recording is still here — try again." : "You're offline. Your recording is still here — save it when you're back online.");
+    };
+    xhr.send(form);
+  }
+
+  if (state.phase === "blocked")
+    return (
+      <div className="space-y-3">
+        <p role="alert" className="text-[14px] text-ink">
+          {state.message}
+        </p>
+        <Button className="w-full" variant="secondary" onClick={onWriteInstead}>
+          <PenLine className="size-4" aria-hidden /> Write a quick note
+        </Button>
+      </div>
+    );
+
+  if (recorded)
+    return (
+      <div className="space-y-3">
+        <p className="font-medium text-ink">Voice note · {clock(recorded.seconds)}</p>
+        <audio ref={player} src={recorded.url} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} className="hidden" />
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="secondary" onClick={() => (playing ? player.current?.pause() : void player.current?.play())} aria-label={playing ? "Pause" : "Play"}>
+            {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />} {playing ? "Pause" : "Play"}
+          </Button>
+          <Button type="button" className="flex-1" onClick={save} loading={progress !== null}>
+            {progress !== null ? `Saving… ${progress}%` : error ? "Try again" : "Save"}
+          </Button>
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-center font-display text-[32px] tabular-nums leading-none text-ink" aria-live="off">
+        {clock(seconds)}
+      </p>
+      <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-surface-muted">
+        <span ref={level} className="block h-full origin-left scale-x-[0.06] rounded-full bg-accent" />
+      </span>
+      <p className="sr-only" role="status">
+        {state.phase === "recording" ? "Recording" : "Starting the microphone"}
+      </p>
+      <Button
+        type="button"
+        className={cn("w-full")}
+        disabled={state.phase !== "recording"}
+        onClick={() => {
+          if (rec.current?.state === "recording") rec.current.stop();
+        }}
+      >
+        <Square className="size-4 fill-current" aria-hidden /> Stop
+      </Button>
+    </div>
+  );
+}

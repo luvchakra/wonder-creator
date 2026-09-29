@@ -34,6 +34,11 @@ describe("resolveContextStrip", () => {
     expect(resolveContextStrip({ page: "home", facts: { continueTitle: "A Life in Moments" } }).primary?.text).toBe("A Life in Moments · In progress");
     expect(resolveContextStrip({ page: "home", facts: { ideasWaiting: 1 } }).primary?.text).toBe("1 idea waiting");
     expect(resolveContextStrip({ page: "home" }).primary?.text).toBe("Ready to create");
+    // Phase 02 §12: Home's one truth beats lifecycle and metadata; operational states beat it.
+    expect(resolveContextStrip({ page: "home", facts: { homeLine: "3 things changed", continueTitle: "A Life in Moments" } }).primary?.text).toBe("3 things changed");
+    expect(resolveContextStrip({ page: "home", facts: { homeLine: "3 things changed" }, online: false }).primary?.text).toBe("Offline");
+    expect(resolveContextStrip({ page: "home", facts: { homeLine: "Nothing urgent", pendingApprovalCount: 1 } }).primary?.text).toBe("1 approval pending");
+    expect(resolveContextStrip({ page: "home", facts: { homeLine: "Nothing urgent" }, signals: [{ id: "capture", text: "Offline · saved locally", tone: "warning", priority: 2 }] }).primary?.text).toBe("Offline · saved locally");
   });
 
   it("lists count, selection outranks count, and material shows kind and length", () => {

@@ -48,3 +48,15 @@ describe("Moments", () => {
     expect(decodeCursor(null)).toBeNull();
   });
 });
+
+describe("suggestions from words", () => {
+  it("whole-word mentions only, any case", async () => {
+    const { mentionedDejaVus } = await import("./suggest");
+    const all = [{ name: "Railways" }, { name: "Dad" }, { name: "Mumbai Monsoon" }, { name: "Rail" }];
+    expect(mentionedDejaVus("Dad's story about the old RAILWAYS, in the mumbai   monsoon.", all).map((d) => d.name)).toEqual(["Railways", "Dad", "Mumbai Monsoon"]);
+    expect(mentionedDejaVus("my dad waited", all).map((d) => d.name)).toEqual(["Dad"]);
+    expect(mentionedDejaVus("", all)).toEqual([]);
+    expect(mentionedDejaVus("the railway station", all).map((d) => d.name)).toEqual(["Railways"]);
+    expect(mentionedDejaVus("the rails at night", all).map((d) => d.name)).toEqual(["Rail"]);
+  });
+});

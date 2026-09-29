@@ -20,6 +20,8 @@ test.describe("Approval Center", () => {
     // Home lists each waiting request under "You could help", linking to its approval.
     await page.goto("/");
     const help = page.getByRole("region", { name: "You could help" });
+    // It opens in place (Home rows, phase 02): a summary first, the requests when asked for.
+    await help.getByText("You could help").click();
     await expect(help.getByRole("link", { name: /Waiting for your OK/ })).toHaveCount(2);
     await expect(help.getByRole("link", { name: /Waiting for your OK/ }).first()).toHaveAttribute("href", /^\/approvals\/[0-9a-f-]{36}$/);
     await page.goto("/approvals");
