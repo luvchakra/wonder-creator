@@ -28,6 +28,7 @@ export function Studio({
   actions,
   initialAction,
   addOnOpen,
+  madeFrom,
   people,
   carousel,
   quality,
@@ -40,6 +41,8 @@ export function Studio({
   initialAction: string | null;
   /** `type:id` sent from a Huddle or a comment ("Use in Studio", §34–35). */
   addOnOpen: string | null;
+  /** The Creation this one was just made from (Change format); it's unchanged. */
+  madeFrom?: { id: string; title: string } | null;
   people: Array<{ id: string; name: string; avatarUrl: string | null }>;
   carousel: CarouselView | null;
   quality: QualityReportView | null;
@@ -216,6 +219,7 @@ export function Studio({
   const [news, setNews] = useState<CanvasNews | null>(null);
   const newsSeq = useRef(0);
   const [usedNote, setUsedNote] = useState<string | null>(null);
+  const [madeFromSeen, setMadeFromSeen] = useState(false);
   async function applyUses(rows: WorkingSource[]) {
     if (!set || !rows.length) return;
     setUsedNote(null);
@@ -402,7 +406,9 @@ export function Studio({
 
   return (
     // --canvas-extra: what else takes height above the canvas (the offline notice), so the carousel canvas can size itself.
-    <div className="mx-auto max-w-3xl pb-24" style={{ ["--canvas-extra" as string]: offline ? "4rem" : "0rem" }}>
+    // The page scrolls only when there's something below (owner, 29 Sep 2026): instead of the app's Palette clearance plus
+    // its own, the Studio keeps just the room its fixed bottom bar needs.
+    <div className="mx-auto -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] max-w-3xl pb-[calc(4.25rem+env(safe-area-inset-bottom))]" style={{ ["--canvas-extra" as string]: offline ? "4rem" : "0rem" }}>
       {/* Top bar (§6, §65): back · the Creation and its version · autosaved · who's on it · more. */}
       <header className="mb-2 flex items-center gap-1.5">
         <Link href={`/artifacts/${artifact.id}`} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-black/5" aria-label="Back to Creation">
@@ -486,6 +492,21 @@ export function Studio({
           <Link href={`/artifacts/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center font-medium underline">
             Compare with the previous version
           </Link>
+        </p>
+      ) : null}
+
+      {madeFrom && !madeFromSeen ? (
+        <p role="status" className="mb-2 flex items-center gap-2 rounded-2xl bg-accent-softer px-3 py-1 text-[13px] text-ink">
+          <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
+          <span className="flex-1">
+            A new Creation. “{madeFrom.title}” is unchanged —{" "}
+            <Link href={`/artifacts/${madeFrom.id}/studio`} className="inline-flex min-h-11 items-center font-medium underline">
+              open it
+            </Link>
+          </span>
+          <button type="button" aria-label="Dismiss" onClick={() => setMadeFromSeen(true)} className="inline-flex size-9 items-center justify-center rounded-full text-ink-subtle hover:bg-black/5">
+            <X className="size-4" aria-hidden />
+          </button>
         </p>
       ) : null}
 
@@ -661,7 +682,8 @@ export function Studio({
       ) : null}
 
       {/* One quiet CreativeMind nudge about what's unused (§31–32). */}
-      {showNudge ? (
+      {/* On a Carousel the slide strip sits right above the bar, so the nudge lives in the bar itself (below). */}
+      {showNudge && !isCarousel ? (
         <div className="fixed inset-x-3 bottom-[4.75rem] z-20 mx-auto max-w-3xl motion-safe:animate-[fade-in_160ms_ease-out]" role="status">
           <div className="flex items-start gap-2.5 rounded-2xl border border-border-soft bg-surface/95 p-3 pr-2 shadow-[var(--shadow-card)] backdrop-blur">
             <KitArt art={KIT.iconChip.sparkles} sizes="2rem" className="size-8 shrink-0" />
@@ -771,14 +793,20 @@ export function Studio({
               )}
             </span>
             <span className="min-w-0 flex-1 truncate text-left">
+              Working Table
               {set && sources.length ? (
-                <>
-                  Sources {sources.length}
-                  {inUse ? <span className="font-normal text-ink-muted"> · {inUse} in use</span> : null}
-                </>
-              ) : (
-                "Sources"
-              )}
+                <span className="font-normal text-ink-muted">
+                  {" "}
+                  · {sources.length} {sources.length === 1 ? "source" : "sources"}
+                  {inUse ? ` · ${inUse} in use` : ""}
+                </span>
+              ) : null}
+              {showNudge && isCarousel ? (
+                <span className="font-normal text-accent-ink">
+                  {" "}
+                  · <Sparkles className="inline size-3.5 align-[-2px]" aria-hidden /> {nudge!.count} unused
+                </span>
+              ) : null}
             </span>
             <ChevronUp className="size-4 shrink-0 text-ink-subtle" aria-hidden />
           </span>

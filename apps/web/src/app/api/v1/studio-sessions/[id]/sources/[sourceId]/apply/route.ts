@@ -1,5 +1,5 @@
 import { DomainError } from "@wonder/core";
-import { newSlideFromMaterial, refineSlideWords, slideImageFromMaterial, splitTextIntoSlides, updateCarouselSlide } from "@wonder/creator-brain";
+import { newSlideFromMaterial, refineSlideWords, slideImageFromMaterial, splitTextIntoSlides, wordsOnSlide } from "@wonder/creator-brain";
 import { outputModeOf, sourceDetail, updateSource, USAGE_LABEL, workingSetView, type UsageIntent } from "@wonder/creator-studio";
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
@@ -77,7 +77,7 @@ export const POST = withApi<{ id: string; sourceId: string }>(
         await done();
         return act === "new_slide"
           ? { kind: "slide_added" as const, slideId: r.slideId, message: "A new slide with your photo is right after this one." }
-          : { kind: "slide_image" as const, slideId: r.slideId, message: "Your photo is on the slide — keep it or the current one." };
+          : { kind: "slide_image" as const, slideId: r.slideId, message: "Your photo is on the slide." };
       }
       if (act === "part") {
         await done();
@@ -95,9 +95,9 @@ export const POST = withApi<{ id: string; sourceId: string }>(
         const { data: slide } = await db.from("carousel_slides").select("id, display_text, source_text").eq("id", b.slideId).eq("artifact_id", a.id).maybeSingle();
         if (!slide) throw new DomainError("not_found", "That slide isn't available.");
         if (act === "slide_words") {
-          await updateCarouselSlide(db, slide.id, { displayText: text.slice(0, 2000) });
+          await wordsOnSlide(db, slide.id, text);
           await done();
-          return { kind: "slide_words" as const, slideId: slide.id, message: "Its words are on the slide." };
+          return { kind: "slide_words" as const, slideId: slide.id, message: "Its words are on the image." };
         }
         const r = await refineSlideWords(await brainDeps(db, creatorId, { correlationId: requestId }), {
           creationTitle: a.title,
@@ -127,7 +127,7 @@ export const POST = withApi<{ id: string; sourceId: string }>(
       if (!slide) throw new DomainError("not_found", "That slide isn't available.");
       if (isPhoto && (intent === "visual" || intent === "content")) {
         await slideImageFromMaterial({ db, service: serviceClient(), creatorId, derive: deriveImages }, slide.id, row.sourceId);
-        return { kind: "slide_image" as const, slideId: slide.id, message: "Your photo is on the slide — keep it or the current one." };
+        return { kind: "slide_image" as const, slideId: slide.id, message: "Your photo is on the slide." };
       }
       if (isPhoto)
         return {
@@ -136,8 +136,8 @@ export const POST = withApi<{ id: string; sourceId: string }>(
         };
       if (!text) return { kind: "kept" as const, message: `Saved as “${use}”. This source has no words to use yet.` };
       if (intent === "content" || intent === "quote") {
-        await updateCarouselSlide(db, slide.id, { displayText: text.slice(0, 2000) });
-        return { kind: "slide_words" as const, slideId: slide.id, message: "Its words are on the slide." };
+        await wordsOnSlide(db, slide.id, text);
+        return { kind: "slide_words" as const, slideId: slide.id, message: "Its words are on the image." };
       }
       const r = await refineSlideWords(await brainDeps(db, creatorId, { correlationId: requestId }), {
         creationTitle: a.title,

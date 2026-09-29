@@ -14,9 +14,9 @@ export const metadata = { title: "Creative Studio" };
  * The Creative Studio (creative-studio-working-set.md): the convergence surface. The canvas is the Creation; the Working
  * Set (sources, fragments, intent, draft) lives in its StudioSession, loaded by the client so the page never waits on it.
  */
-export default async function StudioPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ action?: string; add?: string }> }) {
+export default async function StudioPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ action?: string; add?: string; from?: string }> }) {
   const { id } = await params;
-  const { action, add } = await searchParams;
+  const { action, add, from } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const { data: a } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
@@ -34,6 +34,8 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
   const avatars = await avatarUrls(db, peopleIds);
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
   const def = artifactType(a.artifact_type);
+  // Just made from another Creation (Change format): name it, so it's clear the original is untouched.
+  const { data: madeFrom } = from && /^[0-9a-f-]{36}$/i.test(from) && from !== id ? await db.from("artifacts").select("id, title").eq("id", from).maybeSingle() : { data: null };
   const safeAdd = add && /^(material|creation|collection|comment|huddle_moment):[0-9a-f-]{36}$/i.test(add) ? add : null;
   return (
     <>
@@ -45,6 +47,7 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
         actions={actionsFor(a.artifact_type)}
         initialAction={action ?? null}
         addOnOpen={safeAdd}
+        madeFrom={madeFrom}
         people={[{ id: creator.id, name: creator.display_name, avatarUrl: avatars[creator.id] ?? null }, ...(contributors ?? []).map((c) => ({ id: c.contributor_creator_id, name: (c.creators as { display_name: string } | null)?.display_name ?? "Collaborator", avatarUrl: avatars[c.contributor_creator_id] ?? null }))]}
         carousel={carousel}
         quality={quality ? { reportId: quality.id, versionId: quality.version_id, checks: quality.checks as never, findings: findingsOf(quality) } : null}
