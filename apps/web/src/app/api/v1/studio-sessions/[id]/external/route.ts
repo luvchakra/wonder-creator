@@ -3,7 +3,7 @@ import { DomainError, isDomainError, log } from "@wonder/core";
 import { newSlideFromMaterial } from "@wonder/creator-brain";
 import { downloadExternalImage, EXTERNAL_PROVIDERS, EXTERNAL_PROVIDER_LABEL, lookupExternalImage } from "@wonder/creator-library";
 import { processIntake, receiveFile } from "@wonder/creator-send";
-import { addSources, outputModeOf, updateSource, workingSetView } from "@wonder/creator-studio";
+import { addSources, canInsert, outputModeOf, RIGHTS_HINT, RIGHTS_LABEL, updateSource, workingSetView } from "@wonder/creator-studio";
 import { after } from "next/server";
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
@@ -35,6 +35,8 @@ export const POST = withApi<{ id: string }>(
     const b = schema.parse(await readJson(req));
     const view = await workingSetView(db, id, studioSigner(db));
     const img = await lookupExternalImage(b.provider, b.imageId, externalKeys());
+    // Rights gate (Phase 04 §8): a picture whose licence doesn't allow reuse can be a reference, never a slide.
+    if (b.use === "slide" && !canInsert(img.rights)) throw new DomainError("forbidden", `${RIGHTS_LABEL[img.rights]}: ${RIGHTS_HINT[img.rights]}`);
     const bytes = await downloadExternalImage(img);
     const deps = { db, service: serviceClient(), creatorId, provider: (await providerFor(creatorId)).provider };
     const item = await receiveFile(deps, {

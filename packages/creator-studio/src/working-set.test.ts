@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directionsFor, groupSources, materialActionsFor, outputModeOf, suggestFragments, unusedNudge, usageOptionsFor, workingSetSummary, type WorkingSource } from "./working-set-options";
+import { INSERTING_ACTIONS, directionsFor, groupSources, materialActionsFor, outputModeOf, suggestFragments, unusedNudge, usageOptionsFor, workingSetSummary, type WorkingSource } from "./working-set-options";
 
 const src = (over: Partial<WorkingSource>): WorkingSource => ({
   id: "x",
@@ -15,6 +15,7 @@ const src = (over: Partial<WorkingSource>): WorkingSource => ({
   mediaType: "image",
   href: null,
   thumbnailUrl: null,
+  rights: "reuse_permitted",
   ...over,
 });
 
@@ -72,10 +73,32 @@ describe("Working Set rules", () => {
   it("offers one-tap uses for a material from what it is and what the Creation is", () => {
     const labels = (x: Partial<WorkingSource>, type: string) => materialActionsFor(src(x), type).map((a) => a.label);
     expect(labels({ mediaType: "image" }, "carousel")).toEqual(["Add as new slide", "Replace slide image", "Set as cover"]);
-    expect(labels({ mediaType: "image" }, "poem")).toEqual(["Set as cover"]);
+    expect(labels({ mediaType: "image" }, "poem")).toEqual(["Set as cover", "Use as visual reference"]);
     expect(labels({ sourceType: "creation", mediaType: "lyrics" }, "carousel")).toEqual(["Use on slide", "Split into slides", "Refine slide text"]);
     expect(labels({ mediaType: "voice" }, "story")).toEqual(["Add to draft", "Rework draft with it", "Use a part…"]);
     expect(labels({ mediaType: "note", fragment: { kind: "text_range", text: "x" } }, "carousel")).toEqual(["Use on slide", "Refine slide text"]);
     expect(labels({ available: false }, "carousel")).toEqual([]);
+  });
+
+  it("never offers to copy in what its rights don't allow — it can still steer (Phase 04 §8, §11)", () => {
+    const labels = (x: Partial<WorkingSource>, type: string) => materialActionsFor(src(x), type).map((a) => a.label);
+    // Someone else's Community reply: creative direction, refine with it, pin — never words on the slide.
+    const reply = { sourceType: "conversation_reply" as const, mediaType: "conversation_reply", rights: "reference_only" as const };
+    expect(labels(reply, "carousel")).toEqual(["Use as creative direction", "Refine slide with this", "Pin as constraint"]);
+    expect(labels(reply, "poem")).toEqual(["Use as creative direction", "Rework draft with it", "Pin as constraint"]);
+    expect(labels({ ...reply, state: "pinned" }, "carousel")).not.toContain("Pin as constraint");
+    // Your own reply is yours to use.
+    expect(labels({ ...reply, rights: "reuse_permitted" }, "carousel")[0]).toBe("Use on slide");
+    // A picture with no licence on record: a visual reference, not a slide image.
+    expect(labels({ mediaType: "image", rights: "unknown" }, "carousel")).toEqual(["Use as visual reference", "Pin visual"]);
+    // CC BY: may go in, with its credit kept.
+    expect(labels({ mediaType: "image", rights: "attribution_required" }, "carousel")[0]).toBe("Add as new slide");
+    expect(labels({ mediaType: "image", rights: "restricted" }, "carousel")).toEqual([]);
+    for (const r of ["reference_only", "unknown", "restricted"] as const)
+      for (const t of ["carousel", "story"]) expect(materialActionsFor(src({ mediaType: "note", rights: r }), t).some((a) => INSERTING_ACTIONS.includes(a.action))).toBe(false);
+  });
+  it("asks how to use someone else's Community words without offering to copy them", () => {
+    const o = usageOptionsFor({ sourceType: "scrapbook_entry", mediaType: "scrapbook_entry", fragment: null, rights: "reference_only" }, "carousel");
+    expect(o.map((x) => x.intent)).toEqual(["constraint", "mood", "reference"]);
   });
 });

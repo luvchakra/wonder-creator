@@ -26,6 +26,15 @@ export interface CanvasNews {
   proposal?: { text: string; live: boolean } | null;
 }
 
+export interface SlidesState {
+  current: string | null;
+  ids: string[];
+  /** 0-based position of the slide on screen. */
+  index: number;
+  /** Its words (what's shown, else its source passage). */
+  text: string;
+}
+
 export function CarouselCanvas({
   artifactId,
   initial,
@@ -36,8 +45,8 @@ export function CarouselCanvas({
   artifactId: string;
   initial: CarouselView;
   arrangeRequest: number;
-  /** The slide on screen and the order, so "Use this" knows where to put things. */
-  onSlides?: (s: { current: string | null; ids: string[] }) => void;
+  /** The slide on screen (and its words) and the order, so "Use this" knows where to put things and Ask Community what to share. */
+  onSlides?: (s: SlidesState) => void;
   news?: CanvasNews | null;
 }) {
   const router = useRouter();
@@ -100,10 +109,21 @@ export function CarouselCanvas({
     }
   }
   const slideIds = view.slides.map((s) => s.id).join(",");
-  const currentId = view.slides[Math.min(current, Math.max(0, view.slides.length - 1))]?.id ?? null;
+  const currentIndex = Math.min(current, Math.max(0, view.slides.length - 1));
+  const currentSlide = view.slides[currentIndex];
+  const currentId = currentSlide?.id ?? null;
+  const currentText = (currentSlide?.displayText || currentSlide?.sourceText || "").trim();
   useEffect(() => {
-    onSlides?.({ current: currentId, ids: slideIds ? slideIds.split(",") : [] });
-  }, [currentId, slideIds, onSlides]);
+    onSlides?.({ current: currentId, ids: slideIds ? slideIds.split(",") : [], index: currentIndex, text: currentText });
+  }, [currentId, slideIds, currentIndex, currentText, onSlides]);
+
+  // The navbar says what's happening while arranging (Phase 04 §12): "Arrange 5 slides".
+  const count = view.slides.length;
+  useEffect(() => {
+    if (!arranging) return;
+    strip("arrange", { text: `Arrange ${count} slides`, tone: "active", priority: 5.5 });
+    return () => strip("arrange", null);
+  }, [arranging, count, strip]);
 
   useEffect(() => {
     if (view.adding) strip("carousel", { text: "Creating one more slide…", tone: "active" });

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { ScrapbookPostCard } from "@/components/scrapbook-post";
+import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
 
 type Reply = { id: string; body: string; createdAt: string; author: { id: string; name: string; handle: string | null }; mine: boolean; canRemove: boolean };
@@ -21,7 +22,9 @@ export function PostDetail({ initial }: { initial: Data }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reporting, setReporting] = useState<{ replyId?: string } | null>(null);
   const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
+  const [studio, setStudio] = useState<StudioNote | null>(null);
   const { post } = data;
+  const inspire = () => act("studio", async () => setStudio(await bringToStudio("scrapbook_entry", post.id)));
 
   async function reload() {
     setData(await api<Data>(`/api/v1/scrapbook/${post.id}`));
@@ -68,6 +71,11 @@ export function PostDetail({ initial }: { initial: Data }) {
             <Button variant="ghost" className="self-end text-danger" onClick={() => setConfirmDelete(true)}>
               Delete post
             </Button>
+            {post.body ? (
+              <Button variant="ghost" className="self-end" onClick={() => void inspire()}>
+                Bring to Studio
+              </Button>
+            ) : null}
           </>
         ) : (
           <Menu>
@@ -75,6 +83,7 @@ export function PostDetail({ initial }: { initial: Data }) {
               <MoreHorizontal className="size-5" aria-hidden />
             </MenuTrigger>
             <MenuContent align="start">
+              {post.body ? <MenuItem onSelect={() => void inspire()}>Use as inspiration</MenuItem> : null}
               <MenuItem onSelect={() => setReporting({})}>Report this post</MenuItem>
               <MenuItem destructive onSelect={() => setBlocking({ id: post.author.id, name: post.author.name })}>
                 Block {post.author.name}
@@ -82,6 +91,9 @@ export function PostDetail({ initial }: { initial: Data }) {
             </MenuContent>
           </Menu>
         )}
+      </div>
+      <div className="mt-2">
+        <StudioNoteLine note={studio} />
       </div>
       {error ? (
         <p role="alert" className="mt-3 rounded-xl bg-danger-soft px-4 py-3 text-[15px] text-danger">

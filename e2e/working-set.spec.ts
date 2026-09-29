@@ -32,7 +32,7 @@ test.describe("CreativeStudio Working Set", () => {
 
     // One doorway: kinds of source, then search across them, pick several, add.
     const bring = page.getByRole("dialog", { name: "Bring in" });
-    await expect(bring.getByRole("list", { name: "Kinds of source" }).getByRole("button")).toHaveCount(8);
+    await expect(bring.getByRole("list", { name: "Kinds of source" }).getByRole("button")).toHaveCount(11);
     await bring.getByPlaceholder("Search materials, creations, people, web…").fill(tag);
     const materials = bring.getByRole("region", { name: "Materials" });
     await materials.getByRole("checkbox").first().click();

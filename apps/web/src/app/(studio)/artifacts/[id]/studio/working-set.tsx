@@ -1,5 +1,6 @@
 "use client";
 import {
+  RIGHTS_LABEL,
   BRING_IN_KINDS,
   MODE_DEFAULT_TYPE,
   OUTPUT_MODES,
@@ -24,6 +25,7 @@ import { ArrowLeft, ArrowRight, Check, MoreHorizontal, Pin, Plus, Scissors, Sear
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { DejaVuIntake } from "./studio-community";
 
 /**
  * The Working Set sheets (creative-studio-working-set.md §7–11, §15–17, §19–21): everything on the table for this
@@ -223,7 +225,7 @@ function WorkingSetBody({
 function SourceRow({ s, picked, onPick, onChange, onFragments }: { s: WorkingSource; picked: boolean; onPick: () => void; onChange: Change; onFragments: () => void }) {
   const router = useRouter();
   const on = s.state !== "available";
-  const canFragment = s.available && !s.fragment && (s.sourceType === "material" || s.sourceType === "creation" || s.sourceType === "huddle_moment" || s.sourceType === "comment");
+  const canFragment = s.available && !s.fragment && s.sourceType !== "collection";
   return (
     <li className={cn("flex min-h-12 items-center gap-2 py-1 pl-2 pr-1 sm:rounded-2xl sm:border sm:border-border-soft", picked && "bg-accent-softer/60")}>
       <button
@@ -263,7 +265,9 @@ function SourceRow({ s, picked, onPick, onChange, onFragments }: { s: WorkingSou
         </span>
         <span className="min-w-0">
           <span className={cn("block truncate text-sm", s.available ? "text-ink" : "italic text-ink-subtle")}>{s.title}</span>
-          <span className="block truncate text-[12px] text-ink-subtle">{s.available ? s.kind : "Kept on the table; nothing of it is shown."}</span>
+          <span className="block truncate text-[12px] text-ink-subtle">
+            {s.available ? [s.rights !== "reuse_permitted" ? RIGHTS_LABEL[s.rights] : null, s.kind, s.attribution].filter(Boolean).join(" · ") : "Kept on the table; nothing of it is shown."}
+          </span>
           {s.available && s.roles.length ? (
             <span className="mt-0.5 flex flex-wrap gap-1">
               {s.roles.map((r) => (
@@ -607,7 +611,16 @@ function currentType(set: WorkingSetView): string {
 
 /* ---------------------------------------------------------------- Bring in */
 
-const GROUP_LABEL: Record<SourceType, string> = { material: "Materials", creation: "Creations", collection: "Collections", comment: "Comments", huddle_moment: "Huddle moments" };
+const GROUP_LABEL: Record<SourceType, string> = {
+  material: "Materials",
+  creation: "Creations",
+  collection: "Collections",
+  comment: "Comments",
+  huddle_moment: "Huddle moments",
+  conversation: "Conversations",
+  conversation_reply: "Replies",
+  scrapbook_entry: "Scrapbook",
+};
 const KIND_CHIP: Record<string, keyof typeof KIT.iconChip> = {
   material: "image",
   creation: "book",
@@ -616,32 +629,52 @@ const KIND_CHIP: Record<string, keyof typeof KIT.iconChip> = {
   collection: "layers",
   huddle_moment: "users",
   comment: "message",
+  dejavu: "sparkles",
+  community: "users",
+  external: "image",
   browse: "search",
 };
 
-export function BringInSheet({ open, onOpenChange, sessionId, onAdded }: { open: boolean; onOpenChange: (o: boolean) => void; sessionId: string | null; onAdded: (next: WorkingSetView) => void }) {
+export function BringInSheet({
+  open,
+  onOpenChange,
+  sessionId,
+  onAdded,
+  onExternal,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  sessionId: string | null;
+  onAdded: (next: WorkingSetView) => void;
+  /** Royalty-free images: searched on the Working Table's External tab. */
+  onExternal: () => void;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Bring in" description="All your sources in one place. No need to leave." art={KIT.painted.coralLeaves} wide>
-        {open ? <BringInBody sessionId={sessionId} onAdded={onAdded} /> : null}
+        {open ? <BringInBody sessionId={sessionId} onAdded={onAdded} onExternal={onExternal} /> : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function BringInBody({ sessionId, onAdded }: { sessionId: string | null; onAdded: (next: WorkingSetView) => void }) {
+/** A Bring in filter: one kind of source, or all of Community (conversations, replies, Scrapbook). */
+type Only = SourceType | "community";
+
+function BringInBody({ sessionId, onAdded, onExternal }: { sessionId: string | null; onAdded: (next: WorkingSetView) => void; onExternal: () => void }) {
   const router = useRouter();
   const [q, setQ] = useState("");
-  const [only, setOnly] = useState<SourceType | null>(null);
+  const [only, setOnly] = useState<Only | null>(null);
+  const [dejavu, setDejavu] = useState(false);
   const [results, setResults] = useState<BringInResult[] | null>(null);
   const [picked, setPicked] = useState<Map<string, BringInResult>>(new Map());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const seq = useRef(0);
-  const searching = !!q.trim() || !!only;
+  const searching = !!q.trim() || !!only || dejavu;
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || dejavu) return;
     const n = ++seq.current;
     const t = setTimeout(
       () => {
@@ -652,7 +685,7 @@ function BringInBody({ sessionId, onAdded }: { sessionId: string | null; onAdded
       q ? 200 : 0,
     );
     return () => clearTimeout(t);
-  }, [q, only, sessionId]);
+  }, [q, only, sessionId, dejavu]);
 
   const key = (r: BringInResult) => `${r.sourceType}:${r.sourceId}`;
   const toggle = (r: BringInResult) =>
@@ -682,9 +715,23 @@ function BringInBody({ sessionId, onAdded }: { sessionId: string | null; onAdded
   function tile(k: (typeof BRING_IN_KINDS)[number]["key"]) {
     if (k === "capture" || k === "link") router.push("/send");
     else if (k === "browse") router.push("/search");
+    else if (k === "external") onExternal();
+    else if (k === "dejavu") setDejavu(true);
     else setOnly(k);
   }
   const groups = results ? (Object.keys(GROUP_LABEL) as SourceType[]).map((t) => ({ type: t, list: results.filter((r) => r.sourceType === t) })).filter((g) => g.list.length) : [];
+  const COMMUNITY: SourceType[] = ["conversation", "conversation_reply", "scrapbook_entry"];
+  const chipOn = (k: SourceType | null) => (only === "community" ? k !== null && COMMUNITY.includes(k) : only === k);
+
+  if (dejavu && sessionId)
+    return (
+      <div className="space-y-2">
+        <button type="button" onClick={() => setDejavu(false)} className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[13px] text-ink-muted hover:bg-black/5">
+          <ArrowLeft className="size-4" aria-hidden /> Bring in
+        </button>
+        <DejaVuIntake sessionId={sessionId} onAdded={(next) => onAdded(next)} />
+      </div>
+    );
   const total = results?.length ?? 0;
 
   return (
@@ -770,11 +817,11 @@ function BringInBody({ sessionId, onAdded }: { sessionId: string | null; onAdded
           <>
             <div role="radiogroup" aria-label="Kind" className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
               {[{ key: null, label: "All", n: total }, ...groups.map((g) => ({ key: g.type, label: GROUP_LABEL[g.type], n: g.list.length }))].map((c) => (
-                <button key={c.key ?? "all"} type="button" role="radio" aria-checked={only === c.key} onClick={() => setOnly(c.key)} className="inline-flex min-h-11 shrink-0 items-center">
+                <button key={c.key ?? "all"} type="button" role="radio" aria-checked={chipOn(c.key)} onClick={() => setOnly(c.key)} className="inline-flex min-h-11 shrink-0 items-center">
                   <span
                     className={cn(
                       "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px]",
-                      only === c.key ? "bg-accent-soft font-medium text-accent-ink" : "bg-surface-muted text-ink-muted",
+                      chipOn(c.key) ? "bg-accent-soft font-medium text-accent-ink" : "bg-surface-muted text-ink-muted",
                     )}
                   >
                     {c.label} <span className="text-[11px] opacity-70">({c.n})</span>

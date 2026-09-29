@@ -1,5 +1,6 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import { liveCards } from "@wonder/creator-huddle";
+import { createMaterial } from "@wonder/creator-library";
 import type { Db, Tables } from "@wonder/db";
 import { z } from "zod";
 import { CONVERSATION_INTENTS, CONVERSATION_VISIBILITIES, type ConversationIntent, type ConversationVisibility, type Person } from "./shared";
@@ -16,6 +17,8 @@ export interface OpenConversation {
   visibility: ConversationVisibility;
   sourceEntityType: "material" | "creation" | null;
   sourceEntityId: string | null;
+  /** Ask Community (Phase 04 §13): the only part of a private Creation that is shared — a slide's words, a passage. */
+  sourceFragment: SourceFragment | null;
   replyCount: number;
   participantCount: number;
   lastReplyAt: string | null;
@@ -23,6 +26,15 @@ export interface OpenConversation {
   updatedAt: string;
   closedAt: string | null;
   removedAt: string | null;
+}
+
+export interface SourceFragment {
+  /** "Slide 3", "Opening", "A passage". */
+  label: string;
+  /** The excerpt itself (the owner's own words). */
+  text: string;
+  /** The slide it came from, for the owner's way back (never shown to others). */
+  slideId?: string | null;
 }
 
 export interface OpenConversationReply {
@@ -47,6 +59,7 @@ export const toConversation = (r: Row): OpenConversation => ({
   visibility: r.visibility as ConversationVisibility,
   sourceEntityType: r.source_entity_type as OpenConversation["sourceEntityType"],
   sourceEntityId: r.source_entity_id,
+  sourceFragment: (r.source_fragment as SourceFragment | null) ?? null,
   replyCount: r.reply_count,
   participantCount: r.participant_count,
   lastReplyAt: r.last_reply_at,
@@ -85,6 +98,10 @@ export const conversationSchema = z.object({
   intent: z.enum(CONVERSATION_INTENTS),
   visibility: z.enum(CONVERSATION_VISIBILITIES).default("community"),
   source: z.object({ type: z.enum(["material", "creation"]), id: z.string().uuid() }).optional(),
+  /** Only with `source`: the excerpt of it being asked about (Ask Community). */
+  fragment: z
+    .object({ label: z.string().trim().min(1).max(60), text: z.string().trim().min(1, "Choose something to ask about.").max(1200), slideId: z.string().uuid().nullish() })
+    .optional(),
   /** Limited: who else may see it (creator ids). */
   invite: z.array(z.string().uuid()).max(20).optional(),
 });
@@ -111,6 +128,7 @@ export async function createConversation(db: Db, creatorId: string, raw: unknown
       visibility: input.visibility,
       source_entity_type: input.source?.type ?? null,
       source_entity_id: input.source?.id ?? null,
+      source_fragment: input.source && input.fragment ? (input.fragment as never) : null,
     })
     .select("*")
     .single();
@@ -304,4 +322,28 @@ export function huddleContext(c: Pick<OpenConversation, "title" | "body">, repli
   const chosen = selected?.length ? picked.filter((b) => selected.includes(b)) : picked.slice(-2);
   const description = [c.body?.trim(), ...chosen.map((b) => `“${b.trim()}”`)].filter(Boolean).join("\n").slice(0, 500);
   return { topic: c.title.slice(0, 140), description };
+}
+
+/**
+ * "Save thought" (Phase 04 §6, §14): keep someone's reply as a note in your Materials — quoted, credited, and linked back
+ * to the conversation. It stays their words: the Studio treats it as reference only, never as yours to copy in.
+ */
+export async function saveThought(db: Db, creatorId: string, replyId: string): Promise<{ materialId: string }> {
+  const r = must(
+    await db.from("open_conversation_replies").select("id, conversation_id, creator_id, body, deleted_at, removed_at, open_conversations(title)").eq("id", replyId).maybeSingle(),
+    "That reply isn't available.",
+  );
+  if (r.deleted_at || r.removed_at) throw new DomainError("not_found", "That reply isn't available.");
+  const people = await peopleById(db, [r.creator_id]);
+  const author = r.creator_id === creatorId ? "You" : people.get(r.creator_id)!.name;
+  const about = (r.open_conversations as { title: string } | null)?.title ?? "an Open Conversation";
+  const material = await createMaterial(db, creatorId, {
+    type: "note",
+    title: `Thought from ${author}`.slice(0, 200),
+    textContent: `“${r.body}”\n\n— ${author}, in “${about}”`,
+    sourceType: "community",
+    metadata: { community: { kind: "conversation_reply", id: r.id, conversationId: r.conversation_id, authorId: r.creator_id, authorName: author } },
+    provenance: { origin: "import", details: { community: { conversationId: r.conversation_id, replyId: r.id, authorId: r.creator_id } } },
+  });
+  return { materialId: material.id };
 }

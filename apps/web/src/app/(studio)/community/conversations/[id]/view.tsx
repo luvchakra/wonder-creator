@@ -3,12 +3,13 @@ import type { ConversationDetail } from "@wonder/creator-community";
 import { CONVERSATION_VISIBILITIES, INTENT_LABEL, VISIBILITY_LABEL, catchUpLine, type ConversationVisibility } from "@wonder/creator-community/shared";
 import type { DejaVu } from "@wonder/creator-moments/shared";
 import { Avatar, Button, Dialog, DialogContent, KIT, Menu, MenuContent, MenuItem, MenuTrigger, Textarea } from "@wonder/ui";
-import { ArrowLeft, AudioLines, Ban, Flag, Lock, MoreHorizontal, Paperclip, Pencil, Sparkles, Trash2, Unlock, Users, VolumeX } from "lucide-react";
+import { ArrowLeft, AudioLines, Ban, Bookmark, Flag, Lock, MoreHorizontal, Paperclip, Pencil, PenTool, Sparkles, Trash2, Unlock, Users, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
+import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
 
 type Props = {
@@ -30,6 +31,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [studio, setStudio] = useState<StudioNote | null>(null);
   const [sheet, setSheet] = useState<null | "edit" | "report" | "block">(null);
   const [reportTarget, setReportTarget] = useState<{ type: "open_conversation" | "open_conversation_reply"; id: string; creatorId: string } | null>(null);
 
@@ -95,6 +97,11 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
             </button>
           </MenuTrigger>
           <MenuContent>
+            {!c.removedAt ? (
+              <MenuItem onSelect={() => void act("studio", async () => setStudio(await bringToStudio("conversation", c.id)))}>
+                <PenTool className="size-4" aria-hidden /> Bring to Studio
+              </MenuItem>
+            ) : null}
             {!c.removedAt ? (
               <MenuItem
                 onSelect={() =>
@@ -181,7 +188,15 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
           <span className="font-medium">Critique requested.</span> {author.name.split(" ")[0]} asked for constructive feedback.
         </p>
       ) : null}
+      <StudioNoteLine note={studio} />
       {c.body ? <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">{c.body}</p> : null}
+      {/* Ask Community (Phase 04 §13): the one part of the work being asked about — never the rest of it. */}
+      {c.sourceFragment ? (
+        <figure aria-label="What this is about" className="rounded-2xl border border-border-soft bg-surface/90 px-3 py-2">
+          <figcaption className="text-[12px] font-medium text-ink-subtle">{c.sourceFragment.label}</figcaption>
+          <blockquote className="mt-0.5 whitespace-pre-line font-display text-[16px] leading-snug text-ink">{c.sourceFragment.text}</blockquote>
+        </figure>
+      ) : null}
       {c.sourceEntityId ? (
         attachments[c.sourceEntityId] ? (
           <Link href={attachments[c.sourceEntityId]!.href} className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] font-medium text-accent-ink hover:underline">
@@ -189,7 +204,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
           </Link>
         ) : (
           <p className="flex items-center gap-1.5 text-[13px] text-ink-subtle">
-            <Lock className="size-4" aria-hidden /> About something {author.name.split(" ")[0]} keeps private.
+            <Lock className="size-4" aria-hidden /> {c.sourceFragment ? `From a Creation ${author.name.split(" ")[0]} keeps private — only this part is shared.` : `About something ${author.name.split(" ")[0]} keeps private.`}
           </p>
         )
       ) : null}
@@ -259,6 +274,21 @@ export function ConversationView({ detail, viewerId, attachments, dejavus }: Pro
                     </button>
                   </MenuTrigger>
                   <MenuContent>
+                    <MenuItem onSelect={() => void act("studio", async () => setStudio(await bringToStudio("conversation_reply", r.id)))}>
+                      <PenTool className="size-4" aria-hidden /> Use in Studio
+                    </MenuItem>
+                    {r.creatorId !== viewerId ? (
+                      <MenuItem
+                        onSelect={() =>
+                          void act("save", async () => {
+                            await api(`/api/v1/open-conversations/${c.id}/replies/${r.id}/save`, { method: "POST" });
+                            setStudio({ text: "Saved to your Materials, with who said it.", href: "/space", link: "Your Space" });
+                          })
+                        }
+                      >
+                        <Bookmark className="size-4" aria-hidden /> Save thought
+                      </MenuItem>
+                    ) : null}
                     {r.creatorId === viewerId ? (
                       <MenuItem
                         onSelect={() =>

@@ -1,7 +1,7 @@
 "use client";
 import { MOMENT_FILTERS, MOMENT_FILTER_LABEL, momentHref, periodOf, type DejaVu, type MomentFilter } from "@wonder/creator-moments/shared";
 import { Button, Dialog, DialogContent, EmptyState, Input, KIT, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
-import { Archive, FileText, Image as ImageIcon, Mic, MoreHorizontal, PenLine, SlidersHorizontal, Sparkles, Video, X } from "lucide-react";
+import { Archive, FileText, Image as ImageIcon, Mic, MoreHorizontal, PenLine, PenTool, SlidersHorizontal, Sparkles, Video, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -40,7 +40,21 @@ export function DejaVuView({
   const [archived, setArchived] = useState(dejavu.archived);
   const [total, setTotal] = useState(dejavu.total);
   const [removed, setRemoved] = useState<MomentView | null>(null);
-  const [sheet, setSheet] = useState<null | "filter" | "rename">(null);
+  const [sheet, setSheet] = useState<null | "filter" | "rename" | "explore">(null);
+  const [exploring, setExploring] = useState<"last" | "new" | null>(null);
+  // "Explore in Studio" (Phase 04 §5): the DejaVu's Moments become available in a Studio; nothing is imported.
+  async function explore(fresh: boolean) {
+    setExploring(fresh ? "new" : "last");
+    setError(null);
+    try {
+      const r = await api<{ artifactId: string }>(`/api/v1/dejavus/${dejavu.id}/explore`, { method: "POST", json: { fresh } });
+      router.push(`/artifacts/${r.artifactId}/studio`);
+    } catch (e) {
+      setError(errorMessage(e));
+      setExploring(null);
+      setSheet(null);
+    }
+  }
   const [error, setError] = useState<string | null>(null);
 
   const present = MOMENT_FILTERS.filter((f) => dejavu.counts[f] > 0);
@@ -121,9 +135,18 @@ export function DejaVuView({
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h1 className="break-words font-display text-[22px] leading-tight text-ink">{name}</h1>
-          <p className="text-[13px] text-ink-muted">
-            {total} {total === 1 ? "Moment" : "Moments"}
-            {archived ? " · Archived" : ""}
+          <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-ink-muted">
+            <span>
+              {total} {total === 1 ? "Moment" : "Moments"}
+              {archived ? " · Archived" : ""}
+            </span>
+            {total > 0 ? (
+              <button type="button" onClick={() => setSheet("explore")} className="inline-flex min-h-11 items-center">
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft px-3 text-[13px] font-medium text-accent-ink hover:bg-accent-softer">
+                  <PenTool className="size-3.5" aria-hidden /> Explore in Studio
+                </span>
+              </button>
+            ) : null}
           </p>
         </div>
         <Menu>
@@ -241,6 +264,27 @@ export function DejaVuView({
         </p>
       ) : null}
 
+      <Dialog open={sheet === "explore"} onOpenChange={(o) => !o && !exploring && setSheet(null)}>
+        <DialogContent title="Explore in Studio" description={`${name}'s Moments will be one tap away on the Working Table. Nothing is added until you choose.`} art={KIT.painted.leafSprigSage}>
+          <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
+            {(
+              [
+                ["last", "In the Studio you were last in", "Keep going where you left off"],
+                ["new", "In a new Creation", `Start “${name}” from nothing`],
+              ] as const
+            ).map(([k, label, hint]) => (
+              <li key={k}>
+                <button type="button" disabled={!!exploring} onClick={() => void explore(k === "new")} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left hover:bg-black/[0.02] disabled:opacity-60">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-ink">{exploring === k ? "Opening…" : label}</span>
+                    <span className="block truncate text-[12px] text-ink-subtle">{hint}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
       <FilterSheet open={sheet === "filter"} onOpenChange={(o) => !o && setSheet(null)} range={range} onApply={(r) => router.push(query(r))} />
       <RenameSheet
         open={sheet === "rename"}
