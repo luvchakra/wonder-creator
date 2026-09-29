@@ -44,12 +44,12 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
   {
     id: "explore",
     label: "Explore",
-    hint: "Search and discover across Wonder Creator",
+    hint: "Ideas, Materials, People and Community",
     icon: "compass",
     class: "navigation",
     target: route("/search"),
     score: 56,
-    current: pathname.startsWith("/search") || pathname.startsWith("/discover"),
+    current: pathname.startsWith("/search") || pathname.startsWith("/discover") || pathname.startsWith("/community"),
   },
   {
     id: "me",

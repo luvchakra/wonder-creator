@@ -1,4 +1,4 @@
-import { expect, newCreator, test, uid, type Page } from "./fixtures";
+import { creatorIdOf, expect, newCreator, test, uid, type Page } from "./fixtures";
 
 /** The live card on /huddles or Home for a given topic. */
 function liveCard(page: Page, topic: string) {
@@ -57,6 +57,8 @@ test.describe("Huddles", () => {
     await expect(card).toBeVisible();
     await expect(card).toContainText(creatorA.firstName);
     await expect(card).toContainText("1 creator");
+    // Home shows a live Huddle that's relevant to you — here, one with someone B follows.
+    expect((await b.request.post(`/api/v1/creators/${await creatorIdOf(creatorA.id)}/follow`, { data: { on: true } })).ok()).toBe(true);
     await b.goto("/");
     const worth = b.getByRole("region", { name: "Worth hearing" });
     await expect(worth).toContainText("Live Huddle");

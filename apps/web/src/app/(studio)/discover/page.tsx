@@ -3,6 +3,7 @@ import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { DiscoverView } from "./discover-view";
 import { PaletteScope } from "@/components/creative-palette";
+import { ExploreNav } from "@/components/explore-nav";
 
 export const metadata = { title: "Find collaborators" };
 
@@ -48,6 +49,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PaletteScope context={{ page: "discover" }} />
+      <ExploreNav current="people" />
       <DiscoverView
         filters={filters}
         searched={searched}

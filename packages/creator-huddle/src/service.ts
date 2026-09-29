@@ -292,7 +292,9 @@ export const reportSchema = z.object({
   details: z.string().trim().max(1000).optional(),
 });
 
-export async function report(db: Db, creatorId: string, contextType: "huddle" | "profile" | "artifact" | "message" | "scrapbook_post" | "scrapbook_reply", contextId: string | null, raw: unknown) {
+export type ReportContext = "huddle" | "profile" | "artifact" | "message" | "scrapbook_post" | "scrapbook_reply" | "open_conversation" | "open_conversation_reply";
+
+export async function report(db: Db, creatorId: string, contextType: ReportContext, contextId: string | null, raw: unknown) {
   const r = reportSchema.parse(raw);
   const res = await db.from("moderation_reports").insert({
     reporter_creator_id: creatorId,

@@ -1,5 +1,6 @@
 import "server-only";
 import { log } from "@wonder/core";
+import { helpHeadline, homeCommunitySignals, knownCollaborators } from "@wonder/creator-community";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { filterOf } from "@wonder/creator-moments";
@@ -59,11 +60,20 @@ export interface HomeMomentCard {
 }
 
 export type HomeCommunityCard =
+  | { kind: "conversation"; conversationId: string; title: string; replyCount: number; participantCount: number; reason: string }
   | { kind: "huddle"; huddleId: string; topic: string; participantName: string; participantId: string | null; participantCount: number; startedAt: string }
   | { kind: "post"; postId: string; body: string; authorName: string; authorId: string; createdAt: string; imageUrl: string | null };
 
 export interface HomeHelpCard {
-  items: HomeItem[];
+  items: Array<HomeItem & { reason?: string | null }>;
+}
+
+/** Replies to a question the creator asked in Community (Phase 03 §12). */
+export interface HomeQuestionCard {
+  conversationId: string;
+  title: string;
+  newReplies: number;
+  newParticipants: number;
 }
 
 export interface HomePayload {
@@ -81,6 +91,7 @@ export interface HomePayload {
   spark?: HomeMomentCard;
   worthHearing?: HomeCommunityCard;
   couldHelp?: HomeHelpCard;
+  yourQuestion?: HomeQuestionCard;
   /** Fallback only: a few recent Creations to get back to. */
   recent?: Array<{ id: string; title: string; typeLabel: string }>;
   avatars: Record<string, string>;
@@ -165,6 +176,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     safe("feed", listPosts(db, creatorId, { scope: "following", creatorId }, { limit: 8 })),
     safe("materials", async () => (await db.from("creative_materials").select("id", { count: "exact", head: true }).eq("creator_id", creatorId)).count ?? 0),
   ]);
+  const community = await safe("community", () => homeCommunitySignals(db, creatorId));
 
   /* ------------------------------------------------------------------ Continue */
   const titleOf = new Map((works ?? []).map((w) => [w.id, w.title]));
@@ -245,7 +257,10 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   /* ------------------------------------------------------------------ Community (Phase 03 plugs in here) */
   const huddle = live?.[0] ?? null;
   const post = feed?.posts.find((p) => !p.mine) ?? null;
-  const worthHearing: HomeCommunityCard | undefined = huddle
+  // A conversation with a reason to hear it comes first; then a live Huddle; then a thought from someone followed.
+  const worthHearing: HomeCommunityCard | undefined = community?.hearing
+    ? { kind: "conversation", conversationId: community.hearing.id, title: community.hearing.title, replyCount: community.hearing.replyCount, participantCount: community.hearing.participantCount, reason: community.hearing.reason }
+    : huddle
     ? {
         kind: "huddle",
         huddleId: huddle.huddleId,
@@ -266,7 +281,22 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
           imageUrl: post.attachments.find((a) => a.fileUrl && a.mimeType?.startsWith("image/"))?.fileUrl ?? null,
         }
       : undefined;
-  const couldHelp = asks.length ? { items: asks.slice(0, 4) } : undefined;
+  const helpItems: HomeHelpCard["items"] = [
+    ...asks,
+    ...(community?.help ?? []).map((h) => ({
+      id: `community:${h.id}`,
+      kind: "community_help",
+      title: `${helpHeadline(h.headlineIntent, h.name)}: ${h.title}`,
+      href: `/community/conversations/${h.id}`,
+      at: new Date(now).toISOString(),
+      actor: { id: h.authorId, name: h.name },
+      reason: h.reason,
+    })),
+  ];
+  const couldHelp = helpItems.length ? { items: helpItems.slice(0, 4) } : undefined;
+  const yourQuestion: HomeQuestionCard | undefined = community?.question
+    ? { conversationId: community.question.id, title: community.question.title, newReplies: community.question.newReplies, newParticipants: community.question.newParticipants }
+    : undefined;
 
   /* ------------------------------------------------------------------ Mode, slots, line */
   const available: Partial<Record<HomeSlot, HomeCandidateKind>> = {};
@@ -274,8 +304,22 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   if (links?.connection) available.worldConnecting = "moment_connection";
   if (links?.dejavu) available.dejavu = "creative_memory";
   if (spark) available.spark = "creative_memory";
-  if (worthHearing) available.worthHearing = worthHearing.kind === "huddle" ? "relevant_huddle" : "relevant_conversation";
+  // A live Huddle is *relevant* when someone you follow or have worked with is in it; a stranger's is just activity.
+  const huddleRelevant =
+    worthHearing?.kind === "huddle" && huddle
+      ? ((await safe("huddle-relevance", async () => {
+          const ids = huddle.participantIds;
+          const [{ data: follows }, known] = await Promise.all([
+            db.from("creator_follows").select("followed_creator_id").eq("follower_creator_id", creatorId).in("followed_creator_id", ids),
+            knownCollaborators(db, creatorId, ids),
+          ]);
+          return (follows?.length ?? 0) > 0 || known.size > 0;
+        })) ?? false)
+      : false;
+  if (worthHearing)
+    available.worthHearing = worthHearing.kind === "huddle" ? (huddleRelevant ? "relevant_huddle" : "general_activity") : worthHearing.kind === "conversation" ? "relevant_conversation" : "general_activity";
   if (couldHelp) available.couldHelp = asks.some((a) => DECISION_KINDS.has(a.kind)) ? "requires_decision" : "help_opportunity";
+  if (yourQuestion) available.yourQuestion = "collaborator_response";
   const mode = homeMode({ lastVisit, now, available });
   const slots = new Set(selectSlots(mode, available));
 
@@ -300,6 +344,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       whileAway: slots.has("whileAway") ? whileAway : null,
       singleReady,
       waiting: slots.has("couldHelp") ? (couldHelp?.items.length ?? 0) : 0,
+      questionReplies: slots.has("yourQuestion") ? (yourQuestion?.newReplies ?? 0) : 0,
       connection: slots.has("worldConnecting"),
       dejavuName: slots.has("dejavu") ? (links?.dejavu?.name ?? null) : null,
     }),
@@ -314,6 +359,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     spark: slots.has("spark") ? spark! : undefined,
     worthHearing: slots.has("worthHearing") ? worthHearing : undefined,
     couldHelp: slots.has("couldHelp") ? couldHelp : undefined,
+    yourQuestion: slots.has("yourQuestion") ? yourQuestion : undefined,
     avatars,
     generatedAt: new Date(now).toISOString(),
   };

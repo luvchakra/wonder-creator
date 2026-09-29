@@ -1,6 +1,6 @@
 import { greetingFor } from "@wonder/core";
 import { Avatar, BACKGROUNDS, Watercolor, buttonClasses, cn } from "@wonder/ui";
-import { ArrowRight, Check, ChevronRight, Heart, Link2, Play, Sparkles, Sun } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Heart, Link2, MessageCircle, Play, Sparkles, Sun } from "lucide-react";
 import Link from "next/link";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
@@ -80,7 +80,7 @@ export default async function HomePage() {
         {home.quickCapture.textEnabled || home.quickCapture.voiceEnabled ? <QuickCapture /> : null}
 
         {/* The rest, as compact rows (owner board, 29 Sep 2026): what it is, one line of why, nothing more. */}
-        {home.whileAway || home.worldConnecting || home.dejavu || home.spark || home.worthHearing || home.couldHelp ? (
+        {home.whileAway || home.yourQuestion || home.worldConnecting || home.dejavu || home.spark || home.worthHearing || home.couldHelp ? (
           <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
             {home.whileAway ? (
               <Expandable id="while-away" label="While you were away" summary={home.whileAway.lines.map((l) => l.text).join(" · ")} count={home.whileAway.total} icon={<Sun className="size-5 text-orange" aria-hidden />}>
@@ -93,6 +93,19 @@ export default async function HomePage() {
                   </li>
                 ))}
               </Expandable>
+            ) : null}
+
+            {home.yourQuestion ? (
+              <section id="question" aria-label="Your question">
+                <Link href={`/community/conversations/${home.yourQuestion.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
+                  <RowBody
+                    icon={<MessageCircle className="size-5 text-accent" aria-hidden />}
+                    title="Your question"
+                    summary={`“${home.yourQuestion.title}” · ${home.yourQuestion.newReplies} new ${home.yourQuestion.newReplies === 1 ? "reply" : "replies"} · Catch up`}
+                    chevron
+                  />
+                </Link>
+              </section>
             ) : null}
 
             {home.worldConnecting ? (
@@ -165,7 +178,10 @@ export default async function HomePage() {
                 {home.couldHelp.items.map((i) => (
                   <li key={i.id}>
                     <Link href={i.href} className="flex min-h-11 items-center gap-2 text-[13.5px] leading-snug text-ink hover:underline">
-                      <span className="min-w-0 flex-1">{i.title}</span>
+                      <span className="min-w-0 flex-1">
+                        {i.title}
+                        {i.reason ? <span className="block text-[12px] text-accent-ink">{i.reason}</span> : null}
+                      </span>
                       <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
                     </Link>
                   </li>
@@ -297,6 +313,20 @@ function Module({ id, label, children }: { id: string; label: string; children: 
 }
 
 function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing"]>; avatars: Record<string, string> }) {
+  if (w.kind === "conversation")
+    return (
+      <section id="hearing" aria-label="Worth hearing">
+        <Link href={`/community/conversations/${w.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
+          <RowBody
+            icon={<MessageCircle className="size-5 text-accent" aria-hidden />}
+            title="Worth hearing"
+            summary={`${w.title} · ${w.replyCount} ${w.replyCount === 1 ? "reply" : "replies"} · ${w.reason}`}
+            chevron
+          />
+        </Link>
+      </section>
+    );
+  const person = w.kind === "huddle" ? { name: w.participantName, id: w.participantId } : { name: w.authorName, id: w.authorId };
   return (
     <section id="hearing" aria-label="Worth hearing">
       <Link href={w.kind === "huddle" ? `/huddles/${w.huddleId}` : `/scrapbook/${w.postId}`} className="block px-3 py-2 hover:bg-surface-muted">
@@ -306,7 +336,7 @@ function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing
               // eslint-disable-next-line @next/next/no-img-element
               <img src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
             ) : (
-              <Avatar name={w.kind === "huddle" ? w.participantName : w.authorName} src={(w.kind === "huddle" ? w.participantId : w.authorId) ? avatars[(w.kind === "huddle" ? w.participantId : w.authorId)!] : null} size={40} />
+              <Avatar name={person.name} src={person.id ? avatars[person.id] : null} size={40} />
             )
           }
           title="Worth hearing"

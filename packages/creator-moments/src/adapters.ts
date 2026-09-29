@@ -71,7 +71,35 @@ export const CreationMomentAdapter: MomentAdapter = {
   },
 };
 
+/** Open Conversations (Phase 03): the caller's view of the conversation; the owner stays the owner. */
+export const ConversationMomentAdapter: MomentAdapter = {
+  async load(db, ids) {
+    const out = new Map<string, MomentPreview>();
+    if (!ids.length) return out;
+    const { data, error } = await db.from("open_conversations").select("id, creator_id, title, body, intent, created_at, removed_at").in("id", ids);
+    if (error) throw fromDbError(error);
+    for (const c of data ?? [])
+      if (!c.removed_at) out.set(c.id, { creatorId: c.creator_id, occurredAt: c.created_at, title: c.title, excerpt: c.body?.slice(0, 280) ?? null, previewAssetId: null, previewKind: "text", subtype: c.intent });
+    return out;
+  },
+};
+
+/** Scrapbook entries: someone's public thought, referenced — never copied. */
+export const ScrapbookMomentAdapter: MomentAdapter = {
+  async load(db, ids) {
+    const out = new Map<string, MomentPreview>();
+    if (!ids.length) return out;
+    const { data, error } = await db.from("scrapbook_posts").select("id, creator_id, body, kind, created_at").in("id", ids);
+    if (error) throw fromDbError(error);
+    for (const p of data ?? [])
+      out.set(p.id, { creatorId: p.creator_id, occurredAt: p.created_at, title: p.body.split("\n")[0]?.slice(0, 80) || "Scrapbook", excerpt: p.body.slice(0, 280), previewAssetId: null, previewKind: "text", subtype: p.kind });
+    return out;
+  },
+};
+
 export const MOMENT_ADAPTERS: Record<LiveMomentType, MomentAdapter> = {
   material: MaterialMomentAdapter,
   creation: CreationMomentAdapter,
+  conversation: ConversationMomentAdapter,
+  scrapbook_entry: ScrapbookMomentAdapter,
 };

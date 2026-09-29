@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { OpenToEditor } from "@/components/community/open-to";
 
 const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
@@ -627,6 +628,7 @@ function CollaborationSection({ collaboration, profile }: Props) {
           How you like to work with others. Availability is <span className="font-medium text-ink">{availability}</span> — change it under Account &amp; Profile. Your disciplines and languages come from your profile too.
         </p>
       </div>
+      <OpenToEditor />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Project types you'd like" htmlFor="co-types" hint="e.g. short film, podcast, photo essay">
           <TagInput id="co-types" value={c.projectTypes} onChange={(v) => setC({ ...c, projectTypes: v })} max={12} />

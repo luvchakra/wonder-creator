@@ -16,7 +16,7 @@ export function DejaVuChips({
   initial,
   className,
 }: {
-  entityType: "material" | "creation";
+  entityType: "material" | "creation" | "conversation" | "scrapbook_entry";
   entityId: string;
   initial: { momentId: string | null; dejavus: DejaVu[] };
   className?: string;
