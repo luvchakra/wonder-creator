@@ -1,5 +1,5 @@
 "use client";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 const KEY = "wc.nav.recent";
@@ -10,17 +10,19 @@ const KEY = "wc.nav.recent";
  * actually came from instead of looping.
  */
 export function NavMemory() {
+  // The path drives it; the query is read as it is at that moment. (No useSearchParams: it would need a Suspense
+  // boundary around the whole app shell, which splits every page's streaming.)
   const pathname = usePathname();
-  const search = useSearchParams().toString();
   useEffect(() => {
     try {
-      const here = `${pathname}${search ? `?${search}` : ""}`;
+      const search = window.location.search;
+      const here = `${pathname}${search}`;
       const list = (JSON.parse(sessionStorage.getItem(KEY) ?? "[]") as string[]).filter((x) => x !== here);
       sessionStorage.setItem(KEY, JSON.stringify([...list, here].slice(-20)));
     } catch {
       /* private mode: Back falls back to its default */
     }
-  }, [pathname, search]);
+  }, [pathname]);
   return null;
 }
 
