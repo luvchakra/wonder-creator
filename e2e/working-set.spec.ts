@@ -1,4 +1,17 @@
+import type { Page } from "@playwright/test";
 import { expect, pngBytes, saveNote, seedCarousel, sendItem, test, uid, uploadViaInbox } from "./fixtures";
+
+// The Working Table (owner board, 29 Sep 2026) is pulled up from the bottom bar; pin/select/Use together are under Manage.
+const tableBar = (page: Page) => page.getByRole("button", { name: /^Working Table:/ });
+async function openTable(page: Page) {
+  await tableBar(page).click();
+  return page.getByRole("dialog", { name: "Working Table" });
+}
+async function openSet(page: Page) {
+  const table = await openTable(page);
+  await table.getByRole("button", { name: /^Manage/ }).click();
+  return page.getByRole("dialog", { name: "Working Set" });
+}
 
 test.describe("CreativeStudio Working Set", () => {
   test.beforeEach(({ creator }) => void creator);
@@ -12,10 +25,10 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(page.getByRole("region", { name: "Editor" })).toBeVisible();
 
     // One compact affordance; an empty table says so with one action.
-    await page.getByRole("button", { name: /^Working Set: No sources yet/ }).click();
-    const sheet = page.getByRole("dialog", { name: "Working Set" });
-    await expect(sheet.getByText("Nothing here yet.")).toBeVisible();
-    await sheet.getByRole("button", { name: "Bring in" }).click();
+    await expect(page.getByRole("button", { name: /^Working Table: No sources yet/ })).toBeVisible();
+    const table = await openTable(page);
+    await expect(table.getByText("Nothing here yet.")).toBeVisible();
+    await table.getByRole("button", { name: "Bring in" }).click();
 
     // One doorway: kinds of source, then search across them, pick several, add.
     const bring = page.getByRole("dialog", { name: "Bring in" });
@@ -26,7 +39,10 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(bring.getByText("1 selected")).toBeVisible();
     await bring.getByRole("button", { name: "Add to Studio" }).click();
 
-    // It lands Available; a tap puts it In use; Pin keeps it as it is.
+    // It lands on the table, Available; under Manage a tap puts it In use; Pin keeps it as it is.
+    await expect(table.getByRole("tab", { name: /Available/ })).toHaveAttribute("aria-selected", "true");
+    await expect(table.getByRole("list", { name: "Materials" })).toContainText(tag);
+    await table.getByRole("button", { name: /^Manage/ }).click();
     const set = page.getByRole("dialog", { name: "Working Set" });
     const row = set.getByRole("switch").first();
     await expect(row).toHaveAttribute("aria-checked", "false");
@@ -35,10 +51,10 @@ test.describe("CreativeStudio Working Set", () => {
     await set.getByRole("button", { name: /^Pin / }).click();
     await expect(set.getByRole("radio", { name: /Pinned/ })).toContainText("1");
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("button", { name: /^Working Set: 1 source · 1 in use/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Working Table: 1 source · 1 in use/ })).toBeVisible();
 
     await page.reload();
-    await expect(page.getByRole("button", { name: /^Working Set: 1 source · 1 in use/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Working Table: 1 source · 1 in use/ })).toBeVisible();
     // No new version for any of it.
     const versions = await (await page.request.get(`/api/v1/artifacts/${art.id}/versions`)).json();
     expect(versions.versions).toHaveLength(1);
@@ -62,11 +78,10 @@ test.describe("CreativeStudio Working Set", () => {
     const c = (await (await page.request.post(`/api/v1/artifacts/${art.id}/comments`, { data: { body: "The opening should feel emptier." } })).json()) as { comment?: { id: string }; id?: string };
     const commentId = c.comment?.id ?? c.id!;
     await page.goto(`/artifacts/${art.id}/studio?add=comment:${commentId}`);
-    await expect(page.getByRole("button", { name: /^Working Set: 3 sources · 1 in use/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Working Table: 3 sources · 1 in use/ })).toBeVisible();
 
     // Use together: pick the two notes, one dominant action, one idea, directions from the roles.
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
-    const set = page.getByRole("dialog", { name: "Working Set" });
+    const set = await openSet(page);
     await set.getByRole("checkbox", { name: /Select Dad waited/ }).click();
     await set.getByRole("checkbox", { name: /Select Station at dusk/ }).click();
     await set.getByRole("button", { name: /Use together/ }).click();
@@ -91,7 +106,7 @@ test.describe("CreativeStudio Working Set", () => {
     await together.getByRole("radio", { name: /^Poem/ }).click();
     await together.getByRole("button", { name: /Use this idea/ }).click();
     // Both are now In use (the direction is the same kind of Creation, so no switch is offered here).
-    await expect(page.getByRole("button", { name: /^Working Set: 3 sources · 3 in use/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Working Table: 3 sources · 3 in use/ })).toBeVisible();
 
     // Change format: a new Creation from the same ingredients; its Studio has the same table plus this one.
     await page.getByRole("button", { name: /Writing/ }).click();
@@ -99,11 +114,11 @@ test.describe("CreativeStudio Working Set", () => {
     await format.getByRole("radio", { name: /Carousel/ }).click();
     await format.getByRole("button", { name: "Make it a carousel" }).click();
     await page.waitForURL((u) => /\/artifacts\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
-    await expect(page.getByRole("button", { name: /^Working Set: 4 sources · 4 in use/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Working Table: 4 sources · 4 in use/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
   });
 
-  test("every source shows under the canvas; any can be opened or closed (all closed too), and the device remembers", async ({ page }) => {
+  test("every source is a card on the Working Table; any can be opened or closed (all closed too), and the device remembers", async ({ page }) => {
     const tag = uid();
     const a = await saveNote(page, `Rain on the platform roof ${tag}\nA slow drip into the puddles.`);
     const b = await saveNote(page, `The chai seller's radio ${tag}\nOld film songs, half heard.`);
@@ -119,7 +134,11 @@ test.describe("CreativeStudio Working Set", () => {
     });
 
     await page.goto(`/artifacts/${art.id}/studio`);
-    const panel = page.getByRole("region", { name: /^Used materials/ });
+    // A clean canvas: nothing sits under it until the table is pulled up.
+    await expect(page.getByRole("list", { name: "Materials" })).toHaveCount(0);
+    let panel = await openTable(page);
+    // Nothing is in use yet, so the table opens on Available.
+    await expect(panel.getByRole("tab", { name: /Available/ })).toHaveAttribute("aria-selected", "true");
     const rows = panel.locator("li > button[aria-expanded]");
     await expect(rows).toHaveCount(2);
     await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(0);
@@ -134,22 +153,16 @@ test.describe("CreativeStudio Working Set", () => {
     await rows.filter({ hasText: "Rain on the platform roof" }).click();
     await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(1);
     await page.reload();
-    await expect(
-      page
-        .getByRole("region", { name: /^Used materials/ })
-        .locator("li > button[aria-expanded]")
-        .filter({ hasText: "Rain on the platform roof" }),
-    ).toHaveAttribute("aria-expanded", "true");
+    panel = await openTable(page);
+    const rain = panel.locator("li > button[aria-expanded]").filter({ hasText: "Rain on the platform roof" });
+    await expect(rain).toHaveAttribute("aria-expanded", "true");
     // Closing the open one leaves them all closed, and that's remembered too.
-    await page
-      .getByRole("region", { name: /^Used materials/ })
-      .locator("li > button[aria-expanded]")
-      .filter({ hasText: "Rain on the platform roof" })
-      .click();
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('li > button[aria-expanded="true"]')).toHaveCount(0);
+    await rain.click();
+    await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator("li > button[aria-expanded]")).toHaveCount(2);
-    await expect(page.getByRole("region", { name: /^Used materials/ }).locator('li > button[aria-expanded="true"]')).toHaveCount(0);
+    panel = await openTable(page);
+    await expect(panel.locator("li > button[aria-expanded]")).toHaveCount(2);
+    await expect(panel.locator('li > button[aria-expanded="true"]')).toHaveCount(0);
   });
 
   test("Use this asks how: options from what the source is, or the creator's own words, and the row says so", async ({ page }) => {
@@ -159,8 +172,7 @@ test.describe("CreativeStudio Working Set", () => {
     const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
     await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: a }] } });
     await page.goto(`/artifacts/${art.id}/studio`);
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
-    const sheet = page.getByRole("dialog", { name: "Working Set" });
+    const sheet = await openSet(page);
     await sheet.getByRole("checkbox", { name: /^Select Rain on the platform roof/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
 
@@ -173,18 +185,20 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(ways.getByRole("radio", { name: "Something else…" })).toHaveAttribute("aria-checked", "true");
     await how.getByRole("button", { name: /Use it/ }).click();
     await expect(how).toHaveCount(0);
-    const panel = page.getByRole("region", { name: /^Used materials/ });
+    const panel = await openTable(page);
     await expect(panel).toContainText("“only the sound of the rain, for the opening”");
 
     // Back again: a listed option replaces the note.
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await panel.getByRole("button", { name: /^Manage/ }).click();
     await sheet.getByRole("checkbox", { name: /^Select Rain on the platform roof/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await ways.getByRole("radio", { name: /Follow its shape/ }).click();
     await how.getByRole("button", { name: /Use it/ }).click();
+    await expect(how).toHaveCount(0);
+    await openTable(page);
     await expect(panel).toContainText("Its shape");
     await page.reload();
-    await expect(page.getByRole("region", { name: /^Used materials/ })).toContainText("Its shape");
+    await expect(await openTable(page)).toContainText("Its shape");
   });
   test("choosing a use makes it happen — writing: words go into the draft; a tone becomes a CreativeMind revision", async ({ page }) => {
     const tag = uid();
@@ -199,7 +213,7 @@ test.describe("CreativeStudio Working Set", () => {
     const how = page.getByRole("dialog", { name: "How do you want to use this?" });
 
     // A tone steers: CreativeMind proposes a revision from the source (offline: a labelled placeholder) to keep or discard.
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await openSet(page);
     await sheet.getByRole("checkbox", { name: /^Select The chai seller/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await how.getByRole("radio", { name: /Take its tone and voice/ }).click();
@@ -209,7 +223,7 @@ test.describe("CreativeStudio Working Set", () => {
     await page.getByRole("button", { name: "Discard" }).click();
 
     // Its words go straight into the draft.
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await openSet(page);
     await sheet.getByRole("checkbox", { name: /^Select The chai seller/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await how.getByRole("radio", { name: /^Use its words/ }).click();
@@ -244,7 +258,7 @@ test.describe("CreativeStudio Working Set", () => {
     const editor = page.getByRole("region", { name: "Editor" });
     const sheet = page.getByRole("dialog", { name: "Working Set" });
     const how = page.getByRole("dialog", { name: "How do you want to use this?" });
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await openSet(page);
     await sheet.getByRole("checkbox", { name: new RegExp(`^Select ${name}`) }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await expect(how.getByRole("radio", { name: /Use it as a slide image/ })).toHaveAttribute("aria-checked", "true");
@@ -257,7 +271,7 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(choice).toHaveCount(0);
 
     // Words onto the slide on screen.
-    await page.getByRole("button", { name: /^Working Set:/ }).click();
+    await openSet(page);
     await sheet.getByRole("checkbox", { name: /^Select Lamps and steam/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
     await how.getByRole("radio", { name: /Put its words on this slide/ }).click();
@@ -288,30 +302,35 @@ test.describe("CreativeStudio Working Set", () => {
 
     await page.goto(`/artifacts/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
-    const panel = page.getByRole("region", { name: /^Used materials/ });
+    const panel = await openTable(page);
     const photoActions = panel.getByRole("group", { name: new RegExp(`^Use ${name}`) });
     await expect(photoActions.getByRole("button")).toHaveText(["Add as new slide", "Replace slide image", "Set as cover"]);
 
-    // Add as new slide: a slide right after this one, with the photo, and the canvas moves to it.
+    // Add as new slide: a slide right after this one, with the photo, and the canvas moves to it; the table steps aside.
     await photoActions.getByRole("button", { name: "Add as new slide" }).click();
+    await expect(panel).toHaveCount(0);
     await expect(editor.getByText("2 / 3")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("status").filter({ hasText: "A new slide with your photo" })).toBeVisible();
 
-    // Set as cover.
+    // Set as cover (it's In use now, so the table opens there).
+    await openTable(page);
     await photoActions.getByRole("button", { name: "Set as cover" }).click();
     await expect(page.getByRole("status").filter({ hasText: "is the cover now" })).toBeVisible();
 
     // Split into slides: the note's three passages go onto slides from the one on screen onward.
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).click();
+    await openTable(page);
+    await panel.getByRole("tab", { name: /Available/ }).click();
     const noteActions = panel.getByRole("group", { name: new RegExp(`^Use Lamps ${tag}`) });
     await expect(noteActions.getByRole("button")).toHaveText(["Use on slide", "Split into slides", "Refine slide text"]);
     await noteActions.getByRole("button", { name: "Split into slides" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Split across 3 slides" })).toBeVisible({ timeout: 15_000 });
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Lamps/ })).toBeVisible();
-    // Used now: the row says how.
+    // Used now: the card says how.
+    await openTable(page);
     await expect(panel).toContainText("Its shape");
   });
-  test("the Used materials sheet slides down and back; See more leads back to the Studio; pictures come through stable, cached links", async ({ page }) => {
+  test("See more on a Working Table card leads back to the Studio; pictures come through stable, cached links", async ({ page }) => {
     const tag = uid();
     const name = `window-${tag}`;
     await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes(64) }]);
@@ -323,10 +342,10 @@ test.describe("CreativeStudio Working Set", () => {
     const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
     await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: photo }] } });
     await page.goto(`/artifacts/${art.id}/studio`);
-    const panel = page.getByRole("region", { name: /^Used materials/ });
+    const panel = await openTable(page);
 
     // The picture is a stable link (the same on every load), privately cacheable.
-    const img = panel.locator("img").first();
+    const img = panel.getByRole("list", { name: "Materials" }).locator("img").first();
     await expect(img).toHaveAttribute("src", /^\/api\/v1\/media\/[0-9a-f-]{36}\?e=\d+&s=/);
     const src = (await img.getAttribute("src"))!;
     const res = await page.request.get(src, { maxRedirects: 0 });
@@ -334,20 +353,7 @@ test.describe("CreativeStudio Working Set", () => {
     expect(res.headers()["cache-control"]).toMatch(/^private, max-age=\d+, immutable$/);
     expect((await page.request.get(src.replace(/s=[^&]+/, "s=forged"), { maxRedirects: 0 })).status()).toBe(404);
     await page.reload();
-    await expect(
-      page
-        .getByRole("region", { name: /^Used materials/ })
-        .locator("img")
-        .first(),
-    ).toHaveAttribute("src", src);
-
-    // Slide the sheet down; it stays down after a reload; bring it back.
-    await panel.getByRole("button", { name: "Slide used materials down" }).click();
-    await expect(panel.getByRole("group", { name: new RegExp(`^Use ${name}`) })).toBeHidden();
-    await page.reload();
-    await expect(panel.getByRole("button", { name: "Show used materials" })).toBeVisible();
-    await panel.getByRole("button", { name: /^Show$/ }).click();
-    await expect(panel.getByRole("group", { name: new RegExp(`^Use ${name}`) })).toBeVisible();
+    await expect((await openTable(page)).getByRole("list", { name: "Materials" }).locator("img").first()).toHaveAttribute("src", src);
 
     // See more → the material, with a way back to this Studio.
     await panel.locator("li > button[aria-expanded]").filter({ hasText: name }).click();
@@ -355,5 +361,23 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(page).toHaveURL(new RegExp(`/space/materials/${photo}\\?from=studio:${art.id}$`));
     await page.getByRole("link", { name: `Back to ${title}` }).click();
     await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/studio$`));
+  });
+
+  test("External: royalty-free pictures are searched on the table, with honest states for services that aren't connected", async ({ page }) => {
+    const tag = uid();
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Monsoon ${tag}` } })).json()).artifact as { id: string };
+    await page.goto(`/artifacts/${art.id}/studio`);
+    const table = await openTable(page);
+    await table.getByRole("tab", { name: "External" }).click();
+    // The search starts from the Creation's own title.
+    await expect(table.getByLabel("Search royalty-free pictures")).toHaveValue(`Monsoon ${tag}`);
+    // Without a key a service says so (never fake results).
+    const providers = table.getByRole("radiogroup", { name: /picture/i });
+    await providers.getByRole("radio", { name: /Pixabay/ }).click();
+    await expect(table.getByText(/Pixabay isn't connected/)).toBeVisible();
+    // The API is equally honest.
+    const r = await (await page.request.get(`/api/v1/external-images?provider=pexels&q=rain`)).json();
+    expect(r.connected).toBe(false);
+    expect(r.results).toEqual([]);
   });
 });
