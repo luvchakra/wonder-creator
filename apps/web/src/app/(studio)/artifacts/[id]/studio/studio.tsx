@@ -1,6 +1,6 @@
 "use client";
 import type { CarouselView } from "@wonder/creator-brain";
-import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
+import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, ChevronDown, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
@@ -259,6 +259,37 @@ export function Studio({
     }
     if (part) setFragmentsFor(part);
     setUsedNote(notes.filter(Boolean).join(" ") || null);
+  }
+
+  // One-tap actions under each material in "Used materials" (owner board, 29 Sep 2026).
+  async function runAction(row: WorkingSource, action: MaterialAction) {
+    if (!set) return;
+    setUsedNote(null);
+    setError(null);
+    try {
+      const r = await api<{ kind: string; slideId?: string | null; message?: string; text?: string; live?: boolean }>(`/api/v1/studio-sessions/${set.sessionId}/sources/${row.id}/apply`, {
+        method: "POST",
+        json: { action, slideId: slides.current },
+      });
+      if ((r.kind === "slide_image" || r.kind === "slide_words" || r.kind === "slide_added" || r.kind === "slide_proposal") && r.slideId) {
+        setNews({ key: ++newsSeq.current, slideId: r.slideId, proposal: r.kind === "slide_proposal" ? { text: r.text ?? "", live: !!r.live } : null });
+      }
+      if (r.kind === "slide_proposal") setUsedNote(`New words from “${row.title}” are on the slide — keep them or not.`);
+      else if (r.kind === "draft_words" && r.text) {
+        setMode("edit");
+        onType(`${content.trim() ? `${content.trimEnd()}\n\n` : ""}${r.text}`);
+        setUsedNote("Its words are in your draft.");
+      } else if (r.kind === "refine") {
+        await refine({ key: "use-sources", label: "Use sources", instruction: "Rework the draft using this source as described." }, [row.id]);
+        setUsedNote(`CreativeMind is working “${row.title}” into it — review the revision.`);
+      } else if (r.kind === "choose_part") setFragmentsFor(row);
+      else if (r.message) setUsedNote(r.message);
+      if (r.kind === "cover") router.refresh();
+      const fresh = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${set.sessionId}`);
+      setSet(fresh.workingSet);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
   }
 
   async function refine(a: { key: string; label: string; instruction?: string } | null, sourceIds?: string[]) {
@@ -575,7 +606,9 @@ export function Studio({
       )}
 
       {/* Every source on the table, collapsed but for the last one opened (owner, 28 Sep 2026). */}
-      {!proposal ? <SourcesPanel set={set} artifactId={artifact.id} onSeeAll={() => setSheet("set")} onUsePart={(row) => setFragmentsFor(row)} /> : null}
+      {!proposal ? (
+        <SourcesPanel set={set} artifactId={artifact.id} creationType={artifact.type} onSeeAll={() => setSheet("set")} onUsePart={(row) => setFragmentsFor(row)} onAction={runAction} />
+      ) : null}
 
       {/* Refine + quality stay contextual to the canvas, below it (§15.2), never a pane. */}
       {!isCarousel ? (

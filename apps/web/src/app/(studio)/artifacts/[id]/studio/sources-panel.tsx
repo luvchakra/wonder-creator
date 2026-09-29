@@ -1,7 +1,7 @@
 "use client";
-import { USAGE_LABEL, groupSources, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
+import { USAGE_LABEL, groupSources, materialActionsFor, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import { cn } from "@wonder/ui";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Columns2, Loader2, Image as ImageIcon, ImagePlus, PenLine, RefreshCw, Scissors, Sparkles, Type } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/client";
@@ -60,7 +60,35 @@ export function usedIn(slides: number[] | undefined): string | null {
   return `Used in ${slides.length === 1 ? "slide" : "slides"} ${runs.join(", ")}`;
 }
 
-export function SourcesPanel({ set, artifactId, onSeeAll, onUsePart }: { set: WorkingSetView | null; artifactId: string; onSeeAll: () => void; onUsePart: (row: WorkingSource) => void }) {
+const ACTION_ICON: Record<MaterialAction, typeof ImageIcon> = {
+  new_slide: ImagePlus,
+  slide_image: RefreshCw,
+  cover: ImageIcon,
+  slide_words: Type,
+  split_slides: Columns2,
+  refine_slide: Sparkles,
+  draft_words: PenLine,
+  refine_draft: Sparkles,
+  part: Scissors,
+};
+
+export function SourcesPanel({
+  set,
+  artifactId,
+  creationType,
+  onSeeAll,
+  onUsePart,
+  onAction,
+}: {
+  set: WorkingSetView | null;
+  artifactId: string;
+  creationType: string;
+  onSeeAll: () => void;
+  onUsePart: (row: WorkingSource) => void;
+  /** Make a one-tap use happen (the Studio knows the slide on screen and the draft). */
+  onAction: (row: WorkingSource, action: MaterialAction) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
   const remembered = useSyncExternalStore(
     subscribe,
     () => readOpen(artifactId),
@@ -84,8 +112,8 @@ export function SourcesPanel({ set, artifactId, onSeeAll, onUsePart }: { set: Wo
   const rows = groupSources(all.filter((s) => s.available)).flatMap((g) => g.sources);
   if (!rows.length) return null;
   const lost = all.length - rows.length;
-  // The last one opened; before any was, the first on the table.
-  const openId = remembered && rows.some((r) => r.id === remembered) ? remembered : rows[0]!.id;
+  // Only the last one opened stays open — and any can be closed, so all can be (owner, 29 Sep 2026).
+  const openId = remembered && rows.some((r) => r.id === remembered) ? remembered : null;
   return (
     <section aria-labelledby="sources-title" className="mt-3 rounded-3xl border border-border-soft bg-surface/80 p-3 pt-2 shadow-[var(--shadow-card)]">
       <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-border-soft" />
@@ -105,6 +133,7 @@ export function SourcesPanel({ set, artifactId, onSeeAll, onUsePart }: { set: Wo
       <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft bg-surface">
         {rows.map((row) => {
           const open = row.id === openId;
+          const actions = materialActionsFor(row, creationType);
           const how = row.usageNote ? `“${row.usageNote}”` : row.usageIntent ? USAGE_LABEL[row.usageIntent] : null;
           const where = [how, usedIn(usage[row.id]) ?? (how ? null : STATE_LABEL[row.state])].filter(Boolean).join(" · ");
           return (
@@ -118,14 +147,47 @@ export function SourcesPanel({ set, artifactId, onSeeAll, onUsePart }: { set: Wo
               >
                 <SourceIcon s={row} size="size-9" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-medium text-ink">{row.title}</span>
+                  <span className="flex items-center gap-1.5">
+                    {row.fresh ? <span className="shrink-0 rounded-full bg-accent-softer px-1.5 py-px text-[11px] font-semibold text-accent-ink">New</span> : null}
+                    <span className="truncate text-[14px] font-medium text-ink">{row.title}</span>
+                  </span>
                   <span className="block truncate text-[12px] text-ink-subtle">{row.kind}</span>
                 </span>
                 <span className="hidden shrink-0 text-[12.5px] text-ink-muted sm:block">{where}</span>
                 <ChevronDown className={cn("size-4 shrink-0 text-ink-subtle transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden />
               </button>
-              <p className="-mt-1 px-2.5 pb-1 pl-[3.5rem] text-[12px] text-ink-muted sm:hidden">{where}</p>
+              <p className="-mt-1 px-2.5 pb-1 pl-[3.5rem] text-[12px] text-ink-muted sm:hidden">{row.fresh && !how ? "Freshly brought in" : where}</p>
               {open && set ? <SourceBody row={row} sessionId={set.sessionId} onUsePart={() => onUsePart(row)} /> : null}
+              {/* How to use it here, one tap each (owner board): context-based, always visible, open or not. */}
+              {actions.length ? (
+                <div className="-mx-0.5 flex gap-1.5 overflow-x-auto px-2.5 pb-2.5 [scrollbar-width:none]" role="group" aria-label={`Use ${row.title}`}>
+                  {actions.map((x) => {
+                    const Icon = ACTION_ICON[x.action];
+                    const key = `${row.id}:${x.action}`;
+                    return (
+                      <button
+                        key={x.action}
+                        type="button"
+                        disabled={!!busy}
+                        onClick={async () => {
+                          setBusy(key);
+                          try {
+                            await onAction(row, x.action);
+                          } finally {
+                            setBusy(null);
+                          }
+                        }}
+                        className="inline-flex min-h-11 shrink-0 items-center"
+                      >
+                        <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-softer px-3 text-[12.5px] font-medium text-accent-ink hover:bg-accent-soft">
+                          {busy === key ? <Loader2 className="size-3.5 motion-safe:animate-spin" aria-hidden /> : <Icon className="size-3.5" aria-hidden />}
+                          {busy === key ? "Working…" : x.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </li>
           );
         })}

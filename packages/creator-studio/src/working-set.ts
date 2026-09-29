@@ -176,6 +176,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
       addedAt: r.added_at,
       usageIntent: (r.usage_intent as UsageIntent | null) ?? null,
       usageNote: r.usage_note ?? null,
+      fresh: !r.usage_intent && !r.usage_note && Date.now() - Date.parse(r.added_at) < 30 * 60_000,
     };
     const withFragment = (v: WorkingSource): WorkingSource =>
       fragment ? { ...v, title: fragment.text ? `“${fragment.text.length > 90 ? `${fragment.text.slice(0, 88)}…` : fragment.text}”` : v.title, kind: `${fragmentLabel(fragment)} · ${v.kind}` } : v;

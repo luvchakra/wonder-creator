@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directionsFor, groupSources, outputModeOf, suggestFragments, unusedNudge, usageOptionsFor, workingSetSummary, type WorkingSource } from "./working-set-options";
+import { directionsFor, groupSources, materialActionsFor, outputModeOf, suggestFragments, unusedNudge, usageOptionsFor, workingSetSummary, type WorkingSource } from "./working-set-options";
 
 const src = (over: Partial<WorkingSource>): WorkingSource => ({
   id: "x",
@@ -68,5 +68,14 @@ describe("Working Set rules", () => {
     expect(usageOptionsFor(src({ sourceType: "creation", mediaType: "poem" }), "carousel").map((o) => o.intent)).toEqual(["content", "quote", "structure", "style"]);
     expect(usageOptionsFor(src({ sourceType: "comment", mediaType: null }), "poem")[0]!.intent).toBe("constraint");
     for (const t of ["image", "voice", "pdf", "note"]) expect(usageOptionsFor(src({ mediaType: t }), "carousel").length).toBeLessThanOrEqual(4);
+  });
+  it("offers one-tap uses for a material from what it is and what the Creation is", () => {
+    const labels = (x: Partial<WorkingSource>, type: string) => materialActionsFor(src(x), type).map((a) => a.label);
+    expect(labels({ mediaType: "image" }, "carousel")).toEqual(["Add as new slide", "Replace slide image", "Set as cover"]);
+    expect(labels({ mediaType: "image" }, "poem")).toEqual(["Set as cover"]);
+    expect(labels({ sourceType: "creation", mediaType: "lyrics" }, "carousel")).toEqual(["Use on slide", "Split into slides", "Refine slide text"]);
+    expect(labels({ mediaType: "voice" }, "story")).toEqual(["Add to draft", "Rework draft with it", "Use a part…"]);
+    expect(labels({ mediaType: "note", fragment: { kind: "text_range", text: "x" } }, "carousel")).toEqual(["Use on slide", "Refine slide text"]);
+    expect(labels({ available: false }, "carousel")).toEqual([]);
   });
 });

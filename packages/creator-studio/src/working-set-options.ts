@@ -75,6 +75,8 @@ export interface WorkingSource {
   /** How the creator chose to use it ("Use this"), and their own words when no option fit. */
   usageIntent?: UsageIntent | null;
   usageNote?: string | null;
+  /** Brought in within the last half hour and not used yet: shows "New". */
+  fresh?: boolean;
 }
 
 export interface StudioIntent {
@@ -311,4 +313,42 @@ export function usageOptionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType
     { key: "structure", intent: "structure", label: "Follow its shape", hint: "Its order, sections or rhythm" },
     { key: "tone", intent: "style", label: "Take its tone and voice", hint: "How it sounds, not what it says" },
   ];
+}
+
+/** A one-tap way to use a material in the Creation, shown under its row (owner board, 29 Sep 2026). */
+export type MaterialAction = "new_slide" | "slide_image" | "cover" | "slide_words" | "split_slides" | "refine_slide" | "draft_words" | "refine_draft" | "part";
+export interface MaterialActionOption {
+  action: MaterialAction;
+  label: string;
+}
+
+/**
+ * Up to three context-based buttons for a material on the table: what it is × what the Creation is. Carousels get
+ * slide actions (add as a new slide, replace the slide image, use the words on the slide, split into slides); written
+ * pieces get draft actions. Deterministic; each one does exactly what it says (the Studio's apply endpoint).
+ */
+export function materialActionsFor(s: Pick<WorkingSource, "sourceType" | "mediaType" | "available" | "fragment">, creationType: string): MaterialActionOption[] {
+  if (!s.available) return [];
+  const carousel = outputModeOf(creationType) === "carousel";
+  const t = s.mediaType ?? "";
+  const photo = s.sourceType === "material" && (t === "image" || t === "sketch");
+  if (photo) {
+    return carousel
+      ? [
+          { action: "new_slide", label: "Add as new slide" },
+          { action: "slide_image", label: "Replace slide image" },
+          { action: "cover", label: "Set as cover" },
+        ]
+      : [{ action: "cover", label: "Set as cover" }];
+  }
+  if (s.sourceType === "collection") return [];
+  if (s.sourceType === "comment") return [carousel ? { action: "refine_slide", label: "Apply to slide text" } : { action: "refine_draft", label: "Apply feedback" }];
+  // Words: a note, voice (its transcript), a document, a Creation, a Huddle moment, or a fragment of one.
+  return carousel
+    ? [
+        { action: "slide_words", label: "Use on slide" },
+        ...(s.fragment ? [] : [{ action: "split_slides" as const, label: "Split into slides" }]),
+        { action: "refine_slide", label: "Refine slide text" },
+      ]
+    : [{ action: "draft_words", label: "Add to draft" }, { action: "refine_draft", label: "Rework draft with it" }, ...(s.fragment ? [] : [{ action: "part" as const, label: "Use a part…" }])];
 }
