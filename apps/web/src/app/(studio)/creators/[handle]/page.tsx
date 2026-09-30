@@ -105,25 +105,25 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
     body = <CommunityTab huddles={live} conversations={convs.cards.map((x) => x.conversation)} shared={(page?.works ?? []).slice(0, 3)} handle={c.handle ?? handle} isMe={isMe} pagePublished={!!page} />;
   }
 
-  const pill = "relative inline-flex h-8 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-border-soft bg-surface px-1.5 text-[12px] max-[380px]:[&>svg]:hidden font-medium text-accent-ink before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] hover:bg-accent-softer";
+  const pill = "relative inline-flex min-h-8 min-w-0 items-center justify-center gap-1 rounded-full py-1 text-center leading-tight max-[379px]:[&>svg]:hidden border border-border-soft bg-surface px-1 text-[12px] font-medium text-accent-ink before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] hover:bg-accent-softer";
   const isLive = live.length > 0;
 
   return (
     <>
       <PaletteScope context={{ page: isMe ? "me" : "creator" }} />
       <div className="mx-auto max-w-3xl space-y-3">
-        <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="soft" className="-mx-4 h-28 sm:-mx-6 sm:h-36 lg:mx-0 lg:rounded-3xl" />
-        <section aria-label="Profile" className={cn(surface, "relative -mt-14 px-3 pb-3 pt-3")}>
+        <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="none" position="center 40%" className="-mx-4 h-36 sm:-mx-6 sm:h-44 lg:mx-0 lg:rounded-3xl" />
+        <section aria-label="Profile" className={cn(surface, "relative -mt-16 rounded-3xl bg-surface/95 px-3.5 pb-3.5 pt-3.5 backdrop-blur-sm")}>
           <div className="flex items-center gap-3">
             <span className="relative shrink-0">
-              <Avatar name={name} src={avatars[c.id]} size={60} className="border-2 border-cream" />
+              <Avatar name={name} src={avatars[c.id]} size={64} className="border-[3px] border-surface shadow-[0_4px_14px_-4px_rgb(107_91_149/0.35)]" />
               {isLive ? (
                 <span className="absolute bottom-0.5 right-0.5 size-3.5 rounded-full border-2 border-surface bg-success" role="img" aria-label="In a live Huddle now" />
               ) : null}
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="break-words font-display text-[22px] leading-tight text-ink">{name}</h1>
-              <p className="truncate text-[12.5px] text-ink-muted">
+              <h1 className="break-words font-display text-[23px] leading-tight text-ink">{name}</h1>
+              <p className="line-clamp-2 text-[12.5px] leading-snug text-ink-muted">
                 <span>@{c.handle}</span>
                 {profile.disciplines.length ? <span> · {profile.disciplines.join(" · ")}</span> : null}
               </p>
@@ -149,12 +149,12 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
             {isMe ? (
               <>
                 <Link href="/settings" className={pill}>
-                  <PenLine className="size-3.5" aria-hidden /> Edit profile
+                  <PenLine className="size-3 shrink-0" aria-hidden /> Edit profile
                 </Link>
                 <ShareProfile name={name} path={base} className={pill} />
                 {/* The public home is curated separately from this Profile (CreatorPublish §39). */}
                 <Link href="/creator-page" className={pill}>
-                  <Globe2 className="size-3.5" aria-hidden /> Creator Page
+                  <Globe2 className="size-3 shrink-0" aria-hidden /> Creator Page
                 </Link>
               </>
             ) : (

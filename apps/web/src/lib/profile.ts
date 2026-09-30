@@ -1,5 +1,6 @@
 import "server-only";
 import { artifactType, profileShelf, readingMinutes } from "@wonder/creator-studio/types";
+import { mediaLink } from "@wonder/core/server";
 import type { Db } from "@wonder/db";
 import type { ProfileCreation } from "@/components/profile/creations";
 import { coverUrls } from "./covers";
@@ -38,27 +39,43 @@ export async function profileCreations(db: Db, creatorId: string, isMe: boolean,
     carousels.length
       ? db
           .from("carousel_slides")
-          .select("artifact_id")
+          .select("artifact_id, order_index, asset_id")
           .in("artifact_id", carousels)
+          .order("order_index")
           .then(({ data: s }) => {
             const n = new Map<string, number>();
-            for (const r of s ?? []) n.set(r.artifact_id, (n.get(r.artifact_id) ?? 0) + 1);
-            return n;
+            const firstAsset = new Map<string, string>();
+            for (const r of s ?? []) {
+              n.set(r.artifact_id, (n.get(r.artifact_id) ?? 0) + 1);
+              if (r.asset_id && !firstAsset.has(r.artifact_id)) firstAsset.set(r.artifact_id, r.asset_id);
+            }
+            return { n, firstAsset };
           })
-      : Promise.resolve(new Map<string, number>()),
+      : Promise.resolve({ n: new Map<string, number>(), firstAsset: new Map<string, string>() }),
   ]);
+  // A Carousel without a chosen cover shows its first slide's picture (the small derivative), read with the viewer's access.
+  const slideCovers = new Map<string, string>();
+  const assetIds = [...slides.firstAsset.values()];
+  if (assetIds.length) {
+    const { data: assets } = await db.from("image_generation_assets").select("id, storage_object_id, thumbnail_object_id").in("id", assetIds);
+    const byId = new Map((assets ?? []).map((x) => [x.id, mediaLink(x.thumbnail_object_id ?? x.storage_object_id)]));
+    for (const [artifactId, assetId] of slides.firstAsset) {
+      const url = byId.get(assetId);
+      if (url) slideCovers.set(artifactId, url);
+    }
+  }
   return rows.map((a) => {
     const shelf = profileShelf(a.artifact_type);
     const content = a.current_version_id ? versions.get(a.current_version_id) : undefined;
     const mins = shelf === "writing" ? readingMinutes(content) : null;
-    const count = slides.get(a.id);
+    const count = slides.n.get(a.id);
     return {
       id: a.id,
       title: a.title,
       type: a.artifact_type,
       typeLabel: artifactType(a.artifact_type).label,
       shelf,
-      coverUrl: covers[a.id] ?? null,
+      coverUrl: covers[a.id] ?? slideCovers.get(a.id) ?? null,
       excerpt: content ? content.slice(0, 280) : null,
       description: a.description,
       meta: count ? `${count} ${count === 1 ? "slide" : "slides"}` : mins ? `${mins} min read` : null,

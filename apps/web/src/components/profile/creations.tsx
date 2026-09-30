@@ -1,5 +1,5 @@
 import { PROFILE_SHELVES, type ProfileShelf } from "@wonder/creator-studio/types";
-import { chipBase, cn } from "@wonder/ui";
+import { KIT, KitArt, chipBase, cn } from "@wonder/ui";
 import { AudioLines, Feather, Film, GalleryHorizontalEnd, ImageIcon, Layers, Lock, PenLine } from "lucide-react";
 import Link from "next/link";
 import { Waveform, surface } from "./shared";
@@ -96,8 +96,9 @@ function CreationCard({ c, isMe }: { c: ProfileCreation; isMe: boolean }) {
             <Film className="size-6" aria-hidden />
           </span>
         ) : c.excerpt ? (
-          <span className={cn("block rounded-xl bg-[#f8f3ea] px-3 py-2.5 text-ink", verse ? "whitespace-pre-line font-display text-[14px] italic leading-snug" : "text-[13px] leading-snug")}>
-            <span className="line-clamp-5">{c.excerpt}</span>
+          <span className={cn("relative block overflow-hidden rounded-xl bg-[#f8f3ea] px-3 py-2.5 text-ink", verse ? "whitespace-pre-line pr-10 font-display text-[14px] italic leading-snug" : "text-[13px] leading-snug")}>
+            {verse ? <KitArt art={KIT.painted.leafSprigSage} sizes="3rem" className="pointer-events-none absolute -bottom-1 -right-1 h-16 w-auto opacity-75" /> : null}
+            <span className="relative line-clamp-5">{c.excerpt}</span>
           </span>
         ) : null}
         <h3 className="mt-2 px-0.5 font-display text-[15px] leading-tight text-ink">{c.title}</h3>

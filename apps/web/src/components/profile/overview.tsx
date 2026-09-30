@@ -1,11 +1,14 @@
 import type { BrandSummary, PublicCollaborationProfile } from "@wonder/creator-identity";
 import { EXCLUSIVITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
-import { cn } from "@wonder/ui";
+import { KIT, KitArt, cn } from "@wonder/ui";
 import { BookmarkPlus, Briefcase, ChevronDown, HeartHandshake, Layers, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ProfileCreation } from "./creations";
-import { SectionHead, Tag, surface } from "./shared";
+import { IconTile, SectionHead, TILE, Tag, surface } from "./shared";
+
+/** Painted washes from the Vector Kit for a series without a picture yet (supplied art, never generated). */
+const WASHES = [KIT.wash.washLavender, KIT.wash.washPeach, KIT.wash.washLilacSky, KIT.wash.washRose];
 
 export interface ScrapbookGlimpse {
   id: string;
@@ -23,38 +26,35 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
   return (
     <div className="space-y-2.5">
       {hasAbout || isMe ? (
-        <section aria-label="About" className={cn(surface, "px-3 py-2.5")}>
-          <SectionHead icon={<UserRound className="size-4" aria-hidden />} title="About" href={isMe ? "/settings" : undefined} linkLabel="Edit" />
-          {about.lines.map((l) => (
-            <p key={l} className="pl-6 text-[13px] leading-snug text-ink-muted">
-              {l}
-            </p>
-          ))}
-          {!hasAbout ? <p className="pl-6 text-[13px] text-ink-subtle">Add your crafts, languages and skills in Settings.</p> : null}
-          {about.skills.length ? (
-            <p className="mt-2 flex gap-1.5 overflow-x-auto pl-6 [scrollbar-width:none]">
-              {about.skills.map((s) => (
-                <Tag key={s} className="shrink-0">
-                  {s}
-                </Tag>
-              ))}
-            </p>
-          ) : null}
-          {about.openTo.length ? (
-            <p aria-label="Open to" className="mt-2 flex flex-wrap items-center gap-1.5 pl-6 text-[12px]">
-              <span className="font-medium text-ink">Open to</span>
-              {about.openTo.map((o) => (
-                <Tag key={o} className="bg-accent-softer text-accent-ink">
-                  {o}
-                </Tag>
-              ))}
-            </p>
-          ) : null}
+        <section aria-label="About" className={cn(surface, "relative min-h-[92px] overflow-hidden px-3 py-2.5")}>
+          <KitArt art={KIT.painted.leafSprigSage} sizes="5rem" className="pointer-events-none absolute -bottom-4 right-1 h-[4.5rem] w-auto opacity-75" />
+          <SectionHead icon={<UserRound aria-hidden />} title="About" href={isMe ? "/settings" : undefined} linkLabel="Edit" />
+          <div className="relative pl-[38px] pr-16">
+            {about.lines.map((l) => (
+              <p key={l} className="text-[13px] leading-snug text-ink-muted">
+                {l}
+              </p>
+            ))}
+            {!hasAbout ? <p className="text-[13px] text-ink-subtle">Add your crafts, languages and skills in Settings.</p> : null}
+            {about.skills.length ? (
+              <p className="mt-1.5 flex flex-wrap gap-1.5">
+                {about.skills.slice(0, 6).map((s) => (
+                  <Tag key={s}>{s}</Tag>
+                ))}
+              </p>
+            ) : null}
+            {about.openTo.length ? (
+              <p aria-label="Open to" className="mt-1.5 line-clamp-2 text-[12.5px] leading-snug text-ink-muted">
+                <span className="font-medium text-accent-ink">Open to </span>
+                {about.openTo.join(" · ")}
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
       {brand ? (
-        <Disclosure icon={<Briefcase className="size-4" aria-hidden />} title="Open to brand work" summary={[...brand.deliverables, ...brand.platforms].slice(0, 4).join(" · ") || "Brand collaborations and commissions."}>
+        <Disclosure icon={<Briefcase aria-hidden />} tone="peach" art={KIT.painted.coastalVignette} title="Open to brand work" summary={[...brand.deliverables, ...brand.platforms].slice(0, 4).join(" · ") || "Brand collaborations and commissions."}>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
             {(
               [
@@ -77,17 +77,18 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
 
       {series.length ? (
         <section aria-label="Selected series" className={cn(surface, "px-3 py-2.5")}>
-          <SectionHead icon={<Layers className="size-4" aria-hidden />} title="Selected series" href={`${base}?tab=creations&shelf=series`} />
+          <SectionHead icon={<Layers aria-hidden />} title="Selected series" href={`${base}?tab=creations&shelf=series`} />
           <ul className="mt-1.5 grid grid-cols-3 gap-2">
-            {series.slice(0, 3).map((c) => (
+            {series.slice(0, 3).map((c, i) => (
               <li key={c.id}>
                 <Link href={`/artifacts/${c.id}`} className="group block">
                   {c.coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.coverUrl} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
                   ) : (
-                    <span className="flex aspect-[4/3] items-center justify-center rounded-lg bg-accent-softer text-accent-ink">
-                      <Layers className="size-5" aria-hidden />
+                    <span className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-accent-softer">
+                      <KitArt art={WASHES[i % WASHES.length]!} sizes="8rem" className="absolute inset-0 size-full object-cover" />
+                      <Layers className="relative size-5 text-accent-ink/70" aria-hidden />
                     </span>
                   )}
                   <span className="mt-1 block truncate text-[13px] font-medium text-ink group-hover:underline">{c.title}</span>
@@ -101,7 +102,7 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
 
       {glimpses.length ? (
         <section aria-label="Recent scrapbook moments" className={cn(surface, "px-3 py-2.5")}>
-          <SectionHead icon={<BookmarkPlus className="size-4" aria-hidden />} title="Recent scrapbook moments" href={`${base}?tab=moments`} />
+          <SectionHead icon={<BookmarkPlus aria-hidden />} tone="peach" title="Recent scrapbook moments" href={`${base}?tab=moments`} />
           <ul className="mt-1.5 grid grid-cols-4 gap-1.5">
             {glimpses.slice(0, 4).map((g) => (
               <li key={g.id}>
@@ -122,7 +123,7 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
       ) : null}
 
       {showCollab ? (
-        <Disclosure icon={<HeartHandshake className="size-4" aria-hidden />} title={isMe ? "How you collaborate" : "Collaboration style"} summary={collabSummary(collab)} edit={isMe ? "/settings?section=collaboration" : undefined}>
+        <Disclosure icon={<HeartHandshake aria-hidden />} tone="teal" art={KIT.painted.flowerBranch} title={isMe ? "How you collaborate" : "Collaboration style"} summary={collabSummary(collab)} edit={isMe ? "/settings?section=collaboration" : undefined}>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
             {collabRows(collab).map(([k, v]) => (
               <div key={k} className="contents">
@@ -158,28 +159,29 @@ function collabRows(p: PublicCollaborationProfile): Array<[string, string]> {
   return rows.filter((r): r is [string, string] => !!r[1]);
 }
 
-/** A compact row that opens in place (progressive disclosure, compact-density §15). */
-function Disclosure({ icon, title, summary, edit, children }: { icon: ReactNode; title: string; summary: string; edit?: string; children: ReactNode }) {
+/** A compact row that opens in place (progressive disclosure, compact-density §15), with the board's painted accent. */
+function Disclosure({ icon, tone, art, title, summary, edit, children }: { icon: ReactNode; tone: keyof typeof TILE; art: Parameters<typeof KitArt>[0]["art"]; title: string; summary: string; edit?: string; children: ReactNode }) {
   return (
     <section aria-label={title}>
-    <details className={cn(surface, "group px-3 py-1")}>
-      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
-        <span className="text-accent-ink">{icon}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold text-ink">{title}</span>
-          <span className="block truncate text-[12.5px] text-ink-muted">{summary}</span>
-        </span>
-        <ChevronDown className="size-4 shrink-0 text-ink-subtle transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
-      </summary>
-      <div className="pb-2.5 pl-6">
-        {children}
-        {edit ? (
-          <Link href={edit} className="mt-1 inline-flex min-h-11 items-center text-[13px] font-medium text-accent-ink hover:underline">
-            Edit
-          </Link>
-        ) : null}
-      </div>
-    </details>
+      <details className={cn(surface, "group relative overflow-hidden px-3 py-1")}>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2.5 [&::-webkit-details-marker]:hidden">
+          <IconTile tone={tone}>{icon}</IconTile>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-ink">{title}</span>
+            <span className="line-clamp-2 text-[12.5px] leading-snug text-ink-muted">{summary}</span>
+          </span>
+          <KitArt art={art} sizes="5rem" className="pointer-events-none h-12 w-auto shrink-0 opacity-90 group-open:hidden max-[359px]:hidden" />
+          <ChevronDown className="size-4 shrink-0 text-ink-subtle transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+        </summary>
+        <div className="pb-2.5 pl-[38px]">
+          {children}
+          {edit ? (
+            <Link href={edit} className="mt-1 inline-flex min-h-11 items-center text-[13px] font-medium text-accent-ink hover:underline">
+              Edit
+            </Link>
+          ) : null}
+        </div>
+      </details>
     </section>
   );
 }
