@@ -23,6 +23,25 @@ Pink #F472B6, Orange #F59E0B; Blue #3B82F6, Teal #14B8A6, Mint #10B881, Peach #F
 Lavender #A78BFA; Navy #0F172A, Slate #334155, Gray #64748B, Light Gray #E2E8F0, Cream #FEF7F0,
 White #FEFFFF). No other prominent colours are introduced.
 
+## Creator Page background library (owner request, 30 Sep 2026)
+
+The owner supplied a reference board — `docs/ui-redesign/boards/creator-page-backgrounds-2026-09-30.png`, "Creator Page
+Background Asset Library" — and asked for **high-resolution vector graphics** of it for the Creator Page work. This is an
+explicit owner instruction, so these pieces are **authored** (not pixel crops): vector art generated in code from seeded
+randomness by `scripts/creator-page-art/` (`templates.mjs`, `decorations.mjs`), reproducible byte-for-byte. They are
+interpretations in the board's style and palette, not traces of it; the brand logo and the supplied Kit/watercolour art
+are untouched. Painterly photographic scenes (the board's hero landscape, cinematic room, collage photographs) are
+rendered as stylised vector scenes; if exact painted originals are wanted, supply them and they replace these files.
+
+| Registry (`brand/creator-page.ts`) | Pieces | Files |
+|---|---|---|
+| `CREATOR_PAGE_TEMPLATES` | Immersive Artistic Hero (+ a 2:1 banner), Minimal Editorial Paper, Cinematic Dark, Creative Collage, Soft Gradient & Minimal — each with its five board swatches | SVG (1920×2560, banner 2880×1440) + AVIF/WebP renders 430–1920w **without grain** (lay `grainOverlay` over them) |
+| `CREATOR_PAGE_DECORATIONS` | Botanical Corner Cluster, Slim Branch, Watercolor Wash, Translucent Gradient Blob, Paper Tape, Torn Paper Strip, Ink Scribble, Soft Shadow Card, Grain Overlay (512² tile), Light Leak, Cloud & Mist, Handwritten Note | SVG, transparent where the board shows them as elements |
+
+Republish with `node scripts/creator-page-art/publish.mjs` (needs Chromium; `CHROMIUM_PATH` overrides). Files are
+content-hashed under `apps/web/public/brand/creator-page/`. Render any vector with `KitArt art={….vector}`; use `….image`
+for full-bleed backgrounds on phones (their paint filters are costly to rasterise live).
+
 ## Missing assets (asset dependencies — not to be substituted)
 
 1. ~~Vector logo files~~ — supplied in the Vector Kit (full, no-tagline, stacked, mono ink, reversed, symbol ×3).
