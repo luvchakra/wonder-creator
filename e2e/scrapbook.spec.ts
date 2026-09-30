@@ -55,8 +55,8 @@ test.describe("Scrapbook", () => {
     await b.keyboard.press("Escape");
 
     // The post shows on A's profile; A deletes it.
-    await a.goto(`/creators/${creatorA.handle}`);
-    await expect(a.getByRole("region", { name: "Scrapbook" }).getByText(thought)).toBeVisible();
+    await a.goto(`/creators/${creatorA.handle}?tab=moments`);
+    await expect(a.getByRole("list", { name: "Moments" }).getByText(thought)).toBeVisible();
     await a.goBack();
     await a.getByRole("button", { name: "Delete post" }).click();
     await a.getByRole("dialog", { name: "Delete this post?" }).getByRole("button", { name: "Delete" }).click();

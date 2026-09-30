@@ -1,223 +1,186 @@
+import { OPEN_TO_LABEL, listConversations, openToOf } from "@wonder/creator-community";
 import { brandSummaryOf, collaborationProfileOf, getCreatorByHandle } from "@wonder/creator-identity";
-import { EXCLUSIVITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { liveCards } from "@wonder/creator-huddle";
+import { listPosts } from "@wonder/creator-library";
 import { canMessage } from "@wonder/creator-projects";
-import { Avatar, Badge, EmptyState, BACKGROUNDS, BrandBackground, buttonClasses } from "@wonder/ui";
-import { MapPin, PenLine } from "lucide-react";
+import { PROFILE_SHELVES, type ProfileShelf } from "@wonder/creator-studio/types";
+import { Avatar, BACKGROUNDS, BrandBackground, chipBase, cn } from "@wonder/ui";
+import { Briefcase, Globe2, MapPin, PenLine, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArtifactCard } from "@/components/cards";
-import { LiveHuddleCard } from "@/components/huddle/live-card";
+import type { ReactNode } from "react";
+import { PaletteScope } from "@/components/creative-palette";
+import { ShareProfile } from "@/components/profile/client";
+import { CommunityTab } from "@/components/profile/community";
+import { CreationsTab } from "@/components/profile/creations";
+import { MomentsTab } from "@/components/profile/moments";
+import { OverviewTab } from "@/components/profile/overview";
+import { surface } from "@/components/profile/shared";
 import { avatarUrls } from "@/lib/avatars";
-import { coverUrls } from "@/lib/covers";
-import { listPosts } from "@wonder/creator-library";
-import { ScrapbookPostCard } from "@/components/scrapbook-post";
+import { profileCreations } from "@/lib/profile";
+import { loadCreatorPage } from "@/lib/public-pages";
 import { requireSession } from "@/lib/session";
 import { ProfileActions } from "./profile-actions";
-import { PaletteScope } from "@/components/creative-palette";
-import { OPEN_TO_LABEL, openToOf } from "@wonder/creator-community";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   return { title: `@${handle.slice(0, 30)}` };
 }
 
+const TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "creations", label: "Creations" },
+  { value: "moments", label: "Moments" },
+  { value: "community", label: "Community" },
+] as const;
+type Tab = (typeof TABS)[number]["value"];
+
 const AVAILABILITY: Record<string, string> = { open: "Open to collaborate", selective: "Selectively collaborating", closed: "Not collaborating right now" };
 
-export default async function CreatorProfilePage({ params }: { params: Promise<{ handle: string }> }) {
-  const { handle } = await params;
+/**
+ * A creator's Profile (profile board, 30 Sep 2026): identity at a glance, then four views of the same person —
+ * Overview, Creations, Moments and Community. Only the chosen view's data is read. Your own Profile shows what you own;
+ * others see only what they may (RLS decides every read). No follower or like counts, ever.
+ */
+export default async function CreatorProfilePage({ params, searchParams }: { params: Promise<{ handle: string }>; searchParams: Promise<{ tab?: string; shelf?: string }> }) {
+  const [{ handle }, sp] = await Promise.all([params, searchParams]);
   if (!/^[a-z0-9_]{3,30}$/i.test(handle)) notFound();
+  const tab: Tab = TABS.some((t) => t.value === sp.tab) ? (sp.tab as Tab) : "overview";
+  const shelf = (PROFILE_SHELVES.some((s) => s.value === sp.shelf) ? sp.shelf : "all") as ProfileShelf | "all";
   const { db, creator: me } = await requireSession();
   const profile = await getCreatorByHandle(db, handle); // RLS decides whether this profile is visible
   if (!profile) notFound();
   const c = profile.creator;
   const isMe = c.id === me.id;
+  const base = `/creators/${c.handle}`;
+  const name = c.display_name || c.handle || "Creator";
 
-  // Own profile shows everything you own; others see only public, final work.
-  let q = db.from("artifacts").select("id, title, artifact_type, status, updated_at, cover_material_id, privacy, featured_on_profile").eq("creator_id", c.id).neq("status", "archived").order("featured_on_profile", { ascending: false }).order("updated_at", { ascending: false }).limit(12);
-  if (!isMe) q = q.eq("privacy", "public").in("status", ["final", "published"]);
-  const [{ data: artifacts }, live, myLive, follow, avatars, messageable, collab, brand, openTo] = await Promise.all([
-    q,
-    liveCards(db, { creatorId: c.id, limit: 3 }),
-    isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }),
+  const [live, myLive, follow, avatars, brand, messageable] = await Promise.all([
+    liveCards(db, { creatorId: c.id, limit: 3 }).catch(() => []),
+    isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }).catch(() => []),
     isMe ? Promise.resolve({ data: null }) : db.from("creator_follows").select("followed_creator_id").eq("follower_creator_id", me.id).eq("followed_creator_id", c.id).maybeSingle(),
     avatarUrls(db, [c.id]),
-    isMe ? Promise.resolve(false) : canMessage(db, c.id),
-    collaborationProfileOf(db, c.id).catch(() => null),
     brandSummaryOf(db, c.id).catch(() => null),
-    openToOf(db, [c.id]).then((m) => m.get(c.id) ?? []).catch(() => []),
+    isMe ? Promise.resolve(false) : canMessage(db, c.id),
   ]);
-  const [covers, scrapbook] = await Promise.all([coverUrls(db, artifacts ?? []), listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 3 })]);
+
+  let body: ReactNode = null;
+  if (tab === "overview") {
+    const [collab, openTo, creations, scrap] = await Promise.all([
+      collaborationProfileOf(db, c.id).catch(() => null),
+      openToOf(db, [c.id])
+        .then((m) => m.get(c.id) ?? [])
+        .catch(() => []),
+      profileCreations(db, c.id, isMe, 24),
+      listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 12 }).catch(() => ({ posts: [] })),
+    ]);
+    const series = creations.filter((x) => x.shelf === "series");
+    const glimpses = scrap.posts
+      .map((p) => {
+        const img = p.attachments.find((a) => a.fileUrl && a.mimeType?.startsWith("image/"));
+        return { id: p.id, imageUrl: img?.fileUrl ?? null, text: p.body.trim() || p.attachments[0]?.title || "" };
+      })
+      .filter((g) => g.imageUrl || g.text);
+    // Pictures lead; words fill in when there aren't four.
+    const ordered = [...glimpses.filter((g) => g.imageUrl), ...glimpses.filter((g) => !g.imageUrl)].slice(0, 4);
+    const lines = [profile.languages.length ? `Creates in ${profile.languages.join(", ")}` : null].filter((x): x is string => !!x);
+    body = (
+      <OverviewTab
+        base={base}
+        isMe={isMe}
+        about={{ lines, skills: profile.skills, openTo: openTo.map((o) => OPEN_TO_LABEL[o]) }}
+        brand={brand}
+        collab={collab}
+        series={series}
+        glimpses={ordered}
+      />
+    );
+  } else if (tab === "creations") {
+    body = <CreationsTab base={base} shelf={shelf} items={await profileCreations(db, c.id, isMe)} isMe={isMe} />;
+  } else if (tab === "moments") {
+    const { posts } = await listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 30 });
+    body = <MomentsTab posts={posts} isMe={isMe} />;
+  } else {
+    const [convs, page] = await Promise.all([listConversations(db, me.id, { authorId: c.id, limit: 8 }).catch(() => ({ cards: [] })), c.handle ? loadCreatorPage(c.handle).catch(() => null) : Promise.resolve(null)]);
+    body = <CommunityTab huddles={live} conversations={convs.cards.map((x) => x.conversation)} shared={(page?.works ?? []).slice(0, 3)} handle={c.handle ?? handle} isMe={isMe} pagePublished={!!page} />;
+  }
+
+  const pill = "relative inline-flex h-8 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-border-soft bg-surface px-1.5 text-[12px] max-[380px]:[&>svg]:hidden font-medium text-accent-ink before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] hover:bg-accent-softer";
+  const isLive = live.length > 0;
 
   return (
     <>
       <PaletteScope context={{ page: isMe ? "me" : "creator" }} />
-      <div className="space-y-8">
-        <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="soft" className="-mx-4 h-40 sm:-mx-6 sm:h-48 lg:mx-0 lg:rounded-3xl" />
-        <section className="-mt-24 grid gap-6 px-1 lg:grid-cols-[1fr_320px]">
-          <div>
-            <Avatar name={c.display_name || c.handle || "Creator"} src={avatars[c.id]} size={112} className="relative z-10 border-4 border-cream" />
-            <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="break-words font-display text-3xl text-ink sm:text-4xl">{c.display_name || "Creator"}</h1>
-                <p className="text-ink-subtle">@{c.handle}</p>
-              </div>
-              {isMe ? (
-                <span className="flex flex-wrap gap-2">
-                  <Link href="/settings" className={buttonClasses({ variant: "secondary" })}>
-                    <PenLine className="size-4" aria-hidden /> Edit profile
-                  </Link>
-                  {/* The public home is curated separately from this Profile (CreatorPublish §39). */}
-                  <Link href="/creator-page" className={buttonClasses({ variant: "ghost" })}>
-                    Your Creator Page
-                  </Link>
-                </span>
-              ) : (
-                <ProfileActions creatorId={c.id} following={!!follow.data} myLiveHuddleId={myLive[0]?.huddleId ?? null} canMessage={messageable} />
-              )}
-            </div>
-            {profile.disciplines.length ? <p className="mt-2 text-ink-muted">{profile.disciplines.join(" · ")}</p> : null}
-            {c.bio ? <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink">{c.bio}</p> : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-              {c.show_location && c.location ? (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-4" aria-hidden /> {c.location}
-                </span>
+      <div className="mx-auto max-w-3xl space-y-3">
+        <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="soft" className="-mx-4 h-28 sm:-mx-6 sm:h-36 lg:mx-0 lg:rounded-3xl" />
+        <section aria-label="Profile" className={cn(surface, "relative -mt-14 px-3 pb-3 pt-3")}>
+          <div className="flex items-center gap-3">
+            <span className="relative shrink-0">
+              <Avatar name={name} src={avatars[c.id]} size={60} className="border-2 border-cream" />
+              {isLive ? (
+                <span className="absolute bottom-0.5 right-0.5 size-3.5 rounded-full border-2 border-surface bg-success" role="img" aria-label="In a live Huddle now" />
               ) : null}
-              {profile.languages.length ? <span>Creates in {profile.languages.join(", ")}</span> : null}
-              <Badge tone={c.collaboration_availability === "open" ? "success" : "neutral"}>{AVAILABILITY[c.collaboration_availability]}</Badge>
-            </div>
-            {openTo.length ? (
-              <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[13px]" aria-label="Open to">
-                <span className="font-medium text-ink">Open to</span>
-                {openTo.map((o) => (
-                  <span key={o} className="rounded-full bg-surface-muted px-2.5 py-0.5 text-ink-muted">
-                    {OPEN_TO_LABEL[o]}
-                  </span>
-                ))}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words font-display text-[22px] leading-tight text-ink">{name}</h1>
+              <p className="truncate text-[12.5px] text-ink-muted">
+                <span>@{c.handle}</span>
+                {profile.disciplines.length ? <span> · {profile.disciplines.join(" · ")}</span> : null}
               </p>
-            ) : null}
-            {profile.skills.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {profile.skills.map((s) => (
-                  <Badge key={s} tone="accent">
-                    {s}
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
+            </div>
           </div>
-          <aside className="space-y-3 lg:pt-28">
-            <h2 className="text-sm font-semibold text-ink-muted">Live presence</h2>
-            {live.length ? (
-              live.map((h) => <LiveHuddleCard key={h.huddleId} h={h} />)
+          {c.bio ? <p className="mt-2 line-clamp-3 text-[13.5px] leading-snug text-ink">{c.bio}</p> : null}
+          <ul aria-label="At a glance" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-ink-muted">
+            {c.show_location && c.location ? (
+              <li className="inline-flex items-center gap-1">
+                <MapPin className="size-3.5" aria-hidden /> {c.location}
+              </li>
+            ) : null}
+            <li className="inline-flex items-center gap-1">
+              <Sparkles className="size-3.5" aria-hidden /> {AVAILABILITY[c.collaboration_availability]}
+            </li>
+            {brand ? (
+              <li className="inline-flex items-center gap-1">
+                <Briefcase className="size-3.5" aria-hidden /> Open to brand work
+              </li>
+            ) : null}
+          </ul>
+          <div className={cn("mt-2.5", isMe ? "grid grid-cols-3 gap-1.5" : "flex flex-wrap items-center gap-2")}>
+            {isMe ? (
+              <>
+                <Link href="/settings" className={pill}>
+                  <PenLine className="size-3.5" aria-hidden /> Edit profile
+                </Link>
+                <ShareProfile name={name} path={base} className={pill} />
+                {/* The public home is curated separately from this Profile (CreatorPublish §39). */}
+                <Link href="/creator-page" className={pill}>
+                  <Globe2 className="size-3.5" aria-hidden /> Creator Page
+                </Link>
+              </>
             ) : (
-              <p className="rounded-2xl border border-border-soft bg-surface px-4 py-3 text-sm text-ink-muted">{isMe ? "You're not in a public Huddle right now." : "Not in a public Huddle right now."}</p>
+              <ProfileActions creatorId={c.id} following={!!follow.data} myLiveHuddleId={myLive[0]?.huddleId ?? null} canMessage={messageable} />
             )}
-          </aside>
-        </section>
-
-        {collab && (collab.hasProfile || isMe) && collab.availability !== "closed" ? <HowICollaborate p={collab} isMe={isMe} /> : null}
-        {brand ? (
-          <section aria-labelledby="brand-h" className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-5 shadow-[var(--shadow-card)]">
-            <h2 id="brand-h" className="text-lg font-semibold text-ink">
-              Open to brand work
-            </h2>
-            <dl className="mt-2 grid gap-x-6 gap-y-2 text-[15px] sm:grid-cols-[auto_1fr]">
-              {(
-                [
-                  ["Niches", brand.niches],
-                  ["Industries", brand.industries],
-                  ["Platforms", brand.platforms],
-                  ["Makes", brand.deliverables],
-                ] as const
-              )
-                .filter(([, v]) => v.length)
-                .map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-ink-subtle">{k}</dt>
-                    <dd className="text-ink">{v.join(", ")}</dd>
-                  </div>
-                ))}
-            </dl>
-          </section>
-        ) : null}
-
-        <section>
-          <h2 className="mb-3 text-lg font-semibold text-ink">{isMe ? "Your work" : "Selected work"}</h2>
-          {artifacts?.length ? (
-            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {artifacts.map((a) => (
-                <li key={a.id}>
-                  <ArtifactCard a={{ ...a, coverUrl: covers[a.id] ?? null }} />
-                  {isMe && a.privacy !== "public" ? <p className="mt-1 text-xs text-ink-subtle">Private — only you can see this</p> : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState image={BACKGROUNDS.studioDesk} title={isMe ? "Nothing to show yet" : "No public work yet"} body={isMe ? "Mark a Creation as final and public to share it on your profile." : "When this creator shares finished work, it will appear here."} />
-          )}
-        </section>
-
-        <section aria-labelledby="scrapbook-h">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 id="scrapbook-h" className="text-lg font-semibold text-ink">
-              Scrapbook
-            </h2>
-            <Link href="/scrapbook" className="text-sm font-medium text-accent-ink hover:underline">
-              {isMe ? "Share something" : "Open Scrapbook"}
-            </Link>
           </div>
-          {scrapbook.posts.length ? (
-            <ol className="space-y-3">
-              {scrapbook.posts.map((p) => (
-                <li key={p.id}>
-                  <ScrapbookPostCard post={p} />
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="text-[15px] text-ink-muted">{isMe ? "Thoughts, reflections and sketches you share appear here." : "Nothing shared here yet."}</p>
-          )}
         </section>
+
+        <nav aria-label="Profile views">
+          <span className="grid grid-cols-4 gap-0.5 rounded-full bg-surface p-1 shadow-[0_3px_12px_-4px_rgb(107_91_149/0.16)]">
+            {TABS.map((t) => (
+              <Link
+                key={t.value}
+                href={t.value === "overview" ? base : `${base}?tab=${t.value}`}
+                scroll={false}
+                aria-current={t.value === tab ? "page" : undefined}
+                className={cn(chipBase, "justify-center px-1 text-[12.5px] font-medium", t.value === tab ? "bg-[image:var(--gradient-primary)] text-white" : "text-accent-ink hover:bg-accent-softer")}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </span>
+        </nav>
+
+        <div className="pb-6">{body}</div>
       </div>
     </>
-  );
-}
-
-/** "How I collaborate" (P1-14): only what the creator filled in; rate guidance only when they chose to show it. */
-function HowICollaborate({ p, isMe }: { p: NonNullable<Awaited<ReturnType<typeof collaborationProfileOf>>>; isMe: boolean }) {
-  const rows: Array<[string, string]> = [
-    ...(p.projectTypes.length ? ([["Project types", p.projectTypes.join(", ")]] as Array<[string, string]>) : []),
-    ...(p.interests.length ? ([["Interested in", p.interests.join(", ")]] as Array<[string, string]>) : []),
-    ["Works", `${WORK_MODES.find((m) => m.value === p.workMode)?.label ?? p.workMode}${p.region ? ` · ${p.region}` : ""}`],
-    ...(p.turnaround ? ([["Typical turnaround", p.turnaround]] as Array<[string, string]>) : []),
-    ["Exclusivity", EXCLUSIVITY.find((m) => m.value === p.exclusivity)?.label ?? p.exclusivity],
-    ...(p.commercialBoundaries ? ([["Won't take on", p.commercialBoundaries]] as Array<[string, string]>) : []),
-    ...(p.rightsPreferences ? ([["Rights", p.rightsPreferences]] as Array<[string, string]>) : []),
-    ...(p.rateGuidance ? ([["Rate guidance", p.rateGuidance]] as Array<[string, string]>) : []),
-  ];
-  return (
-    <section aria-labelledby="collab-h" className="rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] p-5 shadow-[var(--shadow-card)]">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="collab-h" className="text-lg font-semibold text-ink">
-          How {isMe ? "you" : "I"} collaborate
-        </h2>
-        {isMe ? (
-          <Link href="/settings?section=collaboration" className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-            {p.hasProfile ? "Edit" : "Add how you like to collaborate"}
-          </Link>
-        ) : null}
-      </div>
-      <dl className="mt-2 grid gap-x-6 gap-y-2 text-[15px] sm:grid-cols-[auto_1fr]">
-        {rows.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-ink-subtle">{k}</dt>
-            <dd className="text-ink">{v}</dd>
-          </div>
-        ))}
-      </dl>
-      {p.contactPreference === "network" && !isMe ? <p className="mt-3 text-sm text-ink-muted">Takes messages and invitations from people they&rsquo;ve worked with.</p> : null}
-    </section>
   );
 }

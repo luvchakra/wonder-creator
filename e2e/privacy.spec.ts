@@ -46,8 +46,8 @@ test.describe("privacy boundary", () => {
     await expect(b.getByRole("heading", { name: /Nothing found for/ })).toBeVisible();
 
     // A's profile shows no public work to B.
-    await b.goto(`/creators/${creatorA.handle}`);
-    await expect(b.getByRole("heading", { name: "No public work yet" })).toBeVisible();
+    await b.goto(`/creators/${creatorA.handle}?tab=creations`);
+    await expect(b.getByText("No public work yet.")).toBeVisible();
     await expect(b.getByText(title)).toHaveCount(0);
 
     // A marks it final + public (public alone would keep a draft private).
@@ -67,9 +67,8 @@ test.describe("privacy boundary", () => {
     await expect(a.getByText("Public", { exact: true }).first()).toBeVisible();
 
     // B now sees it on A's profile and can read it, without owner controls.
-    await b.goto(`/creators/${creatorA.handle}`);
-    await expect(b.getByRole("heading", { name: "Selected work" })).toBeVisible();
-    await b.getByRole("link").filter({ hasText: title }).first().click();
+    await b.goto(`/creators/${creatorA.handle}?tab=creations`);
+    await b.getByRole("list", { name: "Creations" }).getByRole("link").filter({ hasText: title }).first().click();
     await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
     await expect(b.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(b.getByRole("article")).toContainText("the harbour keeps its lamps.");

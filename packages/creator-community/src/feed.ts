@@ -48,12 +48,13 @@ async function materialsThatMayHelp(db: Db, viewerId: string, text: string): Pro
 export async function listConversations(
   db: Db,
   viewerId: string,
-  opts: { help?: boolean; before?: string | null; limit?: number; mine?: boolean } = {},
+  opts: { help?: boolean; before?: string | null; limit?: number; mine?: boolean; authorId?: string } = {},
 ): Promise<{ cards: Extract<CommunityCard, { kind: "conversation" }>[]; nextBefore: string | null }> {
   const limit = Math.min(opts.limit ?? 20, 40);
   let q = db.from("open_conversations").select("*").is("removed_at", null).order("created_at", { ascending: false }).limit(limit + 1);
   if (opts.help) q = q.in("intent", HELP_INTENTS as string[]).is("closed_at", null);
   if (opts.mine) q = q.eq("creator_id", viewerId);
+  if (opts.authorId) q = q.eq("creator_id", opts.authorId);
   if (opts.before && !Number.isNaN(Date.parse(opts.before))) q = q.lt("created_at", opts.before);
   const { data, error } = await q;
   if (error) throw fromDbError(error);

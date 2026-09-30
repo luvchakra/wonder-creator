@@ -11,10 +11,11 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessag
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={f ? "secondary" : "primary"}
+          size="sm"
           onClick={async () => {
             try {
               await api(`/api/v1/creators/${creatorId}/follow`, { method: "POST", json: { on: !f } });
@@ -29,6 +30,7 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessag
         {canMessage ? (
           <Button
             variant="secondary"
+            size="sm"
             onClick={async () => {
               try {
                 const r = await api<{ threadId: string }>("/api/v1/messages", { method: "POST", json: { creatorId } });
@@ -44,6 +46,7 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessag
         {myLiveHuddleId ? (
           <Button
             variant="secondary"
+            size="sm"
             onClick={async () => {
               try {
                 await api(`/api/v1/huddles/${myLiveHuddleId}/invite`, { method: "POST", json: { creatorId } });
@@ -57,7 +60,7 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessag
           </Button>
         ) : null}
         <Menu>
-          <MenuTrigger className={buttonClasses({ variant: "ghost", className: "px-3" })} aria-label="More">
+          <MenuTrigger className={buttonClasses({ variant: "ghost", size: "sm", className: "px-2.5" })} aria-label="More">
             <MoreHorizontal className="size-5" aria-hidden />
           </MenuTrigger>
           <MenuContent>
