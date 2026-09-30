@@ -1182,13 +1182,13 @@ isOneToOne: true
                   ]
                 },"creator_pages": {
                   Row: {
-                    "creator_id": string,"headline": string | null,"intro": string | null,"is_published": boolean,"links": NonNullable<Json>,"public_dejavu_ids": (string)[],"public_moment_ids": (string)[],"sections": NonNullable<Json>,"updated_at": string
+                    "creator_id": string,"headline": string | null,"intro": string | null,"is_published": boolean,"links": NonNullable<Json>,"public_dejavu_ids": (string)[],"public_moment_ids": (string)[],"sections": NonNullable<Json>,"template_id": string,"template_settings": NonNullable<Json>,"updated_at": string
                   }
                   Insert: {
-                    "creator_id": string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"updated_at"?: string
+                    "creator_id": string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"template_id"?: string,"template_settings"?: NonNullable<Json>,"updated_at"?: string
                   }
                   Update: {
-                    "creator_id"?: string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"updated_at"?: string
+                    "creator_id"?: string,"headline"?: string | null,"intro"?: string | null,"is_published"?: boolean,"links"?: NonNullable<Json>,"public_dejavu_ids"?: (string)[],"public_moment_ids"?: (string)[],"sections"?: NonNullable<Json>,"template_id"?: string,"template_settings"?: NonNullable<Json>,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3791,6 +3791,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"creator_page_preview":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "creator_reachable":
 { Args: { "p_creator": string }; Returns: boolean
                            },

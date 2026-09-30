@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMaterial } from "@wonder/creator-library";
-import { createArtifact, publishCreation, saveCreatorPage, saveCreatorVersion, unpublishCreation, updatePublishedWork, type PublishedSnapshot } from "@wonder/creator-studio";
+import { createArtifact, getCreatorPage, publishCreation, saveCreatorPage, saveCreatorVersion, unpublishCreation, updatePublishedWork, type PublishedSnapshot } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, anonClient, cleanupTestCreators, createTestCreator, expectDenied, expectOk, loose, registerStorageObject, type TestCreator } from "./helpers";
 
@@ -151,3 +151,35 @@ describe("type-aware snapshots", () => {
   });
 });
 
+
+describe("Creator Page templates", () => {
+  it("a template is presentation only: switching keeps the content, the address and each template's own settings", async () => {
+    await saveCreatorPage(db(a), a.creatorId, { templateId: "cinematic_dark", templateSettings: { template: "cinematic_dark", settings: { accentMode: "cool" } } });
+    await saveCreatorPage(db(a), a.creatorId, { templateId: "minimal_editorial", templateSettings: { template: "minimal_editorial", settings: { paperTone: "neutral" } } });
+    await saveCreatorPage(db(a), a.creatorId, { templateId: "cinematic_dark" });
+    const mine = await getCreatorPage(db(a), a.creatorId);
+    expect(mine.templateId).toBe("cinematic_dark");
+    expect(mine.templateSettings.cinematic_dark!.accentMode).toBe("cool");
+    expect(mine.templateSettings.minimal_editorial!.paperTone).toBe("neutral");
+
+    const pub = (await anon.rpc("public_creator_page", { p_handle: handle })).data as { templateId: string; works: Array<{ slug: string; excerpt: string | null; poem: boolean }>; creator: Record<string, unknown> };
+    expect(pub.templateId).toBe("cinematic_dark");
+    expect(pub.works.map((w) => w.slug).sort()).toEqual(["a-life-in-moments", "chand-amavas", "coastal-notes"]);
+    // Text work carries its words for typographic cards; private Profile fields never leave.
+    expect(pub.works.find((w) => w.slug === "chand-amavas")).toMatchObject({ poem: true, excerpt: "A private rewrite." });
+    expect(Object.keys(pub.creator).sort()).toEqual(["avatarObjectId", "bio", "handle", "id", "location", "name", "roles"]);
+
+    // Only offered choices are accepted, and the database refuses unknown templates too.
+    await expect(saveCreatorPage(db(a), a.creatorId, { templateSettings: { template: "soft_gradient", settings: { gradientPreset: "#ff00ff" } } })).rejects.toThrow();
+    expectDenied(await loose(a.client).from("creator_pages").update({ template_id: "brutalist" }).eq("creator_id", a.creatorId).select("creator_id"));
+  });
+
+  it("the owner previews exactly the public payload, published or not; nobody else can", async () => {
+    await saveCreatorPage(db(b), b.creatorId, { isPublished: false, headline: "Not yet public" });
+    const bh = (await admin.from("creators").select("handle").eq("id", b.creatorId).single()).data!.handle!;
+    expect((await anon.rpc("public_creator_page", { p_handle: bh })).data).toBeNull();
+    const preview = (await b.client.rpc("creator_page_preview")).data as { headline: string; isPublished: boolean; creator: { id: string } };
+    expect(preview).toMatchObject({ headline: "Not yet public", isPublished: false, creator: { id: b.creatorId } });
+    expectDenied(await anon.rpc("creator_page_preview"));
+  });
+});

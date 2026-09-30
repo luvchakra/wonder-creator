@@ -4,6 +4,7 @@ import { licenseRights } from "@wonder/creator-library/source-rights";
 import { z } from "zod";
 import { artifactType } from "./artifact-types";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
+import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
 import {
   EXPERIENCES,
   PAGE_SECTIONS,
@@ -367,9 +368,15 @@ export interface CreatorPageSettings {
   publicDejaVuIds: string[];
   publicMomentIds: string[];
   links: Array<{ label: string; url: string }>;
+  /** The chosen look (presentation only) and every template's own settings, kept so switching back restores them. */
+  templateId: CreatorPageTemplateId;
+  templateSettings: Record<string, TemplateSettings>;
 }
 
 export const creatorPageSchema = z.object({
+  templateId: z.enum(TEMPLATE_IDS).optional(),
+  /** Settings for one template: `{ template, settings }`. Only that template's offered choices are accepted. */
+  templateSettings: z.object({ template: z.enum(TEMPLATE_IDS), settings: z.record(z.string(), z.union([z.string().max(40), z.boolean()])) }).optional(),
   isPublished: z.boolean().optional(),
   headline: z.string().trim().max(120).nullish(),
   intro: z.string().trim().max(1200).nullish(),
@@ -386,13 +393,11 @@ export const creatorPageSchema = z.object({
     .optional(),
 });
 
-const DEFAULT_SECTIONS = PAGE_SECTIONS.map((section) => ({ section, enabled: section !== "moments" && section !== "conversations" }));
 
 export async function getCreatorPage(db: Db, creatorId: string): Promise<CreatorPageSettings> {
   const { data } = await db.from("creator_pages").select("*").eq("creator_id", creatorId).maybeSingle();
-  const sections = ((data?.sections as CreatorPageSettings["sections"] | null) ?? DEFAULT_SECTIONS).filter((s) => (PAGE_SECTIONS as readonly string[]).includes(s.section));
-  // Sections added later appear, switched off, at the end.
-  for (const s of PAGE_SECTIONS) if (!sections.some((x) => x.section === s)) sections.push({ section: s, enabled: false });
+  // Defaults when nothing is stored; sections added later appear, switched off, at the end.
+  const sections = normalizeSections(data?.sections);
   return {
     isPublished: data?.is_published ?? false,
     headline: data?.headline ?? null,
@@ -401,6 +406,8 @@ export async function getCreatorPage(db: Db, creatorId: string): Promise<Creator
     publicDejaVuIds: data?.public_dejavu_ids ?? [],
     publicMomentIds: data?.public_moment_ids ?? [],
     links: (data?.links as CreatorPageSettings["links"] | null) ?? [],
+    templateId: resolveTemplateId(data?.template_id),
+    templateSettings: Object.fromEntries(TEMPLATE_IDS.map((t) => [t, settingsFor(t, data?.template_settings)])),
   };
 }
 
@@ -408,6 +415,13 @@ export async function getCreatorPage(db: Db, creatorId: string): Promise<Creator
 export async function saveCreatorPage(db: Db, creatorId: string, raw: unknown): Promise<CreatorPageSettings> {
   const v = creatorPageSchema.parse(raw);
   const cur = await getCreatorPage(db, creatorId);
+  if (v.templateSettings) {
+    try {
+      validateSettings(v.templateSettings.template, v.templateSettings.settings);
+    } catch (e) {
+      throw new DomainError("validation", (e as Error).message);
+    }
+  }
   const row = {
     creator_id: creatorId,
     is_published: v.isPublished ?? cur.isPublished,
@@ -417,6 +431,8 @@ export async function saveCreatorPage(db: Db, creatorId: string, raw: unknown): 
     public_dejavu_ids: v.publicDejaVuIds ?? cur.publicDejaVuIds,
     public_moment_ids: v.publicMomentIds ?? cur.publicMomentIds,
     links: (v.links ?? cur.links) as never,
+    template_id: v.templateId ?? cur.templateId,
+    template_settings: v.templateSettings ? (mergeTemplateSettings(cur.templateSettings, v.templateSettings.template, v.templateSettings.settings) as never) : (cur.templateSettings as never),
   };
   const res = await db.from("creator_pages").upsert(row, { onConflict: "creator_id" }).select("creator_id");
   if (res.error) throw res.error.code === "42501" ? new DomainError("forbidden", "Only your own DejaVus and Scrapbook entries can go on your page.") : fromDbError(res.error);
