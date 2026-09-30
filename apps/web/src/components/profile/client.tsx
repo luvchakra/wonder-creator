@@ -25,7 +25,7 @@ export function ShareProfile({ name, path, className }: { name: string; path: st
   }
   return (
     <button type="button" onClick={() => void share()} className={className}>
-      <Share2 className="size-3.5" aria-hidden /> {copied ? "Link copied" : "Share profile"}
+      <Share2 className="size-3 shrink-0" aria-hidden /> {copied ? "Link copied" : "Share profile"}
       <span role="status" className="sr-only">
         {copied ? "Link copied" : ""}
       </span>

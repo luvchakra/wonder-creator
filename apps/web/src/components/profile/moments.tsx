@@ -1,6 +1,6 @@
 import type { ScrapbookPost } from "@wonder/creator-library";
 import { momentFace, type MomentFace } from "@wonder/creator-library/scrapbook-options";
-import { cn } from "@wonder/ui";
+import { KIT, KitArt, cn } from "@wonder/ui";
 import { AudioLines, FileText, Film, Image as ImageIcon, Link2, Lock, Palette, Quote, Sparkles, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
@@ -69,8 +69,9 @@ function MomentCard({ p, isMe }: { p: ScrapbookPost; isMe: boolean }) {
       ) : null}
       {words ? (
         face === "quote" || (face === "note" && !a) ? (
-          <p className={cn("rounded-xl px-3 py-2.5 font-display italic leading-snug text-ink", face === "quote" ? "bg-[#f1eeff] text-[15px]" : "bg-[#f8f3ea] text-[15px]")}>
-            <span className="line-clamp-6 whitespace-pre-line">{words}</span>
+          <p className={cn("relative overflow-hidden rounded-xl px-3 pb-6 pt-2.5 font-display text-[15px] italic leading-snug text-ink", face === "quote" ? "bg-[#f1eeff]" : "bg-[#f8f3ea]")}>
+            <KitArt art={face === "quote" ? KIT.painted.lavenderSprig : KIT.painted.leafSprigSage} sizes="3rem" className="pointer-events-none absolute -bottom-2 -right-1 h-14 w-auto opacity-70" />
+            <span className="relative line-clamp-6 whitespace-pre-line">{words}</span>
           </p>
         ) : (
           <p className="mt-1.5 line-clamp-3 px-0.5 text-[12.5px] leading-snug text-ink-muted">{words}</p>
