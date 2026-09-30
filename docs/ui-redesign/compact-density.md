@@ -6,6 +6,13 @@
 **Applies to:** all Wonder Creator responsive pages, especially mobile  
 **Related specs:** UI redesign, context-aware Palette, mobile responsive guidelines
 
+> **Amended 30 Sep 2026 (owner: "change any rules that need to be changed to achieve aesthetic excellence").** This
+> spec governs **utility surfaces** (settings, rights, approvals, business, forms, lists, tools) in full. On
+> **expressive surfaces** — Home, onboarding, Profile, Creator Page, published works, DejaVu, Moments/Scrapbook, empty
+> states, sign-in — its numbers are ceilings on clutter, not limits on beauty: display type, painted heroes (30–45vh),
+> art inside cards and generous editorial whitespace are allowed where the owner's boards show them. Accessibility
+> (contrast, 44px targets, readable type, reduced motion) never bends. See CLAUDE.md → Aesthetic excellence.
+
 ---
 
 # 1. Owner Direction
@@ -1385,7 +1392,7 @@ A Wonder Creator page is compact when:
 
 Use this design test:
 
-> **If the UI can become 15–25% shorter without removing useful information or hurting touch/readability, make it shorter.**
+> **If a utility screen can become 15–25% shorter without removing useful information or hurting touch/readability, make it shorter.** Never shorten an expressive surface by removing its art, imagery or breathing room.
 
 And:
 
