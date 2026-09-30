@@ -1,10 +1,14 @@
 "use client";
+import type { CreatorPageTemplateId, TemplateSettings } from "@wonder/creator-studio/creator-page";
 import { PAGE_SECTION_LABEL, type PageSection } from "@wonder/creator-studio/publish";
 import { Button, Input, Switch, Textarea, cn } from "@wonder/ui";
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import type { PublicCreatorPage } from "@/lib/public-pages";
+import { Appearance } from "./appearance";
 
 interface PageState {
   isPublished: boolean;
@@ -14,6 +18,8 @@ interface PageState {
   publicDejaVuIds: string[];
   publicMomentIds: string[];
   links: Array<{ label: string; url: string }>;
+  templateId: CreatorPageTemplateId;
+  templateSettings: Record<string, TemplateSettings>;
 }
 interface Work {
   artifactId: string;
@@ -29,7 +35,8 @@ interface Work {
  * featured, which DejaVus and Moments are public, and a few links. Not a website builder — Wonder Creator handles the
  * layout. Nothing appears on the page unless it's chosen here.
  */
-export function CreatorPageEditor({ handle, initial, works, dejavus, moments }: { handle: string | null; initial: PageState; works: Work[]; dejavus: Array<{ id: string; name: string; count: number }>; moments: Array<{ id: string; body: string; createdAt: string }> }) {
+export function CreatorPageEditor({ handle, initial, preview, works, dejavus, moments }: { handle: string | null; initial: PageState; preview: PublicCreatorPage | null; works: Work[]; dejavus: Array<{ id: string; name: string; count: number }>; moments: Array<{ id: string; body: string; createdAt: string }> }) {
+  const router = useRouter();
   const [p, setP] = useState(initial);
   const [featured, setFeatured] = useState(() => new Set(works.filter((w) => w.featured).map((w) => w.artifactId)));
   const [busy, setBusy] = useState(false);
@@ -51,9 +58,12 @@ export function CreatorPageEditor({ handle, initial, works, dejavus, moments }: 
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ page: PageState }>("/api/v1/creator-page", { method: "PATCH", json: { ...p, links: p.links.filter((l) => l.label.trim() && l.url.trim()) } });
+      // Appearance saves itself; this saves the page's content and choices.
+      const { templateId: _t, templateSettings: _s, ...content } = p;
+      const r = await api<{ page: PageState }>("/api/v1/creator-page", { method: "PATCH", json: { ...content, links: p.links.filter((l) => l.label.trim() && l.url.trim()) } });
       setP(r.page);
       setSaved(true);
+      router.refresh();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -103,6 +113,8 @@ export function CreatorPageEditor({ handle, initial, works, dejavus, moments }: 
           </Link>
         ) : null}
       </section>
+
+      <Appearance preview={preview} initialTemplate={initial.templateId} initialSettings={initial.templateSettings} />
 
       <section aria-label="Introduction" className="space-y-2">
         {h("Introduction")}

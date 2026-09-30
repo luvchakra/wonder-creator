@@ -1,5 +1,6 @@
 import "server-only";
 import { mediaLink } from "@wonder/core/server";
+import { normalizeSections, resolveTemplateId, type CreatorPageTemplateId } from "@wonder/creator-studio/creator-page";
 import type { PublicRights, PublicationManifest, PublicationVisibility, PublishSettings, PublishedSnapshot } from "@wonder/creator-studio/publish";
 import { headers } from "next/headers";
 import { createClient } from "./supabase/server";
@@ -23,6 +24,9 @@ export interface PublicCard {
   itemCount: number | null;
   publishedAt: string;
   href: string;
+  /** Opening words of work read as text, so it can render as typography. */
+  excerpt?: string | null;
+  poem?: boolean;
 }
 
 export interface PublicWorkView {
@@ -110,33 +114,53 @@ export async function loadPublicWork(handle: string, slug: string): Promise<Publ
 }
 
 export interface PublicCreatorPage {
-  creator: { id: string; handle: string; name: string; bio: string | null; location: string | null; avatarUrl: string | null };
+  creator: { id: string; handle: string; name: string; bio: string | null; location: string | null; avatarUrl: string | null; roles: string[] };
+  isPublished: boolean;
+  templateId: CreatorPageTemplateId;
+  /** Every template's settings (presentation only). */
+  templateSettings: unknown;
   headline: string | null;
   intro: string | null;
   sections: Array<{ section: string; enabled: boolean }>;
   links: Array<{ label: string; url: string }>;
   works: PublicCard[];
-  dejavus: Array<{ id: string; name: string; description: string | null; count: number }>;
+  dejavus: Array<{ id: string; name: string; description: string | null; count: number; coverUrl: string | null }>;
   moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageUrl: string | null }>;
   conversations: Array<{ id: string; title: string; replyCount: number; createdAt: string }>;
   openTo: string[];
 }
 
+type RawCreatorPage = Omit<PublicCreatorPage, "works" | "moments" | "creator" | "dejavus" | "templateId"> & {
+  creator: Omit<PublicCreatorPage["creator"], "avatarUrl"> & { avatarObjectId: string | null };
+  templateId: string;
+  works: RawCard[];
+  dejavus: Array<Omit<PublicCreatorPage["dejavus"][number], "coverUrl"> & { coverObjectId: string | null }>;
+  moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageObjectId: string | null }>;
+};
+
+function toCreatorPage(raw: RawCreatorPage): PublicCreatorPage {
+  return {
+    ...raw,
+    templateId: resolveTemplateId(raw.templateId),
+    sections: normalizeSections(raw.sections),
+    creator: { ...raw.creator, roles: raw.creator.roles ?? [], avatarUrl: link(raw.creator.avatarObjectId) },
+    works: (raw.works ?? []).filter(Boolean).map((c) => card(raw.creator.handle, c)),
+    dejavus: (raw.dejavus ?? []).map(({ coverObjectId, ...d }) => ({ ...d, coverUrl: link(coverObjectId) })),
+    moments: (raw.moments ?? []).map((m) => ({ ...m, imageUrl: link(m.imageObjectId) })),
+  };
+}
+
 export async function loadCreatorPage(handle: string): Promise<PublicCreatorPage | null> {
   const db = await createClient();
   const { data } = await db.rpc("public_creator_page", { p_handle: handle });
-  if (!data) return null;
-  const raw = data as unknown as Omit<PublicCreatorPage, "works" | "moments" | "creator"> & {
-    creator: PublicCreatorPage["creator"] & { avatarObjectId: string | null };
-    works: RawCard[];
-    moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageObjectId: string | null }>;
-  };
-  return {
-    ...raw,
-    creator: { ...raw.creator, avatarUrl: link(raw.creator.avatarObjectId) },
-    works: (raw.works ?? []).filter(Boolean).map((c) => card(raw.creator.handle, c)),
-    moments: (raw.moments ?? []).map((m) => ({ ...m, imageUrl: link(m.imageObjectId) })),
-  };
+  return data ? toCreatorPage(data as unknown as RawCreatorPage) : null;
+}
+
+/** The signed-in creator's own page exactly as the public would see it — published or not (the owner's preview). */
+export async function loadCreatorPagePreview(): Promise<PublicCreatorPage | null> {
+  const db = await createClient();
+  const { data } = await db.rpc("creator_page_preview");
+  return data ? toCreatorPage(data as unknown as RawCreatorPage) : null;
 }
 
 export interface PublicDejaVuPage {
@@ -157,6 +181,15 @@ export async function loadPublicDejaVu(handle: string, id: string): Promise<Publ
       i.kind === "creation" ? { kind: "creation" as const, at: i.at, card: card(raw.creator.handle, i.card!) } : { kind: "moment" as const, at: i.at, moment: { ...i.moment!, imageUrl: link(i.moment!.imageObjectId) } },
     ),
   };
+}
+
+/** The signed-in viewer's creator id, if any (to show owners their subtle "Edit Creator Page" overlay). */
+export async function viewerCreatorId(): Promise<string | null> {
+  const db = await createClient();
+  const { data: claims } = await db.auth.getClaims();
+  if (!claims?.claims?.sub) return null;
+  const { data } = await db.from("creators").select("id").eq("user_id", claims.claims.sub as string).maybeSingle();
+  return data?.id ?? null;
 }
 
 /** The site's own origin, for canonical URLs and share previews. */
