@@ -35,3 +35,25 @@ export interface ScrapbookPost {
   mine: boolean;
   attachments: ScrapbookAttachment[];
 }
+
+export type MomentFace = "note" | "photo" | "audio" | "quote" | "sketch" | "inspiration" | "link" | "video" | "document";
+
+/**
+ * How a Scrapbook entry shows among a Profile's Moments (profile board, 30 Sep 2026). Read from what it actually holds —
+ * its first attachment, else its words — never guessed from anything else.
+ */
+export function momentFace(post: Pick<ScrapbookPost, "kind" | "body" | "attachments">): { face: MomentFace; label: string } {
+  const a = post.attachments[0];
+  const t = a?.itemType ?? "";
+  const mime = a?.mimeType ?? "";
+  if (t === "sketch" || (post.kind === "sketch" && (t === "image" || mime.startsWith("image/")))) return { face: "sketch", label: "Sketch" };
+  if (t === "inspiration") return { face: "inspiration", label: "Inspiration" };
+  if (t === "image" || mime.startsWith("image/")) return { face: "photo", label: "Photo" };
+  if (t === "voice" || t === "audio" || mime.startsWith("audio/")) return { face: "audio", label: "Audio note" };
+  if (t === "video" || mime.startsWith("video/")) return { face: "video", label: "Video" };
+  if (t === "url" || t === "reference") return { face: "link", label: "Link" };
+  if (t === "pdf" || t === "document") return { face: "document", label: "Document" };
+  if (/^\s*["“'‘][\s\S]+["”'’]/.test(post.body)) return { face: "quote", label: "Quote" };
+  if (post.kind === "sketch") return { face: "sketch", label: "Sketch" };
+  return { face: "note", label: post.kind === "reflection" ? "Reflection" : "Note" };
+}

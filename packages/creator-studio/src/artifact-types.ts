@@ -201,3 +201,29 @@ export function actionsFor(type: string): StudioAction[] {
       ];
   }
 }
+
+/** The Profile's Creations filters (profile board, 30 Sep 2026): All · Visual · Audio · Writing · Video · Series. */
+export const PROFILE_SHELVES = [
+  { value: "all", label: "All" },
+  { value: "visual", label: "Visual" },
+  { value: "audio", label: "Audio" },
+  { value: "writing", label: "Writing" },
+  { value: "video", label: "Video" },
+  { value: "series", label: "Series" },
+] as const;
+export type ProfileShelf = Exclude<(typeof PROFILE_SHELVES)[number]["value"], "all">;
+
+const SERIES_TYPES = new Set(["carousel", "social_series", "art_series", "photo_essay"]);
+
+/** Which Creations filter a piece sits under. Multi-part visual stories are Series; other social pieces read as Writing. */
+export function profileShelf(type: string): ProfileShelf {
+  if (SERIES_TYPES.has(type)) return "series";
+  const category = artifactType(type).category;
+  return category === "social" ? "writing" : category;
+}
+
+/** A quiet reading-time estimate for writing ("1 min read"); null for empty text. */
+export function readingMinutes(text: string | null | undefined): number | null {
+  const words = (text ?? "").trim().split(/\s+/).filter(Boolean).length;
+  return words ? Math.max(1, Math.round(words / 220)) : null;
+}

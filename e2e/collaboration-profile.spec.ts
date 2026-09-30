@@ -26,7 +26,7 @@ test.describe("Collaboration profile", () => {
     const { page: other } = await openContext("other");
     await newCreator(other);
     await other.goto(`/creators/${creator.handle}`);
-    const theirs = other.getByRole("region", { name: "How I collaborate" });
+    const theirs = other.getByRole("region", { name: "Collaboration style" });
     await expect(theirs).toContainText("Remote");
     await expect(theirs).toContainText("About two weeks");
     await expect(theirs).toContainText("No gambling brands.");
@@ -38,6 +38,6 @@ test.describe("Collaboration profile", () => {
     await page.getByRole("button", { name: "Save collaboration profile" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Collaboration profile saved." })).toBeVisible();
     await other.reload();
-    await expect(other.getByRole("region", { name: "How I collaborate" })).toContainText("From ₹40,000 per short");
+    await expect(other.getByRole("region", { name: "Collaboration style" })).toContainText("From ₹40,000 per short");
   });
 });
