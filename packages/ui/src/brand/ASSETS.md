@@ -1,5 +1,9 @@
 # Wonder Creator brand assets
 
+**Authoring rule (owner, 30 Sep 2026):** the logo, wordmark and app icon are never altered or redrawn, and supplied art is
+never altered. Decorative art may be authored in code when nothing supplied fits and it lifts the result; it is
+recorded here with its provenance (see the Creator Page background library below).
+
 Source of truth: the supplied brand board (`assets/brand-board-reference.png`) and the supplied
 background image set (`assets/backgrounds/background-set-source.png`). Nothing here is redrawn,
 regenerated or reinterpreted. Every file in `apps/web/public/brand/` (outside `watercolor/`) is a **pixel crop** of one
@@ -11,7 +15,7 @@ of those two supplied images — no recolouring, no effects.
 | `logo-mark.png` | brand board, panel 4 "Favicon / Monogram" | 1185,60,1330,180 | Compact mark (mobile header, small spaces) |
 | `app-icon.png` | brand board, panel 3 "App Icon" (gradient variant) | 935,58,1035,158 | Favicon, PWA icon |
 | `brand-elements.png` | brand board, panel 9 "Brand Elements" | 1262,352,1528,668 | Faint decorative framing (`BrandDecor`) |
-| `watercolor/*.{avif,webp}` (60 files) | owner-supplied watercolor set (27 Sep 2026): `Watercolor-PNG-5000px-part1-florals-TL-TR-BR.zip`, `…-part2-BL-palette-wash.zip` (the matching `Watercolor-Vectors-SVG.zip` is the vector master, not published) | trimmed to opaque bounds, downscaled only (430/768/1024/1440/1920w; the palette motif 96–768w), AVIF + WebP, content-hashed names — `scripts/prepare-watercolor-assets.mjs` | Palette trigger motif; floral corners and peach wash as sparse decoration (≤1–2 per mobile viewport). Registry: `brand/watercolor.ts`, component `Watercolor` |
+| `watercolor/*.{avif,webp}` (60 files) | owner-supplied watercolor set (27 Sep 2026): `Watercolor-PNG-5000px-part1-florals-TL-TR-BR.zip`, `…-part2-BL-palette-wash.zip` (the matching `Watercolor-Vectors-SVG.zip` is the vector master, not published) | trimmed to opaque bounds, downscaled only (430/768/1024/1440/1920w; the palette motif 96–768w), AVIF + WebP, content-hashed names — `scripts/prepare-watercolor-assets.mjs` | Palette trigger motif; floral corners and peach wash as decoration in negative space, inside cards and behind heroes, as the owner's boards show (restrained, never over text). Registry: `brand/watercolor.ts`, component `Watercolor` |
 | `kit/*` (152 files) | owner-supplied **Wonder Creator Vector Kit** (27 Sep 2026, `Wonder-Creator-Vector-Kit.zip`: logos, app icons, Palette button, tool icons, botanicals, washes, UI-component specs, gradients/overlays, illustrations, textures, patterns) | vectors ≤ 64 KB published byte-for-byte; heavy painted pieces from the kit's own PNG renders, downscaled only (AVIF + WebP); app-icon PNGs 512/192/180 from the kit's 1024 render; all content-hashed — `scripts/prepare-brand-kit.mjs` | Logo (all variants), favicon/PWA icons, Palette trigger, Palette icons (`Kit*Icon`, stroke → currentColor only), sign-in botanicals, Home start vignette, empty-state blossom, CreativeMind sparkles. Registry: `brand/kit.ts`; components `Logo`, `KitArt` |
 | `backgrounds/*.webp` (11 files) | supplied background set, one tile each | see `scripts/extract-brand-assets.py` | Atmospheric hero/empty-state/onboarding backgrounds |
 

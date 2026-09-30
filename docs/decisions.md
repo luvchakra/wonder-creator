@@ -22,3 +22,11 @@
    incremental (stale = missing or older than the subject; unchanged content is re-stamped, not re-embedded) and runs
    after intake, after edits (`withApi({ reindex: true })`) and in the cron backfill. Keyword results stay first;
    meaning-based matches are appended and labelled. Without an embedding provider, search is lexical only.
+11. **Aesthetic excellence over plainness (owner, 30 Sep 2026).** "Change any rules that need to be changed to achieve
+   aesthetic excellence." The owner's boards are the visual target (art, colour, type, spacing, mood), not a loose
+   reference; plan guardrails still win on privacy, rights and popularity metrics. Screens are split into expressive
+   (Home, onboarding, Profile, Creator Page, published works, DejaVu, Moments, empty states, sign-in) and utility
+   surfaces; the compact-density numbers apply fully to utility surfaces and act only as clutter ceilings on
+   expressive ones. Decorative art may be authored in code when nothing supplied fits (provenance in `ASSETS.md`); the
+   logo, wordmark, app icon and supplied art are never altered. Accessibility never bends. UI isn't done until it has
+   been compared with its board at phone and desktop widths. See CLAUDE.md → Aesthetic excellence.

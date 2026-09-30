@@ -1,7 +1,7 @@
 @apps/web/AGENTS.md
 # Wonder Creator — working agreement for Claude Code
 
-Product contract, UI contract and P0 scope: the Wonder Creator specs the owner supplied (summarised in `docs/`). Brand authority: `packages/ui/src/brand/ASSETS.md` + the supplied brand board. Never create, redraw or regenerate the logo or brand artwork. Missing assets are documented, not invented.
+Product contract, UI contract and P0 scope: the Wonder Creator specs the owner supplied (summarised in `docs/`). Brand authority: `packages/ui/src/brand/ASSETS.md` + the supplied brand board. Never alter, redraw or regenerate the **logo, wordmark or app icon**, and never alter supplied art. Decorative art (backgrounds, botanicals, washes, textures, paper, light, illustrations) may be authored in code when nothing supplied fits and it lifts the result — prefer supplied art, record provenance in `ASSETS.md`, and never pass authored art off as a real photograph or as someone's content.
 
 ## How to work (owner's standing instruction)
 
@@ -12,7 +12,37 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 * Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 * UI direction: `docs/ui-redesign/spec.md` (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`. It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is no bottom navigation or module tab bar, and destinations/actions live in the corner Creative Palette. CreativeMind (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product.
 * UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code) change in the presentation layer only — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
-* Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI redesign spec overrides them. Plan guardrails win over mockups (no like counts, platform-only analytics).
+* Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI redesign spec overrides them. Plan guardrails win over mockups on **guardrails** (no like counts, platform-only analytics, privacy, rights). On **visual** matters — art, colour, type, spacing, composition, mood — the owner's boards are the target, not a loose reference.
+
+## Aesthetic excellence (owner's standing instruction, 30 Sep 2026)
+
+> "elegance expected from UI" · "change any rules that need to be changed to achieve aesthetic excellence"
+
+Wonder Creator must look like the owner's boards: calm, painterly, editorial, warm. Tidy but plain is a failure, not a
+safe default. When a rule below (density numbers, component sizes, decoration limits) would make a screen look plainer
+than its board, **aesthetic excellence wins** — except accessibility (contrast, 44px targets, reduced motion, readable
+type), privacy/rights guardrails and the logo, which never bend.
+
+* **Match the board, then refine.** Before building a screen that has a board, list what gives the board its character
+  (art, type scale, colour, texture, depth, spacing, imagery) and carry all of it over. Don't reduce it to a layout.
+* **Art is part of the design, not garnish.** Use the supplied and library art (`brand/kit.ts`, `brand/watercolor.ts`,
+  `brand/creator-page.ts`) the way the boards do: painted heroes, botanicals inside cards, washes behind tiles, paper
+  and grain on editorial surfaces. Empty image slots get painted washes or typographic treatments, never grey boxes.
+* **Real imagery first.** Show the creator's own pictures wherever they exist (covers, first slides, Moment photos); fall
+  back to art, never to blank tiles or generic icons in big empty boxes.
+* **Type with intent.** Playfair Display for names, titles and statements; Inter for UI. Expressive surfaces may use
+  display sizes (26–60px) and italics; utility surfaces keep the compact scale.
+* **Depth and texture.** Soft layered shadows, translucency over art, paper grain and tinted surfaces are encouraged;
+  flat white boxes on flat cream are not the house style.
+* **Colour.** Brand tokens first; surfaces that need their own palette (e.g. Cinematic Dark, Editorial Paper) define it
+  once as named values in one place (tokens or the template), never scattered hex.
+* **Expressive vs utility surfaces.** Expressive: Home, onboarding, Profile, Creator Page, published works, DejaVu,
+  Moments/Scrapbook, empty states, sign-in. Utility: settings, rights, approvals, business, forms, lists. Density rules
+  apply fully to utility surfaces; on expressive surfaces they are ceilings on clutter, not limits on beauty.
+* **Review visually before shipping.** Screenshot the screen at 390px and a desktop width next to its board and fix what
+  falls short (art missing, plain cards, weak type, cramped or empty composition). "Tests pass" is not "done" for UI.
+* **Still restrained.** Elegance is calm: one hero, one accent, art in negative space, no clutter, no decorative
+  motion loops, readable text over art (scrims or shadows where needed).
 
 ## Creative Palette design (owner's standing instruction)
 
@@ -211,22 +241,22 @@ The detailed implementation contract is `docs/ui-redesign/compact-density.md`. F
 
 * Reduce **visual** control size, typography and whitespace; do not reduce accessibility. Interactive hit targets remain at least **44×44 CSS px**.
 * A button/pill may look 32–40px high while living inside a >=44px hit target. Do not use 52–64px full-width pills for ordinary actions.
-* Mobile page titles are normally **22–24px**; Creation titles **20–22px**; section titles **15–17px**; body **14px**; secondary text **13px**; metadata **12–12.5px**. Reserve 26–30px display type for Home/onboarding/editorial hero moments.
-* Routine mobile page padding is **14–16px**; card padding **8–12px**; card gaps **8–10px**; section gaps **12–16px**. Do not use 32–48px vertical whitespace in normal application screens without a deliberate editorial reason.
+* Mobile page titles are normally **22–24px**; Creation titles **20–22px**; section titles **15–17px**; body **14px**; secondary text **13px**; metadata **12–12.5px** on utility surfaces. Expressive surfaces (see Aesthetic excellence) may use display type up to 60px for names, heroes and statements.
+* Routine mobile page padding is **14–16px**; card padding **8–12px**; card gaps **8–10px**; section gaps **12–16px**. Do not use 32–48px vertical whitespace in utility screens; on expressive surfaces generous editorial whitespace is a deliberate reason.
 * Standard headers should fit in roughly **44–48px**. Do not use marketing-style title/subtitle blocks on utility/detail pages.
 * Flatten nested cards. Prefer one surface + dividers + compact rows over card-inside-card layouts.
 * Prefer compact **44–52px rows** for settings, choices, integrations, notifications, tasks, rights and utility actions instead of large button/card stacks.
 * Use full-width primary CTAs only for a genuine single completion action (Save, Publish, Submit, etc.). Contextual actions belong in the Palette or compact inline controls.
 * Chips/tabs should be visually around **28–32px** high and horizontally scroll where necessary rather than wrapping into several tall rows.
-* Non-immersive mobile hero media should usually be about **160–220px** high / roughly 24–30vh. Do not consume half the screen with routine detail-page heroes.
-* Decorative botanical/watercolour assets must be absolutely positioned or background decoration. They may decorate existing negative space but must **not create large empty layout regions**.
+* Non-immersive mobile hero media on utility/detail pages should usually be about **160–220px** high / roughly 24–30vh. Expressive surfaces (Profile, Creator Page, published works, Home) may use 30–45vh painted or photographic heroes when the board does.
+* Decorative botanical/watercolour assets are absolutely positioned or background decoration: they live in negative space, inside cards and behind heroes, as the boards show, but must **not push primary content below the fold on utility screens** or reduce text contrast.
 * CreativeMind insight defaults to **one compact 2–3 line card + one action**. Do not stack large AI explanation cards or chat transcripts.
 * Contextual Palette shows **3–4 primary actions**; global Palette max **6**. Use `More…` for secondary actions rather than elongating the Palette.
 * Group metadata instead of creating tiles for every fact. Example: `Short Film · v4 · Private · 2:38`.
 * Use progressive disclosure for secondary metadata, rights history, advanced settings, audit detail and provider/debug information.
 * At a normal ~390×844 viewport, non-immersive pages should normally expose the primary content **and at least one useful next/context element above the fold**.
 * Compact does **not** mean cramped: do not make body text smaller than the compact scale, do not reduce touch targets, and do not sacrifice rights/approval/security clarity.
-* When reviewing an existing page, if it can become **15–25% shorter** without losing useful information or hurting readability/touchability, make it shorter.
+* When reviewing an existing utility page, if it can become **15–25% shorter** without losing useful information or hurting readability/touchability, make it shorter. Never shorten an expressive surface by removing its art, imagery or breathing room.
 * Whitespace separates meaning; it must not compensate for oversized components.
 
 ### Compactness implementation sequence
@@ -244,7 +274,7 @@ For every screen:
 9. Ensure decoration does not consume flow layout.
 10. Verify >=44px hit targets and accessible text.
 11. Screenshot-test at 320/360/390/430/480px and a representative desktop viewport.
-12. Do not mark complete until density has been visually reviewed.
+12. Do not mark complete until density **and aesthetics** have been visually reviewed against the board.
 
 ## Commands
 
@@ -274,4 +304,4 @@ For every screen:
 
 * Env vars: see `.env.example`. Never commit `.env*` files or keys (GitHub push protection will block them).
 * Migrations are append-only in `supabase/migrations`; regenerate types with `npm run db:types`.
-* UI: warm cream surfaces, Inter + Playfair Display, brand tokens only, 44px targets, works at 360px, loading/empty/error states for every screen, reduced motion respected, colour never the only signal.
+* UI: warm cream surfaces, Inter + Playfair Display, brand tokens first (named surface palettes where a template needs one), supplied/library art used generously, 44px targets, works at 360px, loading/empty/error states for every screen, reduced motion respected, colour never the only signal.
