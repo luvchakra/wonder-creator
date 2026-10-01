@@ -256,3 +256,71 @@ export async function homeCommunitySignals(db: Db, viewerId: string): Promise<Ho
     : null;
   return { question, help, hearing };
 }
+
+/* ----------------------------------------------------------------------------------- Home: from the community */
+
+type CreationCard = Extract<CommunityCard, { kind: "creation" }>;
+type ScrapbookCard = Extract<CommunityCard, { kind: "scrapbook" }>;
+type ConversationCard = Extract<CommunityCard, { kind: "conversation" }>;
+type PersonCard = Extract<CommunityCard, { kind: "person" }>;
+
+/**
+ * "From the community" on Home (owner, 1 Oct 2026: "home page seems quite empty… show meaningful info from the
+ * community"). A small, fixed glance — never a feed: at most one live Huddle, a few new public Creations, one Scrapbook
+ * thought, one open ask and one person. People the viewer follows or has worked with come first, then the newest; each
+ * item says why it's here when there's a real reason. Nothing is ranked by replies, likes or popularity, and muted or
+ * blocked creators never appear (the same rules as the Community page).
+ */
+export interface HomeCommunityGlance {
+  live: LiveCard | null;
+  /** `excerpt`: the opening words of text work (read with the viewer's own access), shown instead of a picture. */
+  creations: Array<CreationCard & { reason: string | null; excerpt: string | null }>;
+  thought: (ScrapbookCard & { reason: string | null }) | null;
+  ask: ConversationCard | null;
+  person: PersonCard | null;
+}
+
+export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excludeConversations?: string[] } = {}): Promise<HomeCommunityGlance> {
+  const hidden = await hiddenCreators(db, viewerId);
+  const exclude = new Set(opts.excludeConversations ?? []);
+  const [live, creations, thoughts, asks, people, follows] = await Promise.all([
+    liveCards(db, { limit: 3 })
+      .then((l) => l.find((h) => !h.participantIds.some((id) => hidden.has(id)) && !h.participantIds.includes(viewerId)) ?? null)
+      .catch(() => null),
+    publicCreations(db, viewerId, hidden, 10) as Promise<CreationCard[]>,
+    scrapbookCards(db, viewerId, hidden, 8) as Promise<ScrapbookCard[]>,
+    listConversations(db, viewerId, { help: true, limit: 8 }).catch(() => ({ cards: [] as ConversationCard[] })),
+    peopleCards(db, viewerId, hidden, 3) as Promise<PersonCard[]>,
+    db
+      .from("creator_follows")
+      .select("followed_creator_id")
+      .eq("follower_creator_id", viewerId)
+      .limit(500)
+      .then(({ data }) => new Set((data ?? []).map((r) => r.followed_creator_id))),
+  ]);
+  const authors = [...new Set([...creations.map((c) => c.author.id), ...thoughts.map((t) => t.author.id)])];
+  const known = await knownCollaborators(db, viewerId, authors).catch(() => new Set<string>());
+  const first = (n: string) => n.split(" ")[0] || n;
+  const why = (p: Person) => (known.has(p.id) ? `You've worked with ${first(p.name)}` : follows.has(p.id) ? `You follow ${first(p.name)}` : null);
+  const close = (p: Person) => (known.has(p.id) || follows.has(p.id) ? 1 : 0);
+  // Stable: people you know first, newest within each group (the inputs are already newest-first).
+  const byCloseness = <T extends { author: Person }>(xs: T[]) => xs.map((x, i) => ({ x, i })).sort((a, b) => close(b.x.author) - close(a.x.author) || a.i - b.i).map(({ x }) => x);
+
+  const picked = byCloseness(creations).slice(0, 4);
+  const excerpts = new Map<string, string>();
+  if (picked.length) {
+    const { data: cur } = await db.from("artifacts").select("id, current_version_id").in("id", picked.map((c) => c.id));
+    const vids = (cur ?? []).map((r) => r.current_version_id).filter((x): x is string => !!x);
+    const { data: vs } = vids.length ? await db.from("artifact_versions").select("id, artifact_id, content").in("id", vids) : { data: [] };
+    for (const v of vs ?? []) if (v.content?.trim()) excerpts.set(v.artifact_id, v.content.trim().slice(0, 200));
+  }
+  const thought = byCloseness(thoughts).find((t) => t.body.trim() || t.imageUrl) ?? null;
+  const ask = asks.cards.find((c) => c.conversation.creatorId !== viewerId && !exclude.has(c.conversation.id) && !c.conversation.closedAt) ?? null;
+  return {
+    live,
+    creations: picked.map((c) => ({ ...c, reason: why(c.author), excerpt: excerpts.get(c.id) ?? null })),
+    thought: thought ? { ...thought, reason: why(thought.author) } : null,
+    ask,
+    person: people.find((p) => !follows.has(p.person.id)) ?? null,
+  };
+}

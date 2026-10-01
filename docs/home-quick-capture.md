@@ -60,6 +60,21 @@ these rules rather than changing the page.
 * The Quick note and Voice note pills.
 * The modules as compact rows. "While you were away" and "You could help" open in place.
 
+### From the community (owner, 1 Oct 2026)
+
+"Home page seems quite empty, think of ways to show meaningful info from the community." Below the creator's own rows,
+Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/home/community-glance.tsx`):
+
+* **Live now**: one public Huddle the creator isn't in, with who's there and Join.
+* **New work**: up to four public, finished Creations from others, in their own pictures (covers; text work shows its
+  opening lines on a painted wash), with the author and why it's here ("You follow Maya", "You've worked with Jo").
+* **A thought**: one public Scrapbook entry, people the creator follows or has worked with first.
+* **An ask**: one open request (ask, critique, looking for) not already shown in "You could help", with Offer a thought.
+* **Someone to meet**: one creator the viewer doesn't follow yet (people they know first), with why or what they're open to.
+* **Explore** opens Community. Each part appears only when it's real; the section disappears when there's nothing.
+* Same rules as Community: the viewer's own access, muted/blocked creators never appear, ordered by closeness then time —
+  never by replies, likes or popularity. Nothing repeats a row above (Worth hearing, You could help).
+
 ## Quick Capture
 
 **Sheet.** `components/home/quick-capture.tsx` is one "Quick Capture" sheet with Text | Voice tabs (board 2).
