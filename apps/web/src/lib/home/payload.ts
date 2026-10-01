@@ -1,6 +1,6 @@
 import "server-only";
 import { log } from "@wonder/core";
-import { helpHeadline, homeCommunitySignals, knownCollaborators } from "@wonder/creator-community";
+import { helpHeadline, homeCommunityGlance, homeCommunitySignals, knownCollaborators, type HomeCommunityGlance } from "@wonder/creator-community";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
@@ -96,6 +96,8 @@ export interface HomePayload {
   worthHearing?: HomeCommunityCard;
   couldHelp?: HomeHelpCard;
   yourQuestion?: HomeQuestionCard;
+  /** From the community: a small fixed glance (never a feed), with signed covers for its Creations. */
+  community?: HomeCommunityGlance & { covers: Record<string, string> };
   /** Fallback only: a few recent Creations to get back to. */
   recent?: Array<{ id: string; title: string; typeLabel: string }>;
   avatars: Record<string, string>;
@@ -338,6 +340,28 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const slots = new Set(selectSlots(mode, available));
 
   const start = !cont ? ((await safe("start", () => somethingToStart(db, now))) ?? undefined) : undefined;
+
+  /* ------------------------------------------------------------------ From the community */
+  const shownHearing = slots.has("worthHearing") ? worthHearing : undefined;
+  const rawGlance =
+    f.community_enabled && f.community_home_cards_enabled
+      ? await safe("community_glance", () =>
+          homeCommunityGlance(db, creatorId, {
+            excludeConversations: [...(slots.has("couldHelp") ? (community?.help ?? []).map((h) => h.id) : []), ...(shownHearing?.kind === "conversation" ? [shownHearing.conversationId] : [])],
+          }),
+        )
+      : null;
+  // Never repeat what a row above already shows.
+  const glance = rawGlance
+    ? {
+        ...rawGlance,
+        live: shownHearing?.kind === "huddle" && rawGlance.live?.huddleId === shownHearing.huddleId ? null : rawGlance.live,
+        thought: shownHearing?.kind === "post" && rawGlance.thought?.id === shownHearing.postId ? null : rawGlance.thought,
+      }
+    : null;
+  const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person);
+  const glanceCovers = hasGlance && glance!.creations.length ? ((await safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId }))))) ?? {}) : {};
+
   const avatars =
     (await safe(
       "avatars",
@@ -347,6 +371,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
           ...(couldHelp?.items ?? []).map((i) => i.actor?.id ?? ""),
           worthHearing?.kind === "post" ? worthHearing.authorId : "",
           worthHearing?.kind === "huddle" ? (worthHearing.participantId ?? "") : "",
+          ...(hasGlance ? [...glance!.creations.map((c) => c.author.id), glance!.thought?.author.id ?? "", glance!.ask?.author.id ?? "", glance!.person?.person.id ?? ""] : []),
         ].filter(Boolean),
       ),
     )) ?? {};
@@ -374,6 +399,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     worthHearing: slots.has("worthHearing") ? worthHearing : undefined,
     couldHelp: slots.has("couldHelp") ? couldHelp : undefined,
     yourQuestion: slots.has("yourQuestion") ? yourQuestion : undefined,
+    community: hasGlance ? { ...glance!, covers: glanceCovers } : undefined,
     avatars,
     generatedAt: new Date(now).toISOString(),
   };
