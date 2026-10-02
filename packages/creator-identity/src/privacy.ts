@@ -87,6 +87,7 @@ export const EXPORT_EXCLUDED: Record<string, string> = {
   domain_events: "Internal system events; the creator's own actions are in audit_logs.",
   jobs: "Transient processing queue entries, purged after 30 days.",
   platform_moderators: "Operator appointment; not the creator's personal data.",
+  reconciliation_exceptions: "Operator control evidence about payment records; the records themselves are exported.",
 };
 
 /** Rows where the creator is referenced by another column. */

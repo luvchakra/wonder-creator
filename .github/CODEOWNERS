@@ -1,0 +1,11 @@
+# Change management (docs/compliance/financial-controls.md, ITGC-CM): changes to money, privacy, security and the
+# database schema are reviewed by the owner. Pair with branch protection on `main` (required reviews + checks).
+/supabase/migrations/            @luvchakra
+/packages/creator-payments/      @luvchakra
+/apps/web/src/app/api/v1/payments/ @luvchakra
+/packages/creator-identity/src/privacy*.ts @luvchakra
+/apps/web/src/lib/api.ts         @luvchakra
+/apps/web/src/lib/session.ts     @luvchakra
+/apps/web/next.config.ts         @luvchakra
+/.github/                        @luvchakra
+/docs/compliance/                @luvchakra

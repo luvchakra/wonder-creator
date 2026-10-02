@@ -47,7 +47,7 @@ export function Ledger({ initial }: { initial: Row[] }) {
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-[22px] leading-tight text-ink sm:text-[26px]">Business</h1>
-          <p className="text-[13px] text-ink-muted">What your work has earned and cost. Recorded here — Wonder Creator doesn&apos;t move money.</p>
+          <p className="text-[13px] text-ink-muted">What your work has earned and cost. Licence fees paid through Stripe or Razorpay settle here by themselves; add anything else yourself.</p>
         </div>
         <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={() => setAdding(true)}>
           <Plus className="size-4" aria-hidden /> Add record
@@ -71,6 +71,13 @@ export function Ledger({ initial }: { initial: Row[] }) {
             </div>
           ))}
         </section>
+      ) : null}
+      {rows.some((r) => r.payment_order_id) ? (
+        <p className="text-[12.5px] text-ink-muted">
+          <a href={`/api/v1/payments/statement?year=${new Date().getFullYear()}`} className="inline-flex min-h-11 items-center underline underline-offset-2">
+            Download this year&apos;s payment statement (CSV)
+          </a>
+        </p>
       ) : null}
 
       {rows.length ? (
@@ -107,7 +114,7 @@ export function Ledger({ initial }: { initial: Row[] }) {
                         </Link>
                       </>
                     ) : null}
-                    {r.source_type === "license" ? " · from a license" : ""}
+                    {r.source_type === "license" ? (r.payment_order_id ? " · paid through Wonder Creator" : " · from a license") : ""}
                     {r.note ? ` · ${r.note}` : ""}
                   </span>
                 </span>
@@ -125,7 +132,7 @@ export function Ledger({ initial }: { initial: Row[] }) {
                     </Button>
                   </MenuTrigger>
                   <MenuContent>
-                    {r.status === "expected" ? (
+                    {r.payment_order_id ? null : r.status === "expected" ? (
                       <MenuItem onSelect={() => patch(r, { status: r.direction === "in" ? "received" : "paid" })}>
                         <Check className="size-4" aria-hidden /> {r.direction === "in" ? "Mark received" : "Mark paid"}
                       </MenuItem>
@@ -137,7 +144,7 @@ export function Ledger({ initial }: { initial: Row[] }) {
                     <MenuItem onSelect={() => setNoteFor(r)}>
                       <StickyNote className="size-4" aria-hidden /> {r.note ? "Edit note" : "Add note"}
                     </MenuItem>
-                    {r.status !== "cancelled" && r.source_type !== "manual" ? (
+                    {r.status !== "cancelled" && r.source_type !== "manual" && !r.payment_order_id ? (
                       <MenuItem onSelect={() => patch(r, { status: "cancelled" })}>
                         <X className="size-4" aria-hidden /> Cancel
                       </MenuItem>
