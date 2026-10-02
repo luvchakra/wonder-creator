@@ -1,7 +1,7 @@
 "use client";
 import { Button, Field, Input } from "@wonder/ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -12,6 +12,8 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Until the page is interactive a click would submit the form natively (a reload, no answer), so the button waits.
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false);
   // The field's own value is read on submit: text typed (or autofilled) before the page finished loading still counts.
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,7 +46,7 @@ export default function ForgotPasswordPage() {
           If there&rsquo;s an account for that email, a reset link is on its way. It works once and expires soon.
         </p>
       ) : null}
-      <Button type="submit" size="lg" className="w-full" loading={busy}>
+      <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!ready}>
         Send reset link
       </Button>
       <p className="text-center text-sm text-ink-muted">
@@ -55,3 +57,5 @@ export default function ForgotPasswordPage() {
     </form>
   );
 }
+
+const noSubscribe = () => () => undefined;
