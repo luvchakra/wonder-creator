@@ -17,7 +17,7 @@ test.describe("Unified search", () => {
     await page.getByRole("button", { name: "Search your creativity" }).click();
     await page.getByRole("search", { name: "Search" }).getByRole("textbox", { name: "Search" }).fill(word);
     await page.getByRole("link", { name: "See all results and filters" }).click();
-    await expect(page).toHaveURL(new RegExp(`/search\\?q=${word}`));
+    await expect(page).toHaveURL(new RegExp(`/explore\\?q=${word}`));
 
     const material = page.getByRole("region", { name: "Your material" });
     await expect(material.getByRole("link").filter({ hasText: "tide pools" })).toBeVisible();
