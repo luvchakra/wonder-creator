@@ -31,7 +31,7 @@ test.describe("Communities", () => {
     const { page: b } = await openContext("B");
     await newCreator(b);
     await b.goto(`/community?filter=communities&q=${encodeURIComponent(tag)}`);
-    await b.getByRole("link", { name: new RegExp(name.replace(/[&]/g, "\\&")) }).click();
+    await b.getByRole("link", { name }).click();
     await expect(b).toHaveURL(communityUrl);
     await b.getByRole("navigation", { name: "Community" }).getByRole("link", { name: "Creations" }).click();
     await expect(b.getByText("Members see the Creations shared here.")).toBeVisible();
