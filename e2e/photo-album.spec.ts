@@ -17,7 +17,7 @@ test.describe("Photo album", () => {
     await page.request.patch("/api/v1/creators/me", { data: { displayName: creator.name, handle: creator.handle, bio: "", location: "", showLocation: false, visibility: "public", collaborationAvailability: "open" } });
 
     // An empty album invites the owner from the Profile.
-    await page.goto("/profile");
+    await page.goto("/me");
     await page.getByRole("link", { name: /Start your album/ }).click();
     await expect(page).toHaveURL(new RegExp(`/creators/${creator.handle}/album$`));
     await expect(page.getByText("Your album is waiting")).toBeVisible();

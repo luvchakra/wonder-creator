@@ -13,10 +13,10 @@ test.describe("publishing", () => {
     test.setTimeout(120_000);
     const title = `Night ferry ${uid()}`;
     const id = await pieceWithText(page, title, "The ferry hums across the dark water.");
-    await page.goto(`/artifacts/${id}`);
+    await page.goto(`/creations/${id}`);
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Publish" }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/publish$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/publish$`));
     await expect(page.getByText("This Creation hasn't been published anywhere yet.")).toBeVisible();
     await expect(page.getByText(/Instagram · YouTube/)).toBeVisible();
 

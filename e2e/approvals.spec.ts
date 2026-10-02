@@ -49,7 +49,7 @@ test.describe("Approval Center", () => {
 
     // Approving runs it once and opens the new piece.
     await page.getByRole("button", { name: "Approve once" }).click();
-    await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}$/, { timeout: 45_000 });
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}$/, { timeout: 45_000 });
 
     // The other one is declined with a note.
     await page.goto("/approvals");

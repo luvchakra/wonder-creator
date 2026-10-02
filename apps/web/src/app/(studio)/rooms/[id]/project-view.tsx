@@ -178,7 +178,7 @@ export function ProjectView({
   return (
     <div className="space-y-5">
       <div className="-mb-2">
-        <Link href="/projects" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+        <Link href="/rooms" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
         </Link>
       </div>
@@ -229,10 +229,10 @@ export function ProjectView({
                 </MenuTrigger>
                 <MenuContent>
                   <MenuItem onSelect={() => setEditing(true)}>Edit details</MenuItem>
-                  <MenuItem onSelect={() => router.push(`/discover?project=${project.id}`)}>Find collaborators</MenuItem>
+                  <MenuItem onSelect={() => router.push(`/people?project=${project.id}`)}>Find collaborators</MenuItem>
                   {project.community && !project.community.discoverable ? <MenuItem onSelect={() => setOpening(true)}>Open as a community…</MenuItem> : null}
                   <MenuItem onSelect={() => router.push("/publishing")}>Publishing</MenuItem>
-                  <MenuItem onSelect={() => router.push(`/projects/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
+                  <MenuItem onSelect={() => router.push(`/rooms/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
                   <MenuItem destructive onSelect={() => setDeleting(true)}>
                     Delete Creative Room
                   </MenuItem>
@@ -287,12 +287,12 @@ export function ProjectView({
           <ul className="flex gap-2">
             {(
               [
-                ["overview", "Overview", `/projects/${project.id}`],
-                ...(crew ? ([["work", "Work", `/projects/${project.id}?tab=work`]] as const) : []),
-                ["tasks", "Tasks", `/projects/${project.id}?tab=tasks`],
-                ...(crew ? ([["chat", "Chat", `/projects/${project.id}?tab=chat`]] as const) : []),
-                ["contributions", "Contributions", `/projects/${project.id}?tab=contributions`],
-                ["rights", "Rights", `/projects/${project.id}?tab=rights`],
+                ["overview", "Overview", `/rooms/${project.id}`],
+                ...(crew ? ([["work", "Work", `/rooms/${project.id}?tab=work`]] as const) : []),
+                ["tasks", "Tasks", `/rooms/${project.id}?tab=tasks`],
+                ...(crew ? ([["chat", "Chat", `/rooms/${project.id}?tab=chat`]] as const) : []),
+                ["contributions", "Contributions", `/rooms/${project.id}?tab=contributions`],
+                ["rights", "Rights", `/rooms/${project.id}?tab=rights`],
               ] as const
             ).map(([key, label, href]) => (
               <li key={key}>
@@ -367,7 +367,7 @@ export function ProjectView({
             <ul className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface">
               {fromCrew.map((x) => (
                 <li key={x.itemId}>
-                  <Link href={`/projects/${project.id}/shared/${x.itemId}`} className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-black/[0.02]">
+                  <Link href={`/rooms/${project.id}/shared/${x.itemId}`} className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-black/[0.02]">
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-1 font-medium text-ink">{x.title}</span>
                       <span className="line-clamp-1 text-sm text-ink-muted">
@@ -545,7 +545,7 @@ export function ProjectView({
           setBusy(true);
           try {
             await api(`/api/v1/projects/${project.id}?confirm=true`, { method: "DELETE" });
-            router.replace("/projects");
+            router.replace("/rooms");
             router.refresh();
           } catch (e) {
             setError(errorMessage(e));
@@ -917,7 +917,7 @@ function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId
   return (
     <section aria-label="Now in this room" className="space-y-3">
       {current ? (
-        <Link href={`/artifacts/${current.id}`} aria-label={`Continue ${current.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+        <Link href={`/creations/${current.id}`} aria-label={`Continue ${current.title}`} className="group relative block overflow-hidden rounded-3xl shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
           {current.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={current.coverUrl} alt="" className="aspect-[2/1] w-full object-cover sm:aspect-[21/9]" />
@@ -946,7 +946,7 @@ function RoomNow({ projectId, canEdit, items, nextSteps, onCreate }: { projectId
         <div className="px-3.5 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-[15px] font-semibold text-ink">Next steps</h2>
-            <Link href={`/projects/${projectId}?tab=tasks`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            <Link href={`/rooms/${projectId}?tab=tasks`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
               All tasks
             </Link>
           </div>

@@ -83,7 +83,7 @@ test.describe("onboarding", () => {
     await expect(page).toHaveURL((u) => u.pathname === "/");
 
     // The profile reflects the answers.
-    await page.goto("/profile");
+    await page.goto("/me");
     await expect(page).toHaveURL(new RegExp(`/creators/${mine}$`));
     await expect(page.getByRole("heading", { name: "Maya Onboard" })).toBeVisible();
     await expect(page.getByText(`@${mine}`)).toBeVisible();

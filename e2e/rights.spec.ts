@@ -1,13 +1,13 @@
 import { expect, test, uid, type Page } from "./fixtures";
 
 async function newPiece(page: Page, title: string): Promise<string> {
-  await page.goto("/space");
+  await page.goto("/materials");
   await page.getByRole("button", { name: "New", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
   await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
   await dialog.getByLabel("Title").fill(title);
   await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-  await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
+  await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
   await page.getByLabel("Poem text").fill("Salt on the window;\nthe harbour hums.");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("dialog", { name: "Save as new version" }).getByRole("button", { name: "Save version" }).click();
@@ -36,7 +36,7 @@ test.describe("rights step-up", () => {
     expect((await wrong.json()).error.code).toBe("step_up_required");
 
     // UI: saving a transfer opens the password prompt; the correct password completes it.
-    await page.goto(`/artifacts/${artifactId}`);
+    await page.goto(`/creations/${artifactId}`);
     await page.getByRole("tab", { name: "Rights" }).click();
     // At a glance: plain and reassuring, from the stored record only.
     await expect(page.getByRole("heading", { name: "You own this Creation" })).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("rights detail & history", () => {
     expect((await page.request.post(`/api/v1/artifacts/${id}/licenses`, { data: { licenseType: "editorial", licenseeName: "Harbour Times" } })).ok()).toBe(true);
     expect((await page.request.patch(`/api/v1/artifacts/${id}`, { data: { status: "final", privacy: "public" } })).ok()).toBe(true);
 
-    await page.goto(`/artifacts/${id}?tab=rights`);
+    await page.goto(`/creations/${id}?tab=rights`);
     await expect(page.getByRole("note").filter({ hasText: "don't by themselves establish legal ownership" })).toBeVisible();
     await expect(page.getByText("Contributors", { exact: true })).toBeVisible();
     await expect(page.getByText("Provenance", { exact: true })).toBeVisible();

@@ -21,7 +21,7 @@ test.describe("hydration with a skewed device clock", () => {
     const conversation = new URL(page.url()).pathname + new URL(page.url()).search;
     expect(conversation).toMatch(/^\/create\?c=/);
     await skewClock(page);
-    for (const path of ["/send", `/space/materials/${materialId}`, conversation, `/artifacts/${artifactId}`, "/memory"]) {
+    for (const path of ["/send", `/materials/${materialId}`, conversation, `/creations/${artifactId}`, "/memory"]) {
       await page.goto(path);
       await expect(page.getByRole("main")).toBeVisible();
       // Give React time to hydrate and report.

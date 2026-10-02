@@ -52,7 +52,7 @@ test.describe("Crew rights", () => {
     ).toBeTruthy();
 
     // The owner requires sign-off before publishing.
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Rights" }).click();
     await expect(a.getByText("not legal determinations")).toBeVisible();
     await a.getByRole("button", { name: "Edit policy" }).click();
@@ -73,7 +73,7 @@ test.describe("Crew rights", () => {
     expect(JSON.stringify(await blocked.json())).toContain("sign off on this version");
 
     // Zo sees their permission and makes an ownership claim.
-    await b.goto(`/projects/${project.id}?tab=rights`);
+    await b.goto(`/rooms/${project.id}?tab=rights`);
     const pieces = b.getByRole("region", { name: "Creations" });
     await pieces.getByText(art.title).click();
     await expect(pieces).toContainText("Can propose changes");
@@ -97,7 +97,7 @@ test.describe("Crew rights", () => {
     await expect(a.getByRole("region", { name: "Ownership claims" })).toContainText("Acknowledged by");
 
     // Zo signs off from the collaborate page.
-    await b.goto(`/artifacts/${art.id}/collaborate`);
+    await b.goto(`/creations/${art.id}/collaborate`);
     const signoff = b.getByRole("region", { name: "Publishing sign-off" });
     await expect(signoff).toContainText("Not yet");
     await signoff.getByRole("button", { name: "Approve publishing" }).click();

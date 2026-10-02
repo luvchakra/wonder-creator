@@ -150,7 +150,7 @@ export function MaterialDetail({
   return (
     <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.4fr_1fr]">
       <section id="details" className="scroll-mt-20 space-y-4">
-        <Link href="/space?tab=ideas" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+        <Link href="/materials?tab=ideas" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           ← Materials
         </Link>
         <div className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
@@ -477,7 +477,7 @@ export function MaterialDetail({
                   </Button>
                 </div>
               ) : collections.length ? null : (
-                <Link href="/space?tab=collections" className="mt-2 inline-block text-sm font-medium text-accent-ink hover:underline">
+                <Link href="/materials?tab=collections" className="mt-2 inline-block text-sm font-medium text-accent-ink hover:underline">
                   Create a collection
                 </Link>
               )}
@@ -522,7 +522,7 @@ export function MaterialDetail({
                 <ul className="mt-3 grid grid-cols-2 gap-2">
                   {similar.map((s) => (
                     <li key={s.id}>
-                      <Link href={`/space/materials/${s.id}`} className="block overflow-hidden rounded-xl border border-border-soft hover:border-accent">
+                      <Link href={`/materials/${s.id}`} className="block overflow-hidden rounded-xl border border-border-soft hover:border-accent">
                         {s.thumb ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={s.thumb} alt="" className="aspect-[4/3] w-full bg-[#f3efe9] object-cover" />
@@ -544,7 +544,7 @@ export function MaterialDetail({
                 <ul className="mt-2 space-y-1">
                   {usedIn.map((a) => (
                     <li key={a.id}>
-                      <Link href={`/artifacts/${a.id}`} className="text-[15px] font-medium text-accent-ink hover:underline">
+                      <Link href={`/creations/${a.id}`} className="text-[15px] font-medium text-accent-ink hover:underline">
                         {a.title}
                       </Link>
                     </li>
@@ -596,7 +596,7 @@ export function MaterialDetail({
             await api(`/api/v1/materials/${m.id}?confirm=true`, {
               method: "DELETE",
             });
-            router.replace("/space?tab=ideas");
+            router.replace("/materials?tab=ideas");
           })
         }
       />

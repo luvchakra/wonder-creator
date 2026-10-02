@@ -11,7 +11,7 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 * Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
 * Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 * UI direction: `docs/ui-redesign/spec.md` (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`. It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is no bottom navigation or module tab bar, and destinations/actions live in the corner Creative Palette. CreativeMind (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product.
-* UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code; Pulse — the open space for conversations, asks and people, `community` in code; Community — the Orkut-style communities) change in the presentation layer only — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
+* UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code; Pulse — the open space for conversations, asks and people, `community` in code; Community — the Orkut-style communities) change in the presentation layer and in page routes (owner override, 2 Oct 2026: routes follow the design — `/creations`, `/rooms`, `/pulse`, `/materials`, `/explore`, `/people`, `/me`, with permanent redirects from the old paths in `next.config.ts`) — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
 * Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI redesign spec overrides them. Plan guardrails win over mockups on **guardrails** (no like counts, platform-only analytics, privacy, rights). On **visual** matters — art, colour, type, spacing, composition, mood — the owner's boards are the target, not a loose reference.
 
 ## Aesthetic excellence (owner's standing instruction, 30 Sep 2026)
@@ -133,7 +133,7 @@ CreativeStudio is not merely an editor for a Creation. It is the convergence sur
 * Keep page controls minimal: actual creative work is primary; `Sources` and Palette are secondary. Avoid permanent action walls.
 * Preserve existing RLS, permissions, rights, governance and provider boundaries. CreativeStudio convergence must never become an authorization bypass.
 
-* Contract: `docs/ui-redesign/creative-studio-working-set.md`. Implementation: `packages/creator-studio/src/working-set.ts`, `/api/v1/studio-sessions`, `apps/web/src/app/(studio)/artifacts/[id]/studio/working-set.tsx`. Phases A→F tracked in `docs/ui-redesign/README.md`.
+* Contract: `docs/ui-redesign/creative-studio-working-set.md`. Implementation: `packages/creator-studio/src/working-set.ts`, `/api/v1/studio-sessions`, `apps/web/src/app/(studio)/creations/[id]/studio/working-set.tsx`. Phases A→F tracked in `docs/ui-redesign/README.md`.
 
 ## Personal Sources (owner spec, 2 Oct 2026)
 

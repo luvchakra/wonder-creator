@@ -148,7 +148,7 @@ export function ContributionsPanel({ projectId, manages, entries, summary, peopl
                     {e.related.artifact ? (
                       <>
                         {" · "}
-                        <Link href={`/artifacts/${e.related.artifact.id}`} className="hover:underline">
+                        <Link href={`/creations/${e.related.artifact.id}`} className="hover:underline">
                           {e.related.artifact.title}
                           {e.related.versionNumber ? ` v${e.related.versionNumber}` : ""}
                         </Link>

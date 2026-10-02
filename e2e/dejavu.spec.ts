@@ -11,7 +11,7 @@ test.describe("DejaVu", () => {
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `A Life in Moments ${tag}` } })).json()).artifact as { id: string };
 
     // Material: + DejaVu → Create "…" → the chip is there.
-    await page.goto(`/space/materials/${note}`);
+    await page.goto(`/materials/${note}`);
     const chips = page.getByRole("group", { name: "DejaVus" });
     await chips.getByRole("button", { name: "Add a DejaVu" }).click();
     const sheet = page.getByRole("dialog", { name: "Add a DejaVu" });
@@ -22,7 +22,7 @@ test.describe("DejaVu", () => {
     await expect(chips.getByRole("link", { name: thread })).toBeVisible();
 
     // Creation: search finds the existing one (typed differently) — no duplicate is offered.
-    await page.goto(`/artifacts/${art.id}`);
+    await page.goto(`/creations/${art.id}`);
     await page.getByRole("group", { name: "DejaVus" }).getByRole("button", { name: "Add a DejaVu" }).click();
     await sheet.getByLabel("Search or type a DejaVu").fill(thread.toLowerCase());
     const match = sheet.getByRole("list", { name: "Matching DejaVus" }).getByRole("button", { name: thread });

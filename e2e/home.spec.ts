@@ -27,6 +27,6 @@ test.describe("Home Canvas", () => {
     await expect(page.getByRole("heading", { name: "Recent Materials" })).toHaveCount(0);
     // Continue lands in the Creative Studio (the boards' default view), not on the Creation page.
     await hero.getByRole("link", { name: /Continue Creating/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio$`));
   });
 });

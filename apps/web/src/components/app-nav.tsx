@@ -49,10 +49,10 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                     <p className="truncate font-medium text-ink">{me.name}</p>
                     {me.handle ? <p className="text-sm text-ink-subtle">@{me.handle}</p> : null}
                   </div>
-                  <MenuItem onSelect={() => router.push("/profile")}>
+                  <MenuItem onSelect={() => router.push("/me")}>
                     <UserRound className="size-4" aria-hidden /> Profile
                   </MenuItem>
-                  <MenuItem onSelect={() => router.push("/projects")}>
+                  <MenuItem onSelect={() => router.push("/rooms")}>
                     <FolderKanban className="size-4" aria-hidden /> Creative Rooms
                   </MenuItem>
                   <MenuItem onSelect={() => router.push("/campaigns")}>

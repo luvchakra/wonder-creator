@@ -137,7 +137,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
 
   const go = (to: number) => {
     const next = view.slides[(to + total) % total];
-    if (next && next.id !== slideId) router.replace(`/artifacts/${artifactId}/slides/${next.id}`);
+    if (next && next.id !== slideId) router.replace(`/creations/${artifactId}/slides/${next.id}`);
   };
 
   // Gestures on the image: read mode swipes between slides; Image mode drags the focal point; Text/Style drag the words.
@@ -243,7 +243,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
     run(path, async () => {
       await flush();
       const r = await api<{ slideId?: string }>(path, init);
-      router.replace(to ? to(r) : `/artifacts/${artifactId}`);
+      router.replace(to ? to(r) : `/creations/${artifactId}`);
       router.refresh();
     });
 
@@ -255,7 +255,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
     <div className="-mx-4 -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] -mt-6 flex min-h-[calc(100dvh-var(--nav-height)-1px)] flex-col bg-[#15161c] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1 text-white sm:mx-0 sm:mb-0 sm:mt-0 sm:min-h-[calc(100dvh-var(--nav-height)-1px-var(--palette-clearance)-2.5rem)] sm:rounded-3xl sm:px-5">
       {/* Header: back · n of N · More (§51). */}
       <div className="flex items-center justify-between">
-        <Link href={`/artifacts/${artifactId}/studio`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
+        <Link href={`/creations/${artifactId}/studio`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
           <ChevronLeft className="size-5" aria-hidden />
         </Link>
         <p className="text-sm font-medium">
@@ -283,7 +283,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
             ) : null}
             {view.canEdit ? (
               <>
-                <MenuItem onSelect={() => postAndGo(`/api/v1/carousel-slides/${slideId}/duplicate`, { method: "POST" }, (r) => `/artifacts/${artifactId}/slides/${r.slideId}`)}>
+                <MenuItem onSelect={() => postAndGo(`/api/v1/carousel-slides/${slideId}/duplicate`, { method: "POST" }, (r) => `/creations/${artifactId}/slides/${r.slideId}`)}>
                   <Copy className="size-4" aria-hidden /> Duplicate slide
                 </MenuItem>
                 {total > 1 ? (
@@ -421,7 +421,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
       {status ? (
         <p role="status" className="mb-2 text-center text-[13px] text-white/80">
           Saved to your Materials.{" "}
-          <Link href={`/space/materials/${status}`} className="font-medium underline">
+          <Link href={`/materials/${status}`} className="font-medium underline">
             Open Material
           </Link>
         </p>
@@ -541,7 +541,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
           {view.slides.map((s, i) => (
             <li key={s.id}>
               <Link
-                href={`/artifacts/${artifactId}/slides/${s.id}`}
+                href={`/creations/${artifactId}/slides/${s.id}`}
                 replace
                 aria-current={s.id === slideId ? "true" : undefined}
                 aria-label={`Slide ${i + 1}`}
@@ -561,7 +561,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
           <ChevronRight className="size-5" aria-hidden />
         </button>
       </nav>
-      <Link href={`/artifacts/${artifactId}/studio`} onClick={() => void flush()} className="mr-16 mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy sm:mx-auto sm:w-full sm:max-w-xs">
+      <Link href={`/creations/${artifactId}/studio`} onClick={() => void flush()} className="mr-16 mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy sm:mx-auto sm:w-full sm:max-w-xs">
         <Check className="mr-1.5 size-4" aria-hidden /> Done
       </Link>
 

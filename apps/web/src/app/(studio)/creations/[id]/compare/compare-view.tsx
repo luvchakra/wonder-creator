@@ -37,7 +37,7 @@ export function CompareView({ artifact, versions, currentId, initialA, initialB 
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <Link href={`/artifacts/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+      <Link href={`/creations/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
         ← {artifact.title}
       </Link>
       <header>

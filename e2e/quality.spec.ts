@@ -5,7 +5,7 @@ test.describe("Quality review & selective refinement", () => {
 
   test("choose a suggestion, preview, regenerate, keep, then compare; set another aside", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
-    await page.goto(`/artifacts/${artifactId}/studio`);
+    await page.goto(`/creations/${artifactId}/studio`);
     const quality = page.getByRole("region", { name: "Quality" });
     const suggestions = quality.getByRole("list", { name: "Suggestions" });
     await expect(suggestions).toContainText("Try a closer detail");
@@ -31,10 +31,10 @@ test.describe("Quality review & selective refinement", () => {
 
     // What changed and why is in the version history, with compare.
     await page.getByRole("link", { name: "Compare with the previous version" }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${artifactId}\\?tab=versions$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}\\?tab=versions$`));
     await expect(page.getByText("Applied quality suggestions: Try a closer detail")).toBeVisible();
     await expect(page.getByRole("region", { name: "Compare versions" })).toBeVisible();
-    await page.goto(`/artifacts/${artifactId}/studio`);
+    await page.goto(`/creations/${artifactId}/studio`);
 
     // The review is now for an earlier version; review again, then set a finding aside.
     await expect(quality.getByText(/From an earlier version/)).toBeVisible();

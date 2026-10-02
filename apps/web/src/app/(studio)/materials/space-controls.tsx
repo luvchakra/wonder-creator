@@ -19,7 +19,7 @@ export function SpaceSearch({ initial }: { initial: string }) {
         const p = new URLSearchParams(params.toString());
         if (q.trim()) p.set("q", q.trim());
         else p.delete("q");
-        router.push(`/space?${p.toString()}`);
+        router.push(`/materials?${p.toString()}`);
       }}
     >
       <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
@@ -54,7 +54,7 @@ export function NewPieceButton() {
               setError(null);
               try {
                 const r = await api<{ artifact: { id: string } }>("/api/v1/artifacts", { method: "POST", json: { artifactType: type, title: title.trim() || "Untitled" } });
-                router.push(`/artifacts/${r.artifact.id}/studio`);
+                router.push(`/creations/${r.artifact.id}/studio`);
               } catch (err) {
                 setError(errorMessage(err));
                 setBusy(false);

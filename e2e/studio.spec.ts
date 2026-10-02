@@ -1,7 +1,7 @@
 import { expect, poemFromNote, test, type Page } from "./fixtures";
 
 async function openStudio(page: Page, artifactId: string) {
-  await page.goto(`/artifacts/${artifactId}/studio`);
+  await page.goto(`/creations/${artifactId}/studio`);
   await expect(page.getByRole("region", { name: "Editor" })).toBeVisible();
   // The Studio opens reading over the cover; the pen opens the text.
   const pen = page.getByRole("button", { name: "Edit the text" }).first();
@@ -27,7 +27,7 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
     await expect(page.getByLabel("Poem text")).toHaveValue(/\(Revised offline: improve\.\)/);
 
-    await page.goto(`/artifacts/${artifactId}`);
+    await page.goto(`/creations/${artifactId}`);
     await expect(page.getByRole("tab", { name: "Versions (2)" })).toBeVisible();
     await expect(page.getByText("v2 ", { exact: false }).first()).toBeVisible();
     await page.getByRole("tab", { name: "Versions (2)" }).click();
@@ -45,7 +45,7 @@ test.describe("Studio, versions and lineage", () => {
     await page.getByRole("button", { name: "Discard" }).click();
     await expect(page.getByLabel("Poem text")).toBeVisible();
     await expect(page.getByRole("link", { name: "Version 1 — see versions" })).toBeVisible();
-    await page.goto(`/artifacts/${artifactId}`);
+    await page.goto(`/creations/${artifactId}`);
     await expect(page.getByRole("tab", { name: "Versions (1)" })).toBeVisible();
   });
 
@@ -115,7 +115,7 @@ test.describe("Studio, versions and lineage", () => {
 
   test("lineage shows the source material", async ({ page }) => {
     const { artifactId, noteTitle, materialId } = await poemFromNote(page);
-    await page.goto(`/artifacts/${artifactId}`);
+    await page.goto(`/creations/${artifactId}`);
     await expect(page.getByText("Created from")).toBeVisible();
     await expect(page.getByText("1 material")).toBeVisible();
     await page.getByRole("link", { name: "Context", exact: true }).click();
@@ -123,15 +123,15 @@ test.describe("Studio, versions and lineage", () => {
     const lineage = page.getByRole("list", { name: "Creative lineage, from sources to derivatives" });
     await expect(lineage).toBeVisible();
     const source = lineage.getByRole("link", { name: new RegExp(noteTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) });
-    await expect(source).toHaveAttribute("href", `/space/materials/${materialId}`);
+    await expect(source).toHaveAttribute("href", `/materials/${materialId}`);
     await expect(source).toContainText("created from");
 
     // And the material knows where it was used.
     await source.click();
-    await expect(page).toHaveURL(new RegExp(`/space/materials/${materialId}$`));
+    await expect(page).toHaveURL(new RegExp(`/materials/${materialId}$`));
     await page.getByRole("tab", { name: "Usage (1)" }).click();
     await expect(page.getByRole("heading", { name: "Used in" })).toBeVisible();
     const usedIn = page.getByRole("complementary").locator("section").filter({ has: page.getByRole("heading", { name: "Used in" }) });
-    await expect(usedIn.getByRole("link")).toHaveAttribute("href", `/artifacts/${artifactId}`);
+    await expect(usedIn.getByRole("link")).toHaveAttribute("href", `/creations/${artifactId}`);
   });
 });

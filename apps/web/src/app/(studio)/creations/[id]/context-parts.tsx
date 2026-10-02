@@ -20,7 +20,7 @@ export function MaterialGrid({ items, empty }: { items: MaterialCardData[]; empt
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       {items.map((m) => (
         <li key={m.id}>
-          <Link href={`/space/materials/${m.id}`} className="block">
+          <Link href={`/materials/${m.id}`} className="block">
             <div className="aspect-square overflow-hidden rounded-xl border border-border-soft">
               <MaterialVisual m={m} />
             </div>
@@ -72,11 +72,11 @@ export function Lineage({ nodes, edges }: { nodes: GraphNode[]; edges: Array<{ f
               return (
                 <li key={n.key}>
                   {n.type === "artifact" && d !== 0 ? (
-                    <Link href={`/artifacts/${n.id}`} className={cn(cls, "hover:border-accent")}>
+                    <Link href={`/creations/${n.id}`} className={cn(cls, "hover:border-accent")}>
                       {inner}
                     </Link>
                   ) : n.type === "material" ? (
-                    <Link href={`/space/materials/${n.id}`} className={cn(cls, "hover:border-accent")}>
+                    <Link href={`/materials/${n.id}`} className={cn(cls, "hover:border-accent")}>
                       {inner}
                     </Link>
                   ) : n.type === "conversation" ? (
@@ -84,7 +84,7 @@ export function Lineage({ nodes, edges }: { nodes: GraphNode[]; edges: Array<{ f
                       {inner}
                     </Link>
                   ) : n.type === "collection" && n.subtitle === "Collection" ? (
-                    <Link href={`/space/collections/${n.id}`} className={cn(cls, "hover:border-accent")}>
+                    <Link href={`/materials/collections/${n.id}`} className={cn(cls, "hover:border-accent")}>
                       {inner}
                     </Link>
                   ) : (

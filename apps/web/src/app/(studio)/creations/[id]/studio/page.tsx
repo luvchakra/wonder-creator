@@ -21,7 +21,7 @@ export default async function StudioPage({ params, searchParams }: { params: Pro
   const { db, creator } = await requireSession();
   const { data: a } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
   if (!a) notFound();
-  if (a.creator_id !== creator.id) redirect(`/artifacts/${id}`);
+  if (a.creator_id !== creator.id) redirect(`/creations/${id}`);
   const [{ data: version }, { data: quality }, { data: pending }, { data: contributors }, covers, carousel] = await Promise.all([
     a.current_version_id ? db.from("artifact_versions").select("*").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("quality_reports").select("*").eq("artifact_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),

@@ -44,7 +44,7 @@ test.describe("Home: from Pulse", () => {
 
     // Each part goes somewhere real.
     await page.getByRole("region", { name: "From Pulse" }).getByRole("link", { name: new RegExp(`Platform 3 at dawn ${tag}`) }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${poem.id}$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${poem.id}$`));
     expect(creator.handle).toBeTruthy();
   });
 
@@ -87,7 +87,7 @@ test.describe("Home: from Pulse", () => {
     await expect(rooms).toContainText(`Cut list for the harbour scene ${tag}`);
     await expect(rooms).toContainText(`Coastline film ${tag}`);
     await rooms.getByRole("link", { name: new RegExp(`Cut list for the harbour scene ${tag}`) }).click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/shared/`));
+    await expect(page).toHaveURL(new RegExp(`/rooms/${project.id}/shared/`));
   });
 
   test("followers and following on the Profile, with lists that open from the counts", async ({ page, creator, openContext }) => {

@@ -70,7 +70,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
     const p = new URLSearchParams({ ...(tab !== "all" ? { tab } : {}), ...(q ? { q } : {}), ...(sp.type ? { type: sp.type } : {}), ...patch } as Record<string, string>);
     for (const [k, v] of [...p.entries()]) if (!v) p.delete(k);
     const s = p.toString();
-    return `/space${s ? `?${s}` : ""}`;
+    return `/materials${s ? `?${s}` : ""}`;
   };
 
   // The Materials wall (UI redesign §9): the creator's visual memory, not a file list.
@@ -135,7 +135,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
               <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
                 Shared with you
               </Link>
-              <Link href="/space/references" className={buttonClasses({ variant: "secondary" })}>
+              <Link href="/materials/references" className={buttonClasses({ variant: "secondary" })}>
                 Reference Shelf
               </Link>
               <NewPieceButton />
@@ -169,7 +169,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
               <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {collections.map((c) => (
                   <li key={c.id}>
-                    <Link href={`/space/collections/${c.id}`} className="group block rounded-2xl focus-visible:outline-2">
+                    <Link href={`/materials/collections/${c.id}`} className="group block rounded-2xl focus-visible:outline-2">
                       <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
                         {c.coverObjectId && collectionCovers[c.coverObjectId] ? (
                           // eslint-disable-next-line @next/next/no-img-element

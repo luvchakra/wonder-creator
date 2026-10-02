@@ -55,7 +55,7 @@ describe("crew chat context and unread", () => {
     await expect(postCrewMessage(db(owner), owner.creatorId, crewId, { body: "Not in the project", contextKind: "artifact", contextId: otherPiece })).rejects.toThrow(/isn't part of this Creative Room/);
     const { messages } = await listCrewMessages(db(owner), owner.creatorId, crewId);
     expect(messages.map((m) => m.context?.label)).toEqual(["Task: Scout the pier", "Creation: Harbour"]);
-    expect(messages[1]).toMatchObject({ draftedByAi: true, context: { href: `/artifacts/${piece}` } });
+    expect(messages[1]).toMatchObject({ draftedByAi: true, context: { href: `/creations/${piece}` } });
     // A context never reveals what the reader can't open (Mira isn't on the piece).
     const forMira = (await listCrewMessages(db(mira), mira.creatorId, crewId)).messages;
     expect(forMira[1]!.context).toMatchObject({ label: "Something you can't open", href: null });

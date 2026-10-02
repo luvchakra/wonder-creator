@@ -69,7 +69,7 @@ export function DiscoverView({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {project ? (
-        <Link href={`/projects/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+        <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4" aria-hidden /> {project.title}
         </Link>
       ) : null}
@@ -112,7 +112,7 @@ export function DiscoverView({
 
       <details open={!brain} className="rounded-2xl border border-border-soft bg-surface">
         <summary className="min-h-11 cursor-pointer px-4 py-3 text-[15px] font-medium text-ink sm:px-5">Filters</summary>
-        <form action="/discover" className="grid gap-4 border-t border-border-soft px-4 py-4 sm:grid-cols-2 sm:px-5">
+        <form action="/people" className="grid gap-4 border-t border-border-soft px-4 py-4 sm:grid-cols-2 sm:px-5">
           {project ? <input type="hidden" name="project" value={project.id} /> : null}
           <Field label="Disciplines or skills" htmlFor="f-terms" hint="Comma-separated, e.g. cinematographer, sound design">
             <Input id="f-terms" name="terms" defaultValue={filters.terms} maxLength={300} />

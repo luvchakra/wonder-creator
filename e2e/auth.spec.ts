@@ -2,7 +2,7 @@ import { accountMenu, expect, signInViaUi, test } from "./fixtures";
 
 test.describe("authentication", () => {
   test("signed-out visitors are sent to sign in", async ({ page }) => {
-    await page.goto("/space");
+    await page.goto("/materials");
     await expect(page).toHaveURL(/\/sign-in/);
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   });

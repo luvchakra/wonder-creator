@@ -21,7 +21,7 @@ test.describe("CreativeStudio Working Set", () => {
     await saveNote(page, `Dad waited at Platform 3 every Sunday ${tag}`);
     const title = `Platform 3 ${tag}`;
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title } })).json()).artifact as { id: string };
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     await expect(page.getByRole("region", { name: "Editor" })).toBeVisible();
 
     // One compact affordance; an empty table says so with one action.
@@ -77,7 +77,7 @@ test.describe("CreativeStudio Working Set", () => {
     // A collaborator's comment → "Use in Studio" lands it on the table, In use.
     const c = (await (await page.request.post(`/api/v1/artifacts/${art.id}/comments`, { data: { body: "The opening should feel emptier." } })).json()) as { comment?: { id: string }; id?: string };
     const commentId = c.comment?.id ?? c.id!;
-    await page.goto(`/artifacts/${art.id}/studio?add=comment:${commentId}`);
+    await page.goto(`/creations/${art.id}/studio?add=comment:${commentId}`);
     await expect(page.getByRole("button", { name: /^Working Table: 3 sources · 1 in use/ })).toBeVisible();
 
     // Use together: pick the two notes, one dominant action, one idea, directions from the roles.
@@ -113,12 +113,12 @@ test.describe("CreativeStudio Working Set", () => {
     const format = page.getByRole("dialog", { name: "Make a new Creation" });
     await format.getByRole("radio", { name: /Carousel/ }).click();
     await format.getByRole("button", { name: "Create a new carousel" }).click();
-    await page.waitForURL((u) => /\/artifacts\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
+    await page.waitForURL((u) => /\/creations\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
     await expect(page.getByRole("button", { name: /^Working Table: 4 sources · 4 in use/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
     // A separate Creation: it says so and links back; the original is still the poem it was.
     await page.getByRole("status").filter({ hasText: "is unchanged" }).getByRole("link", { name: "open it" }).click();
-    await page.waitForURL(new RegExp(`/artifacts/${art.id}/studio$`));
+    await page.waitForURL(new RegExp(`/creations/${art.id}/studio$`));
     const original = (await (await page.request.get(`/api/v1/artifacts/${art.id}`)).json()) as { artifact: { artifact_type: string } };
     expect(original.artifact.artifact_type).toBe("poem");
   });
@@ -138,7 +138,7 @@ test.describe("CreativeStudio Working Set", () => {
       },
     });
 
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     // A clean canvas: nothing sits under it until the table is pulled up.
     await expect(page.getByRole("list", { name: "Materials" })).toHaveCount(0);
     let panel = await openTable(page);
@@ -176,7 +176,7 @@ test.describe("CreativeStudio Working Set", () => {
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${tag}` } })).json()).artifact as { id: string };
     const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
     await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: a }] } });
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const sheet = await openSet(page);
     await sheet.getByRole("checkbox", { name: /^Select Rain on the platform roof/ }).click();
     await sheet.getByRole("button", { name: /Use this/ }).click();
@@ -213,7 +213,7 @@ test.describe("CreativeStudio Working Set", () => {
     };
     const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
     await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: a }] } });
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const sheet = page.getByRole("dialog", { name: "Working Set" });
     const how = page.getByRole("dialog", { name: "How do you want to use this?" });
 
@@ -259,7 +259,7 @@ test.describe("CreativeStudio Working Set", () => {
       },
     });
 
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto(`/creations/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     const sheet = page.getByRole("dialog", { name: "Working Set" });
     const how = page.getByRole("dialog", { name: "How do you want to use this?" });
@@ -308,7 +308,7 @@ test.describe("CreativeStudio Working Set", () => {
       },
     });
 
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto(`/creations/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     const panel = await openTable(page);
     const photoActions = panel.getByRole("group", { name: new RegExp(`^Use ${name}`) });
@@ -349,7 +349,7 @@ test.describe("CreativeStudio Working Set", () => {
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title, content: "Every Sunday." } })).json()).artifact as { id: string };
     const { workingSet } = (await (await page.request.post("/api/v1/studio-sessions", { data: { artifactId: art.id } })).json()) as { workingSet: { sessionId: string } };
     await page.request.post(`/api/v1/studio-sessions/${workingSet.sessionId}/sources`, { data: { items: [{ type: "material", id: photo }] } });
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const panel = await openTable(page);
 
     // The picture is a stable link (the same on every load), privately cacheable.
@@ -366,15 +366,15 @@ test.describe("CreativeStudio Working Set", () => {
     // See more → the material, with a way back to this Studio.
     await panel.locator("li > button[aria-expanded]").filter({ hasText: name }).click();
     await panel.getByRole("link", { name: "See more" }).click();
-    await expect(page).toHaveURL(new RegExp(`/space/materials/${photo}\\?from=studio:${art.id}$`));
+    await expect(page).toHaveURL(new RegExp(`/materials/${photo}\\?from=studio:${art.id}$`));
     await page.getByRole("link", { name: `Back to ${title}` }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio$`));
   });
 
   test("External: royalty-free pictures are searched on the table, with honest states for services that aren't connected", async ({ page }) => {
     const tag = uid();
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: `Monsoon ${tag}` } })).json()).artifact as { id: string };
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const table = await openTable(page);
     await table.getByRole("tab", { name: "External" }).click();
     // The search starts from the Creation's own title.

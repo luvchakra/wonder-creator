@@ -14,9 +14,9 @@ engagement ranking or infinite scroll.
 
 ## Where it lives
 
-* **Explore** has four doors (`components/explore-nav.tsx`): Ideas (`/search`), Materials (`/search?type=material`),
-  People (`/discover`) and **Community** (`/community`). The Palette's Explore stays one destination.
-* **Community** (`/community`) has four views:
+* **Explore** has four doors (`components/explore-nav.tsx`): Ideas (`/explore`), Materials (`/explore?type=material`),
+  People (`/people`) and **Community** (`/pulse`). The Palette's Explore stays one destination.
+* **Community** (`/pulse`) has four views:
   * **For you**: a fixed mix of conversations, a Scrapbook thought, a live Huddle, help requests, a public Creation and
     people.
   * **Conversations**: live Huddles, then conversations.

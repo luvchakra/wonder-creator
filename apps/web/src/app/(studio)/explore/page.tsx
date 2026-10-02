@@ -38,7 +38,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const href = (patch: Partial<Record<"q" | "type" | "when" | "kind" | "tag", string | null>>) => {
     const next: Record<string, string | null> = { q: s.q || null, type: s.tab === "all" ? null : s.tab, when: s.when === "any" ? null : s.when, kind: s.kind, tag: s.tag, ...patch };
     const p = new URLSearchParams(Object.entries(next).filter((e): e is [string, string] => !!e[1]));
-    return `/search${p.size ? `?${p}` : ""}`;
+    return `/explore${p.size ? `?${p}` : ""}`;
   };
   const chip = (active: boolean) =>
     cn(chipBase, "gap-1.5 border", active ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-ink-muted hover:border-[#cfd0ff]");
@@ -51,7 +51,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <ExploreNav current={s.tab === "material" ? "materials" : "ideas"} />
         <PageTitle art={KIT.painted.blossomSprig} title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
 
-        <form action="/search" role="search" className="relative">
+        <form action="/explore" role="search" className="relative">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
           <label htmlFor="search-q" className="sr-only">
             Search
@@ -79,7 +79,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {s.tab === "creators" ? (
           <p className="mt-3 text-sm text-ink-muted">
             Looking for someone to work with?{" "}
-            <Link href="/discover" className="font-medium text-accent-ink hover:underline">
+            <Link href="/people" className="font-medium text-accent-ink hover:underline">
               Find collaborators by discipline, skills and who you know
             </Link>
           </p>
@@ -159,7 +159,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 more={s.tab === "all" ? href({ type: "creations" }) : null}
                 items={res.artifacts.map((a) => ({
                   key: a.id,
-                  href: `/artifacts/${a.id}`,
+                  href: `/creations/${a.id}`,
                   label: a.title,
                   sub: [artifactType(a.artifact_type).label, a.creator_id === creator.id ? "Yours" : "By another creator", a.related ? "Related in meaning" : null].filter(Boolean).join(" · "),
                   icon: <Sparkles className="size-4" aria-hidden />,
@@ -169,13 +169,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 id="r-collections"
                 title="Collections"
                 more={s.tab === "all" ? href({ type: "collections" }) : null}
-                items={res.collections.map((c) => ({ key: c.id, href: `/space/collections/${c.id}`, label: c.name, sub: c.description ?? "Collection", icon: <Layers className="size-4" aria-hidden /> }))}
+                items={res.collections.map((c) => ({ key: c.id, href: `/materials/collections/${c.id}`, label: c.name, sub: c.description ?? "Collection", icon: <Layers className="size-4" aria-hidden /> }))}
               />
               <ResultList
                 id="r-references"
                 title="References"
                 more={s.tab === "all" ? href({ type: "references" }) : null}
-                items={res.references.map((r) => ({ key: r.id, href: `/space/materials/${r.materialId}`, label: r.title || "Untitled reference", sub: [r.shelf ? `On ${r.shelf}` : "Reference Shelf", r.note].filter(Boolean).join(" · "), icon: <BookMarked className="size-4" aria-hidden /> }))}
+                items={res.references.map((r) => ({ key: r.id, href: `/materials/${r.materialId}`, label: r.title || "Untitled reference", sub: [r.shelf ? `On ${r.shelf}` : "Reference Shelf", r.note].filter(Boolean).join(" · "), icon: <BookMarked className="size-4" aria-hidden /> }))}
               />
               <ResultList
                 id="r-conversations"

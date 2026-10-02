@@ -109,7 +109,7 @@ export function Ledger({ initial }: { initial: Row[] }) {
                     {r.artifact_id && r.artifactTitle ? (
                       <>
                         {" · "}
-                        <Link href={`/artifacts/${r.artifact_id}`} className="relative z-10 hover:underline">
+                        <Link href={`/creations/${r.artifact_id}`} className="relative z-10 hover:underline">
                           {r.artifactTitle}
                         </Link>
                       </>

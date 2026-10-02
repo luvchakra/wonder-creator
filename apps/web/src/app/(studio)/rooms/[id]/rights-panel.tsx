@@ -263,7 +263,7 @@ export function RightsPanel({
                         </div>
                       </dl>
                       {ownsPiece ? (
-                        <Link href={`/artifacts/${p.artifactId}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                        <Link href={`/creations/${p.artifactId}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
                           Edit this Creation&rsquo;s rights record
                         </Link>
                       ) : null}

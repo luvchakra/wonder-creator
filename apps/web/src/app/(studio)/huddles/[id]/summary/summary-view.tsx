@@ -75,7 +75,7 @@ export function SummaryView({ summary: s }: { summary: HuddleSummary }) {
             {s.saved.map((x) => (
               <li key={x.id}>
                 {x.materialId ? (
-                  <Link href={`/space/materials/${x.materialId}`} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 hover:bg-black/[0.02]">
+                  <Link href={`/materials/${x.materialId}`} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 hover:bg-black/[0.02]">
                     <span className="truncate text-[15px] text-ink">{x.title || "Untitled"}</span>
                     <span className="text-sm text-ink-muted">{x.kind === "idea" ? "Idea" : "Note"}</span>
                   </Link>

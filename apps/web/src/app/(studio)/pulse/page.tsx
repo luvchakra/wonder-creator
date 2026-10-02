@@ -1,7 +1,7 @@
 import { COMMUNITY_FILTERS, COMMUNITY_FILTER_LABEL, communityFeed, listCommunities, type CommunityFilter } from "@wonder/creator-community";
 import { Search } from "lucide-react";
 import { StartCommunityButton } from "@/components/community/community-actions";
-import { communityCovers } from "@/lib/communities";
+import { communityAvatars } from "@/lib/communities";
 import { EmptyState, KIT, cn } from "@wonder/ui";
 import Link from "next/link";
 import { CommunityCardItem } from "@/components/community/cards";
@@ -59,7 +59,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
           <EmptyState title={EMPTY[filter].title} body={EMPTY[filter].body} action={filter === "people" ? undefined : <NewConversationButton />} />
         )}
         {feed.nextBefore ? (
-          <Link href={`/community?filter=${filter}&before=${encodeURIComponent(feed.nextBefore)}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
+          <Link href={`/pulse?filter=${filter}&before=${encodeURIComponent(feed.nextBefore)}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
             Show more
           </Link>
         ) : null}
@@ -69,9 +69,9 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
 }
 
 function FilterChips({ current, communities }: { current: CommunityFilter | "communities"; communities: boolean }) {
-  const views: Array<{ key: CommunityFilter | "communities"; href: string; label: string }> = COMMUNITY_FILTERS.map((f) => ({ key: f, href: f === "for_you" ? "/community" : `/community?filter=${f}`, label: COMMUNITY_FILTER_LABEL[f] }));
+  const views: Array<{ key: CommunityFilter | "communities"; href: string; label: string }> = COMMUNITY_FILTERS.map((f) => ({ key: f, href: f === "for_you" ? "/pulse" : `/pulse?filter=${f}`, label: COMMUNITY_FILTER_LABEL[f] }));
   // Communities sit right after For you, so the chip is in view at phone width.
-  const all = communities ? [views[0]!, { key: "communities" as const, href: "/community?filter=communities", label: "Communities" }, ...views.slice(1)] : views;
+  const all = communities ? [views[0]!, { key: "communities" as const, href: "/pulse?filter=communities", label: "Communities" }, ...views.slice(1)] : views;
   return all.map((f) => (
     <Link key={f.key} href={f.href} aria-current={current === f.key ? "page" : undefined} className="inline-flex min-h-11 shrink-0 items-center">
       <span className={cn("inline-flex h-8 items-center rounded-full px-3.5 text-[13px] font-medium", current === f.key ? "bg-accent-soft text-accent-ink ring-1 ring-accent/30" : "bg-surface-muted text-ink-muted hover:text-ink")}>{f.label}</span>
@@ -86,7 +86,7 @@ async function CommunitiesView({ query }: { query?: string }) {
   const list = await listCommunities(db, { query: q, limit: 40 }).catch(() => []);
   const mine = list.filter((c) => c.isMember);
   const others = list.filter((c) => !c.isMember);
-  const covers = await communityCovers(list.map((c) => c.coverMaterialId));
+  const pictures = await communityAvatars(list.map((c) => c.avatarObjectId));
   return (
     <>
       <PaletteScope context={{ page: "explore" }} />
@@ -99,7 +99,7 @@ async function CommunitiesView({ query }: { query?: string }) {
         <nav aria-label="Pulse" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
           <FilterChips current="communities" communities />
         </nav>
-        <form role="search" action="/community" className="relative">
+        <form role="search" action="/pulse" className="relative">
           <input type="hidden" name="filter" value="communities" />
           <label htmlFor="community-search" className="sr-only">
             Find a community
@@ -117,8 +117,8 @@ async function CommunitiesView({ query }: { query?: string }) {
         </form>
         {list.length ? (
           <>
-            {mine.length ? <CommunitiesList title="Your communities" items={mine} covers={covers} /> : null}
-            {others.length ? <CommunitiesList title={q ? "Communities" : "Discover communities"} items={others} covers={covers} /> : null}
+            {mine.length ? <CommunitiesList title="Your communities" items={mine} pictures={pictures} /> : null}
+            {others.length ? <CommunitiesList title={q ? "Communities" : "Discover communities"} items={others} pictures={pictures} /> : null}
           </>
         ) : (
           <EmptyState

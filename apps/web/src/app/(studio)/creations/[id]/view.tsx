@@ -179,7 +179,7 @@ export function ArtifactView(props: {
           <span>
             Created from{" "}
             {derivedFrom.length ? (
-              <Link href={`/artifacts/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
+              <Link href={`/creations/${derivedFrom[0].id}`} className="text-accent-ink hover:underline">
                 “{derivedFrom[0].title}”
               </Link>
             ) : createdFrom.length ? (
@@ -204,10 +204,10 @@ export function ArtifactView(props: {
       <div className="flex flex-wrap items-center gap-2">
         {isOwner && !finished ? (
           <>
-            <Link href={`/artifacts/${a.id}/studio`} className={buttonClasses({ size: "sm" })}>
+            <Link href={`/creations/${a.id}/studio`} className={buttonClasses({ size: "sm" })}>
               <PenLine className="size-4" aria-hidden /> Continue Creating
             </Link>
-            <Link href={`/artifacts/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+            <Link href={`/creations/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
               <Wand2 className="size-4" aria-hidden /> Transform
             </Link>
             <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
@@ -219,16 +219,16 @@ export function ArtifactView(props: {
             <Button size="sm" onClick={() => setShareOpen(true)}>
               <Share2 className="size-4" aria-hidden /> Share
             </Button>
-            <Link href={`/artifacts/${a.id}/publish`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+            <Link href={`/creations/${a.id}/publish`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
               <Send className="size-4" aria-hidden /> Publish
             </Link>
-            <Link href={`/artifacts/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+            <Link href={`/creations/${a.id}/transform`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
               <Wand2 className="size-4" aria-hidden /> Create from this
             </Link>
           </>
         ) : null}
         <span className="ml-auto flex items-center gap-1">
-          <Link href={`/artifacts/${a.id}/context`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+          <Link href={`/creations/${a.id}/context`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
             <Compass className="size-4" aria-hidden /> Context
           </Link>
           <Menu>
@@ -244,7 +244,7 @@ export function ArtifactView(props: {
             </MenuContent>
           </Menu>
           {props.canCollaborate && !isOwner ? (
-            <Link href={`/artifacts/${a.id}/collaborate`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+            <Link href={`/creations/${a.id}/collaborate`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
               <Users className="size-4" aria-hidden /> Collaborate
             </Link>
           ) : null}
@@ -255,16 +255,16 @@ export function ArtifactView(props: {
               </MenuTrigger>
               <MenuContent align="end">
                 {!finished ? (
-                  <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/publish`)}>
+                  <MenuItem onSelect={() => router.push(`/creations/${a.id}/publish`)}>
                     <Send className="size-4" aria-hidden /> Publish
                   </MenuItem>
                 ) : null}
                 {props.canCollaborate ? (
-                  <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/collaborate`)}>
+                  <MenuItem onSelect={() => router.push(`/creations/${a.id}/collaborate`)}>
                     <Users className="size-4" aria-hidden /> Collaborate
                   </MenuItem>
                 ) : null}
-                <MenuItem onSelect={() => router.push(`/artifacts/${a.id}/derivatives`)}>
+                <MenuItem onSelect={() => router.push(`/creations/${a.id}/derivatives`)}>
                   <Layers className="size-4" aria-hidden /> For a destination
                 </MenuItem>
                 <MenuItem onSelect={() => router.push(`/create?artifact=${a.id}`)}>
@@ -293,7 +293,7 @@ export function ArtifactView(props: {
       {/* Visual directions from this Creation (image-generation §31): stored ones show at once; new ones only when asked. */}
       {/* A Carousel's images live in the Composer (carousel-composer.md §9); other Creations get visual directions. */}
       {a.artifact_type === "carousel" ? (
-        <Link href={`/artifacts/${a.id}`} className="flex min-h-11 items-center justify-between rounded-xl border border-border-soft bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-muted">
+        <Link href={`/creations/${a.id}`} className="flex min-h-11 items-center justify-between rounded-xl border border-border-soft bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-muted">
           Slides
           <ChevronRight className="size-4 text-ink-subtle" aria-hidden />
         </Link>
@@ -374,7 +374,7 @@ export function ArtifactView(props: {
               <div className="flex items-center justify-between gap-2">
                 <h2 className="font-semibold text-ink">What you can do next</h2>
                 {isOwner ? (
-                  <Link href={`/artifacts/${a.id}/transform`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+                  <Link href={`/creations/${a.id}/transform`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
                     Every form
                   </Link>
                 ) : null}
@@ -384,7 +384,7 @@ export function ArtifactView(props: {
                   .filter((x) => x.kind === "transform")
                   .map((x) => (
                     <li key={x.key}>
-                      <Link href={`/artifacts/${a.id}/transform?type=${x.targetType}`} className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-[15px] text-ink hover:bg-surface-muted">
+                      <Link href={`/creations/${a.id}/transform?type=${x.targetType}`} className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-[15px] text-ink hover:bg-surface-muted">
                         <Wand2 className="size-4 shrink-0 text-accent-ink" aria-hidden /> {x.label}
                         <span className="text-sm text-ink-subtle">— {x.hint}</span>
                       </Link>
@@ -396,7 +396,7 @@ export function ArtifactView(props: {
                     {derivatives.map((d, i) => (
                       <span key={d.key}>
                         {i ? ", " : ""}
-                        <Link className="font-medium text-accent-ink hover:underline" href={`/artifacts/${d.id}`}>
+                        <Link className="font-medium text-accent-ink hover:underline" href={`/creations/${d.id}`}>
                           {d.title}
                         </Link>
                       </span>
@@ -412,7 +412,7 @@ export function ArtifactView(props: {
           <MaterialGrid items={createdFrom} empty="This Creation wasn't made from saved Materials." />
           <p className="mt-3 text-sm text-ink-muted">
             References, people and related Creations are in the{" "}
-            <Link href={`/artifacts/${a.id}/context`} className="font-medium text-accent-ink hover:underline">
+            <Link href={`/creations/${a.id}/context`} className="font-medium text-accent-ink hover:underline">
               Context view
             </Link>
             .
@@ -445,7 +445,7 @@ export function ArtifactView(props: {
           kind="insight"
           action={
             isOwner ? (
-              <Link href={`/artifacts/${a.id}/studio`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+              <Link href={`/creations/${a.id}/studio`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
                 Refine in the Creative Studio
               </Link>
             ) : undefined
@@ -471,7 +471,7 @@ export function ArtifactView(props: {
               setBusy(true);
               try {
                 await api(`/api/v1/artifacts/${a.id}?confirm=true`, { method: "DELETE" });
-                router.replace("/space");
+                router.replace("/materials");
               } catch (e) {
                 setError(errorMessage(e));
                 setBusy(false);
@@ -540,7 +540,7 @@ function Versions({ artifactId, versions, currentId, isOwner }: { artifactId: st
       </ol>
       <section aria-label="Compare versions" className="rounded-2xl border border-border-soft bg-surface p-4">
         {left && right && left !== right ? (
-          <Link href={`/artifacts/${artifactId}/compare?a=${left}&b=${right}`} className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+          <Link href={`/creations/${artifactId}/compare?a=${left}&b=${right}`} className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
             Open the compare view — before / after, or swipe
           </Link>
         ) : null}
@@ -625,7 +625,7 @@ function ShareDialog({
             <Switch checked={featured} onCheckedChange={setFeatured} label="Feature on my profile" disabled={!pub} />
           </label>
           {pub && !final ? <p className="text-sm text-warning-ink">Drafts stay private even when set to public — mark it final to share it.</p> : null}
-          <Link href={`/artifacts/${artifact.id}/share`} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-border-soft px-4 py-2 hover:bg-black/[0.02]">
+          <Link href={`/creations/${artifact.id}/share`} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-border-soft px-4 py-2 hover:bg-black/[0.02]">
             <span>
               <span className="block font-medium text-ink">Private links and people</span>
               <span className="text-sm text-ink-muted">Share without publishing: a link, or named creators. Revoke any time.</span>
@@ -788,7 +788,7 @@ export function TransformDialog({
               setError(null);
               try {
                 const r = await api<{ artifact: { id: string } }>(`/api/v1/artifacts/${artifactId}/transform`, { method: "POST", json: { targetType: type, instruction, versionId: versionId || null } });
-                router.push(`/artifacts/${r.artifact.id}`);
+                router.push(`/creations/${r.artifact.id}`);
               } catch (e) {
                 setError(errorMessage(e));
                 setBusy(false);
@@ -1048,7 +1048,7 @@ function RightsPanel({
                 {provenance.derivedFrom ? (
                   <>
                     Derived from{" "}
-                    <Link href={`/artifacts/${provenance.derivedFrom.id}`} className="text-accent-ink hover:underline">
+                    <Link href={`/creations/${provenance.derivedFrom.id}`} className="text-accent-ink hover:underline">
                       “{provenance.derivedFrom.title}”
                     </Link>
                   </>
@@ -1188,7 +1188,7 @@ function RightsPanel({
                   {e.derivativeId ? (
                     <>
                       {" "}
-                      <Link href={`/artifacts/${e.derivativeId}`} className="text-accent-ink hover:underline">
+                      <Link href={`/creations/${e.derivativeId}`} className="text-accent-ink hover:underline">
                         Open it
                       </Link>
                     </>

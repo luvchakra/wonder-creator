@@ -279,7 +279,7 @@ export function CarouselCanvas({
       >
         <div className="relative">
           <Link
-            href={`/artifacts/${artifactId}/slides/${slide.id}`}
+            href={`/creations/${artifactId}/slides/${slide.id}`}
             className="block focus-visible:outline-2 focus-visible:outline-accent"
             aria-label={`Edit slide ${idx + 1} of ${n}: ${words.slice(0, 60)}`}
           >
@@ -301,7 +301,7 @@ export function CarouselCanvas({
               overlay={slide.overlay}
               text={words}
               onOpen={() =>
-                router.push(`/artifacts/${artifactId}/slides/${slide.id}`)
+                router.push(`/creations/${artifactId}/slides/${slide.id}`)
               }
               onSaved={refresh}
               onError={setError}
@@ -688,7 +688,7 @@ function RefineText({
             ))}
             <MenuItem
               onSelect={() =>
-                router.push(`/artifacts/${artifactId}/slides/${slideId}`)
+                router.push(`/creations/${artifactId}/slides/${slideId}`)
               }
             >
               <PenLine className="size-4" aria-hidden /> Edit the words…

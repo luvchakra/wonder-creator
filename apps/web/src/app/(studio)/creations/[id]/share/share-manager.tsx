@@ -33,7 +33,7 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={`/artifacts/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+      <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
         ← {artifact.title}
       </Link>
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">Share</h1>
@@ -42,7 +42,7 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
       </p>
       <p className="mt-1 text-sm text-ink-muted">
         Sharing lets people open it. Sending it out to a platform is{" "}
-        <Link href={`/artifacts/${artifact.id}/publish`} className="font-medium text-accent-ink hover:underline">
+        <Link href={`/creations/${artifact.id}/publish`} className="font-medium text-accent-ink hover:underline">
           Publish
         </Link>
         ; a copy for yourself is Download on the Creation.

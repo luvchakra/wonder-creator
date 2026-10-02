@@ -408,7 +408,7 @@ export function CommunityResponsesSheet({
                     </MenuTrigger>
                     <MenuContent align="start">
                       <MenuItem onSelect={() => void act(r, "save")}>Save thought</MenuItem>
-                      <MenuItem onSelect={() => router.push(`/community/conversations/${r.conversationId}#reply`)}>Reply</MenuItem>
+                      <MenuItem onSelect={() => router.push(`/pulse/conversations/${r.conversationId}#reply`)}>Reply</MenuItem>
                       <MenuItem onSelect={() => void act(r, "dismiss")}>Dismiss</MenuItem>
                     </MenuContent>
                   </Menu>
@@ -475,7 +475,7 @@ function AskBody({ artifactId, fragment, onAsked }: { artifactId: string; fragme
         <p className="flex items-center gap-2 text-[14px] text-ink">
           <MessagesSquare className="size-4 text-accent" aria-hidden /> Asked. Replies come back to your Working Table.
         </p>
-        <Link href={`/community/conversations/${asked}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
+        <Link href={`/pulse/conversations/${asked}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
           See the conversation
         </Link>
       </div>

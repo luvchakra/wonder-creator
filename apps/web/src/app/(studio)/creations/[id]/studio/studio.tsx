@@ -80,7 +80,7 @@ export function Studio({
           // Community things arrive Available (Phase 04 §7): someone else's words wait until the creator chooses a use.
           const community = type === "conversation" || type === "conversation_reply" || type === "scrapbook_entry";
           r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${r.workingSet.sessionId}/sources`, { method: "POST", json: { items: [{ type, id }], state: community ? "available" : "in_use" } });
-          router.replace(`/artifacts/${artifact.id}/studio`);
+          router.replace(`/creations/${artifact.id}/studio`);
         }
         if (!live) return;
         setSet(r.workingSet);
@@ -459,10 +459,10 @@ export function Studio({
         {/* A Carousel's Creation page is this Studio, so Back leaves the Creation: to the page the creator came from,
             else their Creations (owner, 29 Sep 2026: "back button on carousel is not working"). */}
         <Link
-          href={isCarousel ? "/space?tab=creations" : `/artifacts/${artifact.id}`}
+          href={isCarousel ? "/materials?tab=creations" : `/creations/${artifact.id}`}
           onClick={(e) => {
             if (!isCarousel) return;
-            const to = lastPageOutside(`/artifacts/${artifact.id}`);
+            const to = lastPageOutside(`/creations/${artifact.id}`);
             if (!to) return;
             e.preventDefault();
             router.push(to);
@@ -486,7 +486,7 @@ export function Studio({
               className="min-w-0 max-w-[10rem] bg-transparent text-[13.5px] font-medium text-ink focus:outline-none sm:max-w-xs"
             />
             <Link
-              href={`/artifacts/${artifact.id}?tab=versions`}
+              href={`/creations/${artifact.id}?tab=versions`}
               className="rounded-full bg-accent-softer px-2 py-0.5 text-[11.5px] font-semibold text-accent-ink"
               aria-label={`Version ${base?.number ?? 1} — see versions`}
             >
@@ -547,7 +547,7 @@ export function Studio({
         <p role="status" className="mb-2 flex flex-wrap items-center gap-x-3 rounded-2xl bg-success-soft px-4 py-2 text-sm text-success-ink">
           Saved as v{kept.versionNumber}
           {kept.titles.length ? ` with: ${kept.titles.join("; ")}` : ""}.
-          <Link href={`/artifacts/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center font-medium underline">
+          <Link href={`/creations/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center font-medium underline">
             Compare with the previous version
           </Link>
         </p>
@@ -558,7 +558,7 @@ export function Studio({
           <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
           <span className="flex-1">
             A new Creation. “{madeFrom.title}” is unchanged —{" "}
-            <Link href={`/artifacts/${madeFrom.id}/studio`} className="inline-flex min-h-11 items-center font-medium underline">
+            <Link href={`/creations/${madeFrom.id}/studio`} className="inline-flex min-h-11 items-center font-medium underline">
               open it
             </Link>
           </span>
@@ -961,11 +961,11 @@ export function Studio({
                 : []),
               { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
               ...(askFragment && askOn ? [{ label: "Ask Pulse", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
-              { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/artifacts/${artifact.id}?tab=versions`) },
+              { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
               { label: "Transform / Derive", hint: "Make a carousel, video, etc.", act: () => setSheet("format") },
-              { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/artifacts/${artifact.id}/share`) },
-              { label: "Publish", hint: "To profile, social, webhook", act: () => router.push(`/artifacts/${artifact.id}/publish`) },
-              { label: "Rights & license", hint: "Set commercial rights", act: () => router.push(`/artifacts/${artifact.id}?tab=rights`) },
+              { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+              { label: "Publish", hint: "To profile, social, webhook", act: () => router.push(`/creations/${artifact.id}/publish`) },
+              { label: "Rights & license", hint: "Set commercial rights", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
             ].map((row) => (
               <li key={row.label}>
                 <button type="button" onClick={row.act} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left hover:bg-black/[0.02]">

@@ -25,7 +25,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const { tab, details, from } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   // Lineage and references moved to the Context view (UI redesign §16); old links keep working.
-  if (tab === "lineage" || tab === "references") redirect(`/artifacts/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
+  if (tab === "lineage" || tab === "references") redirect(`/creations/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
   const { db, creator } = await requireSession();
   const { data: artifact } = await db.from("artifacts").select("*").eq("id", id).maybeSingle();
   if (!artifact) notFound();
@@ -34,7 +34,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   // The owner works on a Carousel in the Creative Studio canvas (owner, 28 Sep 2026: the old overview is gone);
   // About/Materials/Versions/Rights/People stay in Details. Collaborators, who don't have the owner's Studio, keep the
   // Composer (carousel-composer.md §9).
-  if (artifact.artifact_type === "carousel" && !tab && !details && isOwner) redirect(`/artifacts/${id}/studio`);
+  if (artifact.artifact_type === "carousel" && !tab && !details && isOwner) redirect(`/creations/${id}/studio`);
   if (artifact.artifact_type === "carousel" && !tab && !details) {
     const [view, versions, graph] = await Promise.all([carouselView({ db, service: serviceClient(), creatorId: creator.id }, id), listVersions(db, id), lineageGraph(db, id)]);
     const current = versions.find((v) => v.id === artifact.current_version_id) ?? versions[0];

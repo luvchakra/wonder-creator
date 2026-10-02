@@ -141,7 +141,7 @@ export function CrewChat({
                 ) : null}
                 {m.draftedByAi ? <p className="text-xs text-ink-subtle">Drafted with CreativeMind</p> : null}
                 {m.itemId && titles.has(m.itemId) ? (
-                  <Link href={`/projects/${projectId}/shared/${m.itemId}`} className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline">
+                  <Link href={`/rooms/${projectId}/shared/${m.itemId}`} className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline">
                     <Paperclip className="size-4" aria-hidden /> {titles.get(m.itemId)}
                   </Link>
                 ) : null}

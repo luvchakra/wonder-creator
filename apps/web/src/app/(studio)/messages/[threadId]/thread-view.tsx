@@ -88,7 +88,7 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
                   </p>
                   {m.project || m.artifact ? (
                     <Link
-                      href={m.project ? `/projects/${m.project.id}` : `/artifacts/${m.artifact!.id}`}
+                      href={m.project ? `/rooms/${m.project.id}` : `/creations/${m.artifact!.id}`}
                       className="mb-1 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-cream px-3 text-sm text-ink hover:underline"
                     >
                       <Tag className="size-3.5" aria-hidden /> {m.project ? `Creative Room: ${m.project.title}` : `Creation: ${m.artifact!.title}`}

@@ -13,7 +13,7 @@ test.describe("share, download and export", () => {
     test.setTimeout(120_000);
     const title = `Harbour lamps ${uid()}`;
     const id = await pieceWithText(page, title, "The lamps come on one by one.");
-    await page.goto(`/artifacts/${id}`);
+    await page.goto(`/creations/${id}`);
 
     // Downloads offer the formats that suit a poem.
     await page.getByRole("button", { name: "Download" }).click();
@@ -24,7 +24,7 @@ test.describe("share, download and export", () => {
 
     await page.getByRole("button", { name: "Share" }).click();
     await page.getByRole("link", { name: /Private links and people/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/share$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/share$`));
     await expect(page.getByText("Nothing is shared yet.")).toBeVisible();
 
     await page.getByLabel("Allow downloads").first().click();
@@ -59,17 +59,17 @@ test.describe("share, download and export", () => {
     const { page: b } = await openContext("B");
     const creatorB = await newCreator(b, { name: `Ravi ${uid()}` });
 
-    await page.goto(`/artifacts/${id}/share`);
+    await page.goto(`/creations/${id}/share`);
     await page.getByLabel("Creator's handle").fill(`@${creatorB.handle}`);
     await page.getByRole("button", { name: "Share", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: `Shared with @${creatorB.handle}` })).toBeVisible();
 
-    await b.goto("/space");
+    await b.goto("/materials");
     await b.getByRole("link", { name: "Shared with you" }).click();
     await b.getByRole("link", { name: new RegExp(title) }).click();
     await expect(b.getByText("Low water at six.")).toBeVisible();
     // Sharing isn't access to the piece itself.
-    await b.goto(`/artifacts/${id}`);
+    await b.goto(`/creations/${id}`);
     await expect(b.getByRole("heading", { name: title })).toHaveCount(0);
 
     await page.reload();

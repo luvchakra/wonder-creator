@@ -64,7 +64,7 @@ test.describe("CreativeRadio", () => {
     await expect(mini.getByRole("button", { name: `Pause ${title}` })).toBeVisible();
 
     // Navigation doesn't stop it or change its state; the Palette says what's playing.
-    await page.goto("/space?tab=ideas");
+    await page.goto("/materials?tab=ideas");
     await expect(mini).toContainText(title);
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await expect(page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: new RegExp(`Focus · ${esc}`) })).toBeVisible();
@@ -97,7 +97,7 @@ test.describe("CreativeRadio", () => {
 
     // In the Creative Studio (an immersive screen) it starts tucked in, but a tap still opens it (owner, 29 Sep 2026).
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "carousel", title: "Monsoon" } })).json()).artifact as { id: string };
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     await page.getByRole("button", { name: /^Open audio player — / }).click();
     await expect(mini).toContainText(title);
     await mini.getByRole("button", { name: "Collapse player" }).click();

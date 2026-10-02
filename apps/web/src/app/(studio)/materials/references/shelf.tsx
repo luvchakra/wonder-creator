@@ -45,11 +45,11 @@ export function ReferenceShelf({ shelves, activeShelf, items }: { shelves: Array
       />
       <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[220px_1fr_300px]">
         <nav aria-label="Shelves" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:block lg:space-y-1 lg:px-0">
-          <Link href="/space/references" aria-current={!activeShelf ? "page" : undefined} className={cn("flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-sm", !activeShelf ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}>
+          <Link href="/materials/references" aria-current={!activeShelf ? "page" : undefined} className={cn("flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-sm", !activeShelf ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}>
             All References <span className="text-xs">{total}</span>
           </Link>
           {shelves.map((s) => (
-            <Link key={s.id} href={`/space/references?shelf=${s.id}`} aria-current={s.id === activeShelf ? "page" : undefined} className={cn("flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-sm", s.id === activeShelf ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}>
+            <Link key={s.id} href={`/materials/references?shelf=${s.id}`} aria-current={s.id === activeShelf ? "page" : undefined} className={cn("flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-sm", s.id === activeShelf ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-muted hover:bg-black/[0.04]")}>
               {s.name} <span className="text-xs">{s.count}</span>
             </Link>
           ))}
@@ -103,7 +103,7 @@ export function ReferenceShelf({ shelves, activeShelf, items }: { shelves: Array
           onConfirm={async () => {
             try {
               await api(`/api/v1/references/shelves/${active.id}`, { method: "DELETE" });
-              router.replace("/space/references");
+              router.replace("/materials/references");
               router.refresh();
             } catch (e) {
               setError(errorMessage(e));
@@ -271,7 +271,7 @@ function NewShelfDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
               const r = await api<{ shelf: { id: string } }>("/api/v1/references/shelves", { method: "POST", json: { name } });
               onOpenChange(false);
               setName("");
-              router.push(`/space/references?shelf=${r.shelf.id}`);
+              router.push(`/materials/references?shelf=${r.shelf.id}`);
               router.refresh();
             } catch (err) {
               setError(errorMessage(err));

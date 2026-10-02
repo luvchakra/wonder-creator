@@ -72,7 +72,7 @@ function CreationCard({ c, isMe }: { c: ProfileCreation; isMe: boolean }) {
   const verse = c.type === "poem" || c.type === "lyrics" || c.type === "spoken_word";
   return (
     <article className={cn(surface, "overflow-hidden")}>
-      <Link href={`/artifacts/${c.id}`} className="block p-2 focus-visible:outline-2 focus-visible:outline-accent">
+      <Link href={`/creations/${c.id}`} className="block p-2 focus-visible:outline-2 focus-visible:outline-accent">
         <p className="flex items-center gap-1.5 px-0.5 pb-1.5 text-[12px] font-medium text-ink-muted">
           <span className="text-accent-ink">{creationIcon(c)}</span>
           <span className="flex-1 truncate">{c.typeLabel}</span>

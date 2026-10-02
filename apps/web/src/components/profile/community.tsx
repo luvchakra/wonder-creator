@@ -34,7 +34,7 @@ export function CommunityTab({ huddles, conversations, shared, handle, isMe, pag
       <p className={cn(surface, "px-4 py-6 text-center text-[13.5px] text-ink-muted")}>
         {isMe ? "Conversations you start and Huddles you open appear here. " : "Nothing in the community yet."}
         {isMe ? (
-          <Link href="/community" className="font-medium text-accent-ink hover:underline">
+          <Link href="/pulse" className="font-medium text-accent-ink hover:underline">
             Open Pulse
           </Link>
         ) : null}
@@ -57,7 +57,7 @@ export function CommunityTab({ huddles, conversations, shared, handle, isMe, pag
         const f = FACE[c.intent];
         return (
           <li key={c.id}>
-            <Row icon={<f.icon className="size-4" aria-hidden />} label={c.closedAt ? `${f.label} · closed` : f.label} time={c.createdAt} href={`/community/conversations/${c.id}`} name={c.title}>
+            <Row icon={<f.icon className="size-4" aria-hidden />} label={c.closedAt ? `${f.label} · closed` : f.label} time={c.createdAt} href={`/pulse/conversations/${c.id}`} name={c.title}>
               <p className="text-[14.5px] font-medium leading-snug text-ink">{c.title}</p>
               {c.body ? <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-ink-muted">{c.body}</p> : null}
             </Row>

@@ -9,9 +9,9 @@ test.describe("Community", () => {
     const title = `Does slide 3 feel too literal ${tag}?`;
 
     // Community lives inside Explore; a conversation starts from a sheet, intent first.
-    await page.goto("/search");
+    await page.goto("/explore");
     await page.getByRole("navigation", { name: "Explore" }).getByRole("link", { name: "Pulse" }).click();
-    await expect(page).toHaveURL(/\/community$/);
+    await expect(page).toHaveURL(/\/pulse$/);
     await expect(page.getByRole("navigation", { name: "Pulse" }).getByRole("link")).toHaveText(["For you", "Communities", "Conversations", "Help", "People"]);
     await page.getByRole("button", { name: "Start a conversation" }).first().click();
     const sheet = page.getByRole("dialog", { name: "Start a conversation" });
@@ -19,14 +19,14 @@ test.describe("Community", () => {
     await expect(sheet.getByText("People will know you asked for constructive feedback.")).toBeVisible();
     await sheet.getByLabel("Title").fill(title);
     await sheet.getByRole("button", { name: "Start the conversation" }).click();
-    await expect(page).toHaveURL(/\/community\/conversations\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/pulse\/conversations\/[0-9a-f-]{36}$/);
     const url = page.url();
     await expect(page.getByText("Critique requested.")).toBeVisible();
 
     // Someone else finds it under Help, with one clear action, and answers.
     const { page: other } = await openContext("B");
     await newCreator(other);
-    await other.goto("/community?filter=help");
+    await other.goto("/pulse?filter=help");
     const card = other.getByRole("list", { name: "Help" }).getByRole("listitem").filter({ hasText: title });
     await expect(card).toContainText("would like feedback");
     await card.getByRole("link", { name: "Give feedback" }).click();
@@ -61,19 +61,19 @@ test.describe("Community", () => {
     await newCreator(c);
 
     const limited = (await (await page.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `Private idea ${tag}`, visibility: "limited", inviteHandles: [bee.handle] } })).json()).conversation.id as string;
-    await b.goto(`/community/conversations/${limited}`);
+    await b.goto(`/pulse/conversations/${limited}`);
     await expect(b.getByRole("heading", { level: 1 })).toContainText(`Private idea ${tag}`);
     expect((await c.request.get(`/api/v1/open-conversations/${limited}`)).status()).toBe(404);
 
     // C sees A's open conversation, mutes A, and A is gone from C's Community.
     const open = (await (await page.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `Open idea ${tag}` } })).json()).conversation.id as string;
-    await c.goto("/community?filter=conversations");
+    await c.goto("/pulse?filter=conversations");
     await expect(c.locator("#main").getByText(`Open idea ${tag}`)).toBeVisible();
-    await c.goto(`/community/conversations/${open}`);
+    await c.goto(`/pulse/conversations/${open}`);
     await c.getByRole("button", { name: "More for this conversation" }).click();
     await c.getByRole("menuitem", { name: /^Mute / }).click();
     await expect(c.getByText(/is muted/)).toBeVisible();
-    await c.goto("/community?filter=conversations");
+    await c.goto("/pulse?filter=conversations");
     await expect(c.locator("#main").getByText(`Open idea ${tag}`)).toHaveCount(0);
   });
 
@@ -85,28 +85,28 @@ test.describe("Community", () => {
     await newCreator(b);
 
     // Huddle: live, named after the conversation, linked back.
-    await b.goto(`/community/conversations/${id}`);
+    await b.goto(`/pulse/conversations/${id}`);
     await b.getByRole("button", { name: "More for this conversation" }).click();
     await b.getByRole("menuitem", { name: "Start Huddle about this" }).click();
     await expect(b).toHaveURL(/\/huddles\/[0-9a-f-]{36}$/);
     const huddleUrl = b.url();
-    await page.goto(`/community/conversations/${id}`);
+    await page.goto(`/pulse/conversations/${id}`);
     await expect(page.getByRole("region", { name: "What grew from this" })).toContainText("Live Huddle about this");
 
     // Creative Room through the existing Projects domain.
     await page.getByRole("button", { name: "More for this conversation" }).click();
     await page.getByRole("menuitem", { name: "Start Creative Room" }).click();
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(`Visual storytelling without dialogue ${tag}`);
 
     // B's DejaVu on A's conversation is B's alone.
-    await b.goto(`/community/conversations/${id}`);
+    await b.goto(`/pulse/conversations/${id}`);
     await b.getByRole("button", { name: "Add a DejaVu" }).click();
     await b.getByLabel("Search or type a DejaVu").fill(`Silent films ${tag}`);
     await b.getByRole("button", { name: `Create “Silent films ${tag}”` }).click();
     await b.keyboard.press("Escape");
     await expect(b.getByRole("group", { name: "DejaVus" }).getByRole("link", { name: `Silent films ${tag}` })).toBeVisible();
-    await page.goto(`/community/conversations/${id}`);
+    await page.goto(`/pulse/conversations/${id}`);
     await expect(page.getByRole("group", { name: "DejaVus" }).getByRole("link")).toHaveCount(0);
 
     // Tidy: B leaves, so the Huddle dissolves.

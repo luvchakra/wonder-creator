@@ -505,7 +505,7 @@ function UseTogether({ set, chosen, onClose, onDone }: { set: WorkingSetView; ch
     setBusy(true);
     try {
       const res = await api<{ artifactId: string; fromArtifactId: string }>(`/api/v1/studio-sessions/${set.sessionId}/switch-format`, { method: "POST", json: { artifactType: switching.artifactType } });
-      router.push(`/artifacts/${res.artifactId}/studio?from=${res.fromArtifactId}`);
+      router.push(`/creations/${res.artifactId}/studio?from=${res.fromArtifactId}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -718,7 +718,7 @@ function BringInBody({ sessionId, onAdded, onExternal }: { sessionId: string | n
   }
   function tile(k: (typeof BRING_IN_KINDS)[number]["key"]) {
     if (k === "capture" || k === "link") router.push("/send");
-    else if (k === "browse") router.push("/search");
+    else if (k === "browse") router.push("/explore");
     else if (k === "external") onExternal();
     else if (k === "dejavu") setDejavu(true);
     else setOnly(k);
@@ -1081,7 +1081,7 @@ function ChangeFormatBody({ sessionId, currentType: cur, aiLive }: { sessionId: 
         method: "POST",
         json: pick === "auto" ? { instruction: "Choose the format that suits these ingredients best." } : { mode: pick },
       });
-      router.push(`/artifacts/${res.artifactId}/studio?from=${res.fromArtifactId}`);
+      router.push(`/creations/${res.artifactId}/studio?from=${res.fromArtifactId}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);

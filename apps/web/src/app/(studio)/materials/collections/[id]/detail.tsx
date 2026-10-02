@@ -65,7 +65,7 @@ export function CollectionDetail({
 
   return (
     <div>
-      <Link href="/space?tab=collections" className="text-sm text-accent-ink hover:underline">
+      <Link href="/materials?tab=collections" className="text-sm text-accent-ink hover:underline">
         ← Collections
       </Link>
       <header className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -165,7 +165,7 @@ export function CollectionDetail({
             return (
               <li key={m.id} className="min-w-0">
                 <div className="relative">
-                  <Link href={`/space/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
+                  <Link href={`/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
                     <div className={cn("aspect-[4/3] overflow-hidden rounded-2xl border bg-surface shadow-[var(--shadow-card)]", selected.includes(m.id) ? "border-accent ring-2 ring-accent" : "border-border-soft")}>
                       <MaterialVisual m={m} />
                     </div>
@@ -242,7 +242,7 @@ export function CollectionDetail({
         onConfirm={() =>
           run("delete", async () => {
             await api(`/api/v1/collections/${c.id}?confirm=true`, { method: "DELETE" });
-            router.replace("/space?tab=collections");
+            router.replace("/materials?tab=collections");
           })
         }
       />

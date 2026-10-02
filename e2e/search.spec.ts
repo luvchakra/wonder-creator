@@ -56,12 +56,12 @@ test.describe("Unified search", () => {
   });
 
   test("an empty search explains itself and nothing is searched", async ({ page }) => {
-    await page.goto("/search");
+    await page.goto("/explore");
     await expect(page.getByRole("heading", { name: "Search your creative world" })).toBeVisible();
-    await page.goto(`/search?q=${uid()}nothing`);
+    await page.goto(`/explore?q=${uid()}nothing`);
     await expect(page.getByRole("heading", { name: /Nothing found for/ })).toBeVisible();
     await page.getByRole("link", { name: "Clear filters" }).click();
-    await expect(page).toHaveURL(/\/search\?q=/);
+    await expect(page).toHaveURL(/\/explore\?q=/);
   });
 });
 
@@ -83,7 +83,7 @@ test.describe("inline navbar search", () => {
     await search.getByRole("textbox", { name: "Search" }).fill("lanterns");
     await expect(search.getByRole("region", { name: "Search results" })).toBeVisible();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/search\?q=lanterns$/);
+    await expect(page).toHaveURL(/\/explore\?q=lanterns$/);
     await expect(search).toHaveCount(0);
   });
 });

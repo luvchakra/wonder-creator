@@ -176,20 +176,20 @@ export async function getProject(db: Db, id: string) {
     switch (r.kind) {
       case "material": {
         const m = r.creative_materials;
-        return { ...base, itemId: r.material_id!, title: m?.title ?? r.label ?? "Untitled", detail: m?.type ?? null, href: m ? `/space/materials/${r.material_id}` : null, available: !!m, at: m?.created_at ?? r.added_at, material: m ?? undefined };
+        return { ...base, itemId: r.material_id!, title: m?.title ?? r.label ?? "Untitled", detail: m?.type ?? null, href: m ? `/materials/${r.material_id}` : null, available: !!m, at: m?.created_at ?? r.added_at, material: m ?? undefined };
       }
       case "reference": {
         const ref = r.reference_items;
         const m = ref?.creative_materials ?? null;
-        return { ...base, itemId: r.reference_id!, title: m?.title ?? "Reference", detail: m?.type ?? null, href: ref ? `/space/materials/${ref.material_id}` : null, available: !!ref, material: m ?? undefined };
+        return { ...base, itemId: r.reference_id!, title: m?.title ?? "Reference", detail: m?.type ?? null, href: ref ? `/materials/${ref.material_id}` : null, available: !!ref, material: m ?? undefined };
       }
       case "artifact": {
         const a = r.artifacts;
-        return { ...base, itemId: r.artifact_id!, title: a?.title ?? r.label ?? "Creation", detail: a?.artifact_type ?? null, href: a ? `/artifacts/${r.artifact_id}` : null, available: !!a, at: a?.updated_at ?? r.added_at, artifact: a ?? undefined };
+        return { ...base, itemId: r.artifact_id!, title: a?.title ?? r.label ?? "Creation", detail: a?.artifact_type ?? null, href: a ? `/creations/${r.artifact_id}` : null, available: !!a, at: a?.updated_at ?? r.added_at, artifact: a ?? undefined };
       }
       case "collection": {
         const c = r.material_collections;
-        return { ...base, itemId: r.collection_id!, title: c?.name ?? "Collection", detail: c?.status === "archived" ? "Archived" : null, href: c ? `/space/collections/${r.collection_id}` : null, available: !!c, at: c?.updated_at ?? r.added_at };
+        return { ...base, itemId: r.collection_id!, title: c?.name ?? "Collection", detail: c?.status === "archived" ? "Archived" : null, href: c ? `/materials/collections/${r.collection_id}` : null, available: !!c, at: c?.updated_at ?? r.added_at };
       }
       case "conversation": {
         const c = r.conversations;

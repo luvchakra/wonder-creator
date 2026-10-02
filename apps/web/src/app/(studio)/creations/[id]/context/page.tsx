@@ -65,7 +65,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
     <>
       <PaletteScope context={{ page: "context", permissions: a.creator_id === creator.id ? ["edit", "collaborate"] : [], ids: { artifactId: id } }} />
       <div className="mx-auto max-w-3xl space-y-5">
-        <Link href={`/artifacts/${a.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+        <Link href={`/creations/${a.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
           ← {a.title}
         </Link>
         <header>
@@ -76,7 +76,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
           {SECTIONS.map(([k, label]) => (
             <Link
               key={k}
-              href={`/artifacts/${a.id}/context?tab=${k}`}
+              href={`/creations/${a.id}/context?tab=${k}`}
               aria-current={section === k ? "page" : undefined}
               className={cn(
                 chipBase, "border font-medium",

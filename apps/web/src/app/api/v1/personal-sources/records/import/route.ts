@@ -16,7 +16,7 @@ export const POST = withApi(
   async ({ db, creatorId, req }) => {
     const b = schema.parse(await readJson(req));
     const { materialIds } = await importRecords(sourcesDeps(), db, creatorId, b.recordIds, b.photoMaterials);
-    return { materialIds, next: b.to === "studio" ? `/create?materials=${materialIds.join(",")}` : "/space?tab=ideas" };
+    return { materialIds, next: b.to === "studio" ? `/create?materials=${materialIds.join(",")}` : "/materials?tab=ideas" };
   },
   { feature: "personal_sources_enabled", rateLimit: 20 },
 );

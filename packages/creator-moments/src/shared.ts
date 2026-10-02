@@ -98,9 +98,9 @@ export function periodOf(occurredAt: string | Date, now: Date = new Date()): str
 
 /** Where a Moment opens: its own domain's page (the Moment never replaces it). */
 export function momentHref(m: Pick<MomentReference, "entityType" | "entityId">): string | null {
-  if (m.entityType === "material") return `/space/materials/${m.entityId}`;
-  if (m.entityType === "creation") return `/artifacts/${m.entityId}`;
-  if (m.entityType === "conversation") return `/community/conversations/${m.entityId}`;
+  if (m.entityType === "material") return `/materials/${m.entityId}`;
+  if (m.entityType === "creation") return `/creations/${m.entityId}`;
+  if (m.entityType === "conversation") return `/pulse/conversations/${m.entityId}`;
   if (m.entityType === "scrapbook_entry") return `/scrapbook/${m.entityId}`;
   return null;
 }

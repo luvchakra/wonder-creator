@@ -8,7 +8,7 @@ test.describe("Publication derivatives", () => {
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "short_film", title } })).json()).artifact as { id: string; current_version_id: string };
     await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "EXT. BEACH - DAWN\nA girl waits for the tide.", baseVersionId: art.current_version_id, label: "Written" } });
 
-    await page.goto(`/artifacts/${art.id}`);
+    await page.goto(`/creations/${art.id}`);
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "For a destination" }).click();
     await expect(page.getByRole("heading", { name: "Derivatives", level: 1 })).toBeVisible();
@@ -21,7 +21,7 @@ test.describe("Publication derivatives", () => {
     await expect(made).toContainText("from v2");
     await expect(made).toContainText("Not published yet.");
     await made.getByRole("link", { name: /^Review / }).click();
-    await expect(page).not.toHaveURL(new RegExp(`/artifacts/${art.id}$`));
+    await expect(page).not.toHaveURL(new RegExp(`/creations/${art.id}$`));
     // The derivative links back to its source.
     await page.getByRole("link", { name: "Context", exact: true }).click();
     await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();

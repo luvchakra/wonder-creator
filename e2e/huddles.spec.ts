@@ -115,7 +115,7 @@ test.describe("Huddles", () => {
     const saving = b.waitForResponse((r) => r.url().endsWith(`/api/v1/huddles/${huddleId}/moments`) && r.request().method() === "POST");
     await laterItem.getByRole("button", { name: /^Save/ }).click();
     const savedId = ((await (await saving).json()) as { material: { id: string } }).material.id;
-    const savedHref = `/space/materials/${savedId}`;
+    const savedHref = `/materials/${savedId}`;
     await expect(b.getByRole("status").filter({ hasText: "Saved to your Creative Space." }).getByRole("link", { name: "View it" })).toHaveAttribute("href", savedHref);
 
     // B leaves → B's summary; A is alone, the Huddle is still live.
@@ -196,7 +196,7 @@ test.describe("Huddles", () => {
     const res = await a.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Tide poem ${uid()}` } });
     const art = (await res.json()).artifact as { id: string; title: string };
 
-    await a.goto(`/artifacts/${art.id}`);
+    await a.goto(`/creations/${art.id}`);
     await a.getByRole("button", { name: "More actions" }).click();
     await a.getByRole("menuitem", { name: "Start a Huddle about this" }).click();
     const dialog = a.getByRole("dialog", { name: "Start a Huddle" });
@@ -211,7 +211,7 @@ test.describe("Huddles", () => {
     await a.waitForURL(/\/huddles\/[0-9a-f-]{36}$/);
     const huddleId = a.url().split("/").pop()!;
     await expect(a.getByText("A first read-through.")).toBeVisible();
-    await expect(a.getByRole("link", { name: art.title })).toHaveAttribute("href", `/artifacts/${art.id}`);
+    await expect(a.getByRole("link", { name: art.title })).toHaveAttribute("href", `/creations/${art.id}`);
     await expect(a.getByRole("region", { name: "Invitations" })).toContainText(`${creatorB.name} · invited`);
 
     // B is invited, and declines.

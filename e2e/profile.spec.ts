@@ -34,7 +34,7 @@ test.describe("creator identity & profile", () => {
     await page.keyboard.press("Escape");
 
     // Profile page.
-    await page.goto("/profile");
+    await page.goto("/me");
     await expect(page).toHaveURL(new RegExp(`/creators/${newHandle}$`));
     await expect(page.getByRole("heading", { level: 1, name: "Ada Lighthouse" })).toBeVisible();
     await expect(page.getByText(`@${newHandle}`)).toBeVisible();

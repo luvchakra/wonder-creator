@@ -8,10 +8,10 @@ import { flagOn } from "@/lib/features";
  * this set. "Community" now names the Orkut-style communities (docs/communities.md).
  */
 const DOORS = [
-  { key: "ideas", label: "Ideas", href: "/search" },
-  { key: "materials", label: "Materials", href: "/search?type=material" },
-  { key: "people", label: "People", href: "/discover" },
-  { key: "community", label: "Pulse", href: "/community" },
+  { key: "ideas", label: "Ideas", href: "/explore" },
+  { key: "materials", label: "Materials", href: "/explore?type=material" },
+  { key: "people", label: "People", href: "/people" },
+  { key: "community", label: "Pulse", href: "/pulse" },
 ] as const;
 
 export function ExploreNav({ current }: { current: (typeof DOORS)[number]["key"] }) {

@@ -89,7 +89,7 @@ export function MaterialCard({ m, href }: { m: MaterialCardData; href?: string }
   const Icon = m.type === "idea" ? Lightbulb : m.type === "voice" ? Mic : m.type === "audio" ? AudioLines : null;
   const processing = m.processing_state && !["ready", "understood", "failed", "quarantined"].includes(m.processing_state);
   return (
-    <Link href={href ?? `/space/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
+    <Link href={href ?? `/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
       <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
         <MaterialVisual m={m} />
       </div>
@@ -116,7 +116,7 @@ export function MaterialWallCard({ m }: { m: MaterialCardData }) {
   const isPhoto = (m.type === "image" || m.type === "sketch") && m.previewUrl;
   const isPaper = ["idea", "note", "text"].includes(m.type);
   return (
-    <Link href={`/space/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
+    <Link href={`/materials/${m.id}`} className="group block rounded-2xl focus-visible:outline-2">
       <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
         {isPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -159,7 +159,7 @@ const STATUS_LABEL: Record<string, string> = { draft: "In progress", in_review: 
 export function ArtifactCard({ a }: { a: ArtifactCardData }) {
   const def = artifactType(a.artifact_type);
   return (
-    <Link href={`/artifacts/${a.id}`} className="group block rounded-2xl focus-visible:outline-2">
+    <Link href={`/creations/${a.id}`} className="group block rounded-2xl focus-visible:outline-2">
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
         {a.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

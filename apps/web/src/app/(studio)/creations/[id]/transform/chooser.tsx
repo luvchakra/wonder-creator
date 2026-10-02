@@ -71,7 +71,7 @@ export function TransformChooser({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/artifacts/${artifactId}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+      <Link href={`/creations/${artifactId}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
         ← {source.title}
       </Link>
       <header>
@@ -106,7 +106,7 @@ export function TransformChooser({
         </div>
         <p className="mt-3 text-sm text-ink-muted">
           Making something for a specific place — a YouTube description, a post, a thumbnail?{" "}
-          <Link href={`/artifacts/${artifactId}/derivatives`} className="font-medium text-accent-ink hover:underline">
+          <Link href={`/creations/${artifactId}/derivatives`} className="font-medium text-accent-ink hover:underline">
             Create for a destination
           </Link>
         </p>

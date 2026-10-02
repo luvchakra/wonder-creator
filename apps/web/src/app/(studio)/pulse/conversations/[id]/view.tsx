@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
+import { CommunityAvatar } from "@/components/community/community-art";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
 import { useFeature } from "@/components/features";
 import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
@@ -21,7 +22,7 @@ type Props = {
   dejavus: { momentId: string | null; dejavus: DejaVu[] };
   summary?: ConversationSummaryView | null;
   /** Communities this topic is in that the viewer can see (docs/communities.md). */
-  communities?: Array<{ id: string; title: string; isHost: boolean }>;
+  communities?: Array<{ id: string; title: string; isHost: boolean; picture?: string | null }>;
 };
 
 /**
@@ -75,12 +76,13 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
       {home ? (
         <Link href={`/communities/${home.id}`} className="inline-flex min-h-11 max-w-full items-center gap-1.5 text-[13.5px] text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4 shrink-0" aria-hidden />
+          <CommunityAvatar id={home.id} title={home.title} src={home.picture} size={22} className="ring-1" />
           <span className="truncate">
             In <span className="font-medium text-accent-ink">{home.title}</span>
           </span>
         </Link>
       ) : (
-        <Link href="/community?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
+        <Link href="/pulse?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
           <ArrowLeft className="size-4" aria-hidden /> Pulse
         </Link>
       )}
@@ -138,7 +140,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                 onSelect={() =>
                   void act("room", async () => {
                     const r = await api<{ projectId: string }>(`/api/v1/open-conversations/${c.id}/start-creative-room`, { method: "POST" });
-                    router.push(`/projects/${r.projectId}`);
+                    router.push(`/rooms/${r.projectId}`);
                   })
                 }
               >
@@ -238,7 +240,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                 <AudioLines className="size-4 text-live" aria-hidden /> {l.live ? "Live Huddle about this — Join" : `Huddle: ${l.title ?? "ended"}`}
               </Link>
             ) : (
-              <Link key={l.id} href={`/projects/${l.id}`} className="flex min-h-11 items-center gap-2 text-[13.5px] text-ink hover:underline">
+              <Link key={l.id} href={`/rooms/${l.id}`} className="flex min-h-11 items-center gap-2 text-[13.5px] text-ink hover:underline">
                 <Users className="size-4 text-accent" aria-hidden /> Creative Room: {l.title ?? "open it"}
               </Link>
             ),
@@ -325,7 +327,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                         onSelect={() =>
                           void act("save", async () => {
                             await api(`/api/v1/open-conversations/${c.id}/replies/${r.id}/save`, { method: "POST" });
-                            setStudio({ text: "Saved to your Materials, with who said it.", href: "/space", link: "Your Space" });
+                            setStudio({ text: "Saved to your Materials, with who said it.", href: "/materials", link: "Your Space" });
                           })
                         }
                       >
@@ -425,7 +427,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
               onClick={() =>
                 void act("block", async () => {
                   await api(`/api/v1/creators/${c.creatorId}/block`, { method: "POST", json: { on: true } });
-                  router.push("/community");
+                  router.push("/pulse");
                 })
               }
             >

@@ -20,7 +20,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
         <h2 id="community-title" className="font-display text-[19px] leading-tight text-ink">
           From Pulse
         </h2>
-        <Link href="/community" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
+        <Link href="/pulse" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
           Explore <ChevronRight className="size-3.5" aria-hidden />
         </Link>
       </div>
@@ -34,7 +34,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
 
       <div className="mt-2.5 space-y-3">
         {g.catchUp ? (
-          <Link href={g.catchUp.conversations === 1 ? `/community/conversations/${g.catchUp.firstId}` : "/community?filter=conversations"} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white/75 px-3 py-2 hover:bg-white">
+          <Link href={g.catchUp.conversations === 1 ? `/pulse/conversations/${g.catchUp.firstId}` : "/pulse?filter=conversations"} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white/75 px-3 py-2 hover:bg-white">
             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
               <MessagesSquare className="size-4" aria-hidden />
             </span>
@@ -74,7 +74,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
                 const cover = g.covers[c.id];
                 return (
                   <li key={c.id} className="w-[8.75rem] shrink-0 snap-start">
-                    <Link href={`/artifacts/${c.id}`} className="group block">
+                    <Link href={`/creations/${c.id}`} className="group block">
                       <span className="relative block aspect-[4/5] overflow-hidden rounded-xl bg-surface-muted shadow-[0_8px_20px_-14px_rgb(60_40_80/0.6)]">
                         {cover ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -122,7 +122,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
               </Link>
             ) : null}
             {g.ask ? (
-              <Link href={`/community/conversations/${g.ask.conversation.id}`} className="block rounded-2xl border border-border-soft bg-white/80 p-3 hover:bg-white">
+              <Link href={`/pulse/conversations/${g.ask.conversation.id}`} className="block rounded-2xl border border-border-soft bg-white/80 p-3 hover:bg-white">
                 <span className="flex items-center gap-1.5 text-[12px] text-ink-muted">
                   <Avatar name={g.ask.author.name} src={avatars[g.ask.author.id]} size={20} />
                   <span className="truncate">{helpHeadline(g.ask.conversation.intent, g.ask.author.name)}</span>
@@ -139,7 +139,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
         ) : null}
 
         {g.person ? (
-          <Link href={g.person.person.handle ? `/creators/${g.person.person.handle}` : "/discover"} className="flex min-h-14 items-center gap-3 rounded-2xl bg-white/70 px-3 py-2 hover:bg-white">
+          <Link href={g.person.person.handle ? `/creators/${g.person.person.handle}` : "/people"} className="flex min-h-14 items-center gap-3 rounded-2xl bg-white/70 px-3 py-2 hover:bg-white">
             <Avatar name={g.person.person.name} src={avatars[g.person.person.id]} size={40} />
             <span className="min-w-0 flex-1">
               <span className="block text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">Someone to meet</span>
@@ -167,7 +167,7 @@ export function RoomsGlance({ items, avatars }: { items: RoomItem[]; avatars: Re
       <ul className="mt-1.5 divide-y divide-border-soft">
         {items.map((i) => (
           <li key={`${i.projectId}:${i.itemId}`}>
-            <Link href={`/projects/${i.projectId}/shared/${i.itemId}`} className="flex min-h-12 items-center gap-3 py-2 hover:underline">
+            <Link href={`/rooms/${i.projectId}/shared/${i.itemId}`} className="flex min-h-12 items-center gap-3 py-2 hover:underline">
               <span className="relative shrink-0">
                 <Avatar name={i.by.name} src={avatars[i.by.id]} size={32} />
                 <span className="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-border-soft">

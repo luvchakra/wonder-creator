@@ -9,7 +9,7 @@ test.describe("Artifact transformation", () => {
     const art = (await (await page.request.get(`/api/v1/artifacts/${artifactId}`)).json()).artifact as { current_version_id: string; title: string };
     expect((await page.request.post(`/api/v1/artifacts/${artifactId}/versions`, { data: { content: "A quieter second draft.", baseVersionId: art.current_version_id, label: "Revised" } })).ok()).toBe(true);
 
-    await page.goto(`/artifacts/${artifactId}`);
+    await page.goto(`/creations/${artifactId}`);
     await page.getByRole("link", { name: "Transform", exact: true }).click();
     // The Transform screen: forms that suit a poem first, every other form after.
     await expect(page.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible();
@@ -26,9 +26,9 @@ test.describe("Artifact transformation", () => {
     await dialog.getByLabel("Anything to keep in mind? (optional)").fill("Make it singable.");
     await dialog.getByRole("button", { name: "Create derivative" }).click();
 
-    await page.waitForURL((u) => /\/artifacts\/[0-9a-f-]{36}$/.test(u.pathname) && !u.pathname.includes(artifactId), { timeout: 45_000 });
+    await page.waitForURL((u) => /\/creations\/[0-9a-f-]{36}$/.test(u.pathname) && !u.pathname.includes(artifactId), { timeout: 45_000 });
     const source = page.getByRole("link", { name: `“${art.title}”` });
-    await expect(source).toHaveAttribute("href", `/artifacts/${artifactId}`);
+    await expect(source).toHaveAttribute("href", `/creations/${artifactId}`);
 
     await page.getByRole("tab", { name: "Rights" }).click();
     await expect(page.getByText(/Derived from “.*” \(v1\)/)).toBeVisible();

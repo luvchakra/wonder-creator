@@ -34,7 +34,7 @@ export function DerivativesView({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Link href={`/artifacts/${source.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href={`/creations/${source.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> {source.title}
       </Link>
       <PageTitle art={KIT.painted.coralLeaves} title="Derivatives" subtitle="Platform adaptations are Creations in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
@@ -138,10 +138,10 @@ export function DerivativesView({
                   <p className="mt-1 text-sm text-ink-muted">Not published yet.</p>
                 )}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Link href={`/artifacts/${d.id}`} className={buttonClasses({ variant: "secondary" })} aria-label={`Review ${d.title}`}>
+                  <Link href={`/creations/${d.id}`} className={buttonClasses({ variant: "secondary" })} aria-label={`Review ${d.title}`}>
                     Review
                   </Link>
-                  <Link href={`/artifacts/${d.id}/publish`} className={buttonClasses({ variant: "ghost" })} aria-label={`Publish ${d.title}`}>
+                  <Link href={`/creations/${d.id}/publish`} className={buttonClasses({ variant: "ghost" })} aria-label={`Publish ${d.title}`}>
                     Publish
                   </Link>
                 </div>

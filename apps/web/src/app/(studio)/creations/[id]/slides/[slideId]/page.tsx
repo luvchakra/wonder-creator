@@ -14,7 +14,7 @@ export default async function SlidePage({ params }: { params: Promise<{ id: stri
   const { db, creator } = await requireSession();
   const view = await carouselView({ db, service: serviceClient(), creatorId: creator.id }, id).catch(() => null);
   if (!view) notFound();
-  if (!view.slides.some((s) => s.id === slideId)) redirect(`/artifacts/${id}`);
+  if (!view.slides.some((s) => s.id === slideId)) redirect(`/creations/${id}`);
   return (
     <>
       <PaletteScope context={{ page: "creation", entityType: "creation", lifecycle: "in-progress", permissions: view.isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : view.canEdit ? ["collaborate"] : [], ids: { artifactId: id } }} />

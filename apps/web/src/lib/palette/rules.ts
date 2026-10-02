@@ -27,9 +27,9 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
     hint: "Photos, notes, voice and everything you've brought in",
     icon: "images",
     class: "navigation",
-    target: route("/space?tab=ideas"),
+    target: route("/materials?tab=ideas"),
     score: 58,
-    current: pathname.startsWith("/space"),
+    current: pathname.startsWith("/materials"),
   },
   {
     id: "huddles",
@@ -47,9 +47,9 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
     hint: "Ideas, Materials, People and Pulse",
     icon: "compass",
     class: "navigation",
-    target: route("/search"),
+    target: route("/explore"),
     score: 56,
-    current: pathname.startsWith("/search") || pathname.startsWith("/discover") || pathname.startsWith("/community"),
+    current: pathname.startsWith("/explore") || pathname.startsWith("/people") || pathname.startsWith("/pulse"),
   },
   {
     id: "me",
@@ -57,9 +57,9 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
     hint: "Your profile, Creations and settings",
     icon: "user",
     class: "navigation",
-    target: route("/profile"),
+    target: route("/me"),
     score: 55,
-    current: pathname.startsWith("/profile") || pathname.startsWith("/creators"),
+    current: pathname.startsWith("/me") || pathname.startsWith("/creators"),
   },
 ];
 
@@ -68,7 +68,7 @@ type Rules = { title: string | null; items: PaletteItem[] };
 export function rulesFor(ctx: PaletteContext): Rules {
   const i = ctx.ids ?? {};
   const f = ctx.facts ?? {};
-  const a = i.artifactId ? `/artifacts/${i.artifactId}` : "";
+  const a = i.artifactId ? `/creations/${i.artifactId}` : "";
   switch (ctx.page) {
     case "home":
       // A calm point of departure: the global destinations without Home itself (§9.1).
@@ -80,8 +80,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: [
           { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 100 },
           { id: "capture", label: "Capture", hint: "Photo, voice or a note", icon: "camera", class: "create", target: route("/send"), score: 95 },
-          { id: "collections", label: "Collections", icon: "images", class: "context", target: route("/space?tab=collections"), score: 80 },
-          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/search"), score: 70 },
+          { id: "collections", label: "Collections", icon: "images", class: "context", target: route("/materials?tab=collections"), score: 80 },
+          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/explore"), score: 70 },
         ],
       };
 
@@ -89,14 +89,14 @@ export function rulesFor(ctx: PaletteContext): Rules {
       const m = i.materialId!;
       const create: PaletteItem = { id: "create-with", label: "Create with this", icon: "spark", class: "create", target: route(`/create?material=${m}`), score: 100 };
       const related: PaletteItem[] = f.related
-        ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/search?q=${encodeURIComponent(f.related)}`), score: 85 }]
+        ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/explore?q=${encodeURIComponent(f.related)}`), score: 85 }]
         : [];
-      const collect: PaletteItem = { id: "collect", label: "Add to Collection", icon: "images", class: "context", target: route(`/space/materials/${m}#collections`), score: 80 };
+      const collect: PaletteItem = { id: "collect", label: "Add to Collection", icon: "images", class: "context", target: route(`/materials/${m}#collections`), score: 80 };
       const explore: PaletteItem = { id: "explore", label: "Explore possibilities", icon: "compass", class: "create", target: route(`/create/discover?material=${m}`), score: 75 };
-      const edit: PaletteItem = { id: "edit", label: "Edit details", class: "utility", target: route(`/space/materials/${m}#details`), score: 30, requires: "edit" };
+      const edit: PaletteItem = { id: "edit", label: "Edit details", class: "utility", target: route(`/materials/${m}#details`), score: 30, requires: "edit" };
       const byKind: PaletteItem[] =
         ctx.entityType === "audio"
-          ? [{ id: "words", label: "Use the words", hint: "The transcript", icon: "mic", class: "create", target: route(`/space/materials/${m}#transcript`), score: 90 }]
+          ? [{ id: "words", label: "Use the words", hint: "The transcript", icon: "mic", class: "create", target: route(`/materials/${m}#transcript`), score: 90 }]
           : ctx.entityType === "note" || ctx.entityType === "document"
             ? [{ ...explore, id: "ideas", label: "Extract ideas", score: 90 }]
             : [];
@@ -109,7 +109,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: [
           { id: "create-from", label: "Create from Collection", icon: "spark", class: "create", target: route(`/create?collection=${i.collectionId}`), score: 100 },
           { id: "add", label: "Add Material", icon: "add", class: "create", target: route("/send"), score: 90 },
-          ...(f.name ? [{ id: "related", label: "Explore related", icon: "search" as const, class: "context" as const, target: route(`/search?q=${encodeURIComponent(f.name)}`), score: 80 }] : []),
+          ...(f.name ? [{ id: "related", label: "Explore related", icon: "search" as const, class: "context" as const, target: route(`/explore?q=${encodeURIComponent(f.name)}`), score: 80 }] : []),
         ],
       };
 
@@ -210,18 +210,18 @@ export function rulesFor(ctx: PaletteContext): Rules {
       };
 
     case "room": {
-      const room = `/projects/${i.projectId}`;
+      const room = `/rooms/${i.projectId}`;
       const active = f.activeCreationId;
       return {
         title: "This Creative Room",
         items: [
           active
-            ? { id: "studio", label: "Open Studio", icon: "pen", class: "create", target: route(`/artifacts/${active}/studio`), score: 100, requires: "edit" }
+            ? { id: "studio", label: "Open Studio", icon: "pen", class: "create", target: route(`/creations/${active}/studio`), score: 100, requires: "edit" }
             : { id: "start", label: "Start Creation", icon: "spark", class: "create", target: route(`/create?project=${i.projectId}`), score: 100, requires: "edit" },
           { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 90 },
           f.hasCrew && i.crewId
             ? { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`/crews/${i.crewId}`), score: 80 }
-            : { id: "invite", label: "Invite People", icon: "people", class: "collaboration", target: route(`/discover?project=${i.projectId}`), score: 80, requires: "invite" },
+            : { id: "invite", label: "Invite People", icon: "people", class: "collaboration", target: route(`/people?project=${i.projectId}`), score: 80, requires: "invite" },
           { id: "huddle", label: f.hasCrew ? "Chat & Huddle" : "Start Huddle", icon: "users", class: "collaboration", target: route(f.hasCrew ? `${room}?tab=chat` : "/huddles"), score: 70 },
           { id: "tasks", label: "Tasks", class: "context", target: route(`${room}?tab=tasks`), score: 50 },
           { id: "rights", label: "Rights", class: "rights", target: route(`${room}?tab=rights`), score: 40 },
@@ -236,10 +236,10 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "This crew",
         items: [
-          { id: "room", label: "Open Creative Room", icon: "room", class: "navigation", target: route(`/projects/${i.projectId}`), score: 90 },
-          { id: "huddle", label: "Chat & Huddle", icon: "users", class: "collaboration", target: route(`/projects/${i.projectId}?tab=chat`), score: 85 },
-          { id: "find", label: "Find People", icon: "people", class: "collaboration", target: route(`/discover?project=${i.projectId}`), score: 80, requires: "invite" },
-          { id: "contributions", label: "Contributions", class: "context", target: route(`/projects/${i.projectId}?tab=contributions`), score: 50 },
+          { id: "room", label: "Open Creative Room", icon: "room", class: "navigation", target: route(`/rooms/${i.projectId}`), score: 90 },
+          { id: "huddle", label: "Chat & Huddle", icon: "users", class: "collaboration", target: route(`/rooms/${i.projectId}?tab=chat`), score: 85 },
+          { id: "find", label: "Find People", icon: "people", class: "collaboration", target: route(`/people?project=${i.projectId}`), score: 80, requires: "invite" },
+          { id: "contributions", label: "Contributions", class: "context", target: route(`/rooms/${i.projectId}?tab=contributions`), score: 50 },
         ],
       };
 
@@ -248,7 +248,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: "Huddles",
         items: [
           { id: "mine", label: "My Huddles", icon: "users", class: "context", target: route("/huddles?view=mine"), score: 90 },
-          { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/discover"), score: 70 },
+          { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/people"), score: 70 },
         ],
       };
 
@@ -258,7 +258,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: i.artifactId
           ? [{ id: "open", label: "Open Creation", icon: "pen", class: "context", target: route(a), score: 90 }]
           : i.materialId
-            ? [{ id: "open", label: "Open Material", icon: "images", class: "context", target: route(`/space/materials/${i.materialId}`), score: 90 }]
+            ? [{ id: "open", label: "Open Material", icon: "images", class: "context", target: route(`/materials/${i.materialId}`), score: 90 }]
             : [],
       };
 
@@ -277,8 +277,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: "Me",
         items: [
           { id: "edit", label: "Edit Profile", icon: "user", class: "utility", target: route("/settings"), score: 90 },
-          { id: "creations", label: "My Creations", icon: "pen", class: "navigation", target: route("/space?tab=progress"), score: 85 },
-          { id: "collections", label: "Collections", icon: "images", class: "navigation", target: route("/space?tab=collections"), score: 80 },
+          { id: "creations", label: "My Creations", icon: "pen", class: "navigation", target: route("/materials?tab=progress"), score: 85 },
+          { id: "collections", label: "Collections", icon: "images", class: "navigation", target: route("/materials?tab=collections"), score: 80 },
           { id: "settings", label: "Settings", class: "utility", target: route("/settings?section=collaboration"), hint: "Collaboration, AI, privacy", score: 70 },
           { id: "brand", label: "Brand work", class: "utility", target: route("/settings?section=brand"), score: 30 },
         ],
@@ -290,8 +290,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: [
           // Testimonials (docs/testimonials.md): offered only when the server would accept one.
           ...(f.canWrite && i.creatorHandle ? [{ id: "testimonial", label: "Write a testimonial", icon: "pen" as const, class: "collaboration" as const, target: route(`/creators/${i.creatorHandle}?write=testimonial`), score: 80 }] : []),
-          { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/discover"), score: 70 },
-          { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/projects"), score: 60 },
+          { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/people"), score: 70 },
+          { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/rooms"), score: 60 },
         ],
       };
 
@@ -299,7 +299,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "Find collaborators",
         items: [
-          { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/projects"), score: 80 },
+          { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/rooms"), score: 80 },
           { id: "huddle", label: "Start Huddle", icon: "users", class: "collaboration", target: route("/huddles"), score: 60 },
         ],
       };
@@ -308,7 +308,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
     case "community": {
       // Start a topic is the page's own primary action, and Forum/Huddles/Members are its visible views, so the Palette
       // offers what's next beyond them (interaction-minimalism: don't duplicate the page's controls).
-      const room = `/projects/${i.projectId}`;
+      const room = `/rooms/${i.projectId}`;
       return {
         title: "This community",
         items: f.member
@@ -316,11 +316,11 @@ export function rulesFor(ctx: PaletteContext): Rules {
               { id: "share", label: "Share a Creation here", icon: "add", class: "share", target: route(`${room}?tab=work`), score: 100 },
               { id: "huddle", label: "Chat & Huddle", icon: "users", class: "collaboration", target: route(`${room}?tab=chat`), score: 90 },
               { id: "room", label: "Open Creative Room", icon: "room", class: "navigation", target: route(room), score: 80 },
-              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/community?filter=communities"), score: 70 },
+              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/pulse?filter=communities"), score: 70 },
             ]
           : [
-              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/community?filter=communities"), score: 80 },
-              { id: "community", label: "Pulse", icon: "people", class: "navigation", target: route("/community"), score: 70 },
+              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/pulse?filter=communities"), score: 80 },
+              { id: "community", label: "Pulse", icon: "people", class: "navigation", target: route("/pulse"), score: 70 },
             ],
       };
     }
@@ -332,7 +332,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         items: [
           { id: "create", label: "Create", icon: "spark", class: "create", target: cmd("create-menu"), score: 90 },
           { id: "save", label: "Save to Materials", icon: "add", class: "create", target: route("/send"), score: 85 },
-          { id: "people", label: "People", icon: "people", class: "collaboration", target: route("/discover"), score: 80 },
+          { id: "people", label: "People", icon: "people", class: "collaboration", target: route("/people"), score: 80 },
         ],
       };
 
@@ -344,8 +344,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: "This request",
         items: i.approvalArtifactId
           ? [
-              { id: "creation", label: "Go to Creation", icon: "pen", class: "navigation", target: route(`/artifacts/${i.approvalArtifactId}`), score: 90 },
-              { id: "context", label: "View Context", icon: "compass", class: "context", target: route(`/artifacts/${i.approvalArtifactId}/context`), score: 80 },
+              { id: "creation", label: "Go to Creation", icon: "pen", class: "navigation", target: route(`/creations/${i.approvalArtifactId}`), score: 90 },
+              { id: "context", label: "View Context", icon: "compass", class: "context", target: route(`/creations/${i.approvalArtifactId}/context`), score: 80 },
             ]
           : [],
       };
@@ -354,7 +354,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "Publishing",
         items: [
-          { id: "publish", label: "Publish a Creation", icon: "spark", class: "publish", target: route("/space?tab=created"), score: 90 },
+          { id: "publish", label: "Publish a Creation", icon: "spark", class: "publish", target: route("/materials?tab=created"), score: 90 },
           { id: "history", label: "Publication history", class: "context", target: route("/publishing"), score: 50 },
         ],
       };
@@ -365,7 +365,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: null,
         items: [
           { id: "home", label: "Home", icon: "home", class: "navigation", target: route("/"), score: 90 },
-          { id: "me", label: "Me", icon: "user", class: "navigation", target: route("/profile"), score: 80 },
+          { id: "me", label: "Me", icon: "user", class: "navigation", target: route("/me"), score: 80 },
         ],
       };
 
@@ -374,8 +374,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: "My Creations",
         items: [
           { id: "new", label: "New Creation", icon: "spark", class: "create", target: route("/create"), score: 90 },
-          ...(f.activeCreationId ? [{ id: "continue", label: "Continue", icon: "pen" as const, class: "create" as const, target: route(`/artifacts/${f.activeCreationId}`), score: 85 }] : []),
-          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/search"), score: 70 },
+          ...(f.activeCreationId ? [{ id: "continue", label: "Continue", icon: "pen" as const, class: "create" as const, target: route(`/creations/${f.activeCreationId}`), score: 85 }] : []),
+          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/explore"), score: 70 },
         ],
       };
 

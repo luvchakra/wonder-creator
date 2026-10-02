@@ -19,7 +19,7 @@ export default async function TransformPage({ params, searchParams }: { params: 
   const { db, creator } = await requireSession();
   const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id, current_version_id").eq("id", id).maybeSingle();
   if (!a) notFound();
-  if (a.creator_id !== creator.id) redirect(`/artifacts/${id}`);
+  if (a.creator_id !== creator.id) redirect(`/creations/${id}`);
 
   const [versions, rights, contributors, edges] = await Promise.all([
     listVersions(db, id),

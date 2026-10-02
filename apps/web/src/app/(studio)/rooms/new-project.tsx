@@ -37,7 +37,7 @@ export function NewProjectButton() {
               setError(null);
               try {
                 const r = await api<{ project: { id: string } }>("/api/v1/projects", { method: "POST", json: { title, brief, status: started ? "active" : "idea" } });
-                router.push(`/projects/${r.project.id}`);
+                router.push(`/rooms/${r.project.id}`);
               } catch (err) {
                 setError(errorMessage(err));
                 setBusy(false);

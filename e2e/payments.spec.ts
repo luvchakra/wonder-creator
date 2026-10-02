@@ -35,7 +35,7 @@ test.describe("Licence payments", () => {
     expect((await owner.request.post(`/api/v1/license-requests/${requestId}`, { data: { action: "approve", password: PASSWORD } })).ok()).toBe(true);
 
     // The licensee sees the fee and pays on the provider's page — here the provider refuses the test key, honestly.
-    await payer.goto(`/artifacts/${piece}?tab=rights`);
+    await payer.goto(`/creations/${piece}?tab=rights`);
     const fee = payer.getByLabel("Licence fee");
     await expect(fee).toContainText("Not paid yet");
     await fee.getByRole("button", { name: "Pay ₹1,500.00" }).click();
@@ -58,12 +58,12 @@ test.describe("Licence payments", () => {
     await payer.goto(`/payments/${order!.id}`);
     await expect(payer.getByRole("heading", { level: 1 })).toHaveText("Payment received");
     if (process.env.PAY_SHOTS) await payer.screenshot({ path: `${process.env.PAY_SHOTS}/pay-return.png` });
-    await payer.goto(`/artifacts/${piece}?tab=rights`);
+    await payer.goto(`/creations/${piece}?tab=rights`);
     await expect(payer.getByLabel("Licence fee")).toContainText("Paid");
     await expect(payer.getByRole("button", { name: /^Pay / })).toHaveCount(0);
 
     // The owner: paid in the licence list and received in Business, linked to the payment.
-    await owner.goto(`/artifacts/${piece}?tab=rights`);
+    await owner.goto(`/creations/${piece}?tab=rights`);
     const ownerFee = owner.getByLabel("Licence fee");
     await expect(ownerFee).toContainText("₹1,500.00");
     await expect(ownerFee).toContainText("via Stripe");
@@ -83,7 +83,7 @@ test.describe("Licence payments", () => {
     expect(text).toContain(`pi_e2e_${order!.id}`);
 
     // Refunds ask for the password again; the (test) provider refuses, and nothing is marked refunded.
-    await owner.goto(`/artifacts/${piece}?tab=rights`);
+    await owner.goto(`/creations/${piece}?tab=rights`);
     await owner.getByLabel("Licence fee").getByRole("button", { name: "Refund…" }).click();
     const dialog = owner.getByRole("dialog", { name: "Refund this payment" });
     await expect(dialog.getByLabel("Amount (INR)")).toHaveValue("1500");

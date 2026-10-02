@@ -41,7 +41,7 @@ test.describe("Profile views", () => {
     await expect(help).toBeVisible();
     await expect(page.getByText("Help request")).toBeVisible();
     await help.click();
-    await expect(page).toHaveURL(new RegExp(`/community/conversations/${ask}$`));
+    await expect(page).toHaveURL(new RegExp(`/pulse/conversations/${ask}$`));
 
     // Someone else sees only what's public: drafts stay private, the public moment and request show.
     const { page: other } = await openContext("other");

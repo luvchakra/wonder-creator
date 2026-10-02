@@ -44,7 +44,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           {FILTERS.map((f) => (
             <li key={f.key}>
               <Link
-                href={f.key === "open" ? "/projects" : `/projects?status=${f.key}`}
+                href={f.key === "open" ? "/rooms" : `/rooms?status=${f.key}`}
                 aria-current={status === f.key ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm",

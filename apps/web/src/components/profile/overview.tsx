@@ -83,7 +83,7 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
           <ul className="mt-1.5 grid grid-cols-3 gap-2">
             {series.slice(0, 3).map((c, i) => (
               <li key={c.id}>
-                <Link href={`/artifacts/${c.id}`} className="group block">
+                <Link href={`/creations/${c.id}`} className="group block">
                   {c.coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.coverUrl} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />

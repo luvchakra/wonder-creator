@@ -20,7 +20,7 @@ export default async function SharedItemPage({ params }: { params: Promise<{ id:
   const image = item.kind === "material" && item.fileUrl && item.mimeType?.startsWith("image/");
   return (
     <article className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/projects/${id}?tab=work`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href={`/rooms/${id}?tab=work`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> Back to the Creative Room
       </Link>
       <header className="space-y-2">

@@ -186,7 +186,7 @@ export function PublishFlow(props: {
           ← {artifact.title}
         </button>
       ) : (
-        <Link href={`/artifacts/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
+        <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           ← {artifact.title}
         </Link>
       )}
@@ -194,7 +194,7 @@ export function PublishFlow(props: {
       <p className="mt-1 text-[15px] text-ink-muted">Nothing goes out until you approve it, and it&apos;s shown as published only once the destination confirms.</p>
       <p className="mt-1 text-sm text-ink-muted">
         Just want people to see it?{" "}
-        <Link href={`/artifacts/${artifact.id}/share`} className="font-medium text-accent-ink hover:underline">
+        <Link href={`/creations/${artifact.id}/share`} className="font-medium text-accent-ink hover:underline">
           Share a link instead
         </Link>
         .
@@ -466,7 +466,7 @@ export function PublishFlow(props: {
         body="What you've set up here isn't saved yet."
         confirmLabel="Leave"
         destructive
-        onConfirm={() => router.push(`/artifacts/${artifact.id}`)}
+        onConfirm={() => router.push(`/creations/${artifact.id}`)}
       />
     </div>
   );

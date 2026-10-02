@@ -24,7 +24,7 @@ export const POST = withApi<{ id: string }>(
     // "Bring to Studio" opens a new Creation with these Materials and, when CreativeMind had one, its possibility.
     const { data: c } = await db.from("context_candidates").select("suggestion").eq("id", id).maybeSingle();
     const prompt = c?.suggestion ? `&prompt=${encodeURIComponent(c.suggestion)}` : "";
-    return { materialIds, next: b.to === "studio" ? `/create?materials=${materialIds.join(",")}${prompt}` : "/space?tab=ideas" };
+    return { materialIds, next: b.to === "studio" ? `/create?materials=${materialIds.join(",")}${prompt}` : "/materials?tab=ideas" };
   },
   { feature: "personal_sources_enabled", rateLimit: 20 },
 );

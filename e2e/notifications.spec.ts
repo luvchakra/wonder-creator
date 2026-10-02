@@ -32,7 +32,7 @@ test.describe("Notifications", () => {
     await expect(b.getByRole("status").filter({ hasText: "Request sent" })).toBeVisible();
 
     // Away from the room, A's bell counts the request and links back to it.
-    await a.goto("/space");
+    await a.goto("/materials");
     await expect(bell(a)).toHaveAccessibleName("Notifications, 1 waiting", { timeout: 20_000 });
     await bell(a).click();
     const item = a.getByRole("dialog", { name: "Notifications" }).getByRole("link", { name: new RegExp(`${creatorB.name} asked to join your Huddle`) });

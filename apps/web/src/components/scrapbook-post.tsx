@@ -25,7 +25,7 @@ export function ScrapbookPostCard({ post, linkToDetail = true }: { post: Scrapbo
                 <FileText className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden />
                 <div className="min-w-0">
                   {a.canOpen ? (
-                    <Link href={a.kind === "artifact" ? `/artifacts/${a.itemId}` : `/space/materials/${a.itemId}`} className="text-sm font-medium text-accent-ink hover:underline">
+                    <Link href={a.kind === "artifact" ? `/creations/${a.itemId}` : `/materials/${a.itemId}`} className="text-sm font-medium text-accent-ink hover:underline">
                       {a.title}
                     </Link>
                   ) : (

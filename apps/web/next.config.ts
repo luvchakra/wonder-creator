@@ -48,6 +48,26 @@ const nextConfig: NextConfig = {
   ],
   serverExternalPackages: ["unpdf", "livekit-server-sdk"],
   poweredByHeader: false,
+  // Routes follow the design's names (owner, 2 Oct 2026). Old addresses keep working: notifications, bookmarks and
+  // shared links land on the same page under its new name. APIs (/api/v1/*) and public pages (/p/*) are unchanged.
+  async redirects() {
+    const moved: Array<[string, string]> = [
+      ["/artifacts", "/creations"],
+      ["/projects", "/rooms"],
+      ["/community", "/pulse"],
+      ["/space/materials", "/materials"],
+      ["/space/collections", "/materials/collections"],
+      ["/space/references", "/materials/references"],
+      ["/space", "/materials"],
+      ["/search", "/explore"],
+      ["/discover", "/people"],
+      ["/profile", "/me"],
+    ];
+    return moved.flatMap(([from, to]) => [
+      { source: from, destination: to, permanent: true },
+      { source: `${from}/:path*`, destination: `${to}/:path*`, permanent: true },
+    ]);
+  },
   async headers() {
     const common = [
       { key: "X-Content-Type-Options", value: "nosniff" },

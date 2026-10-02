@@ -35,7 +35,7 @@ test.describe("Personal Sources", () => {
     await page.locator("label").filter({ hasText: "Sketches from Pune" }).click();
     await expect(page.getByRole("checkbox", { name: /Sketches from Pune/ })).not.toBeChecked();
     await page.getByRole("button", { name: "Add selected to Materials · 1 item" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas/);
+    await expect(page).toHaveURL(/\/materials\?tab=ideas/);
 
     // Home now offers the next thing from your world, with a quiet Sync.
     await page.goto("/");
@@ -82,7 +82,7 @@ test.describe("Personal Sources", () => {
     await grid.first().locator("..").click();
     await expect(grid.first()).not.toBeChecked();
     await page.getByRole("button", { name: "Add selected to Materials · 3 items" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/materials\?tab=ideas/, { timeout: 30_000 });
     // Only the three chosen originals were uploaded.
     expect(uploads).toHaveLength(3);
   });
@@ -104,6 +104,6 @@ test.describe("Personal Sources", () => {
     await expect(page.getByRole("button", { name: /^Add selected to Materials$/ })).toBeDisabled();
     await page.locator("label").filter({ hasText: "Howrah at sunrise" }).click();
     await page.getByRole("button", { name: "Add selected to Materials · 1 item" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas/);
+    await expect(page).toHaveURL(/\/materials\?tab=ideas/);
   });
 });

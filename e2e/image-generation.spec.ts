@@ -5,7 +5,7 @@ test.describe("contextual image generation", () => {
 
   test("is honest when image generation isn't connected, and never starts work on a lookup", async ({ page }) => {
     const id = await saveNote(page, `Grandmother's kitchen at dawn ${uid()}`);
-    await page.goto(`/space/materials/${id}`);
+    await page.goto(`/materials/${id}`);
     const section = page.getByRole("region", { name: "Ways this could look" });
     await expect(section.getByText("Image generation isn't connected.")).toBeVisible();
     await expect(section.getByRole("button", { name: "Create visual directions" })).toHaveCount(0);

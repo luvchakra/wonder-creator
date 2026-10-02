@@ -99,7 +99,7 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
           e.preventDefault();
           if (term.length < 2) return;
           close(false);
-          router.push(`/search?q=${encodeURIComponent(term)}`);
+          router.push(`/explore?q=${encodeURIComponent(term)}`);
         }}
         className="flex h-11 items-center gap-2 rounded-full border border-accent/50 bg-surface pl-3.5 pr-1 shadow-[var(--shadow-card)] focus-within:border-accent"
       >
@@ -135,15 +135,15 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
             {empty ? <p className="py-2 text-sm text-ink-muted">Nothing found for “{term}”. Try another word.</p> : null}
             {shown ? (
               <>
-                <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/artifacts/${a.id}`, label: a.title, sub: a.related ? "Related in meaning" : undefined, icon: <Sparkles className="size-4" /> }))} onPick={() => close(false)} />
-                <Group title="Your material" items={shown.materials.map((m) => ({ href: `/space/materials/${m.id}`, label: m.title || "Untitled", sub: m.related ? "Related in meaning" : undefined, icon: <FileText className="size-4" /> }))} onPick={() => close(false)} />
-                <Group title="Collections" items={shown.collections.map((c) => ({ href: `/space/collections/${c.id}`, label: c.name, sub: c.description ?? undefined, icon: <Layers className="size-4" /> }))} onPick={() => close(false)} />
+                <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/creations/${a.id}`, label: a.title, sub: a.related ? "Related in meaning" : undefined, icon: <Sparkles className="size-4" /> }))} onPick={() => close(false)} />
+                <Group title="Your material" items={shown.materials.map((m) => ({ href: `/materials/${m.id}`, label: m.title || "Untitled", sub: m.related ? "Related in meaning" : undefined, icon: <FileText className="size-4" /> }))} onPick={() => close(false)} />
+                <Group title="Collections" items={shown.collections.map((c) => ({ href: `/materials/collections/${c.id}`, label: c.name, sub: c.description ?? undefined, icon: <Layers className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Conversations" items={shown.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Creators" items={shown.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Live now" items={shown.huddles.map((h) => ({ href: `/huddles/${h.huddleId}`, label: h.topic || h.participantNames.join(" · "), icon: <LiveBadge /> }))} onPick={() => close(false)} />
               </>
             ) : null}
-            <Link href={`/search?q=${encodeURIComponent(term)}`} onClick={() => close(false)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline">
+            <Link href={`/explore?q=${encodeURIComponent(term)}`} onClick={() => close(false)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline">
               See all results and filters <ArrowRight className="size-4" aria-hidden />
             </Link>
           </div>

@@ -139,11 +139,11 @@ export function CrewView({
     <div className="space-y-8">
       <div>
         {myAccess ? (
-          <Link href={`/projects/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+          <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
             <ArrowLeft className="size-4" aria-hidden /> {project.title}
           </Link>
         ) : (
-          <Link href="/projects" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+          <Link href="/rooms" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
             <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
           </Link>
         )}
@@ -166,7 +166,7 @@ export function CrewView({
               </Button>
             ) : null}
             {manages && crew.status !== "completed" ? (
-              <Link href={`/discover?project=${crew.projectId}`} className={buttonClasses({ variant: "secondary" })}>
+              <Link href={`/people?project=${crew.projectId}`} className={buttonClasses({ variant: "secondary" })}>
                 Find collaborators
               </Link>
             ) : null}
@@ -197,7 +197,7 @@ export function CrewView({
                 <MenuItem onSelect={() => me && setRoleFor(me)}>Change my role</MenuItem>
                 {manages ? <MenuItem onSelect={() => setEditing(true)}>Edit crew</MenuItem> : null}
                 {myAccess === "owner" && crew.status !== "completed" ? (
-                  <MenuItem onSelect={() => router.push(`/projects/${crew.projectId}/complete`)}>Dissolve crew…</MenuItem>
+                  <MenuItem onSelect={() => router.push(`/rooms/${crew.projectId}/complete`)}>Dissolve crew…</MenuItem>
                 ) : null}
                 {myAccess !== "owner" ? (
                   <MenuItem
@@ -209,7 +209,7 @@ export function CrewView({
                         label: "Leave crew",
                         run: async () => {
                           await api(`/api/v1/crews/${crew.id}/leave`, { method: "POST" });
-                          router.replace("/projects");
+                          router.replace("/rooms");
                           router.refresh();
                         },
                       })
@@ -459,7 +459,7 @@ export function CrewView({
           onOpenChange={setDeclining}
           onDecline={async (note) => {
             await api(`/api/v1/crews/${crew.id}/respond`, { method: "POST", json: { accept: false, note: note || undefined } });
-            router.replace("/projects");
+            router.replace("/rooms");
             router.refresh();
           }}
         />

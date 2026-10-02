@@ -39,7 +39,7 @@ function Body({ onDone, onMeTalk }: { onDone: () => void; onMeTalk: () => void }
     setError(null);
     try {
       const res = await api<{ artifact: { id: string } }>("/api/v1/artifacts", { method: "POST", json: { artifactType: MODE_DEFAULT_TYPE[mode], title: "Untitled" } });
-      router.push(`/artifacts/${res.artifact.id}/studio`);
+      router.push(`/creations/${res.artifact.id}/studio`);
       onDone();
     } catch (e) {
       setError(errorMessage(e));

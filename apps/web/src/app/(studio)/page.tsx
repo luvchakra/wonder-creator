@@ -110,7 +110,7 @@ export default async function HomePage() {
 
             {home.yourQuestion ? (
               <section id="question" aria-label="Your question">
-                <Link href={`/community/conversations/${home.yourQuestion.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
+                <Link href={`/pulse/conversations/${home.yourQuestion.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
                   <RowBody
                     icon={<MessageCircle className="size-5 text-accent" aria-hidden />}
                     title="Your question"
@@ -156,7 +156,7 @@ export default async function HomePage() {
             {home.spark ? (
               <section id="spark" aria-label="A little spark">
                 {/* For its own sake: the row opens the Material; nothing asks for anything. */}
-                <TrackedLink event="home_spark_opened" href={`/space/materials/${home.spark.materialId}`} className="block px-3 py-2 hover:bg-surface-muted">
+                <TrackedLink event="home_spark_opened" href={`/materials/${home.spark.materialId}`} className="block px-3 py-2 hover:bg-surface-muted">
                   <RowBody
                     icon={
                       home.spark.imageUrl ? (
@@ -215,7 +215,7 @@ export default async function HomePage() {
             <ul className="-my-1">
               {home.recent.map((r) => (
                 <li key={r.id}>
-                  <Link href={`/artifacts/${r.id}`} className="flex min-h-11 items-center gap-2 text-[14px] text-ink hover:underline">
+                  <Link href={`/creations/${r.id}`} className="flex min-h-11 items-center gap-2 text-[14px] text-ink hover:underline">
                     <span className="min-w-0 flex-1 truncate">{r.title}</span>
                     <span className="text-[12.5px] text-ink-subtle">{r.typeLabel}</span>
                   </Link>
@@ -247,7 +247,7 @@ function ContinueCard({ c, quiet }: { c: HomeContinueItem; quiet: boolean }) {
         <div className="flex items-end gap-3">
           <div className="min-w-0 flex-1">
             <h2 id="current-creation" className="font-display text-[21px] leading-tight">
-              <Link href={`/artifacts/${c.id}`} className="break-words hover:underline">
+              <Link href={`/creations/${c.id}`} className="break-words hover:underline">
                 {c.title}
               </Link>
             </h2>
@@ -269,7 +269,7 @@ function ContinueCard({ c, quiet }: { c: HomeContinueItem; quiet: boolean }) {
           {/* The one dominant action. */}
           <TrackedLink
             event="home_continue_clicked"
-            href={`/artifacts/${c.id}/studio`}
+            href={`/creations/${c.id}/studio`}
             data-primary-action
             aria-label="Continue Creating"
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/15 text-white backdrop-blur hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -335,7 +335,7 @@ function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing
   if (w.kind === "conversation")
     return (
       <section id="hearing" aria-label="Worth hearing">
-        <Link href={`/community/conversations/${w.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
+        <Link href={`/pulse/conversations/${w.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
           <RowBody
             icon={<MessageCircle className="size-5 text-accent" aria-hidden />}
             title="Worth hearing"

@@ -74,7 +74,7 @@ export function CompleteView({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/projects/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> {project.title}
       </Link>
       <header className="space-y-2">
@@ -206,7 +206,7 @@ export function CompleteView({
             {review.proposals.map((p) => (
               <p key={p.id} className="text-[15px] text-ink">
                 Open change to{" "}
-                <Link href={`/artifacts/${p.artifactId}/collaborate`} className="font-medium hover:underline">
+                <Link href={`/creations/${p.artifactId}/collaborate`} className="font-medium hover:underline">
                   {p.title}
                 </Link>
                 : {p.summary}
@@ -225,7 +225,7 @@ export function CompleteView({
             {review.rights.exclusive.length ? (
               <p className="text-sm text-ink-muted">Exclusive licences stay in force after completion: {review.rights.exclusive.map((r) => r.title).join(", ")}.</p>
             ) : null}
-            <Link href={`/projects/${project.id}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            <Link href={`/rooms/${project.id}?tab=rights`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
               Review rights
             </Link>
           </Step>
@@ -238,7 +238,7 @@ export function CompleteView({
           >
             <p className="text-[15px] text-ink">No contributions recorded for: {review.attribution.uncredited.map((p) => p.name).join(", ")}.</p>
             <p className="text-sm text-ink-muted">Record what they did so they&rsquo;re credited — or leave it if they didn&rsquo;t contribute.</p>
-            <Link href={`/projects/${project.id}?tab=contributions`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
+            <Link href={`/rooms/${project.id}?tab=contributions`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
               Review contributions
             </Link>
           </Step>
@@ -255,7 +255,7 @@ export function CompleteView({
             {licenceRequests.map((l) => (
               <p key={l.id} className="text-[15px] text-ink">
                 Licence request for{" "}
-                <Link href={`/artifacts/${l.artifactId}?tab=rights`} className="font-medium hover:underline">
+                <Link href={`/creations/${l.artifactId}?tab=rights`} className="font-medium hover:underline">
                   {l.title}
                 </Link>
               </p>

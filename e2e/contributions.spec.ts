@@ -15,7 +15,7 @@ test.describe("Contribution ledger", () => {
     const { id: taskId } = (await (await a.request.post(`/api/v1/projects/${project.id}/tasks`, { data: { title: "Record the rain", assigneeIds: [luId] } })).json()) as { id: string };
     expect((await b.request.patch(`/api/v1/tasks/${taskId}`, { data: { status: "done" } })).ok()).toBeTruthy();
 
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Contributions" }).click();
     const list = a.getByRole("region", { name: "Contributions" });
     await expect(list).toContainText("Completed: Record the rain");
@@ -44,7 +44,7 @@ test.describe("Contribution ledger", () => {
     expect(over.status()).toBe(422);
 
     // Lu refines their own description; the edit is in the history.
-    await b.goto(`/projects/${project.id}?tab=contributions`);
+    await b.goto(`/rooms/${project.id}?tab=contributions`);
     await b.getByRole("button", { name: `Options for ${lu.name}'s contribution` }).first().click();
     await b.getByRole("menuitem", { name: "Edit description" }).click();
     const edit = b.getByRole("dialog", { name: "Contribution" });

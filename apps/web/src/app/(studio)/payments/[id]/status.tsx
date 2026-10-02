@@ -42,7 +42,7 @@ export function PaymentStatusView({ initial, cancelled }: { initial: Payment; ca
                 : "Nothing more to do here."}
       </p>
       {p.artifact_id ? (
-        <Link href={`/artifacts/${p.artifact_id}?tab=rights`} className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink underline-offset-4 hover:underline">
+        <Link href={`/creations/${p.artifact_id}?tab=rights`} className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-accent-ink underline-offset-4 hover:underline">
           Back to the Creation
         </Link>
       ) : null}

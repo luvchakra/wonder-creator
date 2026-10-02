@@ -67,7 +67,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <Link href={`/artifacts/${artifact.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> {artifact.title}
       </Link>
       <header className="space-y-2">
@@ -303,7 +303,7 @@ function Comments({ artifactId, versionId, comments, owner, onChanged, onError }
       {c.quote ? <blockquote className="mt-1 border-l-2 border-accent pl-2 text-sm italic text-ink-muted">{c.quote}</blockquote> : null}
       <p className="mt-1 whitespace-pre-line text-[15px] text-ink">{c.body}</p>
       {owner && !c.resolved ? (
-        <Link href={`/artifacts/${artifactId}/studio?add=comment:${c.id}`} className={buttonClasses({ variant: "ghost", size: "sm", className: "mt-1 -ml-3" })}>
+        <Link href={`/creations/${artifactId}/studio?add=comment:${c.id}`} className={buttonClasses({ variant: "ghost", size: "sm", className: "mt-1 -ml-3" })}>
           Use in Studio
         </Link>
       ) : null}

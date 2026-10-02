@@ -172,7 +172,7 @@ export function CarouselComposer({
             ) : null}
           </div>
           {view.canEdit ? (
-            <Link href={`/artifacts/${artifactId}/slides/${view.slides[0]!.id}`} className={buttonClasses({ className: "w-full" })}>
+            <Link href={`/creations/${artifactId}/slides/${view.slides[0]!.id}`} className={buttonClasses({ className: "w-full" })}>
               <PenLine className="size-4" aria-hidden /> Continue Creating
             </Link>
           ) : null}
@@ -195,7 +195,7 @@ function preview(text: string) {
 
 function DetailsLink({ artifactId }: { artifactId: string }) {
   return (
-    <Link href={`/artifacts/${artifactId}?details=1`} className="flex min-h-11 items-center justify-between rounded-xl px-1 text-sm text-ink-muted hover:text-ink">
+    <Link href={`/creations/${artifactId}?details=1`} className="flex min-h-11 items-center justify-between rounded-xl px-1 text-sm text-ink-muted hover:text-ink">
       Details
       <ChevronRight className="size-4" aria-hidden />
     </Link>
@@ -236,7 +236,7 @@ function Setup({ artifactId, sourceText, existing, onStarted }: { artifactId: st
     return (
       <div className="space-y-2 rounded-2xl border border-border-soft bg-surface p-3">
         <p className="text-sm text-ink-muted">Add more text or Material to build the Carousel.</p>
-        <Link href={`/artifacts/${artifactId}/studio`} className={buttonClasses({ size: "sm" })}>
+        <Link href={`/creations/${artifactId}/studio`} className={buttonClasses({ size: "sm" })}>
           Add words
         </Link>
       </div>
@@ -441,7 +441,7 @@ function SlideRow({
         {index + 1}
       </span>
       <Link
-        href={`/artifacts/${artifactId}/slides/${slide.id}`}
+        href={`/creations/${artifactId}/slides/${slide.id}`}
         className="flex min-w-0 flex-1 items-center gap-3 after:absolute after:inset-0 after:content-['']"
         aria-label={`Slide ${index + 1} of ${total}: ${slide.displayText || "no words yet"}`}
       >

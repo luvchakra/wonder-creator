@@ -6,7 +6,7 @@ test.describe("CreatorPublish pages", () => {
     const tag = uid();
     const title = `A Softer Morning ${tag}`;
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title, content: "The morning is softer\n  when I don't rush it.\n\nThere is beauty\nin the ordinary." } })).json()).artifact as { id: string };
-    await page.goto(`/artifacts/${art.id}/publish`);
+    await page.goto(`/creations/${art.id}/publish`);
     const on = page.getByRole("region", { name: "On your page" });
     await expect(on).toContainText("Publish into your own space, then share the link anywhere.");
     await on.getByRole("button", { name: "Publish…" }).click();

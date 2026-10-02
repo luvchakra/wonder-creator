@@ -38,7 +38,7 @@ export function NewCollectionButton({ existing }: { existing: string[] }) {
               setError(null);
               try {
                 const r = await api<{ collection: { id: string } }>("/api/v1/collections", { method: "POST", json: { name, description } });
-                router.push(`/space/collections/${r.collection.id}`);
+                router.push(`/materials/collections/${r.collection.id}`);
               } catch (err) {
                 setError(errorMessage(err));
                 setBusy(false);

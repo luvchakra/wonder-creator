@@ -5,6 +5,7 @@ import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { ConversationView } from "./view";
 import { readSummary, refreshSummaryLater } from "@/lib/conversation-summary";
+import { communityAvatars } from "@/lib/communities";
 import { flagOn } from "@/lib/features";
 
 export const metadata = { title: "Conversation" };
@@ -31,9 +32,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     refs.some((r) => r.type === "creation") ? db.from("artifacts").select("id, title").in("id", refs.filter((r) => r.type === "creation").map((r) => r.id)) : Promise.resolve({ data: [] }),
   ]);
   const visible: Record<string, { title: string; href: string }> = {};
-  for (const m of mats.data ?? []) visible[m.id] = { title: m.title || "A Material", href: `/space/materials/${m.id}` };
-  for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/artifacts/${a.id}` };
-  const communities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
+  for (const m of mats.data ?? []) visible[m.id] = { title: m.title || "A Material", href: `/materials/${m.id}` };
+  for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/creations/${a.id}` };
+  const rawCommunities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
+  const pictures = await communityAvatars(rawCommunities.map((c) => c.avatarObjectId));
+  const communities = rawCommunities.map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null }));
   const dejavus = await entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] }));
   // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
   const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;
