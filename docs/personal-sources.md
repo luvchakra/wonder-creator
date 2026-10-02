@@ -56,7 +56,7 @@ source_connections → source_sync_jobs (bounded)   → context_candidates   →
 | B Gmail | Separate least-privilege read-only OAuth, bounded first scan, metadata-first, history cursor, review/import | Done (needs owner Google setup) |
 | C Calendar + Notes | Bounded date windows, cross-source grouping; external notes only via documented APIs or import | Calendar + cross-source grouping done; external notes via import (D) |
 | D Photos | PWA file picker/share first; thumbnails/metadata, clusters; no bulk originals | Done (device picker; cloud pickers later) |
-| E CreativeMind | Shortlist-only enrichment, one concise suggestion, targeted "look further back" | |
+| E CreativeMind | Shortlist-only enrichment, one concise suggestion, targeted "look further back" | Done |
 | F Hardening | Provider failure, expiry, rate limits, huge mailbox, large photo sets, congestion, load tests | |
 
 ## Tuning
@@ -125,3 +125,17 @@ Originals stay in the browser's memory for that visit. Bringing a photo in uploa
 the normal upload checks (`/api/v1/send`); the import accepts it only when the uploaded file's SHA-256 matches the
 photo that was discovered. On a later visit the creator is asked to choose those photos again — the originals never
 left the device. Cloud photo libraries need their providers' own pickers and consent; not built yet.
+
+## CreativeMind and search (phase E)
+
+* **Shortlist only** (`packages/creator-sources/src/enrich.ts`, migration 076). After grouping, at most
+  `aiGroupCap` (≤ the 5 shown) groups get one concise possibility ("A short photo essay about the quiet streets of
+  Pune") and a suggested format — only with a live model (the creator's own key or the platform's; never a
+  placeholder), only from the already-redacted titles and excerpts, fenced as untrusted, and only when the group's
+  content hash changed. The server stores the line; creators can't write it. "Bring to Studio" opens a new Creation
+  with the chosen Materials and that possibility as its prompt.
+* **Search your world** (`/sources/search`): searches the creator's own index (titles, previews, places) as they type —
+  nothing is fetched. **Look further back** starts a *targeted* job per source (`mode = 'targeted'`, priority P4,
+  plain search terms only, its own cursor): Gmail a year back, Calendar a year back, notes three years — still bounded
+  by the same budgets, and it never moves the source's regular sync. Found items can be brought in directly
+  (`/api/v1/personal-sources/records/import`) with the same checks as from a candidate.

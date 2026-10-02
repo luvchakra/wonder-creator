@@ -55,7 +55,12 @@ export function calendarConnector(client: GoogleClient, secret: (creatorId: stri
       const token = await tokenFor(ctx);
       const cur = parse(ctx.cursor) ?? { mode: "window", pageToken: null };
       const params = new URLSearchParams({ maxResults: String(Math.min(ctx.limit, 250)), singleEvents: "true", showDeleted: "false" });
-      if (cur.mode === "window") {
+      if (ctx.query) {
+        // A targeted search: the creator's words over the past year (and the usual window ahead); no sync token.
+        params.set("q", ctx.query);
+        params.set("timeMin", new Date(ctx.now.getTime() - 365 * 86_400_000).toISOString());
+        params.set("timeMax", new Date(ctx.now.getTime() + scope.futureDays * 86_400_000).toISOString());
+      } else if (cur.mode === "window") {
         params.set("timeMin", new Date(ctx.now.getTime() - scope.pastDays * 86_400_000).toISOString());
         params.set("timeMax", new Date(ctx.now.getTime() + scope.futureDays * 86_400_000).toISOString());
       } else params.set("syncToken", cur.syncToken);
@@ -76,10 +81,12 @@ export function calendarConnector(client: GoogleClient, secret: (creatorId: stri
       }));
       const next: Cursor | null = body.nextPageToken
         ? { ...cur, pageToken: body.nextPageToken }
-        : body.nextSyncToken
+        : ctx.query
+          ? null
+          : body.nextSyncToken
           ? { mode: "sync", syncToken: body.nextSyncToken, pageToken: null }
           : null;
-      return { items, nextCursor: next ? JSON.stringify(next) : ctx.cursor, done: !body.nextPageToken, bytes: text.length };
+      return { items, nextCursor: next ? JSON.stringify(next) : ctx.query ? null : ctx.cursor, done: !body.nextPageToken, bytes: text.length };
     },
     async revoke(ctx) {
       const refresh = await secret(ctx.creatorId, ctx.connection.id);

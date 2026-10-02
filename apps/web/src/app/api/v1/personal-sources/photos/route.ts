@@ -1,7 +1,9 @@
 import { DomainError, fromDbError } from "@wonder/core";
-import { indexPhotos, PHOTO_BATCH } from "@wonder/creator-sources/server";
+import { enrichCandidates, indexPhotos, PHOTO_BATCH } from "@wonder/creator-sources/server";
+import { after } from "next/server";
 import { z } from "zod";
 import { checkBudget, readJson, withApi } from "@/lib/api";
+import { creatorModel } from "@/lib/sources";
 import { serviceClient } from "@/lib/supabase/service";
 
 const schema = z.object({
@@ -34,7 +36,10 @@ export const POST = withApi(
       conn = ins.data ?? (await db.from("source_connections").select("id").eq("provider", "phone_photos").single()).data;
     }
     if (!conn) throw new DomainError("internal", "We couldn't connect Photos.");
-    return indexPhotos(serviceClient(), creatorId, conn.id, photos);
+    const out = await indexPhotos(serviceClient(), creatorId, conn.id, photos);
+    // CreativeMind on the shortlist, after the response (never holding the request).
+    after(async () => void (await enrichCandidates(serviceClient(), await creatorModel(creatorId).catch(() => null), creatorId).catch(() => 0)));
+    return out;
   },
   { feature: "personal_sources_enabled", rateLimit: 30 },
 );

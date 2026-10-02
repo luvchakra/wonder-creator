@@ -13,18 +13,18 @@ export const nativeNotes: Connector = {
   provider: "native_notes",
   scope: () => ({ types: [...NOTE_TYPES], lookbackDays: LOOKBACK_DAYS }),
   async fetchPage(ctx: ConnectorContext): Promise<PageResult> {
-    const [at, id] = parseCursor(ctx.cursor) ?? [new Date(ctx.now.getTime() - LOOKBACK_DAYS * 86_400_000).toISOString(), "00000000-0000-0000-0000-000000000000"];
-    const { data, error } = await ctx.service
+    // A targeted search may look further back (three years), still in bounded pages.
+    const days = ctx.query ? 3 * 365 : LOOKBACK_DAYS;
+    const [at, id] = parseCursor(ctx.cursor) ?? [new Date(ctx.now.getTime() - days * 86_400_000).toISOString(), "00000000-0000-0000-0000-000000000000"];
+    let q = ctx.service
       .from("creative_materials")
       .select("id, title, text_content, created_at, updated_at, metadata, source_type")
       .eq("creator_id", ctx.creatorId)
       .eq("status", "active")
       .in("type", [...NOTE_TYPES])
-      .or(`updated_at.gt.${at},and(updated_at.eq.${at},id.gt.${id})`)
-      .order("updated_at")
-      .order("id")
-      .limit(ctx.limit)
-      .abortSignal(ctx.signal);
+      .or(`updated_at.gt.${at},and(updated_at.eq.${at},id.gt.${id})`);
+    if (ctx.query) q = q.or(`title.ilike.*${ctx.query}*,text_content.ilike.*${ctx.query}*`);
+    const { data, error } = await q.order("updated_at").order("id").limit(ctx.limit).abortSignal(ctx.signal);
     if (error) throw fromDbError(error);
     const rows = (data ?? []).filter((m) => !m.source_type?.startsWith("personal_source:"));
     const last = data?.[data.length - 1];

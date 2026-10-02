@@ -3,6 +3,7 @@ import { DomainError, fromDbError, log } from "@wonder/core";
 import { createMaterial } from "@wonder/creator-library";
 import type { Db, JsonValue } from "@wonder/db";
 import { syncBudgets, type SyncBudgets } from "./budgets";
+import { enrichCandidates, type EnrichModel } from "./enrich";
 import { ConnectorError } from "./errors";
 import { buildCandidates } from "./grouping";
 import { isSensitive, safeExcerpt, safeTitle } from "./redact";
@@ -34,6 +35,8 @@ export interface ConnectorContext {
   cursor: string | null;
   /** Records to fetch in this page. */
   limit: number;
+  /** A targeted search ("Look further back for …"): the creator's words, already reduced to plain search terms. */
+  query?: string | null;
   budgets: SyncBudgets;
   signal: AbortSignal;
   now: Date;
@@ -65,6 +68,8 @@ export type ConnectorRegistry = Partial<Record<Provider, Connector>>;
 export interface SourcesDeps {
   service: Db;
   connectors: ConnectorRegistry;
+  /** The creator's CreativeMind model for shortlist enrichment; null/absent = no enrichment (never a placeholder). */
+  model?: (creatorId: string) => Promise<EnrichModel | null>;
   budgets?: SyncBudgets;
   now?: () => Date;
 }
@@ -87,10 +92,18 @@ export interface RequestedJob {
  * Ask for a sync of one connection or all of them. A matching active job is returned instead of a second one; the
  * hourly budget only counts new jobs. Returns quickly: nothing here talks to a provider.
  */
-export async function requestSync(deps: SourcesDeps, creatorId: string, opts: { connectionId?: string; mode?: SyncMode } = {}): Promise<{ parent: RequestedJob | null; jobs: RequestedJob[] }> {
+/** Plain search terms only: letters, digits, spaces, apostrophes and hyphens (no provider query operators). */
+export function searchTerms(q: string | null | undefined): string | null {
+  const t = (q ?? "").normalize("NFKC").replace(/[^\p{L}\p{N}\s'’-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  return t.length >= 2 ? t : null;
+}
+
+export async function requestSync(deps: SourcesDeps, creatorId: string, opts: { connectionId?: string; mode?: SyncMode; query?: string } = {}): Promise<{ parent: RequestedJob | null; jobs: RequestedJob[] }> {
   const { service, connectors } = deps;
   const budgets = deps.budgets ?? syncBudgets();
-  const mode = opts.mode ?? "quick";
+  const query = opts.query !== undefined ? searchTerms(opts.query) : null;
+  if (opts.query !== undefined && !query) throw new DomainError("validation", "Search for at least two letters.");
+  const mode: SyncMode = query ? "targeted" : (opts.mode ?? "quick");
   let q = service.from("source_connections").select("id, creator_id, provider, status, scope_settings, last_successful_sync_at").eq("creator_id", creatorId);
   if (opts.connectionId) q = q.eq("id", opts.connectionId);
   const { data: conns, error } = await q;
@@ -103,7 +116,9 @@ export async function requestSync(deps: SourcesDeps, creatorId: string, opts: { 
   if (!runnable.length) return { parent: null, jobs: [] };
 
   const keyed = runnable.map((c) => {
-    const hash = scopeHash(c.provider, connectors[c.provider]!.scope(c.scope_settings ?? {}));
+    const base = connectors[c.provider]!.scope(c.scope_settings ?? {});
+    // A targeted search keeps its own cursor, apart from the regular incremental one.
+    const hash = scopeHash(c.provider, query ? { ...base, q: query.toLowerCase() } : base);
     return { c, hash, key: `${creatorId}:${c.id}:${hash}:${mode}` };
   });
   const { data: active } = await service
@@ -144,7 +159,7 @@ export async function requestSync(deps: SourcesDeps, creatorId: string, opts: { 
     }
     const ins = await service
       .from("source_sync_jobs")
-      .insert({ creator_id: creatorId, connection_id: k.c.id, parent_id: parent?.id ?? null, scope_hash: k.hash, mode, idempotency_key: k.key, priority: 3, status: "queued", phase: "queued" })
+      .insert({ creator_id: creatorId, connection_id: k.c.id, parent_id: parent?.id ?? null, scope_hash: k.hash, mode, query, idempotency_key: k.key, priority: query ? 4 : 3, status: "queued", phase: "queued" })
       .select("id, status")
       .single();
     if (ins.data) {
@@ -189,8 +204,9 @@ type JobRow = {
   transferred_bytes: number;
   heartbeat_at: string | null;
   started_at: string | null;
+  query: string | null;
 };
-const JOB_COLS = "id, creator_id, connection_id, parent_id, scope_hash, mode, status, attempts, scanned_count, indexed_count, pages_fetched, transferred_bytes, heartbeat_at, started_at";
+const JOB_COLS = "id, creator_id, connection_id, parent_id, scope_hash, mode, status, attempts, scanned_count, indexed_count, pages_fetched, transferred_bytes, heartbeat_at, started_at, query";
 
 /**
  * Work through runnable jobs — one creator's, or anyone's (the cron worker) — until there are none or `deadlineMs`
@@ -274,7 +290,7 @@ async function runSlice(deps: SourcesDeps, budgets: SyncBudgets, job: JobRow, un
     let page: PageResult;
     try {
       const limit = Math.min(budgets.pageSize, budgets.quickRecordCap - counters.scanned);
-      page = await connector.fetchPage({ service, creatorId: job.creator_id, connection, cursor, limit, budgets, signal: AbortSignal.timeout(budgets.callTimeoutMs), now: now() });
+      page = await connector.fetchPage({ service, creatorId: job.creator_id, connection, cursor, limit, budgets, signal: AbortSignal.timeout(budgets.callTimeoutMs), now: now(), query: job.query });
     } catch (e) {
       return failSlice(service, budgets, job, connection, e, counters, now());
     }
@@ -327,8 +343,12 @@ async function complete(deps: SourcesDeps, budgets: SyncBudgets, job: JobRow, co
   const at = (deps.now?.() ?? new Date()).toISOString();
   await service.from("source_sync_jobs").update({ phase: "grouping", heartbeat_at: at }).eq("id", job.id);
   const candidates = await rebuildCandidates(service, job.creator_id, { now: deps.now?.() ?? new Date(), budgets });
+  // CreativeMind looks at the shortlist only, and only at what changed (spec §8–9).
+  const ai = deps.model ? await enrichCandidates(service, await deps.model(job.creator_id).catch(() => null), job.creator_id, { budgets }).catch(() => 0) : 0;
+  if (ai) await service.from("source_sync_jobs").update({ ai_calls: ai }).eq("id", job.id);
   await service.from("source_sync_cursors").update({ last_successful_sync_at: at }).eq("connection_id", connection.id).eq("scope_hash", job.scope_hash);
-  await service.from("source_connections").update({ last_successful_sync_at: at, last_error_code: null }).eq("id", connection.id);
+  // A targeted search doesn't count as the source's regular sync.
+  if (!job.query) await service.from("source_connections").update({ last_successful_sync_at: at, last_error_code: null }).eq("id", connection.id);
   await finish(service, job, status, { phase: status === "completed" ? "done" : "limit", candidate_count: candidates }, counters);
   log("info", "sources.sync_finished", { provider: connection.provider, status, scanned: counters.scanned, indexed: counters.indexed, pages: counters.pages, bytes: counters.bytes, candidates });
 }
@@ -475,11 +495,38 @@ export async function importCandidate(
   const allowed = new Set(cand.record_ids);
   const chosen = [...new Set(recordIds)].filter((id) => allowed.has(id));
   if (!chosen.length) throw new DomainError("validation", "Choose at least one thing to bring in.");
+  const { materialIds } = await importRecords(deps, db, creatorId, chosen, photoMaterials, { candidateId });
+  await service
+    .from("context_candidates")
+    .update({ state: "imported", imported_material_ids: [...new Set([...cand.imported_material_ids, ...materialIds])] })
+    .eq("id", candidateId)
+    .eq("creator_id", creatorId);
+  return { materialIds };
+}
+
+/**
+ * Bring chosen records in as Materials — from a candidate or straight from a search of the creator's own index. Only
+ * the creator's records, each with provenance; notes that already are Materials are reused; a photo only with its
+ * very original (matching SHA-256); everything else hydrated just for this item and redacted.
+ */
+export async function importRecords(
+  deps: SourcesDeps,
+  db: Db,
+  creatorId: string,
+  recordIds: string[],
+  photoMaterials: Record<string, string> = {},
+  origin: { candidateId?: string } = {},
+): Promise<ImportResult> {
+  const { service } = deps;
+  const chosen = [...new Set(recordIds)].slice(0, 50);
+  if (!chosen.length) throw new DomainError("validation", "Choose at least one thing to bring in.");
+  const candidateId = origin.candidateId ?? null;
   const { data: records } = await service
     .from("source_context_records")
     .select("id, connection_id, provider_item_id, source_type, occurred_at, safe_title, safe_excerpt, material_id, fingerprint, source_connections(id, creator_id, provider, status, scope_settings, last_successful_sync_at)")
     .eq("creator_id", creatorId)
     .in("id", chosen);
+  if ((records ?? []).length !== chosen.length) throw new DomainError("not_found", "Some of those aren't available any more.");
   const materialIds: string[] = [];
   for (const r of records ?? []) {
     if (r.material_id) {
@@ -521,16 +568,12 @@ export async function importCandidate(
     materialIds.push(material.id);
     await service.from("source_context_records").update({ material_id: material.id, hydration_level: 4 }).eq("id", r.id).eq("creator_id", creatorId);
   }
-  await service
-    .from("context_candidates")
-    .update({ state: "imported", imported_material_ids: [...new Set([...cand.imported_material_ids, ...materialIds])] })
-    .eq("id", candidateId)
-    .eq("creator_id", creatorId);
   log("info", "sources.imported", { creatorId, records: chosen.length, materials: materialIds.length });
   return { materialIds };
 }
 
 export { ConnectorError } from "./errors";
+export { enrichCandidates, type EnrichModel } from "./enrich";
 export { nativeNotes } from "./connectors/native-notes";
 export { indexPhotos, PHOTO_BATCH, THUMB_MAX_BYTES, type PhotoInput } from "./photos";
 export { gmailConnector, gmailScope } from "./connectors/gmail";

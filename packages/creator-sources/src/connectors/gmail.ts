@@ -62,7 +62,8 @@ export function gmailConnector(client: GoogleClient, secret: (creatorId: string,
         // First sync: remember where history stands now, then walk a bounded recent window.
         const profile = await get<{ historyId: string }>(token, "/profile", ctx.signal);
         bytes += profile._bytes;
-        cur = { mode: "list", q: query(scope, scope.lookbackDays), pageToken: null, historyId: profile.historyId };
+        // A targeted search looks back a year for the creator's words; a regular first sync, the chosen window.
+        cur = { mode: "list", q: ctx.query ? `${ctx.query} ${query(scope, 365)}` : query(scope, scope.lookbackDays), pageToken: null, historyId: profile.historyId };
       }
 
       let ids: string[] = [];
@@ -75,7 +76,11 @@ export function gmailConnector(client: GoogleClient, secret: (creatorId: string,
         );
         bytes += page._bytes;
         ids = (page.messages ?? []).map((m) => m.id);
-        next = page.nextPageToken ? { ...cur, pageToken: page.nextPageToken } : { mode: "history", historyId: cur.historyId, pageToken: null };
+        next = page.nextPageToken
+          ? { ...cur, pageToken: page.nextPageToken }
+          : ctx.query
+            ? { ...cur, pageToken: null } // a search ends with its results; it never turns into history-following
+            : { mode: "history", historyId: cur.historyId, pageToken: null };
       } else {
         try {
           const page = await get<{ history?: Array<{ messagesAdded?: Array<{ message: { id: string; labelIds?: string[] } }> }>; nextPageToken?: string; historyId?: string }>(
@@ -118,7 +123,7 @@ export function gmailConnector(client: GoogleClient, secret: (creatorId: string,
         });
       }
       // Done once the recent window is walked and history has nothing further on this pass.
-      return { items, nextCursor: JSON.stringify(next), done: next.mode === "history" && !next.pageToken, bytes };
+      return { items, nextCursor: JSON.stringify(next), done: !next.pageToken && (next.mode === "history" || !!ctx.query), bytes };
     },
     async revoke(ctx) {
       const refresh = await secret(ctx.creatorId, ctx.connection.id);

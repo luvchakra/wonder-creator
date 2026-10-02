@@ -1,6 +1,6 @@
 "use client";
 import { Button, KIT, KitArt, buttonClasses, cn } from "@wonder/ui";
-import { ArrowRight, ChevronLeft, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -142,6 +142,14 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
         <h1 className="font-display text-[28px] leading-tight text-ink sm:text-[34px]">Connect your world</h1>
         <p className="mt-1 text-[14px] text-ink-muted">Bring in what matters — on your terms.</p>
       </header>
+      {connected.length ? (
+        <Link
+          href="/sources/search"
+          className="mt-3 flex min-h-11 items-center gap-2 rounded-full border border-border-soft bg-surface/95 px-4 text-[14px] text-ink-subtle shadow-[var(--shadow-card)] hover:border-accent/40"
+        >
+          <Search className="size-4" aria-hidden /> Search your world
+        </Link>
+      ) : null}
 
       {notice ? (
         <p role="status" className={cn("mt-3 rounded-2xl px-3 py-2 text-[13.5px]", notice.ok ? "bg-success-soft text-success-ink" : "bg-warning-soft text-warning-ink")}>
@@ -243,7 +251,7 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-[17px] leading-snug text-ink">{c.title}</span>
                     {c.counts ? <span className="block text-[12.5px] text-ink-muted">{c.counts}</span> : null}
-                    <span className="mt-0.5 line-clamp-2 block text-[12.5px] leading-snug text-ink-subtle">{c.quote ? `“${c.quote}”` : c.explanation}</span>
+                    <span className="mt-0.5 line-clamp-2 block text-[12.5px] leading-snug text-ink-subtle">{c.quote ? `“${c.quote}”` : (c.suggestion ?? c.explanation)}</span>
                     <span className={cn(buttonClasses({ variant: "soft", size: "sm" }), "mt-1.5 h-8")}>
                       Review <ArrowRight className="size-3.5" aria-hidden />
                     </span>

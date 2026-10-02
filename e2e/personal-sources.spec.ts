@@ -86,4 +86,24 @@ test.describe("Personal Sources", () => {
     // Only the three chosen originals were uploaded.
     expect(uploads).toHaveLength(3);
   });
+
+  test("search your world, and look further back only when asked", async ({ page, creator }) => {
+    await seedNotes(creator.id, [
+      { title: "Howrah at sunrise", text: "Railway bridge and the river in Kolkata.", daysAgo: 600 },
+      { title: "Recent", text: "A new idea about trains.", daysAgo: 1 },
+    ]);
+    await page.goto("/sources");
+    await page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Notes" }).getByRole("button", { name: "Connect" }).click();
+    await expect(page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Notes" })).toContainText("Last synced", { timeout: 30_000 });
+    await page.getByRole("link", { name: "Search your world" }).click();
+    await page.getByRole("searchbox", { name: "Search your world" }).fill("Kolkata");
+    await expect(page.getByRole("status").filter({ hasText: "Nothing found yet." })).toBeVisible();
+    await page.getByRole("button", { name: "Look further back" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "1 thing found" })).toBeVisible({ timeout: 30_000 });
+    // Nothing is chosen for the creator.
+    await expect(page.getByRole("button", { name: /^Add selected to Materials$/ })).toBeDisabled();
+    await page.locator("label").filter({ hasText: "Howrah at sunrise" }).click();
+    await page.getByRole("button", { name: "Add selected to Materials · 1 item" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=ideas/);
+  });
 });

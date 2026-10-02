@@ -51,8 +51,15 @@ export const PICK_CONNECT: Provider[] = ["phone_photos"];
 /** Sources connected through the provider's own consent screen. */
 export const OAUTH_CONNECT: Provider[] = ["gmail", "google_calendar"];
 
+/** The creator's CreativeMind model, only when it's live (enrichment is never faked). */
+export async function creatorModel(creatorId: string) {
+  const { providerFor } = await import("./brain");
+  const { provider } = await providerFor(creatorId);
+  return provider.live ? provider : null;
+}
+
 export function sourcesDeps(): SourcesDeps {
-  return { service: serviceClient(), connectors: connectors() };
+  return { service: serviceClient(), connectors: connectors(), model: creatorModel };
 }
 
 /** Run a creator's queued sync work after the response; anything left is picked up by the job worker. */
@@ -112,13 +119,15 @@ export interface CandidateCard {
   state: string;
   /** The creator's own photo from the group, when there is one (real imagery first). */
   cover: string | null;
+  /** CreativeMind's one concise possibility for this group, when a live model has looked at it. */
+  suggestion: string | null;
 }
 
 /** The few groups worth exploring, best first. */
 export async function candidateCards(db: Db, limit = 5): Promise<CandidateCard[]> {
   const { data } = await db
     .from("context_candidates")
-    .select("id, title, explanation, quote, counts, state, record_ids")
+    .select("id, title, explanation, quote, counts, state, record_ids, suggestion")
     .in("state", ["new", "reviewed"])
     .gt("expires_at", new Date().toISOString())
     .order("score", { ascending: false })
@@ -136,6 +145,7 @@ export async function candidateCards(db: Db, limit = 5): Promise<CandidateCard[]
     counts: countsLine(c.counts as Record<string, number>),
     state: c.state,
     cover: c.record_ids.map((r) => preview.get(r)).find(Boolean) ?? null,
+    suggestion: c.suggestion,
   }));
 }
 
@@ -154,7 +164,7 @@ export interface CandidateItem {
 
 /** One group with its items, for the review screen. Only safe titles and excerpts ever leave the index. */
 export async function candidateDetail(db: Db, id: string): Promise<(CandidateCard & { items: CandidateItem[] }) | null> {
-  const { data: c } = await db.from("context_candidates").select("id, title, explanation, quote, counts, state, record_ids").eq("id", id).maybeSingle();
+  const { data: c } = await db.from("context_candidates").select("id, title, explanation, quote, counts, state, record_ids, suggestion").eq("id", id).maybeSingle();
   if (!c) return null;
   const { data: rs } = c.record_ids.length
     ? await db
@@ -171,6 +181,7 @@ export async function candidateDetail(db: Db, id: string): Promise<(CandidateCar
     counts: countsLine(c.counts as Record<string, number>),
     state: c.state,
     cover: (rs ?? []).find((r) => r.source_type === "photo" && r.preview_ref)?.preview_ref ?? null,
+    suggestion: c.suggestion,
     items: (rs ?? []).map((r) => ({
       id: r.id,
       sourceType: r.source_type as CandidateItem["sourceType"],
@@ -227,4 +238,26 @@ export function openOAuth(sealed: string | undefined): OAuthState | null {
 function oauthKey(): Buffer {
   // Derived from the OAuth client secret: present whenever Gmail can be connected, and never sent to the browser.
   return createHash("sha256").update(`wc-personal-sources:${process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? ""}`).digest();
+}
+
+/** Search the creator's own index (titles, previews, places) — what discovery already found, nothing fetched. */
+export async function searchIndex(db: Db, terms: string, limit = 60): Promise<CandidateItem[]> {
+  const like = `*${terms.replace(/[*,()]/g, " ")}*`;
+  const { data } = await db
+    .from("source_context_records")
+    .select("id, source_type, safe_title, safe_excerpt, occurred_at, preview_ref, material_id, hydration_level, fingerprint, source_connections(provider)")
+    .or(`safe_title.ilike.${like},safe_excerpt.ilike.${like},place.ilike.${like}`)
+    .order("occurred_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    sourceType: r.source_type as CandidateItem["sourceType"],
+    provider: ((r.source_connections as { provider?: string } | null)?.provider ?? "native_notes") as Provider,
+    title: r.safe_title,
+    excerpt: r.safe_excerpt,
+    occurredAt: r.occurred_at,
+    previewRef: r.preview_ref,
+    fingerprint: r.source_type === "photo" ? r.fingerprint : null,
+    imported: r.hydration_level === 4,
+  }));
 }

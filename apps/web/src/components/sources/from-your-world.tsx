@@ -1,5 +1,5 @@
 import { KIT, KitArt, buttonClasses } from "@wonder/ui";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { CandidateCard } from "@/lib/sources";
 import { SyncChip } from "./sync-chip";
@@ -28,7 +28,14 @@ export function FromYourWorld({ connected, candidate, more, activeJobIds }: { co
           <div className="min-w-0">
           <p className="mt-0.5 font-display text-[19px] leading-snug text-ink">{candidate.title}</p>
           {candidate.counts ? <p className="text-[12.5px] text-ink-muted">{candidate.counts}</p> : null}
-          {candidate.quote ? <p className="mt-1 line-clamp-2 font-display text-[14px] italic leading-snug text-ink-muted">“{candidate.quote}”</p> : null}
+          {candidate.quote ? (
+            <p className="mt-1 line-clamp-2 font-display text-[14px] italic leading-snug text-ink-muted">“{candidate.quote}”</p>
+          ) : candidate.suggestion ? (
+            <p className="mt-1 flex gap-1.5 text-[13px] leading-snug text-accent-ink">
+              <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span className="line-clamp-2">{candidate.suggestion}</span>
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-x-3">
             <Link href={`/sources/candidates/${candidate.id}`} className={buttonClasses({ variant: "soft", size: "sm" })}>
               Explore <ArrowRight className="size-4" aria-hidden />
