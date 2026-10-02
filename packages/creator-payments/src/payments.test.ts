@@ -77,7 +77,7 @@ describe("checkout creation", () => {
       return new Response(JSON.stringify({ id: "cs_9", url: "https://checkout.stripe.com/c/pay/cs_9", expires_at: Math.floor(Date.now() / 1000) + 3600 }), { status: 200 });
     });
     const c = await p.createCheckout({ orderId: "ord-1", amountMinor: 4999, currency: "USD", description: "Commercial licence — Dawn", returnUrl: "https://app/payments/ord-1", cancelUrl: "https://app/payments/ord-1?cancelled=1", expiresAt: new Date(Date.now() + 86_400_000) });
-    expect(c.url).toMatch(/^https:\/\/checkout\.stripe\.com/);
+    expect(new URL(c.url).host).toBe("checkout.stripe.com");
     expect(calls[0]!.url).toBe("https://api.stripe.com/v1/checkout/sessions");
     const h = new Headers(calls[0]!.init!.headers);
     expect(h.get("idempotency-key")).toBe("order-ord-1");
