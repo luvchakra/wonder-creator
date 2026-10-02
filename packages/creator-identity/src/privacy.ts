@@ -71,7 +71,7 @@ export const EXPORT_TABLES = [
   "carousels", "carousel_slides", "image_generations", "image_generation_assets", "image_asset_revisions", "studio_sessions", "studio_sources", "quality_reports",
   "rights_records", "rights_owners", "rights_events", "licenses", "ownership_assertions",
   "publications", "publication_attempts", "publication_metrics", "publication_signoffs", "publishing_destinations", "publishing_preferences", "published_works", "published_revisions",
-  "market_listings", "business_records", "campaign_invitations", "campaign_deliverables",
+  "market_listings", "business_records", "campaign_invitations", "campaign_deliverables", "payment_orders", "payment_refunds", "ledger_entries",
   "projects", "project_items", "project_task_assignees", "project_task_comments", "crews", "crew_members", "crew_messages", "crew_message_reads",
   "huddle_participants", "huddle_messages", "huddle_events", "huddle_history", "huddle_preserved_items",
   "direct_messages", "direct_thread_reads", "scrapbook_posts", "scrapbook_attachments", "scrapbook_replies",
@@ -96,6 +96,7 @@ const OTHER_OWNER_COLUMNS: Array<[string, string]> = [
   ["license_requests", "requester_creator_id"],
   ["audit_logs", "actor_creator_id"],
   ["huddle_join_requests", "requester_creator_id"],
+  ["payment_orders", "payer_creator_id"],
 ];
 
 export async function exportPersonalData(db: Db, creatorId: string): Promise<Record<string, unknown>> {

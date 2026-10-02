@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { DomainError } from "@wonder/core";
 import { hmacHex, sameHex } from "./signature";
 import type { Checkout, CheckoutRequest, FetchLike, NormalisedEvent, PaymentProvider, RefundRequest, RefundResult } from "./types";
@@ -68,7 +69,7 @@ export class RazorpayProvider implements PaymentProvider {
     if (!sig || !sameHex(sig, hmacHex(this.webhookSecret, body))) throw new DomainError("security_rejected", "Bad signature.");
     const e = JSON.parse(body) as { event: string; created_at?: number; payload: Record<string, { entity: Record<string, unknown> } | undefined> };
     // Razorpay sends a unique id per event in this header; fall back to a stable digest of the body.
-    const eventId = headers.get("x-razorpay-event-id") ?? `body-${hmacHex("razorpay-event", body).slice(0, 40)}`;
+    const eventId = headers.get("x-razorpay-event-id") ?? `body-${createHash("sha256").update(body).digest("hex").slice(0, 40)}`;
     const base = { provider: this.name, eventId, eventType: String(e.event) };
     const link = e.payload?.payment_link?.entity ?? {};
     const payment = e.payload?.payment?.entity ?? {};

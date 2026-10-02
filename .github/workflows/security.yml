@@ -48,3 +48,10 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
       - uses: github/codeql-action/analyze@v3
+        with:
+          output: ../results
+      # The check posted on a PR names only the count; list each result (rule, file, line) here so it can be fixed.
+      - name: List findings
+        if: always()
+        run: |
+          jq -r '.runs[].results[] | "\(.level // "warning") \(.ruleId) \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine) — \(.message.text | split("\n")[0])"' ../results/*.sarif || true
