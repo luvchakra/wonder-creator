@@ -130,3 +130,12 @@ Contract: `docs/personal-sources.md`. Sync discovers; the creator decides what b
 | PS-D Photos | Done | Device picker only; SHA-256, date and ≤12 KB thumbnail per photo, inline in the record; photo-day groups led by the creator's photo; only chosen originals uploaded, verified by SHA-256 |
 | PS-E CreativeMind + search | Done | Shortlist-only enrichment (live model, fenced, redacted, hash-cached, one line + format; Bring to Studio uses it as the prompt); Search your world over the index; targeted "Look further back" jobs (bounded, own cursor) |
 | PS-F Hardening / load | Done | Load and failure tests (100k mailbox, byte cap, slow and hanging providers incl. signal-ignoring, congestion, hourly budget); engine-enforced call timeout; per-provider, AI and Home kill switches |
+
+## Communities (owner brief, 2 Oct 2026)
+
+Contract: `docs/communities.md`. Orkut-style communities from what exists: a Community is a public Creative Room.
+
+| Item | Status | Notes |
+|---|---|---|
+| CM-A Capability audit + mockups | Done | Mapped Community, Forum, Topic, Post, Members, Owner, Moderators onto Rooms, Open Conversations and crews; Huddle keeps its name |
+| CM-B Communities | Done | Migration 077 (`projects.visibility`, safe card/list/members functions, open join, member topic links, host moderation of topics and posts, always-public triggers); `/communities/[id]` (Forum · Creations · Huddles · Members), Explore › Community › Communities with search, owner's "Open as a community", topic "In …" back-link, Home names the community. Communities are always public (owner, 2 Oct 2026) |

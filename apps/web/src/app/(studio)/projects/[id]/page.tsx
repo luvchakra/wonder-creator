@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
 import { PaletteScope } from "@/components/creative-palette";
+import { flagOn } from "@/lib/features";
 import { requireSession } from "@/lib/session";
 import { ProjectView, type ProjectTab } from "./project-view";
 
@@ -115,6 +116,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           rightsNote: p.rights_note,
           budget: { enabled: p.budget_enabled, amount: p.budget_amount, currency: p.budget_currency, note: p.budget_note },
           updatedAt: p.updated_at,
+          community: flagOn("communities_enabled") ? { discoverable: p.visibility === "discoverable" } : null,
         }}
         items={items.map((i) => ({
           id: i.id,

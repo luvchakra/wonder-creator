@@ -35,6 +35,8 @@ export const TELEMETRY_EVENTS = [
   "conversation_summary_shown",
   "huddle_from_conversation",
   "creative_room_from_conversation",
+  "community_joined",
+  "community_topic_started",
   "ask_community_sent",
 ] as const;
 export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];

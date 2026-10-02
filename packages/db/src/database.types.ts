@@ -2969,13 +2969,13 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string
+                    "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string,"visibility": string
                   }
                   Insert: {
-                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string,"visibility"?: string
                   }
                   Update: {
-                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visibility"?: string
                   }
                   Relationships: [
                     {
@@ -4101,6 +4101,27 @@ isOneToOne: false
 { Args: { "p_artifact": string }; Returns: {
               "commercial_channels": (string)[],"commercial_use": string
             }[]
+                           },
+"community_card":
+{ Args: { "p_project": string }; Returns: {
+              "brief": string,"cover_material_id": string,"crew_id": string,"id": string,"is_host": boolean,"is_member": boolean,"member_count": number,"owner_id": string,"owner_name": string,"status": string,"title": string
+            }[]
+                           },
+"community_join":
+{ Args: { "p_project": string }; Returns: string
+                           },
+"community_list":
+{ Args: { "p_limit"?: number,"p_query"?: string }; Returns: {
+              "brief": string,"cover_material_id": string,"id": string,"is_member": boolean,"last_activity_at": string,"member_count": number,"owner_id": string,"owner_name": string,"title": string,"topic_count": number
+            }[]
+                           },
+"community_members":
+{ Args: { "p_project": string }; Returns: {
+              "access": string,"avatar_object_id": string,"creator_id": string,"display_name": string,"handle": string,"joined_at": string,"role_title": string
+            }[]
+                           },
+"community_remove_topic":
+{ Args: { "p_conversation": string,"p_project": string,"p_reason"?: string }; Returns: undefined
                            },
 "complete_project":
 { Args: { "p_acknowledge_open"?: boolean,"p_confirm_title": string,"p_dissolve_crew": boolean,"p_note"?: string,"p_outcome": string,"p_project": string }; Returns: string

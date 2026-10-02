@@ -3,6 +3,7 @@ import { findCollaborators } from "@wonder/creator-identity";
 import { liveCards, type LiveCard } from "@wonder/creator-huddle";
 import { listPosts } from "@wonder/creator-library";
 import type { Db } from "@wonder/db";
+import { getCommunity } from "./communities";
 import { knownCollaborators, peopleById, toConversation, type OpenConversation } from "./conversations";
 import { hiddenCreators, openToOf } from "./moderation";
 import { HELP_INTENTS, INTENT_FITS, OPEN_TO_LABEL, weekLine, type CommunityFilter, type ConversationIntent, type OpenTo, type Person } from "./shared";
@@ -251,10 +252,60 @@ export async function homeCommunitySignals(db: Db, viewerId: string): Promise<Ho
   const pick =
     recent.find((c) => c.reason === "You're in this conversation" && c.conversation.lastReplyAt && Date.parse(c.conversation.lastReplyAt) > Date.now() - 3 * 86_400_000) ??
     recent.find((c) => c.reason?.startsWith("You worked with"));
-  const hearing = pick
+  let hearing: HomeCommunitySignals["hearing"] = pick
     ? { id: pick.conversation.id, title: pick.conversation.title, replyCount: pick.conversation.replyCount, participantCount: pick.conversation.participantCount, reason: pick.reason === "You're in this conversation" ? "New replies in a conversation you joined" : pick.reason! }
     : null;
-  return { question, help, hearing };
+  // …else a lively topic in a community you're in (docs/communities.md: Home stays Home, and names the community).
+  if (!hearing) {
+    const topic = await recentCommunityTopic(db, viewerId, hidden, help.map((h) => h.id)).catch(() => null);
+    if (topic) hearing = topic;
+  }
+  // Name the community a topic lives in, when the viewer can see it.
+  const named = await communityNamesFor(db, [...(hearing ? [hearing.id] : []), ...help.map((h) => h.id)]).catch(() => new Map<string, string>());
+  if (hearing && named.has(hearing.id) && !hearing.reason.startsWith("New in ")) hearing = { ...hearing, reason: `${hearing.reason} · in ${named.get(hearing.id)}` };
+  const helpNamed = help.map((h) => (named.has(h.id) ? { ...h, reason: h.reason ? `${h.reason} · in ${named.get(h.id)}` : `In ${named.get(h.id)}` } : h));
+  return { question, help: helpNamed, hearing };
+}
+
+/** conversation id → the title of a community it's in (the first one the viewer can see). */
+async function communityNamesFor(db: Db, conversationIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!conversationIds.length) return out;
+  const { data: links } = await db.from("open_conversation_links").select("conversation_id, project_id").in("conversation_id", conversationIds).eq("kind", "project");
+  const titles = new Map<string, string | null>();
+  for (const l of links ?? []) {
+    if (!l.project_id || out.has(l.conversation_id)) continue;
+    if (!titles.has(l.project_id)) titles.set(l.project_id, (await getCommunity(db, l.project_id).catch(() => null))?.title ?? null);
+    const t = titles.get(l.project_id);
+    if (t) out.set(l.conversation_id, t);
+  }
+  return out;
+}
+
+/** The most recently active topic (last 3 days) in a community the viewer belongs to, not their own. */
+async function recentCommunityTopic(db: Db, viewerId: string, hidden: Set<string>, skip: string[]): Promise<HomeCommunitySignals["hearing"]> {
+  const { data: crews } = await db.from("crew_members").select("crews!inner(project_id)").eq("creator_id", viewerId).eq("status", "active").limit(50);
+  const projectIds = [...new Set((crews ?? []).map((c) => (c.crews as { project_id: string } | null)?.project_id).filter((x): x is string => !!x))];
+  if (!projectIds.length) return null;
+  const { data: links } = await db.from("open_conversation_links").select("conversation_id, project_id").in("project_id", projectIds).eq("kind", "project").limit(300);
+  const convIds = [...new Set((links ?? []).map((l) => l.conversation_id))].filter((id) => !skip.includes(id));
+  if (!convIds.length) return null;
+  const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const { data: convs } = await db
+    .from("open_conversations")
+    .select("id, title, creator_id, reply_count, participant_count, last_reply_at")
+    .in("id", convIds)
+    .is("removed_at", null)
+    .neq("creator_id", viewerId)
+    .gt("last_reply_at", since)
+    .order("last_reply_at", { ascending: false })
+    .limit(5);
+  const c = (convs ?? []).find((x) => !hidden.has(x.creator_id));
+  if (!c) return null;
+  const projectId = (links ?? []).find((l) => l.conversation_id === c.id)?.project_id;
+  const community = projectId ? await getCommunity(db, projectId).catch(() => null) : null;
+  if (!community) return null;
+  return { id: c.id, title: c.title, replyCount: c.reply_count, participantCount: c.participant_count, reason: `New in ${community.title}` };
 }
 
 /* ----------------------------------------------------------------------------------- Home: from the community */

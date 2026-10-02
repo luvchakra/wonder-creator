@@ -142,6 +142,14 @@ sync never runs inside a request, is bounded, checkpointed, deduplicated and iso
 without an explicit choice; disconnect deletes what was discovered. Contract: `docs/personal-sources.md`.
 Implementation: `packages/creator-sources`, `apps/web/src/lib/sources.ts`, `/api/v1/personal-sources`, `/sources`.
 
+## Communities (owner brief, 2 Oct 2026)
+
+Orkut-style communities built from existing features: a Community is a public Creative Room, Members are its crew,
+Owner/Moderators are crew owner/admins, the Forum's Topics are linked Open Conversations and Posts are their replies;
+Huddle keeps its name. **Communities are always public** and so are their topics; private Rooms are unchanged. No likes,
+follower counts or ranking. Contract: `docs/communities.md`. Implementation: `packages/creator-community/src/communities.ts`,
+`/api/v1/communities`, `/communities/[id]`.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.

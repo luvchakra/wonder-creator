@@ -12,7 +12,7 @@ test.describe("Community", () => {
     await page.goto("/search");
     await page.getByRole("navigation", { name: "Explore" }).getByRole("link", { name: "Community" }).click();
     await expect(page).toHaveURL(/\/community$/);
-    await expect(page.getByRole("navigation", { name: "Community" }).getByRole("link")).toHaveText(["For you", "Conversations", "Help", "People"]);
+    await expect(page.getByRole("navigation", { name: "Community" }).getByRole("link")).toHaveText(["For you", "Communities", "Conversations", "Help", "People"]);
     await page.getByRole("button", { name: "Start a conversation" }).first().click();
     const sheet = page.getByRole("dialog", { name: "Start a conversation" });
     await sheet.getByRole("radio", { name: "Critique" }).click();
