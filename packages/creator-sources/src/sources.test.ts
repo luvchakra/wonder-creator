@@ -88,6 +88,18 @@ describe("cheap grouping", () => {
     expect(buildCandidates(rs, { now })[0]!.signature).toBe(a[0]!.signature);
   });
 
+  it("joins a travel email to the trip it names (cross-source), but not one that merely shares the dates", () => {
+    const rs = [
+      rec({ sourceType: "event", place: "Goa", title: "Goa by train", occurredAt: "2026-09-10T08:00:00Z" }),
+      rec({ sourceType: "photo", place: "Goa", occurredAt: "2026-09-11T08:00:00Z" }),
+      rec({ sourceType: "email", title: "Your train tickets to Goa", occurredAt: "2026-09-08T08:00:00Z" }),
+      rec({ sourceType: "email", title: "Quarterly report", occurredAt: "2026-09-10T09:00:00Z" }),
+      rec({ sourceType: "email", title: "Goals for next year", occurredAt: "2026-09-10T09:00:00Z" }),
+    ];
+    const [c] = buildCandidates(rs, { now });
+    expect(countsLine(c!.counts)).toBe("1 photo · 1 email · 1 event");
+  });
+
   it("finds an unfinished thought only once it has rested a while", () => {
     const old = rec({ excerpt: "What if the lighthouse kept every name it ever saw,", occurredAt: "2026-06-01T08:00:00Z", signals: { unfinished: true } });
     const fresh = rec({ excerpt: "Tomorrow, maybe —", occurredAt: "2026-10-11T08:00:00Z", signals: { unfinished: true } });

@@ -3,6 +3,7 @@ import { DomainError, fromDbError, log } from "@wonder/core";
 import { createMaterial } from "@wonder/creator-library";
 import type { Db, JsonValue } from "@wonder/db";
 import { syncBudgets, type SyncBudgets } from "./budgets";
+import { ConnectorError } from "./errors";
 import { buildCandidates } from "./grouping";
 import { isSensitive, safeExcerpt, safeTitle } from "./redact";
 import { ACTIVE_JOB, type ContextRecord, type JobStatus, type Provider, type RecordInput, type SourceType, type SyncMode } from "./types";
@@ -44,6 +45,8 @@ export interface PageResult {
   nextCursor: string | null;
   /** True when there's nothing more to fetch in this scope. */
   done: boolean;
+  /** Bytes this page cost in total (listing included); defaults to the items' own. */
+  bytes?: number;
 }
 
 export interface Connector {
@@ -53,18 +56,8 @@ export interface Connector {
   fetchPage(ctx: ConnectorContext): Promise<PageResult>;
   /** Full content for one record the creator chose to import (hydration L4). Optional: notes already are Materials. */
   hydrate?(ctx: Omit<ConnectorContext, "cursor" | "limit">, record: { providerItemId: string; sourceType: SourceType }): Promise<{ title: string | null; text: string | null }>;
-}
-
-/** Failures a connector reports, so one provider's trouble never spreads (spec §9). */
-export class ConnectorError extends Error {
-  constructor(
-    readonly kind: "rate_limited" | "revoked" | "retryable" | "fatal",
-    message: string,
-    readonly retryAfterMs?: number,
-  ) {
-    super(message);
-    this.name = "ConnectorError";
-  }
+  /** Ask the provider to forget the grant when the creator disconnects (best effort). */
+  revoke?(ctx: Pick<ConnectorContext, "service" | "creatorId" | "connection">): Promise<void>;
 }
 
 export type ConnectorRegistry = Partial<Record<Provider, Connector>>;
@@ -318,7 +311,7 @@ async function runSlice(deps: SourcesDeps, budgets: SyncBudgets, job: JobRow, un
     counters.scanned += page.items.length;
     counters.indexed += rows.length;
     counters.pages += 1;
-    counters.bytes += page.items.reduce((n, r) => n + (r.bytes ?? 0), 0);
+    counters.bytes += page.bytes ?? page.items.reduce((n, r) => n + (r.bytes ?? 0), 0);
     await service
       .from("source_sync_jobs")
       .update({ scanned_count: counters.scanned, indexed_count: counters.indexed, pages_fetched: counters.pages, transferred_bytes: counters.bytes, heartbeat_at: now().toISOString() })
@@ -518,7 +511,11 @@ export async function importCandidate(deps: SourcesDeps, db: Db, creatorId: stri
   return { materialIds };
 }
 
+export { ConnectorError } from "./errors";
 export { nativeNotes } from "./connectors/native-notes";
+export { gmailConnector, gmailScope } from "./connectors/gmail";
+export { calendarConnector, calendarScope, placeOf } from "./connectors/calendar";
+export { CALENDAR_SCOPE, GMAIL_SCOPE, GOOGLE_SCOPES, googleConsent, googleExchange, googleRevoke, type GoogleClient, type GoogleSource } from "./connectors/google";
 export { buildCandidates } from "./grouping";
 export { syncBudgets, DEFAULT_BUDGETS, type SyncBudgets } from "./budgets";
 export { redact, safeExcerpt, isSensitive } from "./redact";

@@ -53,8 +53,8 @@ source_connections → source_sync_jobs (bounded)   → context_candidates   →
 | Phase | Scope | Status |
 | --- | --- | --- |
 | A Foundation | Models, manual Sync, queue isolation, budgets, dedupe, checkpoints, cancel, Home card, native Notes connector | Done |
-| B Gmail | Separate least-privilege read-only OAuth, bounded first scan, metadata-first, history cursor, review/import | Next |
-| C Calendar + Notes | Bounded date windows, cross-source grouping; external notes only via documented APIs or import | |
+| B Gmail | Separate least-privilege read-only OAuth, bounded first scan, metadata-first, history cursor, review/import | Done (needs owner Google setup) |
+| C Calendar + Notes | Bounded date windows, cross-source grouping; external notes only via documented APIs or import | Calendar + cross-source grouping done; external notes via import (D) |
 | D Photos | PWA file picker/share first; thumbnails/metadata, clusters; no bulk originals | |
 | E CreativeMind | Shortlist-only enrichment, one concise suggestion, targeted "look further back" | |
 | F Hardening | Provider failure, expiry, rate limits, huge mailbox, large photo sets, congestion, load tests | |
@@ -66,3 +66,48 @@ source_connections → source_sync_jobs (bounded)   → context_candidates   →
 `RECORD_DAYS`, `INITIAL_LOOKBACK_DAYS`). Kill switch: `WONDERCREATOR_FLAG_PERSONAL_SOURCES_ENABLED=off` (API 404s, Home
 card and screens disappear). Telemetry (`sources.sync_requested`, `sources.sync_finished`, `sources.sync_error`,
 `sources.imported`) records counts, pages, bytes and outcomes — never content.
+
+## Gmail (phase B)
+
+Connector: `packages/creator-sources/src/connectors/gmail.ts` (OAuth helpers in `google.ts`); routes
+`/api/v1/personal-sources/google/{connect,callback}` (one callback for every Google source).
+
+* **Own consent, read-only.** `gmail.readonly` only, `include_granted_scopes=false`, offline access, PKCE (S256), a
+  random `state`; the state and verifier travel in an AES-GCM-sealed, httpOnly cookie scoped to the callback path for
+  10 minutes. Google sign-in grants nothing here. A grant without the Gmail scope or without a refresh token is refused.
+* **Credential.** The refresh token goes straight into Vault (`source_secret_store`); access tokens are minted per
+  slice and never stored. Disconnect revokes the grant at Google (best effort) and destroys the Vault secret.
+* **First sync.** A bounded recent window (30 days by default; 7 or 90 by choice), inbox (sent mail optional), never
+  spam, trash, promotions, social or forums; bulk mail (`List-Unsubscribe`, `Precedence: bulk`) skipped. Metadata only:
+  Subject, date and Gmail's own snippet (then redacted). The profile `historyId` is captured first.
+* **Next syncs.** `users.history.list` from the cursor's `historyId` (messages added). An expired history (404) recovers
+  with a window since the last successful sync (at most the chosen look-back) — never a full-mailbox rebuild.
+* **Import.** Only for a message the creator selects: `format=full`, the text/plain part, quoted replies and signatures
+  dropped, redacted, capped at 20k characters, as a private Material with provenance.
+* **Failures.** `invalid_grant`/401 → `needs_reconnect` (Reconnect on the manage page); 429/403 → paused with
+  Retry-After; 5xx/timeouts → retried with backoff, then failed. Other sources carry on.
+
+### Owner setup
+
+1. Google Cloud console → the project used for sign-in (or a new one) → **APIs & Services → Library**: enable the
+   **Gmail API** and the **Google Calendar API**.
+2. **OAuth consent screen**: add the scopes `https://www.googleapis.com/auth/gmail.readonly` and
+   `https://www.googleapis.com/auth/calendar.events.readonly` (sensitive). Gmail's is a *restricted*
+   scope: while the app is in **Testing**, add test users; for public use Google requires verification and an annual
+   security assessment (CASA).
+3. **Credentials → Create OAuth client ID → Web application** (or reuse the sign-in client): authorised redirect URI
+   `https://<your-domain>/api/v1/personal-sources/google/callback` (and `http://localhost:3000/...` for local). The same
+   URI serves Calendar.
+4. Vercel → Environment Variables: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (Production + Preview).
+   Until both are set, Gmail and Calendar show "Not set up yet".
+
+## Calendar (phase C)
+
+Connector: `packages/creator-sources/src/connectors/calendar.ts`. Its own consent (`calendar.events.readonly`). A
+bounded window of the primary calendar (30 days back / 60 ahead by default; 7–90 back, 0–60 ahead by choice), then
+Calendar's `syncToken`; an expired token (410) restarts the bounded window. Kept: title, date and the **town** only
+(`placeOf` reduces an address to its town, never the street). Never attendees, descriptions, conference links or
+addresses; declined, cancelled, out-of-office/focus/working-location and online meetings are skipped.
+
+Cross-source grouping: a mail or note without a place joins a place's group when it names that place and falls within
+three days of it ("a travel email near a calendar event").

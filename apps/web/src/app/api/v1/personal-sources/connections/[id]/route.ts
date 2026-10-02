@@ -1,6 +1,7 @@
 import { DomainError, fromDbError } from "@wonder/core";
 import { z } from "zod";
 import { readJson, requireUuid, withApi } from "@/lib/api";
+import { connectors } from "@/lib/sources";
 import { serviceClient } from "@/lib/supabase/service";
 
 const schema = z.object({ scopeSettings: z.record(z.string(), z.unknown()).optional(), syncMode: z.literal("manual").optional() });
@@ -28,6 +29,11 @@ export const PATCH = withApi<{ id: string }>(
 export const DELETE = withApi<{ id: string }>(
   async ({ db, creatorId }, { id }) => {
     requireUuid(id);
+    const { data: conn } = await db.from("source_connections").select("id, creator_id, provider, status, scope_settings, last_successful_sync_at").eq("id", id).maybeSingle();
+    if (!conn) throw new DomainError("not_found", "We couldn't find that source.");
+    // Ask the provider to forget the grant too (best effort); the stored credential is destroyed below either way.
+    const connector = connectors()[conn.provider as keyof ReturnType<typeof connectors>];
+    await connector?.revoke?.({ service: serviceClient(), creatorId, connection: conn as never }).catch(() => undefined);
     const { data: records } = await db.from("source_context_records").select("id").eq("connection_id", id);
     const gone = new Set((records ?? []).map((r) => r.id));
     const { data, error } = await db.from("source_connections").delete().eq("id", id).select("id").maybeSingle();

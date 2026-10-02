@@ -11,7 +11,16 @@ import type { CandidateCard, SourceRow } from "@/lib/sources";
 
 const ACTIVE = new Set(["queued", "running", "paused"]);
 
-export function SourcesView({ sources: initial, candidates }: { sources: SourceRow[]; candidates: CandidateCard[] }) {
+const RETURNED = (name: string, what: string): Record<string, { text: string; ok: boolean }> => ({
+  connected: { text: `${name} is connected. A first, short sync of your recent ${what} has started.`, ok: true },
+  declined: { text: `${name} wasn't connected — you cancelled at Google.`, ok: false },
+  scope: { text: `${name} wasn't connected: access wasn't allowed on Google's screen.`, ok: false },
+  expired: { text: "That connection attempt expired. Please try again.", ok: false },
+  failed: { text: "Google didn't confirm the connection. Please try again.", ok: false },
+});
+
+export function SourcesView({ sources: initial, candidates, returned }: { sources: SourceRow[]; candidates: CandidateCard[]; returned?: { gmail?: string; calendar?: string } }) {
+  const notice = returned?.gmail ? RETURNED("Gmail", "mail")[returned.gmail] : returned?.calendar ? RETURNED("Calendar", "events")[returned.calendar] : undefined;
   const router = useRouter();
   const [sources, setSources] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,8 +82,14 @@ export function SourcesView({ sources: initial, candidates }: { sources: SourceR
       setSources((ss) => ss.map((s) => (s.connectionId && (!connectionId || s.connectionId === connectionId) ? { ...s, activeJob: s.activeJob ?? { id: "", status: "queued", phase: "queued", scanned: 0 } } : s)));
       setPolling(true);
     });
-  const connect = (provider: string) =>
+  const connect = (provider: string, oauth: boolean) =>
     run(provider, async () => {
+      if (oauth) {
+        // The provider's own consent screen; it sends the creator back to this page.
+        const r = await api<{ url: string }>("/api/v1/personal-sources/google/connect", { method: "POST", json: { provider } });
+        window.location.assign(r.url);
+        return;
+      }
       const r = await api<{ connection: { id: string } }>("/api/v1/personal-sources/connections", { method: "POST", json: { provider } });
       await api("/api/v1/personal-sources/sync", { method: "POST", json: { connectionId: r.connection.id } });
       setPolling(true);
@@ -98,6 +113,12 @@ export function SourcesView({ sources: initial, candidates }: { sources: SourceR
         <p className="mt-1 text-[14px] text-ink-muted">Bring in what matters — on your terms.</p>
       </header>
 
+      {notice ? (
+        <p role="status" className={cn("mt-3 rounded-2xl px-3 py-2 text-[13.5px]", notice.ok ? "bg-success-soft text-success-ink" : "bg-warning-soft text-warning-ink")}>
+          {notice.text}
+        </p>
+      ) : null}
+
       <ul aria-label="Your sources" className="mt-4 divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)]">
         {sources.map((s) => (
           <li key={s.provider} className="flex min-h-16 items-center gap-3 px-3 py-2.5">
@@ -111,7 +132,7 @@ export function SourcesView({ sources: initial, candidates }: { sources: SourceR
                 <ChevronRight className="size-5" aria-hidden />
               </Link>
             ) : s.available ? (
-              <Button size="sm" variant="soft" loading={busy === s.provider} onClick={() => void connect(s.provider)}>
+              <Button size="sm" variant="soft" loading={busy === s.provider} onClick={() => void connect(s.provider, s.oauth)}>
                 Connect
               </Button>
             ) : null}
@@ -210,6 +231,7 @@ function SourceStatus({ s }: { s: SourceRow }) {
     <p className="text-[12.5px] text-ink-muted">
       <span aria-hidden className={cn("mr-1.5 inline-block size-2 rounded-full align-middle", trouble ? "bg-warning" : "bg-success")} />
       <span className={trouble ? "text-warning-ink" : "text-success-ink"}>{trouble ?? "Connected"}</span>
+      {s.account ? <span className="text-ink-subtle"> · {s.account}</span> : null}
       {s.lastSyncedAt ? (
         <span className="block">
           Last synced <RelativeTime iso={s.lastSyncedAt} />

@@ -83,6 +83,19 @@ function score(rs: ContextRecord[], now: Date, base: number): number {
 function placeClusters(rs: ContextRecord[], tz: string, now: Date): CandidateDraft[] {
   const byPlace = new Map<string, ContextRecord[]>();
   for (const r of rs) if (r.place && r.occurredAt) byPlace.set(normPlace(r.place), [...(byPlace.get(normPlace(r.place)) ?? []), r]);
+  // Cross-source evidence (spec §8): a mail or note without a place joins a place's group when it names the place and
+  // falls within three days of it — "a travel email near a calendar event".
+  const unplaced = rs.filter((r) => !r.place && r.occurredAt && (r.title || r.excerpt));
+  for (const [place, group] of byPlace) {
+    if (place.length < 3) continue;
+    const re = new RegExp(`(^|[^\\p{L}])${place.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "iu");
+    const times = group.map((r) => Date.parse(r.occurredAt!));
+    const [lo, hi] = [Math.min(...times) - 3 * DAY_MS, Math.max(...times) + 3 * DAY_MS];
+    for (const r of unplaced) {
+      const t = Date.parse(r.occurredAt!);
+      if (t >= lo && t <= hi && re.test(`${r.title ?? ""} ${r.excerpt ?? ""}`) && !group.includes(r)) group.push({ ...r, place: group[0]!.place });
+    }
+  }
   const out: CandidateDraft[] = [];
   for (const [place, group] of byPlace) {
     group.sort((a, b) => Date.parse(a.occurredAt!) - Date.parse(b.occurredAt!));
