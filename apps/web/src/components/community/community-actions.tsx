@@ -3,7 +3,7 @@ import { CONVERSATION_INTENTS, INTENT_HINT, INTENT_LABEL, type ConversationInten
 import { Button, ConfirmDialog, Dialog, DialogContent, Input, KIT, Menu, MenuContent, MenuItem, MenuTrigger, Textarea, cn } from "@wonder/ui";
 import { Camera, MoreHorizontal, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
 /**
@@ -34,7 +34,7 @@ function StartCommunityBody() {
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
   const [picture, setPicture] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const previewRef = useRef<HTMLCanvasElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -73,12 +73,9 @@ function StartCommunityBody() {
       </div>
       <div className="flex items-center gap-3">
         <label htmlFor="community-picture" className="relative grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full bg-surface-muted ring-2 ring-white">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="" className="size-full object-cover" />
-          ) : (
-            <Camera className="size-5 text-ink-subtle" aria-hidden />
-          )}
+          {/* The preview is drawn on a canvas, so nothing from the file ever becomes page markup. */}
+          <canvas ref={previewRef} width={112} height={112} aria-hidden className={cn("absolute inset-0 size-full", !picture && "hidden")} />
+          {picture ? null : <Camera className="size-5 text-ink-subtle" aria-hidden />}
         </label>
         <div className="min-w-0 text-[13px]">
           <label htmlFor="community-picture" className="font-medium text-ink">
@@ -94,10 +91,18 @@ function StartCommunityBody() {
           onChange={(e) => {
             const f = e.target.files?.[0] ?? null;
             setPicture(f);
-            setPreview((old) => {
-              if (old) URL.revokeObjectURL(old);
-              return f ? URL.createObjectURL(f) : null;
-            });
+            const canvas = previewRef.current;
+            const ctx = canvas?.getContext("2d");
+            if (!f || !canvas || !ctx) return;
+            void createImageBitmap(f)
+              .then((bmp) => {
+                // Cover-crop to the round preview.
+                const s = Math.min(bmp.width, bmp.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, canvas.width, canvas.height);
+                bmp.close();
+              })
+              .catch(() => setError("We couldn't read that picture. Try a JPEG, PNG or WebP image."));
           }}
         />
       </div>
