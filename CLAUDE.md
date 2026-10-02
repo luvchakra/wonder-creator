@@ -303,5 +303,5 @@ For every screen:
 ## Conventions
 
 * Env vars: see `.env.example`. Never commit `.env*` files or keys (GitHub push protection will block them).
-* Migrations are append-only in `supabase/migrations`; regenerate types with `npm run db:types`.
+* Migrations are append-only in `supabase/migrations`; regenerate types with `npm run db:types`. Production gets them from the **Database migrations** workflow on merge to `main` (`docs/deploy-migrations.md`); never hand-apply a migration without recording it in `app.applied_migrations`.
 * UI: warm cream surfaces, Inter + Playfair Display, brand tokens first (named surface palettes where a template needs one), supplied/library art used generously, 44px targets, works at 360px, loading/empty/error states for every screen, reduced motion respected, colour never the only signal.
