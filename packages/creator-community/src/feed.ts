@@ -5,7 +5,7 @@ import { listPosts } from "@wonder/creator-library";
 import type { Db } from "@wonder/db";
 import { knownCollaborators, peopleById, toConversation, type OpenConversation } from "./conversations";
 import { hiddenCreators, openToOf } from "./moderation";
-import { HELP_INTENTS, INTENT_FITS, OPEN_TO_LABEL, type CommunityFilter, type OpenTo, type Person } from "./shared";
+import { HELP_INTENTS, INTENT_FITS, OPEN_TO_LABEL, weekLine, type CommunityFilter, type ConversationIntent, type OpenTo, type Person } from "./shared";
 
 /**
  * The Community feed (§3, §11): a small, curated mix — never an endless, engagement-ranked stream. Everything is read
@@ -278,6 +278,10 @@ export interface HomeCommunityGlance {
   thought: (ScrapbookCard & { reason: string | null }) | null;
   ask: ConversationCard | null;
   person: PersonCard | null;
+  /** Conversations the viewer joined (replied to, not their own) that moved on since they last read them. */
+  catchUp: { conversations: number; newReplies: number; firstId: string; title: string } | null;
+  /** One line of what happened this week, with no numbers. */
+  week: string | null;
 }
 
 export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excludeConversations?: string[] } = {}): Promise<HomeCommunityGlance> {
@@ -316,11 +320,59 @@ export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excl
   }
   const thought = byCloseness(thoughts).find((t) => t.body.trim() || t.imageUrl) ?? null;
   const ask = asks.cards.find((c) => c.conversation.creatorId !== viewerId && !exclude.has(c.conversation.id) && !c.conversation.closedAt) ?? null;
+  const [catchUp, week] = await Promise.all([
+    conversationCatchUp(db, viewerId, exclude).catch(() => null),
+    (async () => {
+      const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const [{ data: works }, { data: convs }] = await Promise.all([
+        db.from("artifacts").select("artifact_type, creator_id").eq("privacy", "public").in("status", ["final", "published"]).neq("creator_id", viewerId).gte("updated_at", since).limit(200),
+        db.from("open_conversations").select("intent, creator_id").in("intent", HELP_INTENTS as string[]).is("removed_at", null).is("closed_at", null).neq("creator_id", viewerId).gte("created_at", since).limit(100),
+      ]);
+      const counts = new Map<string, number>();
+      for (const w of works ?? []) if (!hidden.has(w.creator_id)) counts.set(w.artifact_type, (counts.get(w.artifact_type) ?? 0) + 1);
+      return weekLine({
+        types: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t),
+        intents: (convs ?? []).filter((c) => !hidden.has(c.creator_id)).map((c) => c.intent as ConversationIntent),
+      });
+    })().catch(() => null),
+  ]);
   return {
+    catchUp,
+    week,
     live,
     creations: picked.map((c) => ({ ...c, reason: why(c.author), excerpt: excerpts.get(c.id) ?? null })),
     thought: thought ? { ...thought, reason: why(thought.author) } : null,
     ask,
     person: people.find((p) => !follows.has(p.person.id)) ?? null,
   };
+}
+
+/** Conversations the viewer replied to (not their own) with others' replies since they last read or replied. */
+async function conversationCatchUp(db: Db, viewerId: string, exclude: Set<string>): Promise<HomeCommunityGlance["catchUp"]> {
+  const { data: mine } = await db.from("open_conversation_replies").select("conversation_id, created_at").eq("creator_id", viewerId).order("created_at", { ascending: false }).limit(100);
+  const lastMine = new Map<string, string>();
+  for (const r of mine ?? []) if (!lastMine.has(r.conversation_id)) lastMine.set(r.conversation_id, r.created_at);
+  const ids = [...lastMine.keys()].filter((id) => !exclude.has(id)).slice(0, 40);
+  if (!ids.length) return null;
+  const [{ data: reads }, { data: convs }] = await Promise.all([
+    db.from("open_conversation_reads").select("conversation_id, last_read_at").eq("creator_id", viewerId).in("conversation_id", ids),
+    db.from("open_conversations").select("id, title, creator_id, last_reply_at").in("id", ids).is("removed_at", null),
+  ]);
+  const readAt = new Map((reads ?? []).map((r) => [r.conversation_id, r.last_read_at]));
+  const since = (id: string) => [readAt.get(id), lastMine.get(id)].filter((x): x is string => !!x).sort().at(-1)!;
+  const moved = (convs ?? []).filter((c) => c.creator_id !== viewerId && c.last_reply_at && c.last_reply_at > since(c.id)).sort((a, b) => (b.last_reply_at! > a.last_reply_at! ? 1 : -1));
+  if (!moved.length) return null;
+  const oldest = moved.map((c) => since(c.id)).sort()[0]!;
+  const { data: replies } = await db
+    .from("open_conversation_replies")
+    .select("conversation_id, created_at")
+    .in("conversation_id", moved.map((c) => c.id))
+    .neq("creator_id", viewerId)
+    .is("deleted_at", null)
+    .is("removed_at", null)
+    .gt("created_at", oldest)
+    .limit(500);
+  const newReplies = (replies ?? []).filter((r) => r.created_at > since(r.conversation_id)).length;
+  if (!newReplies) return null;
+  return { conversations: moved.length, newReplies, firstId: moved[0]!.id, title: moved[0]!.title };
 }

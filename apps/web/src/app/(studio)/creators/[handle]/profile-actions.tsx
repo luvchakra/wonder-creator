@@ -20,6 +20,7 @@ export function ProfileActions({ creatorId, following, myLiveHuddleId, canMessag
             try {
               await api(`/api/v1/creators/${creatorId}/follow`, { method: "POST", json: { on: !f } });
               setF(!f);
+              router.refresh();
             } catch (e) {
               setMsg(errorMessage(e));
             }

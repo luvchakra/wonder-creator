@@ -6,6 +6,7 @@ import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
 import { artifactType } from "@wonder/creator-studio/types";
 import type { Db } from "@wonder/db";
+import { listProjects, listSharedItems } from "@wonder/creator-projects";
 import { avatarUrls } from "../avatars";
 import { coverUrls } from "../covers";
 import { flags } from "../features";
@@ -98,6 +99,8 @@ export interface HomePayload {
   yourQuestion?: HomeQuestionCard;
   /** From the community: a small fixed glance (never a feed), with signed covers for its Creations. */
   community?: HomeCommunityGlance & { covers: Record<string, string> };
+  /** New in the creator's Creative Rooms: work their room-mates shared lately (newest first, at most three). */
+  rooms?: Array<{ projectId: string; projectTitle: string; itemId: string; title: string; kind: string; by: { id: string; name: string }; at: string }>;
   /** Fallback only: a few recent Creations to get back to. */
   recent?: Array<{ id: string; title: string; typeLabel: string }>;
   avatars: Record<string, string>;
@@ -359,7 +362,23 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
         thought: shownHearing?.kind === "post" && rawGlance.thought?.id === shownHearing.postId ? null : rawGlance.thought,
       }
     : null;
-  const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person);
+  const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person || glance.catchUp || glance.week);
+  const rooms =
+    (await safe("rooms", async () => {
+      const projects = (await listProjects(db, { status: "open", viewerId: creatorId })).slice(0, 6);
+      const recent = now - 14 * 86_400_000;
+      const lists = await Promise.all(
+        projects.map(async (p) =>
+          (await listSharedItems(db, p.id).catch(() => []))
+            .filter((i) => !i.mine && Date.parse(i.sharedAt) > recent)
+            .map((i) => ({ projectId: p.id, projectTitle: p.title, itemId: i.itemId, title: i.title, kind: i.kind, by: i.sharedBy, at: i.sharedAt })),
+        ),
+      );
+      return lists
+        .flat()
+        .sort((a, b) => b.at.localeCompare(a.at))
+        .slice(0, 3);
+    })) ?? [];
   const glanceCovers = hasGlance && glance!.creations.length ? ((await safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId }))))) ?? {}) : {};
 
   const avatars =
@@ -371,6 +390,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
           ...(couldHelp?.items ?? []).map((i) => i.actor?.id ?? ""),
           worthHearing?.kind === "post" ? worthHearing.authorId : "",
           worthHearing?.kind === "huddle" ? (worthHearing.participantId ?? "") : "",
+          ...rooms.map((r) => r.by.id),
           ...(hasGlance ? [...glance!.creations.map((c) => c.author.id), glance!.thought?.author.id ?? "", glance!.ask?.author.id ?? "", glance!.person?.person.id ?? ""] : []),
         ].filter(Boolean),
       ),
@@ -400,6 +420,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     couldHelp: slots.has("couldHelp") ? couldHelp : undefined,
     yourQuestion: slots.has("yourQuestion") ? yourQuestion : undefined,
     community: hasGlance ? { ...glance!, covers: glanceCovers } : undefined,
+    rooms: rooms.length ? rooms : undefined,
     avatars,
     generatedAt: new Date(now).toISOString(),
   };

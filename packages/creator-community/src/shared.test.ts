@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { huddleContext } from "./conversations";
 import { helpQuery } from "./feed";
-import { catchUpLine, helpHeadline, INTENT_FITS, OPEN_TO } from "./shared";
+import { catchUpLine, helpHeadline, INTENT_FITS, OPEN_TO, weekLine } from "./shared";
 
 describe("Community wording", () => {
   it("help requests read as people, not tickets", () => {
@@ -36,5 +36,15 @@ describe("a Huddle about a conversation", () => {
     expect(ctx.topic).toBe("How much text belongs on a carousel?");
     expect(ctx.description).toBe("Slide three keeps getting overloaded.\n“One breath per slide.”\n“Let the image carry it.”");
     expect(ctx.description.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("this week in the community", () => {
+  it("says what happened in words — kinds of new work, open asks, a live Huddle — never numbers", () => {
+    expect(weekLine({ types: ["poem", "short_film", "carousel"], intents: ["critique", "critique"], liveTopic: "Light and shadow" })).toBe("New poems and short films, people asking for feedback and a Huddle live now on Light and shadow.");
+    expect(weekLine({ types: ["mystery_type"], intents: [] })).toBe("New work.");
+    expect(weekLine({ types: [], intents: ["looking_for"] })).toBe("Invitations to collaborate.");
+    expect(weekLine({ types: [], intents: [] })).toBeNull();
+    expect(weekLine({ types: ["poem"], intents: ["ask"], liveTopic: null })).not.toMatch(/\d/);
   });
 });
