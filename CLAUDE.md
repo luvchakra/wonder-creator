@@ -11,7 +11,7 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 * Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
 * Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 * UI direction: `docs/ui-redesign/spec.md` (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`. It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is no bottom navigation or module tab bar, and destinations/actions live in the corner Creative Palette. CreativeMind (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product.
-* UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code) change in the presentation layer only — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
+* UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code; Pulse — the open space for conversations, asks and people, `community` in code; Community — the Orkut-style communities) change in the presentation layer only — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
 * Mobile: `docs/mobile-guidelines.md` (per-story mobile rules) and the boards in `docs/mockups/`, except where the UI redesign spec overrides them. Plan guardrails win over mockups on **guardrails** (no like counts, platform-only analytics, privacy, rights). On **visual** matters — art, colour, type, spacing, composition, mood — the owner's boards are the target, not a loose reference.
 
 ## Aesthetic excellence (owner's standing instruction, 30 Sep 2026)
@@ -146,7 +146,7 @@ Implementation: `packages/creator-sources`, `apps/web/src/lib/sources.ts`, `/api
 
 Orkut-style communities built from existing features: a Community is a public Creative Room, Members are its crew,
 Owner/Moderators are crew owner/admins, the Forum's Topics are linked Open Conversations and Posts are their replies;
-Huddle keeps its name. **Communities are always public** and so are their topics; private Rooms are unchanged. No likes,
+Huddle keeps its name; the older open space formerly called Community is now **Pulse** in the UI (owner, 2 Oct 2026). **Communities are always public** and so are their topics; private Rooms are unchanged. No likes,
 follower counts or ranking. Contract: `docs/communities.md`. Implementation: `packages/creator-community/src/communities.ts`,
 `/api/v1/communities`, `/communities/[id]`.
 

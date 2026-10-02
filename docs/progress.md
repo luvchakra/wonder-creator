@@ -153,3 +153,9 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 | Item | Status | Notes |
 |---|---|---|
 | Testimonials | Done | Migration 078 (`creators.testimonials_from`, `creator_testimonials`, audited write/withdraw/decide/setting functions, derived "worked together", public-page function); Profile section (pending row with Show / Keep private / Also on my Creator Page; shown list; kept-private disclosure; writer's own state with Rewrite / Withdraw); Write sheet with optional shared context; Palette leaf; Settings fieldset; notifications; public Creator Page About block. 7 DB cases, 2 E2E flows |
+
+## Pulse rename (owner, 2 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Old Community → Pulse | Done | Presentation only: Explore door, page title and filters nav, topic back-link, Profile tab, Home "From Pulse", Studio "Ask Pulse" / "Responses from Pulse", Bring in filter, Palette labels; the conversation visibility once labelled "Community" now reads "Signed-in creators". Routes (`/community`), tables, packages and APIs unchanged. "Community" now means only the Orkut-style communities |

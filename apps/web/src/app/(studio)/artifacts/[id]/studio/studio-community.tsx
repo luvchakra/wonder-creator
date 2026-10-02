@@ -256,7 +256,7 @@ interface Response {
 /** "7 community responses · 2 new" — how the Studio mentions replies (null: nothing asked, or nothing yet). */
 export function responsesLine(s: ResponsesSummary | null): string | null {
   if (!s?.total) return null;
-  return `${s.total} community ${s.total === 1 ? "response" : "responses"}${s.fresh ? ` · ${s.fresh} new` : ""}`;
+  return `${s.total} ${s.total === 1 ? "response" : "responses"} from Pulse${s.fresh ? ` · ${s.fresh} new` : ""}`;
 }
 
 export function useCommunityResponses(sessionId: string | null, refreshKey: number) {
@@ -351,7 +351,7 @@ export function CommunityResponsesSheet({
   const list = only ? all.filter((r) => only.includes(r.id)) : all;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Community responses" description={responsesLine(data) ?? "Replies to what you asked about this Creation."} art={KIT.painted.leafSprigSage} wide>
+      <DialogContent title="Responses from Pulse" description={responsesLine(data) ?? "Replies to what you asked about this Creation."} art={KIT.painted.leafSprigSage} wide>
         <div className="space-y-2">
           {note ? (
             <p role="status" className="text-[13px] text-accent-ink">
@@ -433,7 +433,7 @@ export interface AskFragment {
 export function AskCommunitySheet({ open, onOpenChange, artifactId, fragment, onAsked }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string; fragment: AskFragment | null; onAsked: () => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Ask Community" description="Only the part you chose is shared. The rest of your Creation stays private." art={KIT.painted.coralLeaves}>
+      <DialogContent title="Ask Pulse" description="Only the part you chose is shared. The rest of your Creation stays private." art={KIT.painted.coralLeaves}>
         {open && fragment ? <AskBody artifactId={artifactId} fragment={fragment} onAsked={onAsked} /> : null}
       </DialogContent>
     </Dialog>
@@ -495,7 +495,7 @@ function AskBody({ artifactId, fragment, onAsked }: { artifactId: string; fragme
       <div role="radiogroup" aria-label="Who can see it" className="flex gap-1.5">
         {(
           [
-            ["community", "Community"],
+            ["community", "Signed-in creators"],
             ["limited", "Only people I add"],
           ] as const
         ).map(([v, l]) => (

@@ -35,7 +35,7 @@ export function CommunityTab({ huddles, conversations, shared, handle, isMe, pag
         {isMe ? "Conversations you start and Huddles you open appear here. " : "Nothing in the community yet."}
         {isMe ? (
           <Link href="/community" className="font-medium text-accent-ink hover:underline">
-            Open Community
+            Open Pulse
           </Link>
         ) : null}
       </p>

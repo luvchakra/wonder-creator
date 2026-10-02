@@ -15,7 +15,9 @@ Built from what already exists. No new community tables, no new global navigatio
 | Huddles | Live Huddles started from the community's topics (the name stays Huddle) |
 | Creations | Work members shared with the room's crew |
 
-UI terms change in the presentation layer only. Tables, routes and APIs keep their names.
+UI terms change in the presentation layer only. Tables, routes and APIs keep their names. The older open space for
+conversations, asks and people (`/community`, the `creator-community` package) is called **Pulse** in the UI from
+2 Oct 2026, so "Community" means only these communities.
 
 ## Rules
 
@@ -40,7 +42,7 @@ UI terms change in the presentation layer only. Tables, routes and APIs keep the
 * Domain: `packages/creator-community/src/communities.ts`.
 * API: `/api/v1/communities` (list, start), `/api/v1/communities/:id` (read, open as a community), `join`, `leave`,
   `topics`, `topics/:topicId` (remove). Flag `communities_enabled`.
-* UI: Explore › Community › **Communities** (`/community?filter=communities`, search, Your communities, Discover);
+* UI: Explore › Pulse › **Communities** (`/community?filter=communities`, search, Your communities, Discover);
   `/communities/[id]` (Forum · Creations · Huddles · Members); the room owner's **Open as a community…**; a topic shows
   **In ‹community›** above its title. Home's Worth hearing and You could help name the community.
 * Palette (`page: "community"`): members get Share a Creation here, Chat & Huddle, Open Creative Room, All communities.

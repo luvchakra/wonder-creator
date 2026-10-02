@@ -14,7 +14,7 @@ import { requireSession } from "@/lib/session";
 import { flagOn } from "@/lib/features";
 import { notFound } from "next/navigation";
 
-export const metadata = { title: "Community" };
+export const metadata = { title: "Pulse" };
 
 const EMPTY: Record<CommunityFilter, { title: string; body: string }> = {
   for_you: { title: "It's quiet here for now", body: "Start a conversation — ask something, share how you work, or say what you're looking for." },
@@ -24,7 +24,7 @@ const EMPTY: Record<CommunityFilter, { title: string; body: string }> = {
 };
 
 /**
- * Community (docs/community.md): a creative exchange layer inside Explore — what creators are making, thinking about,
+ * Pulse (docs/community.md; "Community" in code): a creative exchange layer inside Explore — what creators are making, thinking about,
  * asking for and offering. Four small views; a short, curated list each; no follower counts, likes, karma, trending or
  * endless scroll. Muted and blocked creators never appear.
  */
@@ -43,10 +43,10 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
       <div className="mx-auto max-w-2xl space-y-3">
         <ExploreNav current="community" />
         <div className="flex items-center justify-between gap-2">
-          <h1 className="font-display text-[24px] leading-tight text-ink">Community</h1>
+          <h1 className="font-display text-[24px] leading-tight text-ink">Pulse</h1>
           <NewConversationButton />
         </div>
-        <nav aria-label="Community" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        <nav aria-label="Pulse" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
           <FilterChips current={filter} communities={communitiesOn} />
         </nav>
         {feed.cards.length ? (
@@ -96,7 +96,7 @@ async function CommunitiesView({ query }: { query?: string }) {
           <h1 className="font-display text-[24px] leading-tight text-ink">Communities</h1>
           <StartCommunityButton />
         </div>
-        <nav aria-label="Community" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        <nav aria-label="Pulse" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
           <FilterChips current="communities" communities />
         </nav>
         <form role="search" action="/community" className="relative">

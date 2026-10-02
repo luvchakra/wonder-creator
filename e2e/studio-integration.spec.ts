@@ -65,7 +65,7 @@ test.describe("Studio integration", () => {
     await table.getByRole("tab", { name: /Available/ }).click();
     const card = table.getByRole("listitem").filter({ hasText: `Treat each image like a pause ${tag}` });
     await expect(card).toContainText("Reference only");
-    await expect(card).toContainText("Community thought");
+    await expect(card).toContainText("Thought from Pulse");
     const uses = card.getByRole("group");
     await expect(uses.getByRole("button", { name: "Use as creative direction" })).toBeVisible();
     await expect(uses.getByRole("button", { name: "Add to draft" })).toHaveCount(0);
@@ -86,8 +86,8 @@ test.describe("Studio integration", () => {
     const art = await poem(page, `Private poem ${tag}`, `The train was always late ${tag}.\n\nThe second stanza stays private ${tag}.`);
     await page.goto(`/artifacts/${art.id}/studio`);
     await page.getByRole("button", { name: "More", exact: true }).click();
-    await page.getByRole("button", { name: /^Ask Community/ }).click();
-    const ask = page.getByRole("dialog", { name: "Ask Community" });
+    await page.getByRole("button", { name: /^Ask Pulse/ }).click();
+    const ask = page.getByRole("dialog", { name: "Ask Pulse" });
     await expect(ask).toContainText("Selected: The opening");
     await expect(ask).toContainText(`The train was always late ${tag}.`);
     await expect(ask).not.toContainText("second stanza");
@@ -110,8 +110,8 @@ test.describe("Studio integration", () => {
     await page.goto(`/artifacts/${art.id}/studio`);
     await expect(page.getByRole("button", { name: /^Working Table:/ })).toContainText("1 new reply");
     const table = await openTable(page);
-    await table.getByRole("button", { name: "1 community response · 1 new" }).click();
-    const responses = page.getByRole("dialog", { name: "Community responses" });
+    await table.getByRole("button", { name: "1 response from Pulse · 1 new" }).click();
+    const responses = page.getByRole("dialog", { name: "Responses from Pulse" });
     await expect(responses).toContainText("About The opening");
     await responses.getByRole("button", { name: "Use in Studio" }).click();
     await expect(responses.getByText(/on the Working Table as feedback/)).toBeVisible();

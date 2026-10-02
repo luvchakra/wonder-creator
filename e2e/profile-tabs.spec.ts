@@ -36,7 +36,7 @@ test.describe("Profile views", () => {
     await expect(page.getByRole("list", { name: "Moments" }).getByRole("article")).toContainText(["Quote"]);
 
     // Community: what they've asked for.
-    await page.getByRole("navigation", { name: "Profile views" }).getByRole("link", { name: "Community" }).click();
+    await page.getByRole("navigation", { name: "Profile views" }).getByRole("link", { name: "Pulse" }).click();
     const help = page.getByRole("link", { name: `Open Seeking feedback on a short film ${tag}` });
     await expect(help).toBeVisible();
     await expect(page.getByText("Help request")).toBeVisible();

@@ -1,3 +1,6 @@
+> **Renamed (owner, 2 Oct 2026):** this surface is called **Pulse** in the UI. "Community" now names the Orkut-style
+> communities (`docs/communities.md`). Routes, tables, packages and APIs keep the `community` name.
+
 # Community + Open Conversations — implementation contract
 
 Owner spec: [`phases/03-community-open-conversations.md`](phases/03-community-open-conversations.md) (Phase 03 of 5).

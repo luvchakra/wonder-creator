@@ -292,7 +292,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           createdAt: c.created_at,
           available: true,
           title: `“${clip(c.body)}”`,
-          kind: `Community thought · ${nameOf(c.creator_id)}`,
+          kind: `Thought from Pulse · ${nameOf(c.creator_id)}`,
           mediaType: "conversation_reply",
           href: `/community/conversations/${c.conversation_id}`,
           thumbnailUrl: null,
@@ -354,7 +354,7 @@ export function materialRights(m: { creator_id: string; type: string; source_typ
   if (m.creator_id !== viewer) return { rights: "reference_only" };
   // Someone else's words saved from Community ("Save thought") stay theirs.
   const said = (m.metadata as { community?: { authorId?: string; authorName?: string } } | null)?.community;
-  if (said?.authorId && said.authorId !== viewer) return { rights: "reference_only", attribution: said.authorName ? `By ${said.authorName} · Community` : null };
+  if (said?.authorId && said.authorId !== viewer) return { rights: "reference_only", attribution: said.authorName ? `By ${said.authorName} · Pulse` : null };
   const lic = (m.metadata as { license?: { name?: string; creator?: string | null; provider?: string | null } } | null)?.license;
   if (m.source_type === "external" || lic) return { rights: licenseRights(lic?.name), attribution: attributionLine({ creator: lic?.creator, license: lic?.name, provider: lic?.provider }) };
   if (m.type === "url" || m.source_type === "web" || m.source_type === "youtube") return { rights: "reference_only" };

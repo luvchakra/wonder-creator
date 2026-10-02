@@ -81,7 +81,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
         </Link>
       ) : (
         <Link href="/community?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
-          <ArrowLeft className="size-4" aria-hidden /> Community
+          <ArrowLeft className="size-4" aria-hidden /> Pulse
         </Link>
       )}
 
@@ -175,7 +175,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                   onSelect={() =>
                     void act("mute", async () => {
                       await api(`/api/v1/creators/${c.creatorId}/mute`, { method: "POST", json: { on: true } });
-                      setNotice(`${author.name} is muted. You won't see them in Community.`);
+                      setNotice(`${author.name} is muted. You won't see them in Pulse.`);
                     })
                   }
                 >

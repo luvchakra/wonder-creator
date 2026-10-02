@@ -960,7 +960,7 @@ export function Studio({
                   ]
                 : []),
               { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
-              ...(askFragment && askOn ? [{ label: "Ask Community", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
+              ...(askFragment && askOn ? [{ label: "Ask Pulse", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
               { label: "View version history", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/artifacts/${artifact.id}?tab=versions`) },
               { label: "Transform / Derive", hint: "Make a carousel, video, etc.", act: () => setSheet("format") },
               { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/artifacts/${artifact.id}/share`) },

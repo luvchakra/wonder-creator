@@ -44,7 +44,7 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
   {
     id: "explore",
     label: "Explore",
-    hint: "Ideas, Materials, People and Community",
+    hint: "Ideas, Materials, People and Pulse",
     icon: "compass",
     class: "navigation",
     target: route("/search"),
@@ -320,7 +320,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
             ]
           : [
               { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/community?filter=communities"), score: 80 },
-              { id: "community", label: "Community", icon: "people", class: "navigation", target: route("/community"), score: 70 },
+              { id: "community", label: "Pulse", icon: "people", class: "navigation", target: route("/community"), score: 70 },
             ],
       };
     }

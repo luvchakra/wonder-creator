@@ -30,7 +30,7 @@ export const HELP_INTENTS: readonly ConversationIntent[] = ["ask", "critique", "
 
 export const CONVERSATION_VISIBILITIES = ["community", "public", "limited"] as const;
 export type ConversationVisibility = (typeof CONVERSATION_VISIBILITIES)[number];
-export const VISIBILITY_LABEL: Record<ConversationVisibility, string> = { community: "Community", public: "Public", limited: "Limited" };
+export const VISIBILITY_LABEL: Record<ConversationVisibility, string> = { community: "Signed-in creators", public: "Public", limited: "Limited" };
 export const VISIBILITY_HINT: Record<ConversationVisibility, string> = {
   community: "Signed-in creators who can see your profile",
   public: "Anyone who can see your profile",

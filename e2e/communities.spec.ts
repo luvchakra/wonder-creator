@@ -10,7 +10,7 @@ test.describe("Communities", () => {
 
     // Explore → Community → Communities; start one from the sheet.
     await page.goto("/community");
-    await page.getByRole("navigation", { name: "Community" }).getByRole("link", { name: "Communities" }).click();
+    await page.getByRole("navigation", { name: "Pulse" }).getByRole("link", { name: "Communities" }).click();
     await expect(page).toHaveURL(/filter=communities/);
     await page.getByRole("button", { name: "Start a community" }).first().click();
     const sheet = page.getByRole("dialog", { name: "Start a community" });

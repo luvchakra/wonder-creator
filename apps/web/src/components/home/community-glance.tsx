@@ -18,7 +18,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
       <KitArt art={KIT.painted.leafSprigSage} sizes="6rem" className="pointer-events-none absolute -right-3 -top-4 -z-10 h-24 w-auto rotate-12 opacity-50" />
       <div className="flex items-baseline justify-between gap-3 pr-10">
         <h2 id="community-title" className="font-display text-[19px] leading-tight text-ink">
-          From the community
+          From Pulse
         </h2>
         <Link href="/community" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
           Explore <ChevronRight className="size-3.5" aria-hidden />
@@ -27,7 +27,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
       {/* This week, in words — no numbers. */}
       {g.week ? (
         <p className="mt-1 pr-6 font-display text-[14px] italic leading-snug text-ink-muted">
-          <span className="sr-only">This week in the community: </span>
+          <span className="sr-only">This week in Pulse: </span>
           {g.week}
         </p>
       ) : null}
@@ -69,7 +69,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
         {g.creations.length ? (
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">New work</h3>
-            <ul aria-label="New work from the community" className="-mx-3 mt-1.5 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
+            <ul aria-label="New work from Pulse" className="-mx-3 mt-1.5 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
               {g.creations.map((c, i) => {
                 const cover = g.covers[c.id];
                 return (
