@@ -139,3 +139,9 @@ Contract: `docs/communities.md`. Orkut-style communities from what exists: a Com
 |---|---|---|
 | CM-A Capability audit + mockups | Done | Mapped Community, Forum, Topic, Post, Members, Owner, Moderators onto Rooms, Open Conversations and crews; Huddle keeps its name |
 | CM-B Communities | Done | Migration 077 (`projects.visibility`, safe card/list/members functions, open join, member topic links, host moderation of topics and posts, always-public triggers); `/communities/[id]` (Forum · Creations · Huddles · Members), Explore › Community › Communities with search, owner's "Open as a community", topic "In …" back-link, Home names the community. Communities are always public (owner, 2 Oct 2026) |
+
+## Home: Scrapbook strip (owner, 2 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Scrapbook at the top of Home | Done | Directly under the greeting: the latest public thoughts, sketches and fragments from everyone the creator can see, in the order shared, as a short horizontal strip of painted cards (image posts show the picture) with "All" and "Share a thought". Muted and blocked creators never appear; no likes, counts or ranking. Continue stays the one dominant action beneath it (`components/home/scrapbook-strip.tsx`) |

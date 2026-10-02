@@ -8,6 +8,7 @@ import { PaletteScope } from "@/components/creative-palette";
 import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
+import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
 import { FromYourWorld } from "@/components/sources/from-your-world";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
@@ -65,6 +66,9 @@ export default async function HomePage() {
           {/* One short truth, as in the navbar: "3 things changed", "Nothing needs your attention." */}
           <p className="mt-0.5 text-[13px] text-ink-muted">{quiet ? "Nothing needs your attention." : home.contextLine}</p>
         </header>
+
+        {/* The Scrapbook first (owner, 2 Oct 2026): the latest thoughts from everyone you can see, in order shared. */}
+        <ScrapbookStrip db={db} viewerId={creator.id} />
 
         {/* The one dominant action: continue (or something worth starting, or a calm beginning). */}
         {home.continue ? (
