@@ -117,3 +117,16 @@ wording and certification need counsel and auditors (docs/compliance/).
 | C-3 Payments (Stripe / Razorpay) | Done (provider-gated) | `@wonder/creator-payments`: Razorpay Payment Links for INR, Stripe Checkout otherwise (REST, hosted pages, SAQ-A). Orders opened from the licence (amount never from the client; one live order per licence), provider references recorded server-side, signed webhooks (Stripe timestamped HMAC, Razorpay HMAC) applied once per event id with amount/currency checks and double-settlement guard; balanced, append-only double-entry ledger; licence income in Business settles automatically; payee refunds with password, confirmed by webhook (dashboard refunds recorded too). UI: Pay / Copy payment link / Refund on the licence, a return page that waits for confirmation, provider status in Settings. Owner: keys, webhooks, merchant-of-record decision (docs/compliance/payments.md) |
 | C-4 Financial controls (SOX-style) | Done | Controls matrix (docs/compliance/financial-controls.md): settled records locked against creator edits; daily reconciliation (journals balance, order vs ledger, paid order ↔ business record, unapplied provider events, unconfirmed refunds, stale checkouts expired) with immutable exceptions and an audited run; creator payment statement (CSV, injection-safe, audited); financial records excluded from retention; CODEOWNERS on money/privacy/security/schema paths. Owner: branch protection, control owners, sign-offs |
 | C-5 Landing page | Done | Public `/` for signed-out visitors (proxy rewrite to `/welcome`; signed-in creators keep Home): painted arches hero, Tagline, "Create your studio"; highlight chips; four trust pillars — Stripe & Razorpay, GDPR & DPDP, SOX-style controls, security by default — each describing only what ships, with links to the legal pages and a no-certification note. E2E at 390px and desktop, no horizontal scroll, axe clean |
+
+## Personal Sources (owner spec + boards, 2 Oct 2026)
+
+Contract: `docs/personal-sources.md`. Sync discovers; the creator decides what becomes creative material.
+
+| Item | Status | Notes |
+|---|---|---|
+| PS-A Foundation | Done | Migration 074 (connections, Vault credentials, cursors, sync jobs, context index, candidates; RLS, retention, export); `@wonder/creator-sources` engine (202 + after-response slices, budgets, checkpoints, dedupe, cancel, crash resume, per-source failure isolation, central redaction); native Notes connector; cheap grouping (place/day clusters, unfinished thought, recurring phrase); `/sources`, manage, review/import; Home › From your world with a quiet Sync |
+| PS-B Gmail | Next | Least-privilege read-only OAuth separate from sign-in; needs owner Google Cloud setup and verification |
+| PS-C Calendar + Notes | Planned | |
+| PS-D Photos | Planned | |
+| PS-E CreativeMind enrichment | Planned | |
+| PS-F Hardening / load | Planned | |

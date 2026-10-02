@@ -730,6 +730,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"context_candidates": {
+                  Row: {
+                    "counts": NonNullable<Json>,"created_at": string,"creator_id": string,"expires_at": string,"explanation": string,"id": string,"imported_material_ids": (string)[],"quote": string | null,"record_ids": (string)[],"score": number,"signature": string,"state": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id": string,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature": string,"state"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id"?: string,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature"?: string,"state"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "context_candidates_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"contribution_edits": {
                   Row: {
                     "changes": NonNullable<Json>,"contribution_id": string,"created_at": string,"editor_creator_id": string | null,"id": string
@@ -3592,6 +3611,137 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"source_connection_secrets": {
+                  Row: {
+                    "connection_id": string,"creator_id": string,"updated_at": string,"vault_secret_id": string
+                  }
+                  Insert: {
+                    "connection_id": string,"creator_id": string,"updated_at"?: string,"vault_secret_id": string
+                  }
+                  Update: {
+                    "connection_id"?: string,"creator_id"?: string,"updated_at"?: string,"vault_secret_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "source_connection_secrets_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: true
+      referencedRelation: "source_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_connection_secrets_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"source_connections": {
+                  Row: {
+                    "account_display_name": string | null,"created_at": string,"creator_id": string,"granted_scopes": (string)[],"id": string,"last_error_code": string | null,"last_successful_sync_at": string | null,"provider": string,"scope_settings": NonNullable<Json>,"status": string,"sync_mode": string,"updated_at": string
+                  }
+                  Insert: {
+                    "account_display_name"?: string | null,"created_at"?: string,"creator_id": string,"granted_scopes"?: (string)[],"id"?: string,"last_error_code"?: string | null,"last_successful_sync_at"?: string | null,"provider": string,"scope_settings"?: NonNullable<Json>,"status"?: string,"sync_mode"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "account_display_name"?: string | null,"created_at"?: string,"creator_id"?: string,"granted_scopes"?: (string)[],"id"?: string,"last_error_code"?: string | null,"last_successful_sync_at"?: string | null,"provider"?: string,"scope_settings"?: NonNullable<Json>,"status"?: string,"sync_mode"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "source_connections_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"source_context_records": {
+                  Row: {
+                    "connection_id": string,"created_at": string,"creator_id": string,"expires_at": string | null,"fingerprint": string | null,"hydration_level": number,"id": string,"material_id": string | null,"occurred_at": string | null,"place": string | null,"preview_ref": string | null,"provider_item_id": string,"safe_excerpt": string | null,"safe_title": string | null,"signals": NonNullable<Json>,"source_type": string,"updated_at": string
+                  }
+                  Insert: {
+                    "connection_id": string,"created_at"?: string,"creator_id": string,"expires_at"?: string | null,"fingerprint"?: string | null,"hydration_level"?: number,"id"?: string,"material_id"?: string | null,"occurred_at"?: string | null,"place"?: string | null,"preview_ref"?: string | null,"provider_item_id": string,"safe_excerpt"?: string | null,"safe_title"?: string | null,"signals"?: NonNullable<Json>,"source_type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "connection_id"?: string,"created_at"?: string,"creator_id"?: string,"expires_at"?: string | null,"fingerprint"?: string | null,"hydration_level"?: number,"id"?: string,"material_id"?: string | null,"occurred_at"?: string | null,"place"?: string | null,"preview_ref"?: string | null,"provider_item_id"?: string,"safe_excerpt"?: string | null,"safe_title"?: string | null,"signals"?: NonNullable<Json>,"source_type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "source_context_records_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: false
+      referencedRelation: "source_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_context_records_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_context_records_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "creative_materials"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"source_sync_cursors": {
+                  Row: {
+                    "checkpoint": NonNullable<Json>,"connection_id": string,"creator_id": string,"last_committed_at": string | null,"last_successful_sync_at": string | null,"provider_cursor": string | null,"scope_hash": string
+                  }
+                  Insert: {
+                    "checkpoint"?: NonNullable<Json>,"connection_id": string,"creator_id": string,"last_committed_at"?: string | null,"last_successful_sync_at"?: string | null,"provider_cursor"?: string | null,"scope_hash": string
+                  }
+                  Update: {
+                    "checkpoint"?: NonNullable<Json>,"connection_id"?: string,"creator_id"?: string,"last_committed_at"?: string | null,"last_successful_sync_at"?: string | null,"provider_cursor"?: string | null,"scope_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "source_sync_cursors_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: false
+      referencedRelation: "source_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_sync_cursors_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"source_sync_jobs": {
+                  Row: {
+                    "ai_calls": number,"attempts": number,"cancel_requested": boolean,"candidate_count": number,"connection_id": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"idempotency_key": string,"indexed_count": number,"mode": string,"pages_fetched": number,"parent_id": string | null,"phase": string,"priority": number,"run_after": string,"scanned_count": number,"scope_hash": string,"started_at": string | null,"status": string,"transferred_bytes": number,"updated_at": string
+                  }
+                  Insert: {
+                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key": string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key"?: string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "source_sync_jobs_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: false
+      referencedRelation: "source_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_sync_jobs_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "source_sync_jobs_parent_id_fkey"
+      columns: ["parent_id"]
+isOneToOne: false
+      referencedRelation: "source_sync_jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"storage_objects": {
                   Row: {
                     "bucket": string,"created_at": string,"creator_id": string,"declared_mime_type": string | null,"id": string,"mime_type": string,"original_filename": string | null,"path": string,"privacy": Database["public"]['Enums']["privacy_class"],"security_status": string,"sha256": string,"size_bytes": number
@@ -4402,6 +4552,12 @@ isOneToOne: false
 { Args: { "p_limit"?: number,"p_material": string,"p_min_similarity"?: number }; Returns: {
               "material_id": string,"similarity": number
             }[]
+                           },
+"source_secret_read":
+{ Args: { "p_connection": string,"p_creator": string }; Returns: string
+                           },
+"source_secret_store":
+{ Args: { "p_connection": string,"p_creator": string,"p_secret": string }; Returns: undefined
                            },
 "stale_search_subjects":
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {

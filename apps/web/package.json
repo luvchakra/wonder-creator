@@ -24,6 +24,7 @@
     "@wonder/creator-projects": "^0.1.0",
     "@wonder/creator-send": "^0.1.0",
     "@wonder/creator-soundtrack": "^0.1.0",
+    "@wonder/creator-sources": "^0.1.0",
     "@wonder/creator-studio": "^0.1.0",
     "@wonder/creator-talk": "^0.1.0",
     "@wonder/db": "^0.1.0",
