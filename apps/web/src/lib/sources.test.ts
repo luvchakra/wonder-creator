@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { connectors, googleClient, openOAuth, sealOAuth } from "./sources";
+import { connectors, googleClient, openOAuth, sealOAuth, sourcesAiOn, sourcesHomeOn } from "./sources";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -13,6 +13,17 @@ describe("Personal Sources app wiring", () => {
     vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "cid");
     vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "secret");
     expect(Object.keys(connectors()).sort()).toEqual(["gmail", "google_calendar", "native_notes"]);
+  });
+
+  it("kill switches turn off one provider or the AI without touching the rest", () => {
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "cid");
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "secret");
+    vi.stubEnv("WONDERCREATOR_SOURCES_DISABLED", "gmail");
+    expect(Object.keys(connectors()).sort()).toEqual(["google_calendar", "native_notes"]);
+    vi.stubEnv("WONDERCREATOR_SOURCES_AI", "off");
+    vi.stubEnv("WONDERCREATOR_SOURCES_HOME", "OFF");
+    expect(sourcesAiOn()).toBe(false);
+    expect(sourcesHomeOn()).toBe(false);
   });
 
   it("seals the consent state so the PKCE verifier can't be read or altered in the browser", () => {

@@ -57,14 +57,16 @@ source_connections → source_sync_jobs (bounded)   → context_candidates   →
 | C Calendar + Notes | Bounded date windows, cross-source grouping; external notes only via documented APIs or import | Calendar + cross-source grouping done; external notes via import (D) |
 | D Photos | PWA file picker/share first; thumbnails/metadata, clusters; no bulk originals | Done (device picker; cloud pickers later) |
 | E CreativeMind | Shortlist-only enrichment, one concise suggestion, targeted "look further back" | Done |
-| F Hardening | Provider failure, expiry, rate limits, huge mailbox, large photo sets, congestion, load tests | |
+| F Hardening | Provider failure, expiry, rate limits, huge mailbox, large photo sets, congestion, load tests | Done |
 
 ## Tuning
 
 `WONDERCREATOR_SOURCES_<NAME>` overrides any ceiling (`PAGE_SIZE`, `QUICK_RECORD_CAP`, `PAGE_CAP`, `BYTE_CAP`,
 `SLICE_MS`, `CALL_TIMEOUT_MS`, `MAX_ATTEMPTS`, `GLOBAL_RUNNING`, `CREATOR_RUNNING`, `CREATOR_HOURLY`, `STALE_MS`,
-`RECORD_DAYS`, `INITIAL_LOOKBACK_DAYS`). Kill switch: `WONDERCREATOR_FLAG_PERSONAL_SOURCES_ENABLED=off` (API 404s, Home
-card and screens disappear). Telemetry (`sources.sync_requested`, `sources.sync_finished`, `sources.sync_error`,
+`RECORD_DAYS`, `INITIAL_LOOKBACK_DAYS`). Kill switches (read on every request): the whole feature
+`WONDERCREATOR_FLAG_PERSONAL_SOURCES_ENABLED=off` (API 404s, Home card and screens disappear); one provider
+`WONDERCREATOR_SOURCES_DISABLED=gmail,google_calendar` (its row says it's paused, nothing is lost, the others carry on);
+enrichment `WONDERCREATOR_SOURCES_AI=off`; the Home card `WONDERCREATOR_SOURCES_HOME=off`. Telemetry (`sources.sync_requested`, `sources.sync_finished`, `sources.sync_error`,
 `sources.imported`) records counts, pages, bytes and outcomes — never content.
 
 ## Gmail (phase B)
@@ -139,3 +141,19 @@ left the device. Cloud photo libraries need their providers' own pickers and con
   plain search terms only, its own cursor): Gmail a year back, Calendar a year back, notes three years — still bounded
   by the same budgets, and it never moves the source's regular sync. Found items can be brought in directly
   (`/api/v1/personal-sources/records/import`) with the same checks as from a candidate.
+
+## Hardening (phase F)
+
+`tests/db/personal-sources-load.test.ts` runs the real engine and database against synthetic providers:
+
+* a **100,000-message mailbox**: one Quick Sync stops at `quickRecordCap` / `pageCap` (`partially_complete`), the next
+  continues from the checkpoint — never whole-account retrieval;
+* a **byte-heavy** source stops at `byteCap`;
+* a **slow** provider yields at the slice limit (`paused`/`waiting`) and resumes until done, without duplicates;
+* a **hanging** provider — even one ignoring its abort signal — is cut off at `callTimeoutMs` by the engine, backs off,
+  and fails after `maxAttempts`, marking only that source;
+* **congestion**: with the global cap reached, other creators' jobs stay queued and run once there's room;
+* the **hourly budget** refuses new syncs while repeated taps still get the active job back.
+
+Sync work runs after the response (`after()`) or in the job worker, never in the request path, so Creation, Studio,
+saving and publishing are never waiting on it; targeted searches run at the lowest priority (P4).

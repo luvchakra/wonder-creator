@@ -38,10 +38,23 @@ async function sourceSecret(creatorId: string, connectionId: string): Promise<st
   return (data as string | null) ?? null;
 }
 
-/** Connectors that work on this server. */
+/**
+ * Kill switches (spec §13), read on every request: WONDERCREATOR_SOURCES_DISABLED=gmail,google_calendar turns off one
+ * failing provider without touching the rest; WONDERCREATOR_SOURCES_AI=off stops enrichment; WONDERCREATOR_SOURCES_HOME=off
+ * hides the Home card. The whole feature: WONDERCREATOR_FLAG_PERSONAL_SOURCES_ENABLED=off.
+ */
+export function disabledProviders(): Set<string> {
+  return new Set((process.env.WONDERCREATOR_SOURCES_DISABLED ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+}
+export const sourcesAiOn = () => process.env.WONDERCREATOR_SOURCES_AI?.trim().toLowerCase() !== "off";
+export const sourcesHomeOn = () => process.env.WONDERCREATOR_SOURCES_HOME?.trim().toLowerCase() !== "off";
+
+/** Connectors that work on this server (and aren't switched off). */
 export function connectors(): ConnectorRegistry {
   const google = googleClient();
-  return { native_notes: nativeNotes, ...(google ? { gmail: gmailConnector(google, sourceSecret), google_calendar: calendarConnector(google, sourceSecret) } : {}) };
+  const all: ConnectorRegistry = { native_notes: nativeNotes, ...(google ? { gmail: gmailConnector(google, sourceSecret), google_calendar: calendarConnector(google, sourceSecret) } : {}) };
+  const off = disabledProviders();
+  return Object.fromEntries(Object.entries(all).filter(([p]) => !off.has(p))) as ConnectorRegistry;
 }
 
 /** Sources the creator can connect right now without a provider consent screen. */
@@ -53,6 +66,7 @@ export const OAUTH_CONNECT: Provider[] = ["gmail", "google_calendar"];
 
 /** The creator's CreativeMind model, only when it's live (enrichment is never faked). */
 export async function creatorModel(creatorId: string) {
+  if (!sourcesAiOn()) return null;
   const { providerFor } = await import("./brain");
   const { provider } = await providerFor(creatorId);
   return provider.live ? provider : null;
@@ -82,6 +96,8 @@ export interface SourceRow {
   pick: boolean;
   /** Account the source belongs to, e.g. the Gmail address. */
   account: string | null;
+  /** Switched off on this server for now (a provider incident); nothing is lost. */
+  paused: boolean;
   activeJob: { id: string; status: JobStatus; phase: string; scanned: number } | null;
 }
 
@@ -91,6 +107,7 @@ export async function sourceRows(db: Db): Promise<SourceRow[]> {
     db.from("source_sync_jobs").select("id, connection_id, status, phase, scanned_count").in("status", ["queued", "running", "paused"]).not("connection_id", "is", null),
   ]);
   const reg = connectors();
+  const off = disabledProviders();
   return SOURCE_ORDER.map((provider) => {
     const c = (conns ?? []).find((x) => x.provider === provider);
     const j = c ? (jobs ?? []).find((x) => x.connection_id === c.id) : undefined;
@@ -105,6 +122,7 @@ export async function sourceRows(db: Db): Promise<SourceRow[]> {
       pick: PICK_CONNECT.includes(provider),
       oauth: OAUTH_CONNECT.includes(provider),
       account: c?.account_display_name ?? null,
+      paused: off.has(provider),
       activeJob: j ? { id: j.id, status: j.status as JobStatus, phase: j.phase, scanned: j.scanned_count } : null,
     };
   });

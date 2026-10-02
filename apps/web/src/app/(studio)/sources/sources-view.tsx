@@ -280,6 +280,9 @@ function SourceStatus({ s }: { s: SourceRow }) {
       </p>
     );
   }
+  if (s.paused) {
+    return <p className="text-[12.5px] text-warning-ink">Paused for now on Wonder Creator&rsquo;s side — nothing you&rsquo;ve found is lost.</p>;
+  }
   if (s.pick) {
     return (
       <p className="text-[12.5px] text-ink-subtle">

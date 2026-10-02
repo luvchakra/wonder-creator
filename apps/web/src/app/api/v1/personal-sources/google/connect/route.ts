@@ -3,7 +3,7 @@ import { googleConsent } from "@wonder/creator-sources/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readJson, withApi } from "@/lib/api";
-import { OAUTH_COOKIE, OAUTH_COOKIE_PATH, googleClient, googleRedirectUri, sealOAuth } from "@/lib/sources";
+import { OAUTH_COOKIE, OAUTH_COOKIE_PATH, disabledProviders, googleClient, googleRedirectUri, sealOAuth } from "@/lib/sources";
 
 const schema = z.object({ provider: z.enum(["gmail", "google_calendar"]) });
 
@@ -17,6 +17,7 @@ export const POST = withApi(
     const { provider } = schema.parse(await readJson(req));
     const client = googleClient();
     if (!client) throw new DomainError("provider_unavailable", "Google sources aren't set up on this server yet.");
+    if (disabledProviders().has(provider)) throw new DomainError("provider_unavailable", "This source is paused for now. Please try again later.");
     const c = googleConsent(client, googleRedirectUri(req.nextUrl.origin), provider);
     const res = NextResponse.json({ url: c.url });
     res.cookies.set(OAUTH_COOKIE, sealOAuth({ state: c.state, verifier: c.verifier, creatorId, provider, at: Date.now() }), {

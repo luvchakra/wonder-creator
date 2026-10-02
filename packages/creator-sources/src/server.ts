@@ -290,7 +290,12 @@ async function runSlice(deps: SourcesDeps, budgets: SyncBudgets, job: JobRow, un
     let page: PageResult;
     try {
       const limit = Math.min(budgets.pageSize, budgets.quickRecordCap - counters.scanned);
-      page = await connector.fetchPage({ service, creatorId: job.creator_id, connection, cursor, limit, budgets, signal: AbortSignal.timeout(budgets.callTimeoutMs), now: now(), query: job.query });
+      const signal = AbortSignal.timeout(budgets.callTimeoutMs);
+      // Even a connector that ignores its signal can't hold a worker past the call timeout.
+      page = await Promise.race([
+        connector.fetchPage({ service, creatorId: job.creator_id, connection, cursor, limit, budgets, signal, now: now(), query: job.query }),
+        new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new ConnectorError("retryable", "timeout")), { once: true })),
+      ]);
     } catch (e) {
       return failSlice(service, budgets, job, connection, e, counters, now());
     }

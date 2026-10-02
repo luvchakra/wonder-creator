@@ -129,4 +129,4 @@ Contract: `docs/personal-sources.md`. Sync discovers; the creator decides what b
 | PS-C Calendar + Notes | Done | Calendar: own consent (events.readonly), bounded window + sync token, title/date/town only; cross-source grouping (mail naming a place joins its group). Native notes since A; external notes via import |
 | PS-D Photos | Done | Device picker only; SHA-256, date and ≤12 KB thumbnail per photo, inline in the record; photo-day groups led by the creator's photo; only chosen originals uploaded, verified by SHA-256 |
 | PS-E CreativeMind + search | Done | Shortlist-only enrichment (live model, fenced, redacted, hash-cached, one line + format; Bring to Studio uses it as the prompt); Search your world over the index; targeted "Look further back" jobs (bounded, own cursor) |
-| PS-F Hardening / load | Planned | |
+| PS-F Hardening / load | Done | Load and failure tests (100k mailbox, byte cap, slow and hanging providers incl. signal-ignoring, congestion, hourly budget); engine-enforced call timeout; per-provider, AI and Home kill switches |
