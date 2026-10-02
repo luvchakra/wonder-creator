@@ -1,4 +1,4 @@
-import { CREATE_ITEMS, GLOBAL_ITEMS, rulesFor } from "./rules";
+import { GLOBAL_ITEMS, rulesFor } from "./rules";
 import type { PaletteContext, PaletteModel } from "./types";
 
 /** First-level contextual actions (palette-spec §4.1: 3–4 recommended, 5 at most). */
@@ -25,9 +25,5 @@ export function globalPalette(pathname = ""): PaletteModel {
   return { title: null, primary: GLOBAL_ITEMS(pathname), more: [], global: true };
 }
 
-/** "I want to make something" (§9.2). */
-export function createPalette(): PaletteModel {
-  return { title: "Create", primary: CREATE_ITEMS, more: [], global: false };
-}
 
 export type { PaletteContext, PaletteModel } from "./types";

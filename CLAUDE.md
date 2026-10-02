@@ -62,7 +62,8 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
 * **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
   `docs/ui-redesign/ai-context-line.md`).
 * Contextual Palette: **3–4 primary actions**, then `More…` and `Go to…`; global Palette max **6** destinations (Home,
-  Create, Materials, Huddles, Explore, Me). Create opens New Creation · Bring Material · Capture · meTalk.
+  Create, Materials, Huddles, Explore, Me). Create opens the Make a new Creation sheet with every format (Writing · Carousel · Images · Video · Audio ·
+  Presentation), Let CreativeMind decide (meTalk) and a quiet bring-in/capture link (owner, 2 Oct 2026).
 * Deterministic and context-aware: page → lifecycle / media type → permissions → rank. Dangerous, rights, commerce and
   destructive actions are never first level. It hides what the server would refuse; it is not a security boundary.
 * Don't repeat the page's visible primary action as a first-level leaf unless there's a strong reason.

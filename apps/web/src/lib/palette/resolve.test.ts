@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createPalette, globalPalette, MAX_PRIMARY, resolvePalette } from "./resolve";
+import { globalPalette, MAX_PRIMARY, resolvePalette } from "./resolve";
 import type { Lifecycle, PaletteContext, Permission } from "./types";
 
 const OWNER: Permission[] = ["edit", "publish", "rights", "collaborate", "invite"];
@@ -7,10 +7,9 @@ const labels = (ctx: PaletteContext) => resolvePalette(ctx).primary.map((x) => x
 const creation = (lifecycle: Lifecycle, permissions: Permission[] = OWNER): PaletteContext => ({ page: "creation", lifecycle, permissions, ids: { artifactId: "a1" } });
 
 describe("context-aware Palette", () => {
-  it("global has the six destinations; Home leaves out Home; Create has four ways in", () => {
+  it("global has the six destinations; Home leaves out Home", () => {
     expect(globalPalette().primary.map((x) => x.label)).toEqual(["Home", "Create", "Materials", "Huddles", "Explore", "Me"]);
     expect(labels({ page: "home" })).toEqual(["Create", "Materials", "Huddles", "Explore", "Me"]);
-    expect(createPalette().primary.map((x) => x.label)).toEqual(["New Creation", "Bring Material", "Capture", "meTalk"]);
   });
 
   it("never shows more than four first-level actions in a context, and never a dangerous one", () => {

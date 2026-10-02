@@ -14,7 +14,7 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
   {
     id: "create",
     label: "Create",
-    hint: "New Creation, Bring Material, Capture or meTalk",
+    hint: "Writing, Carousel, Images, Video, Audio or Presentation",
     icon: "spark",
     class: "create",
     target: cmd("create-menu"),
@@ -61,13 +61,6 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
     score: 55,
     current: pathname.startsWith("/profile") || pathname.startsWith("/creators"),
   },
-];
-
-export const CREATE_ITEMS: PaletteItem[] = [
-  { id: "new", label: "New Creation", hint: "Start a piece from an idea or from your Materials", icon: "spark", class: "create", target: route("/create"), score: 100 },
-  { id: "bring", label: "Bring Material", hint: "Upload, paste a link or import", icon: "add", class: "create", target: route("/send"), score: 99 },
-  { id: "capture", label: "Capture", hint: "Photo, voice or a note", icon: "camera", class: "create", target: route("/send"), score: 98 },
-  { id: "metalk", label: "meTalk", hint: "Say what you want to make", icon: "mic", class: "create", target: cmd("metalk"), score: 97 },
 ];
 
 type Rules = { title: string | null; items: PaletteItem[] };
