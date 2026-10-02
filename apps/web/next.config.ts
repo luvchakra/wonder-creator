@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
     "@wonder/ui",
     "@wonder/creator-identity",
     "@wonder/creator-soundtrack",
+    "@wonder/creator-sources",
     "@wonder/creator-library",
     "@wonder/creator-community",
     "@wonder/creator-moments",

@@ -18,6 +18,7 @@ export const FLAG_STAGE = {
   community_to_studio_enabled: "C",
   ask_community_enabled: "C",
   external_image_sources_enabled: "C",
+  personal_sources_enabled: "B",
   semantic_connections_enabled: "D",
   dejavu_ai_suggestions_enabled: "D",
   conversation_summaries_enabled: "D",

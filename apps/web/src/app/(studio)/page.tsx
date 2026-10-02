@@ -8,12 +8,15 @@ import { PaletteScope } from "@/components/creative-palette";
 import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
+import { FromYourWorld } from "@/components/sources/from-your-world";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
 import { buildHomePayload, type HomeContinueItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
+import { flagOn } from "@/lib/features";
+import { homeWorld } from "@/lib/sources";
 import { track } from "@/lib/telemetry";
 import { HomeBegin } from "./home-begin";
 
@@ -32,7 +35,7 @@ export default async function HomePage() {
   preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
 
-  const home = await buildHomePayload(db, creator.id);
+  const [home, world] = await Promise.all([buildHomePayload(db, creator.id), flagOn("personal_sources_enabled") ? homeWorld(db) : null]);
   scheduleDiscovery(db, creator.id);
   const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms].filter(Boolean).length;
   after(() => {
@@ -81,6 +84,9 @@ export default async function HomePage() {
         )}
 
         {home.quickCapture.textEnabled || home.quickCapture.voiceEnabled ? <QuickCapture /> : null}
+
+        {/* Personal Sources (owner spec, 2 Oct 2026): one thing worth exploring from the creator's world, with a quiet Sync. */}
+        {world ? <FromYourWorld {...world} /> : null}
 
         {/* The rest, as compact rows (owner board, 29 Sep 2026): what it is, one line of why, nothing more. */}
         {home.whileAway || home.yourQuestion || home.worldConnecting || home.dejavu || home.spark || home.worthHearing || home.couldHelp ? (

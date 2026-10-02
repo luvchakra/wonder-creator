@@ -6,6 +6,8 @@ import { attemptPublication, duePublications } from "@wonder/creator-studio";
 import { NextResponse, type NextRequest } from "next/server";
 import { mirrorSoundtrack } from "@wonder/creator-soundtrack/server";
 import { imageWorkerDeps } from "@/lib/images";
+import { runSyncJobs } from "@wonder/creator-sources/server";
+import { connectors } from "@/lib/sources";
 import { serviceClient } from "@/lib/supabase/service";
 
 export const maxDuration = 300;
@@ -70,6 +72,11 @@ async function run(req: NextRequest) {
     log("warn", "jobs.index_failed", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" });
     return 0;
   });
+  // Personal Sources: sync slices left over (a yield, a crash, a rate-limit pause), within the global caps.
+  const sources = await runSyncJobs({ service, connectors: connectors() }, { deadlineMs: 60_000 }).catch((e) => {
+    log("warn", "jobs.sources_failed", { error: e instanceof Error ? e.name : "unknown" });
+    return { ran: 0 };
+  });
   // Scheduled publications whose time has come (each already approved by its creator).
   const published: Array<{ id: string; status: string }> = [];
   for (const due of await duePublications(service).catch(() => [])) {
@@ -87,7 +94,7 @@ async function run(req: NextRequest) {
   const reconciliation = await service.rpc("run_reconciliation");
   if (reconciliation.error) log("error", "jobs.reconciliation_failed", { error: reconciliation.error.message.slice(0, 200) });
   else if (Number((reconciliation.data as { exceptions?: number } | null)?.exceptions) > 0) log("warn", "finance.reconciliation_exceptions", { result: reconciliation.data });
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length, retention: retention.data ?? null, reconciliation: reconciliation.data ?? null });
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length, sources: sources.ran, retention: retention.data ?? null, reconciliation: reconciliation.data ?? null });
 }
 
 export const GET = run;

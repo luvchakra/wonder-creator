@@ -480,3 +480,20 @@ export async function adminInsert(table: string, rows: unknown): Promise<void> {
   });
   if (!res.ok) throw new Error(`adminInsert ${table}: ${res.status} ${await res.text()}`);
 }
+
+/** Test setup only: notes as the creator wrote them some days ago, optionally with a place (Personal Sources). */
+export async function seedNotes(userId: string, notes: Array<{ title: string; text: string; place?: string; daysAgo?: number }>): Promise<void> {
+  const creatorId = await creatorIdOf(userId);
+  const h = { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}`, "content-type": "application/json", prefer: "return=representation" };
+  for (const n of notes) {
+    const at = new Date(Date.now() - (n.daysAgo ?? 1) * 86_400_000).toISOString();
+    const p = await fetch(`${SUPABASE_URL}/rest/v1/provenance_records`, { method: "POST", headers: h, body: JSON.stringify({ creator_id: creatorId, origin: "typed" }) });
+    const [prov] = (await p.json()) as Array<{ id: string }>;
+    const m = await fetch(`${SUPABASE_URL}/rest/v1/creative_materials`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ creator_id: creatorId, type: "note", title: n.title, text_content: n.text, provenance_id: prov!.id, metadata: n.place ? { place: n.place } : {}, created_at: at, updated_at: at, security_status: "clean", processing_state: "ready" }),
+    });
+    if (!m.ok) throw new Error(`seedNotes: ${m.status} ${await m.text()}`);
+  }
+}

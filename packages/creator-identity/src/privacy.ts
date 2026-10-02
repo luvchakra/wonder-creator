@@ -78,6 +78,7 @@ export const EXPORT_TABLES = [
   "open_conversations", "open_conversation_replies", "open_conversation_reads", "open_conversation_invites",
   "dejavus", "dejavu_moments", "dejavu_suggestions", "moment_references", "moment_connections", "soundtrack_favourites",
   "ai_runs", "ai_run_steps", "ai_tool_calls", "ai_proposals",
+  "source_connections", "source_sync_cursors", "source_sync_jobs", "source_context_records", "context_candidates",
 ] as const;
 
 /** Tables with a creator_id that aren't exported, and why. */
@@ -88,6 +89,7 @@ export const EXPORT_EXCLUDED: Record<string, string> = {
   jobs: "Transient processing queue entries, purged after 30 days.",
   platform_moderators: "Operator appointment; not the creator's personal data.",
   reconciliation_exceptions: "Operator control evidence about payment records; the records themselves are exported.",
+  source_connection_secrets: "Holds only a reference to an encrypted vault credential for a connected source (never readable back).",
 };
 
 /** Rows where the creator is referenced by another column. */

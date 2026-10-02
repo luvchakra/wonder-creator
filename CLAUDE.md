@@ -135,6 +135,13 @@ CreativeStudio is not merely an editor for a Creation. It is the convergence sur
 
 * Contract: `docs/ui-redesign/creative-studio-working-set.md`. Implementation: `packages/creator-studio/src/working-set.ts`, `/api/v1/studio-sessions`, `apps/web/src/app/(studio)/artifacts/[id]/studio/working-set.tsx`. Phases A→F tracked in `docs/ui-redesign/README.md`.
 
+## Personal Sources (owner spec, 2 Oct 2026)
+
+Sync discovers; the creator decides what becomes creative material. Connect, Discover, Review and Bring In stay separate;
+sync never runs inside a request, is bounded, checkpointed, deduplicated and isolated per source; nothing is imported
+without an explicit choice; disconnect deletes what was discovered. Contract: `docs/personal-sources.md`.
+Implementation: `packages/creator-sources`, `apps/web/src/lib/sources.ts`, `/api/v1/personal-sources`, `/sources`.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.
