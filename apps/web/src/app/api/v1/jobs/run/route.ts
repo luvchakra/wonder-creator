@@ -20,7 +20,7 @@ function authorized(req: NextRequest): boolean {
 /**
  * Durable background worker (Vercel Cron): retries pending intake jobs, cleans up stale Huddle
  * presence (dissolving empty Huddles), backfills search embeddings and sends scheduled publications
- * that are due, retries image generations and runs the retention purge. Protected by CRON_SECRET.
+ * that are due, retries image generations, runs the retention purge and the daily financial reconciliation. Protected by CRON_SECRET.
  */
 async function run(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
@@ -83,7 +83,11 @@ async function run(req: NextRequest) {
   // Storage limitation (GDPR Art. 5(1)(e); DPDP §8(7)): purge what has outlived its purpose — docs/compliance/privacy.md.
   const retention = await service.rpc("run_retention");
   if (retention.error) log("warn", "jobs.retention_failed", { error: retention.error.message.slice(0, 200) });
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length, retention: retention.data ?? null });
+  // Financial controls: reconcile ledger, orders, refunds, business records and provider events — docs/compliance/financial-controls.md.
+  const reconciliation = await service.rpc("run_reconciliation");
+  if (reconciliation.error) log("error", "jobs.reconciliation_failed", { error: reconciliation.error.message.slice(0, 200) });
+  else if (Number((reconciliation.data as { exceptions?: number } | null)?.exceptions) > 0) log("warn", "finance.reconciliation_exceptions", { result: reconciliation.data });
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length, retention: retention.data ?? null, reconciliation: reconciliation.data ?? null });
 }
 
 export const GET = run;

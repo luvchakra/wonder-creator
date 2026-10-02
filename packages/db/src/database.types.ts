@@ -3297,6 +3297,38 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"reconciliation_exceptions": {
+                  Row: {
+                    "check_name": string,"created_at": string,"creator_id": string | null,"detail": NonNullable<Json>,"id": number,"run_id": string,"severity": string,"subject_id": string,"subject_type": string
+                  }
+                  Insert: {
+                    "check_name": string,"created_at"?: string,"creator_id"?: string | null,"detail"?: NonNullable<Json>,"id"?: never,"run_id": string,"severity": string,"subject_id": string,"subject_type": string
+                  }
+                  Update: {
+                    "check_name"?: string,"created_at"?: string,"creator_id"?: string | null,"detail"?: NonNullable<Json>,"id"?: never,"run_id"?: string,"severity"?: string,"subject_id"?: string,"subject_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reconciliation_exceptions_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "reconciliation_runs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"reconciliation_runs": {
+                  Row: {
+                    "checks": NonNullable<Json>,"exceptions": number,"finished_at": string | null,"id": string,"started_at": string
+                  }
+                  Insert: {
+                    "checks"?: NonNullable<Json>,"exceptions"?: number,"finished_at"?: string | null,"id"?: string,"started_at"?: string
+                  }
+                  Update: {
+                    "checks"?: NonNullable<Json>,"exceptions"?: number,"finished_at"?: string | null,"id"?: string,"started_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"reference_items": {
                   Row: {
                     "created_at": string,"creator_id": string,"id": string,"material_id": string,"note": string | null,"shelf_id": string | null,"tags": (string)[]
@@ -4121,6 +4153,11 @@ isOneToOne: false
               "created_at": string,"granted": boolean,"notice_version": string,"purpose": string
             }[]
                            },
+"my_payment_statement":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "account": string,"credit_minor": number,"currency": string,"debit_minor": number,"description": string,"journal_id": string,"memo": string,"order_id": string,"posted_at": string,"provider": string,"provider_payment_ref": string,"refund_id": string
+            }[]
+                           },
 "open_conversation_link":
 { Args: { "p_conversation": string,"p_kind": string,"p_target": string }; Returns: string
                            },
@@ -4334,6 +4371,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"run_reconciliation":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "run_retention":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },

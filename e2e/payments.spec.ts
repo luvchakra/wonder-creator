@@ -69,7 +69,18 @@ test.describe("Licence payments", () => {
     await expect(ownerFee).toContainText("via Stripe");
     if (process.env.PAY_SHOTS) await ownerFee.locator("xpath=ancestor::section[1]").screenshot({ path: `${process.env.PAY_SHOTS}/pay-owner.png` });
     await owner.goto("/business");
-    await expect(owner.getByText("Received").first()).toBeVisible();
+    const records = owner.getByRole("list", { name: "Records" });
+    await expect(records).toContainText("paid through Wonder Creator");
+    // Settled by the provider: it can't be re-marked by hand (refund instead), only annotated.
+    await records.getByRole("button", { name: /^More for License income/ }).first().click();
+    await expect(owner.getByRole("menuitem", { name: "Add note" })).toBeVisible();
+    await expect(owner.getByRole("menuitem", { name: /Mark as expected|Cancel/ })).toHaveCount(0);
+    await owner.keyboard.press("Escape");
+    const csv = await owner.request.get(`/api/v1/payments/statement?year=${new Date().getFullYear()}`);
+    expect(csv.headers()["content-type"]).toContain("text/csv");
+    const text = await csv.text();
+    expect(text).toContain("provider_clearing:stripe");
+    expect(text).toContain(`pi_e2e_${order!.id}`);
 
     // Refunds ask for the password again; the (test) provider refuses, and nothing is marked refunded.
     await owner.goto(`/artifacts/${piece}?tab=rights`);
