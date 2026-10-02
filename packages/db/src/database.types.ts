@@ -705,6 +705,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"consent_records": {
+                  Row: {
+                    "created_at": string,"creator_id": string,"granted": boolean,"id": number,"method": string,"notice_version": string,"purpose": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"creator_id": string,"granted": boolean,"id"?: never,"method": string,"notice_version": string,"purpose": string
+                  }
+                  Update: {
+                    "created_at"?: string,"creator_id"?: string,"granted"?: boolean,"id"?: never,"method"?: string,"notice_version"?: string,"purpose"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "consent_records_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"contribution_edits": {
                   Row: {
                     "changes": NonNullable<Json>,"contribution_id": string,"created_at": string,"editor_creator_id": string | null,"id": string
@@ -2520,6 +2539,25 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"privacy_requests": {
+                  Row: {
+                    "closed_at": string | null,"created_at": string,"creator_id": string | null,"details": string,"due_at": string,"id": string,"kind": string,"response": string | null,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "closed_at"?: string | null,"created_at"?: string,"creator_id"?: string | null,"details"?: string,"due_at"?: string,"id"?: string,"kind": string,"response"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "closed_at"?: string | null,"created_at"?: string,"creator_id"?: string | null,"details"?: string,"due_at"?: string,"id"?: string,"kind"?: string,"response"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "privacy_requests_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_completions": {
                   Row: {
                     "acknowledged_open": boolean,"completed_by": string | null,"created_at": string,"crew_dissolved": boolean,"id": string,"note": string | null,"open_items": NonNullable<Json>,"outcome": string,"project_id": string,"reopened_at": string | null,"reopened_by": string | null
@@ -3954,6 +3992,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"my_consents":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "created_at": string,"granted": boolean,"notice_version": string,"purpose": string
+            }[]
+                           },
 "open_conversation_link":
 { Args: { "p_conversation": string,"p_kind": string,"p_target": string }; Returns: string
                            },
@@ -4068,6 +4111,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"run_retention":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "scrapbook_attachment_details":
 { Args: { "p_posts": (string)[] }; Returns: {
               "attachment_id": string,"can_open": boolean,"excerpt": string,"file_path": string,"item_id": string,"item_type": string,"kind": string,"mime_type": string,"post_id": string,"title": string

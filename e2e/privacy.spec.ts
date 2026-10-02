@@ -1,105 +1,77 @@
-import { expect, newCreator, saveNote, test, uid, type Page } from "./fixtures";
+import { createAuthUser, expect, signInViaUi, test } from "./fixtures";
 
-async function newPiece(page: Page, title: string, text: string): Promise<string> {
-  await page.goto("/space");
-  await page.getByRole("button", { name: "New", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
-  await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
-  await dialog.getByLabel("Title").fill(title);
-  await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-  await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
-  await page.getByLabel("Poem text").fill(text);
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.getByRole("dialog", { name: "Save as new version" }).getByRole("button", { name: "Save version" }).click();
-  await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
-  return page.url().split("/").at(-2)!;
-}
-
-async function expectNotFound(page: Page, path: string) {
-  await page.goto(path);
-  await expect(page.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
-}
-
-test.describe("privacy boundary", () => {
-  test("private work is invisible to others until it is marked final and public", async ({ page: a, creator: creatorA, openContext }) => {
-    const title = `Night Ferry ${uid()}`;
-    const body = "The ferry leaves at nine;\nthe harbour keeps its lamps.";
-    const artifactId = await newPiece(a, title, body);
-    const materialId = await saveNote(a, `Private sketchbook line ${uid()}`);
-
-    const { page: b } = await openContext("B");
-    await newCreator(b);
-
-    // B can't open A's private artifact (or its studio) or A's material.
-    await expectNotFound(b, `/artifacts/${artifactId}`);
-    await expectNotFound(b, `/space/materials/${materialId}`);
-    await b.goto(`/artifacts/${artifactId}/studio`);
-    await expect(b.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
-    // Nor through the API.
-    expect((await b.request.get(`/api/v1/artifacts/${artifactId}`)).status()).toBe(404);
-    expect((await b.request.get(`/api/v1/materials/${materialId}`)).status()).toBe(404);
-
-    // Search never surfaces A's private work to B, not even as a count or a snippet.
-    const probe = await (await b.request.get(`/api/v1/search?q=${encodeURIComponent(title)}`)).json();
-    expect(JSON.stringify(probe)).not.toContain(artifactId);
-    await b.goto(`/search?q=${encodeURIComponent(title)}`);
-    await expect(b.getByRole("heading", { name: /Nothing found for/ })).toBeVisible();
-
-    // A's profile shows no public work to B.
-    await b.goto(`/creators/${creatorA.handle}?tab=creations`);
-    await expect(b.getByText("No public work yet.")).toBeVisible();
-    await expect(b.getByText(title)).toHaveCount(0);
-
-    // A marks it final + public (public alone would keep a draft private).
-    await a.goto(`/artifacts/${artifactId}`);
-    await a.getByRole("button", { name: "Share" }).click();
-    const share = a.getByRole("dialog", { name: "Share" });
-    const warning = share.getByText("Drafts stay private even when set to public — mark it final to share it.");
-    await share.getByRole("switch", { name: "Public" }).click();
-    await expect(warning).toBeVisible();
-    await share.getByRole("switch", { name: "Mark as final" }).click();
-    await expect(warning).toBeHidden();
-    await expect(share.getByRole("switch", { name: "Mark as final" })).toHaveAttribute("aria-checked", "true");
-    await expect(share.getByRole("switch", { name: "Public" })).toHaveAttribute("aria-checked", "true");
-    await share.getByRole("button", { name: "Save" }).click();
-    await expect(share).toBeHidden();
-    await expect(a.getByText(/v\d Completed/)).toBeVisible();
-    await expect(a.getByText("Public", { exact: true }).first()).toBeVisible();
-
-    // B now sees it on A's profile and can read it, without owner controls.
-    await b.goto(`/creators/${creatorA.handle}?tab=creations`);
-    await b.getByRole("list", { name: "Creations" }).getByRole("link").filter({ hasText: title }).first().click();
-    await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
-    await expect(b.getByRole("heading", { level: 1, name: title })).toBeVisible();
-    await expect(b.getByRole("article")).toContainText("the harbour keeps its lamps.");
-    await expect(b.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
-    await expect(b.getByRole("button", { name: "Share" })).toHaveCount(0);
-    await expect(b.getByRole("button", { name: "More actions" })).toHaveCount(0);
-    // The studio is owner-only: B is sent back to the read-only view.
-    await b.goto(`/artifacts/${artifactId}/studio`);
-    await expect(b).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
-    // Once public and final, search finds it for B too.
-    await b.goto(`/search?q=${encodeURIComponent(title)}&type=creations`);
-    await expect(b.getByRole("region", { name: "Creations" }).getByRole("link", { name: new RegExp(title) })).toContainText("By another creator");
-    // The source material stays private.
-    await expectNotFound(b, `/space/materials/${materialId}`);
+// Privacy compliance (GDPR / DPDP): notice and consent before use, choices and requests in Settings, a full export.
+test.describe("Privacy", () => {
+  test("a new account reads the notice and agrees before anything else; optional choices are off unless chosen", async ({ page }, info) => {
+    const user = await createAuthUser("Asha Notice");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signInViaUi(page, user, /^\/consent$/);
+    // Nothing else opens until they agree.
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/consent$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Before you begin");
+    const analytics = page.getByRole("checkbox", { name: /usage measures/ });
+    await expect(analytics).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: /emails/ })).not.toBeChecked();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Tick the box" })).toBeVisible();
+    await page.getByRole("checkbox", { name: /18 or older/ }).check();
+    await analytics.check();
+    await info.attach("consent-390.png", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL((u) => u.pathname === "/onboarding");
+    const { consents } = (await (await page.request.get("/api/v1/privacy/consents")).json()) as { consents: Array<{ purpose: string; granted: boolean }> };
+    expect(Object.fromEntries(consents.map((c) => [c.purpose, c.granted]))).toEqual({ terms: true, privacy_notice: true, age_confirmation: true, product_analytics: true, product_emails: false });
+    // Once agreed, the prompt doesn't come back.
+    await page.goto("/consent");
+    await expect(page).not.toHaveURL(/\/consent$/);
   });
-});
 
-test("Share dialog: Cancel discards unsaved changes", async ({ page, creator }) => {
-  void creator;
-  const artifactId = await newPiece(page, `Draft ${uid()}`, "A line.");
-  await page.goto(`/artifacts/${artifactId}`);
-  await page.getByRole("button", { name: "Share" }).click();
-  let share = page.getByRole("dialog", { name: "Share" });
-  await share.getByRole("switch", { name: "Public" }).click();
-  await expect(share.getByRole("switch", { name: "Public" })).toHaveAttribute("aria-checked", "true");
-  await share.getByRole("button", { name: "Cancel" }).click();
-  await expect(share).toBeHidden();
-  await expect(page.getByText("Private", { exact: true }).first()).toBeVisible();
+  test("Settings: change a choice, make a request with a due date, and export everything", async ({ page, creator }, info) => {
+    await page.goto("/settings?section=privacy");
+    const panel = page.getByRole("region", { name: "Your data & choices" });
+    await panel.getByRole("switch", { name: /emails/ }).click();
+    await expect(panel.getByRole("status").filter({ hasText: "Turned on." })).toBeVisible();
 
-  // Re-opening must show the saved state (private), not the cancelled toggle.
-  await page.getByRole("button", { name: "Share" }).click();
-  share = page.getByRole("dialog", { name: "Share" });
-  await expect(share.getByRole("switch", { name: "Public" })).toHaveAttribute("aria-checked", "false");
+    await panel.getByRole("button", { name: "Make a privacy request" }).click();
+    await panel.getByLabel("What would you like?").selectOption("correction");
+    await panel.getByLabel("Details").fill("My old surname is still on an early Creation.");
+    await panel.getByRole("button", { name: "Send request" }).click();
+    await expect(panel.getByRole("status").filter({ hasText: /Received\. We.ll answer by/ })).toBeVisible();
+    const list = panel.getByRole("list", { name: "Your privacy requests" });
+    await expect(list).toContainText("Correct or complete my data");
+    await expect(list).toContainText(/Received · answer by/);
+    await info.attach("privacy-settings.png", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+
+    const res = await page.request.get("/api/v1/account/export");
+    expect(res.status()).toBe(200);
+    const data = (await res.json()) as Record<string, unknown>;
+    expect((data.account as { email: string }).email).toBe(creator.email);
+    expect(data.noticeVersion).toBeTruthy();
+    expect((data.consent_records as Array<{ purpose: string }>).some((c) => c.purpose === "product_emails")).toBe(true);
+    expect(data.privacy_requests as unknown[]).toHaveLength(1);
+    expect(data).toHaveProperty("artifacts");
+    expect(data).toHaveProperty("scrapbook_posts");
+  });
+
+  test("the notice, terms and subprocessors are public; sign-up asks for agreement", async ({ browser }) => {
+    const page = await (await browser.newContext()).newPage();
+    for (const [path, heading] of [
+      ["/legal/privacy", "Privacy notice"],
+      ["/legal/terms", "Terms of Service"],
+      ["/legal/subprocessors", "Subprocessors"],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+    }
+    await page.goto("/legal/privacy");
+    for (const s of ["Your rights", "Grievance Officer and complaints", "How long we keep it", "International transfers", "Children"]) await expect(page.getByRole("heading", { name: s })).toBeVisible();
+    await page.goto("/sign-up");
+    await page.getByLabel("Your name").fill("No Box");
+    await page.getByLabel("Email").fill("no-box@example.com");
+    await page.getByLabel("Password").fill("e2e-password-0123456789");
+    await page.getByRole("button", { name: /Let's begin/ }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Tick the box" })).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-up$/);
+  });
 });

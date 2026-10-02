@@ -20,7 +20,7 @@ function authorized(req: NextRequest): boolean {
 /**
  * Durable background worker (Vercel Cron): retries pending intake jobs, cleans up stale Huddle
  * presence (dissolving empty Huddles), backfills search embeddings and sends scheduled publications
- * that are due, and retries image generations. Protected by CRON_SECRET.
+ * that are due, retries image generations and runs the retention purge. Protected by CRON_SECRET.
  */
 async function run(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
@@ -80,7 +80,10 @@ async function run(req: NextRequest) {
       log("warn", "jobs.publication_failed", { publicationId: due.id, error: isDomainError(e) ? e.code : "internal" });
     }
   }
-  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length });
+  // Storage limitation (GDPR Art. 5(1)(e); DPDP §8(7)): purge what has outlived its purpose — docs/compliance/privacy.md.
+  const retention = await service.rpc("run_retention");
+  if (retention.error) log("warn", "jobs.retention_failed", { error: retention.error.message.slice(0, 200) });
+  return NextResponse.json({ staleParticipants: cleaned.data ?? 0, jobs: results, indexed, publications: published, soundtrack: soundtrack.mirrored.length, retention: retention.data ?? null });
 }
 
 export const GET = run;

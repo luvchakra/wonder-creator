@@ -6,3 +6,4 @@ export * from "./discovery";
 export * from "./collaboration";
 export * from "./brand";
 export * from "./follows";
+export * from "./privacy";

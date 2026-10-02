@@ -82,7 +82,7 @@ export const POST = withApi(
       throw e;
     }
     await service.from("capture_receipts").update({ material_id: materialId }).eq("creator_id", creatorId).eq("client_id", input.clientId);
-    track(input.kind === "note" ? "quick_note_saved" : "voice_note_saved", creatorId, input.kind === "voice" ? { seconds: input.seconds } : {});
+    track(db, input.kind === "note" ? "quick_note_saved" : "voice_note_saved", creatorId, input.kind === "voice" ? { seconds: input.seconds } : {});
 
     // Understanding and transcription continue in the background (durable through the jobs table); then the words are
     // matched against the creator's DejaVus as *suggestions* only.
@@ -98,7 +98,7 @@ export const POST = withApi(
       if (!materialId) return;
       try {
         const { data: m } = await service.from("creative_materials").select("text_content, extracted_text, metadata").eq("id", materialId).eq("creator_id", creatorId).single();
-        if (input.kind === "voice" && (m?.metadata as { transcription?: unknown } | null)?.transcription) track("voice_note_transcribed", creatorId, { ok: true });
+        if (input.kind === "voice" && (m?.metadata as { transcription?: unknown } | null)?.transcription) track(db, "voice_note_transcribed", creatorId, { ok: true });
         const { data: moment } = await service.from("moment_references").select("id").eq("creator_id", creatorId).eq("entity_type", "material").eq("entity_id", materialId).maybeSingle();
         const text = [m?.text_content, m?.extracted_text].filter(Boolean).join("\n");
         if (moment && text) await suggestDejaVusFromText(service, creatorId, moment.id, text);

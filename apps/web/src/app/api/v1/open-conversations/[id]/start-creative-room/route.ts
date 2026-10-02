@@ -17,7 +17,7 @@ export const POST = withApi<{ id: string }>(
     const project = await createProject(db, creatorId, { title: d.conversation.title.slice(0, 120), brief });
     const { error } = await db.rpc("open_conversation_link", { p_conversation: cid, p_kind: "project", p_target: project.id });
     if (error) throw new DomainError("internal", "The Creative Room was made, but we couldn't link it to the conversation.", { cause: error });
-    track("creative_room_from_conversation", creatorId);
+    track(db, "creative_room_from_conversation", creatorId);
     return { projectId: project.id };
   },
   { feature: "open_conversations_enabled", rateLimit: 6 },

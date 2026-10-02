@@ -1,9 +1,14 @@
 import { log } from "@wonder/core";
+import { myConsents } from "@wonder/creator-identity";
+import type { Db } from "@wonder/db";
 
 /**
  * Product telemetry (docs/phases/02-home-quick-capture.md §16): outcomes, not engagement. Only named events and a few
  * plain properties are recorded — never text, titles, transcripts or anything the creator wrote. Home is not optimised
  * for time spent; there is deliberately no dwell-time or scroll tracking.
+ *
+ * Consent (GDPR Art. 6(1)(a); DPDP §6): nothing is recorded unless the creator turned on "usage measures"
+ * (`product_analytics`); it's off by default and can be turned off any time in Settings › Privacy.
  */
 export const TELEMETRY_EVENTS = [
   "home_opened",
@@ -51,6 +56,15 @@ export function cleanProps(raw: unknown): TelemetryProps {
   };
 }
 
-export function track(event: TelemetryEvent, creatorId: string, props: TelemetryProps = {}) {
-  log("info", "telemetry", { event, creatorId, ...props });
+/** Whether the signed-in creator currently allows usage measures (their latest choice; off when never asked). */
+export async function analyticsAllowed(db: Db): Promise<boolean> {
+  const consents = await myConsents(db).catch(() => []);
+  return consents.some((c) => c.purpose === "product_analytics" && c.granted);
+}
+
+/** Records an outcome event if the creator allows it. Never blocks or fails the request it's called from. */
+export function track(db: Db, event: TelemetryEvent, creatorId: string, props: TelemetryProps = {}) {
+  void analyticsAllowed(db).then((ok) => {
+    if (ok) log("info", "telemetry", { event, creatorId, ...props });
+  });
 }

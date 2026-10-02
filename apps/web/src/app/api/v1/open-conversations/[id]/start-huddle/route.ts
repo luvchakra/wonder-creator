@@ -23,7 +23,7 @@ export const POST = withApi<{ id: string }>(
     const huddleId = await startHuddle(db, { topic: ctx.topic, description: ctx.description || undefined, discoverability: limited ? "invite_only" : "public", invite });
     const { error } = await db.rpc("open_conversation_link", { p_conversation: cid, p_kind: "huddle", p_target: huddleId });
     if (error) throw new DomainError("internal", "The Huddle started, but we couldn't link it to the conversation.", { cause: error });
-    track("huddle_from_conversation", creatorId);
+    track(db, "huddle_from_conversation", creatorId);
     return { huddleId };
   },
   { feature: "open_conversations_enabled", rateLimit: 6 },

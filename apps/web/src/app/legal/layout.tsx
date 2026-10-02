@@ -14,11 +14,11 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f8f3ea] text-ink">
       <KitArt art={KIT.painted.leafSprigSage} sizes="10rem" className="pointer-events-none absolute -right-6 top-6 h-40 w-auto opacity-50" />
-      <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 pt-6">
+      <header className="relative mx-auto flex max-w-3xl flex-col gap-1 px-5 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <Link href="/" aria-label="Wonder Creator home">
           <Logo height={32} />
         </Link>
-        <nav aria-label="Legal" className="flex flex-wrap justify-end gap-x-4 text-[13px] text-ink-muted">
+        <nav aria-label="Legal" className="-mx-5 flex gap-x-4 overflow-x-auto whitespace-nowrap px-5 text-[13px] text-ink-muted sm:mx-0 sm:px-0">
           {LINKS.map(([href, label]) => (
             <Link key={href} href={href} className="inline-flex min-h-11 items-center hover:underline">
               {label}

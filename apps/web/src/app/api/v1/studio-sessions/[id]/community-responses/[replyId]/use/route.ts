@@ -8,7 +8,7 @@ export const POST = withApi<{ id: string; replyId: string }>(
   async ({ db, creatorId }, { id, replyId }) => {
     assertUuid(id, replyId);
     await useCommunityResponse(db, creatorId, id, replyId);
-    track("community_reply_used_in_studio", creatorId);
+    track(db, "community_reply_used_in_studio", creatorId);
     return { workingSet: await workingSetView(db, id, studioSigner(db)) };
   },
   { feature: "community_to_studio_enabled", rateLimit: 60 },

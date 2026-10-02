@@ -8,7 +8,7 @@ export const POST = withApi<{ id: string; replyId: string }>(
   async ({ db, creatorId }, { id, replyId }) => {
     assertUuid(id, replyId);
     const r = await saveThought(db, creatorId, replyId);
-    track("community_thought_saved", creatorId);
+    track(db, "community_thought_saved", creatorId);
     return r;
   },
   { feature: "open_conversations_enabled", rateLimit: 30 },

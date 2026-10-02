@@ -5,6 +5,6 @@ import { track } from "@/lib/telemetry";
 /** POST …/accept — the creator says yes: the suggested DejaVu gets this Moment. */
 export const POST = withApi<{ id: string; suggestionId: string }>(async ({ db, creatorId }, { id, suggestionId }) => {
   const dejavu = await acceptSuggestion(db, creatorId, requireUuid(id, "Moment"), requireUuid(suggestionId, "suggestion"));
-  track("dejavu_suggestion_accepted", creatorId);
+  track(db, "dejavu_suggestion_accepted", creatorId);
   return { dejavu };
 }, { feature: "moments_enabled" });
