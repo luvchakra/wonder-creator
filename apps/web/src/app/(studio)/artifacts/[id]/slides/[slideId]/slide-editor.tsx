@@ -250,7 +250,9 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
   const shown = slide.pending && preview === "new" ? slide.pending.url : slide.image?.url;
 
   return (
-    <div className="-mx-4 -mt-6 flex min-h-[calc(100dvh-4.5rem-var(--palette-clearance))] flex-col bg-[#15161c] px-3 pb-3 pt-1 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-5">
+    // A focused full-screen surface (owner, 2 Oct 2026: "fix the black space at the bottom"): it cancels the app's Palette
+    // clearance and runs to the bottom edge; Done stops short of the Palette's corner instead.
+    <div className="-mx-4 -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] -mt-6 flex min-h-[calc(100dvh-var(--nav-height)-1px)] flex-col bg-[#15161c] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1 text-white sm:mx-0 sm:mb-0 sm:mt-0 sm:min-h-[calc(100dvh-var(--nav-height)-1px-var(--palette-clearance)-2.5rem)] sm:rounded-3xl sm:px-5">
       {/* Header: back · n of N · More (§51). */}
       <div className="flex items-center justify-between">
         <Link href={`/artifacts/${artifactId}/studio`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
@@ -296,12 +298,13 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
       </div>
 
       {/* The image leads (§13). */}
-      <div className="flex flex-1 items-center justify-center py-2">
+      {/* --editor-chrome: the height everything but the image takes (more on wider screens, where the page keeps its margins). */}
+      <div className="flex flex-1 items-center justify-center py-2 [--editor-chrome:20rem] sm:[--editor-chrome:28rem]">
         <div
           ref={frame}
           className={cn("relative w-full touch-pan-y", tool === "image" && "touch-none cursor-move")}
           // The image fits the space left by the controls, so it stays in view while editing (§13).
-          style={{ maxWidth: `min(28rem, calc((100dvh - ${tool ? 34 : 20}rem) * ${ratio}))` }}
+          style={{ maxWidth: `min(28rem, calc((100dvh - var(--editor-chrome) - ${tool ? 14 : 0}rem) * ${ratio}))` }}
           onPointerDown={(e) => onPointerDown(e, tool === "image" ? "focal" : "swipe")}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -558,7 +561,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
           <ChevronRight className="size-5" aria-hidden />
         </button>
       </nav>
-      <Link href={`/artifacts/${artifactId}/studio`} onClick={() => void flush()} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy">
+      <Link href={`/artifacts/${artifactId}/studio`} onClick={() => void flush()} className="mr-16 mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-white text-sm font-medium text-navy sm:mx-auto sm:w-full sm:max-w-xs">
         <Check className="mr-1.5 size-4" aria-hidden /> Done
       </Link>
 

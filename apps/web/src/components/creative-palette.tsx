@@ -3,12 +3,13 @@ import { CanvasAtmosphere, type AtmosphereMood, KitCameraIcon, KitHomeIcon, KitI
 import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, Music2, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { MeTalkSheet } from "./metalk-sheet";
+import { NewCreationSheet } from "./new-creation-sheet";
 import { useSoundtrack } from "./soundtrack/audio-provider";
 import { MOOD_LABEL } from "@wonder/creator-soundtrack";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { resolveContextStrip } from "@/lib/context-strip/resolve";
 import { PRIORITY, type StripItem, type StripModel } from "@/lib/context-strip/types";
-import { createPalette, globalPalette, resolvePalette } from "@/lib/palette/resolve";
+import { globalPalette, resolvePalette } from "@/lib/palette/resolve";
 import type { PaletteContext, PaletteIcon, PaletteItem, PaletteModel } from "@/lib/palette/types";
 
 /**
@@ -101,6 +102,7 @@ function moodFor(page: PaletteContext["page"] | undefined): AtmosphereMood {
 export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<PaletteContext | null>(null);
   const [talk, setTalk] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [signals, setSignals] = useState<StripItem[]>([]);
   const [online, setOnline] = useState(true);
   const value = useMemo(
@@ -159,7 +161,8 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={value}>
       <CanvasAtmosphere mood={moodFor(context?.page)} />
       <StripCtx.Provider value={strip}>{children}</StripCtx.Provider>
-      <CreativePalette context={context} onMeTalk={() => setTalk(true)} />
+      <CreativePalette context={context} onMeTalk={() => setTalk(true)} onCreate={() => setCreating(true)} />
+      <NewCreationSheet open={creating} onOpenChange={setCreating} onMeTalk={() => setTalk(true)} />
       <MeTalkSheet open={talk} onOpenChange={setTalk} />
     </Ctx.Provider>
   );
@@ -176,9 +179,9 @@ export function PaletteScope({ context }: { context: Omit<PaletteContext, "pathn
   return null;
 }
 
-type View = "main" | "more" | "global" | "create";
+type View = "main" | "more" | "global";
 
-function CreativePalette({ context, onMeTalk }: { context: PaletteContext | null; onMeTalk: () => void }) {
+function CreativePalette({ context, onMeTalk, onCreate }: { context: PaletteContext | null; onMeTalk: () => void; onCreate: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -189,11 +192,11 @@ function CreativePalette({ context, onMeTalk }: { context: PaletteContext | null
   };
 
   const main: PaletteModel = context ? resolvePalette({ ...context, pathname }) : globalPalette(pathname);
-  const model = view === "more" ? { ...main, primary: main.more, title: main.title ? `More for ${main.title.replace(/^This /, "this ")}` : "More" } : view === "global" ? globalPalette(pathname) : view === "create" ? createPalette() : main;
+  const model = view === "more" ? { ...main, primary: main.more, title: main.title ? `More for ${main.title.replace(/^This /, "this ")}` : "More" } : view === "global" ? globalPalette(pathname) : main;
 
   const leaf = (x: PaletteItem): LeafItem => {
     const Icon = x.icon ? ICONS[x.icon] : null;
-    const sub = x.target.kind === "command" && (x.target.command === "create-menu" || x.target.command === "global" || x.target.command === "more" || x.target.command === "back");
+    const sub = x.target.kind === "command" && (x.target.command === "global" || x.target.command === "more" || x.target.command === "back");
     return {
       key: x.id,
       label: x.label,
@@ -204,7 +207,8 @@ function CreativePalette({ context, onMeTalk }: { context: PaletteContext | null
       onSelect: () => {
         if (x.target.kind === "route") return router.push(x.target.href);
         if (x.target.command === "metalk") return onMeTalk();
-        if (x.target.command === "create-menu") return setView("create");
+        // Create shows every format at once in its own sheet (owner, 2 Oct 2026).
+        if (x.target.command === "create-menu") return onCreate();
       },
     };
   };

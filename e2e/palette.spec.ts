@@ -38,16 +38,23 @@ test.describe("Creative Palette", () => {
     await expect(palette.getByRole("navigation", { name: "Huddles" })).toBeVisible();
   });
 
-  test("Home shows the global destinations and Create opens the quick-create set", async ({ page, creator }) => {
+  test("Home shows the global destinations and Create shows every format", async ({ page, creator }) => {
     void creator;
     await page.goto("/");
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     const palette = page.getByRole("dialog", { name: "Creative Palette" });
     await expect(palette.getByRole("navigation", { name: "Destinations" }).getByRole("button")).toHaveText(["Create", "Materials", "Huddles", "Explore", "Me"]);
     await palette.getByRole("button", { name: "Create" }).click();
-    await expect(palette.getByRole("button", { name: "New Creation" })).toBeFocused();
-    await expect(palette.getByRole("button", { name: /meTalk/ })).toBeVisible();
-    // The X closes it, and it stays closed.
+    // Create shows every format at once (owner, 2 Oct 2026); a tap makes the Creation and opens its Studio.
+    const sheet = page.getByRole("dialog", { name: "Make a new Creation" });
+    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveText([/Writing/, /Carousel/, /Images/, /Video/, /Audio/, /Presentation/]);
+    await expect(sheet.getByRole("button", { name: /Let CreativeMind decide/ })).toBeVisible();
+    await expect(palette).toHaveCount(0);
+    await sheet.getByRole("button", { name: /Carousel/ }).click();
+    await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
+    await expect(page.getByRole("link", { name: "Add words" })).toBeVisible();
+    // The X closes the Palette, and it stays closed.
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await page.getByRole("button", { name: "Close Creative Palette" }).click();
     await expect(palette).toHaveCount(0);
     await page.waitForTimeout(300);

@@ -9,8 +9,8 @@ test.describe("creating with CreativeMind", () => {
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Create" }).click();
     await page
-      .getByRole("dialog", { name: "Creative Palette" })
-      .getByRole("button", { name: /meTalk/ })
+      .getByRole("dialog", { name: "Make a new Creation" })
+      .getByRole("button", { name: /Let CreativeMind decide/ })
       .click();
     const sheet = page.getByRole("dialog", { name: "meTalk" });
     const composer = sheet.getByLabel("What are you thinking about?");

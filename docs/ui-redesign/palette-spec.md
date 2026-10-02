@@ -157,6 +157,11 @@ meTalk
 
 Templates may live under `More…` or inside New Creation.
 
+> **Owner update, 2 Oct 2026:** "on click of create, show all the creation type options". `Create` now opens the
+> **Make a new Creation** sheet directly: every format (Writing · Carousel · Images · Video · Audio · Presentation), one
+> tap each, plus *Let CreativeMind decide* (meTalk) and a quiet *bring in Material or capture something* link. The sheet
+> replaces the sub-palette above (`apps/web/src/components/new-creation-sheet.tsx`).
+
 ---
 
 # 5. Actions That Should Never Be Hidden in Palette
