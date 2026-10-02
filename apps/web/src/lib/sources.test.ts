@@ -32,7 +32,10 @@ describe("Personal Sources app wiring", () => {
     const sealed = sealOAuth(v);
     expect(sealed).not.toContain("verifier-123");
     expect(openOAuth(sealed)).toEqual(v);
-    const tampered = sealed.slice(0, -2) + (sealed.endsWith("A") ? "BB" : "AA");
+    // Flip one byte of the ciphertext (not base64 padding bits) — the auth tag must reject it.
+    const raw = Buffer.from(sealed, "base64url");
+    raw[raw.length - 1] ^= 0x01;
+    const tampered = raw.toString("base64url");
     expect(openOAuth(tampered)).toBeNull();
     expect(openOAuth(undefined)).toBeNull();
     vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "rotated");
