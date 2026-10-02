@@ -23,7 +23,7 @@ test.describe("Testimonials", () => {
     await expect(b.getByRole("region", { name: "Testimonials" })).toContainText("Yours");
 
     // Priya finds it waiting (notification and profile), reads it, shows it.
-    await page.goto("/profile");
+    await page.goto("/me");
     const waiting = page.getByRole("list", { name: "Waiting for you" });
     await expect(waiting).toContainText("Maya Torres wrote you a testimonial");
     await expect(waiting).toContainText(tag);
@@ -45,7 +45,7 @@ test.describe("Testimonials", () => {
     expect(mine.testimonials[0]).toMatchObject({ status: "shown", onCreatorPage: false });
 
     // Keep it private: gone for others, kept for Priya under "kept private".
-    await page.goto("/profile");
+    await page.goto("/me");
     await page.getByRole("region", { name: "Testimonials" }).getByRole("button", { name: "Keep private" }).click();
     await expect(page.getByText("1 kept private")).toBeVisible();
     await c.reload();
@@ -57,7 +57,7 @@ test.describe("Testimonials", () => {
     await b.getByRole("button", { name: "Withdraw" }).click();
     await b.getByRole("dialog", { name: "Withdraw your testimonial?" }).getByRole("button", { name: "Withdraw" }).click();
     await expect(b.getByText("You withdrew it")).toBeVisible();
-    await page.goto("/profile");
+    await page.goto("/me");
     await expect(page.getByText("1 kept private")).toHaveCount(0);
     void maya;
   });

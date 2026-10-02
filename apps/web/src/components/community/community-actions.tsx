@@ -1,9 +1,9 @@
 "use client";
 import { CONVERSATION_INTENTS, INTENT_HINT, INTENT_LABEL, type ConversationIntent } from "@wonder/creator-community/shared";
 import { Button, ConfirmDialog, Dialog, DialogContent, Input, KIT, Menu, MenuContent, MenuItem, MenuTrigger, Textarea, cn } from "@wonder/ui";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { Camera, MoreHorizontal, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
 /**
@@ -33,6 +33,8 @@ function StartCommunityBody() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
+  const [picture, setPicture] = useState<File | null>(null);
+  const previewRef = useRef<HTMLCanvasElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -44,6 +46,12 @@ function StartCommunityBody() {
         setError(null);
         try {
           const r = await api<{ id: string }>("/api/v1/communities", { method: "POST", json: { title, about } });
+          if (picture) {
+            // The community exists either way; a picture that fails can be added from its page.
+            const body = new FormData();
+            body.set("file", picture);
+            await fetch(`/api/v1/communities/${r.id}/avatar`, { method: "POST", body }).catch(() => undefined);
+          }
           router.push(`/communities/${r.id}`);
         } catch (err) {
           setError(errorMessage(err));
@@ -62,6 +70,41 @@ function StartCommunityBody() {
           What it&rsquo;s about
         </label>
         <Textarea id="community-about" value={about} onChange={(e) => setAbout(e.target.value)} maxLength={2000} className="min-h-20" placeholder="A place for people who write to be heard." />
+      </div>
+      <div className="flex items-center gap-3">
+        <label htmlFor="community-picture" className="relative grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full bg-surface-muted ring-2 ring-white">
+          {/* The preview is drawn on a canvas, so nothing from the file ever becomes page markup. */}
+          <canvas ref={previewRef} width={112} height={112} aria-hidden className={cn("absolute inset-0 size-full", !picture && "hidden")} />
+          {picture ? null : <Camera className="size-5 text-ink-subtle" aria-hidden />}
+        </label>
+        <div className="min-w-0 text-[13px]">
+          <label htmlFor="community-picture" className="font-medium text-ink">
+            Profile picture <span className="font-normal text-ink-subtle">(optional)</span>
+          </label>
+          <p className="text-[12.5px] text-ink-subtle">Without one, the community gets a painted monogram.</p>
+        </div>
+        <input
+          id="community-picture"
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setPicture(f);
+            const canvas = previewRef.current;
+            const ctx = canvas?.getContext("2d");
+            if (!f || !canvas || !ctx) return;
+            void createImageBitmap(f)
+              .then((bmp) => {
+                // Cover-crop to the round preview.
+                const s = Math.min(bmp.width, bmp.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, canvas.width, canvas.height);
+                bmp.close();
+              })
+              .catch(() => setError("We couldn't read that picture. Try a JPEG, PNG or WebP image."));
+          }}
+        />
       </div>
       <p className="text-[12.5px] text-ink-subtle">Communities are always public. You&rsquo;ll be its owner, and it&rsquo;s also a Creative Room of yours, so members can make things together there.</p>
       {error ? (
@@ -175,7 +218,7 @@ function TopicBody({ communityId }: { communityId: string }) {
         setError(null);
         try {
           const r = await api<{ conversation: { id: string } }>(`/api/v1/communities/${communityId}/topics`, { method: "POST", json: { intent, title, body: body || undefined } });
-          router.push(`/community/conversations/${r.conversation.id}`);
+          router.push(`/pulse/conversations/${r.conversation.id}`);
         } catch (err) {
           setError(errorMessage(err));
           setBusy(false);

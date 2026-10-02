@@ -31,10 +31,10 @@ export async function resolveContexts(db: Db, refs: Array<{ kind: ContextKind; i
       : Promise.resolve({ data: [] as Array<{ id: string; claim: string; status: string; project_id: string; artifacts: unknown }> }),
   ]);
   const out: Record<string, { label: string; href: string | null }> = {};
-  for (const a of artifacts.data ?? []) out[`artifact:${a.id}`] = { label: `Creation: ${a.title}`, href: `/artifacts/${a.id}` };
-  for (const t of tasks.data ?? []) out[`task:${t.id}`] = { label: `Task: ${t.title}`, href: `/projects/${t.project_id}?tab=tasks` };
-  for (const p of proposals.data ?? []) out[`proposal:${p.id}`] = { label: `Proposed change: ${p.summary}${p.status === "open" ? "" : ` (${p.status})`}`, href: `/artifacts/${p.artifact_id}/collaborate` };
-  for (const c of claims.data ?? []) out[`claim:${c.id}`] = { label: `Ownership claim on ${(c.artifacts as { title: string } | null)?.title ?? "a Creation"} (${c.status})`, href: `/projects/${c.project_id}?tab=rights` };
+  for (const a of artifacts.data ?? []) out[`artifact:${a.id}`] = { label: `Creation: ${a.title}`, href: `/creations/${a.id}` };
+  for (const t of tasks.data ?? []) out[`task:${t.id}`] = { label: `Task: ${t.title}`, href: `/rooms/${t.project_id}?tab=tasks` };
+  for (const p of proposals.data ?? []) out[`proposal:${p.id}`] = { label: `Proposed change: ${p.summary}${p.status === "open" ? "" : ` (${p.status})`}`, href: `/creations/${p.artifact_id}/collaborate` };
+  for (const c of claims.data ?? []) out[`claim:${c.id}`] = { label: `Ownership claim on ${(c.artifacts as { title: string } | null)?.title ?? "a Creation"} (${c.status})`, href: `/rooms/${c.project_id}?tab=rights` };
   return out;
 }
 

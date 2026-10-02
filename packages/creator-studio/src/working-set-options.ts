@@ -215,7 +215,7 @@ export const BRING_IN_KINDS = [
   { key: "huddle_moment", label: "Huddle moment", hint: "Ideas and discussions" },
   { key: "comment", label: "Person / Comment", hint: "Use feedback" },
   { key: "dejavu", label: "DejaVu", hint: "Moments you connected" },
-  { key: "community", label: "Community", hint: "Conversations, replies" },
+  { key: "community", label: "Pulse", hint: "Conversations, replies" },
   { key: "external", label: "Royalty-free images", hint: "Openverse, Pixabay…" },
   { key: "browse", label: "Browse", hint: "Explore and discover" },
 ] as const;

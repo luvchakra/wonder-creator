@@ -8,7 +8,7 @@ test.describe("Carousel Composer", () => {
   test("setup asks how many images first, with one CTA; it's honest when generation isn't connected", async ({ page, creator }) => {
     void creator;
     const id = await carousel(page);
-    await page.goto(`/artifacts/${id}`);
+    await page.goto(`/creations/${id}`);
     const count = page.getByRole("radiogroup", { name: "How many images?" });
     await expect(count.getByRole("radio", { name: "5" })).toHaveAttribute("aria-checked", "true");
     await count.getByRole("radio", { name: "3" }).click();
@@ -19,20 +19,20 @@ test.describe("Carousel Composer", () => {
     await expect(page.getByRole("main").getByRole("alert")).toHaveText("Image generation isn't connected.");
     // Details keeps About/Materials/Versions/Rights/People.
     await page.getByRole("link", { name: "Details" }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}\\?details=1$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}\\?details=1$`));
     await expect(page.getByRole("tab", { name: "Rights" })).toBeVisible();
   });
 
   test("existing images become slides for free, each with its matched words", async ({ page, creator }) => {
     const id = await carousel(page);
     await seedSlideVisuals(creator.id, id, 3, 64);
-    await page.goto(`/artifacts/${id}`);
+    await page.goto(`/creations/${id}`);
     // The Creation page opens the Studio; look inside its canvas (the redirect briefly holds both pages).
     const composer = page.getByRole("region", { name: "Editor" });
     await expect(composer.getByText("You already have 3 images for this Carousel.")).toBeVisible();
     await composer.getByRole("button", { name: "Use these" }).click();
     // The owner is on the Studio canvas: the slides appear there, each with its matched words.
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/studio$`));
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 3 of 3" })).toBeVisible();
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 2 of 3" }).click();
@@ -42,8 +42,8 @@ test.describe("Carousel Composer", () => {
   test("the owner's Creation page opens the Studio canvas; one more is honest without generation; Details keeps the overview facts", async ({ page, creator }) => {
     const id = await carousel(page);
     await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
-    await page.goto(`/artifacts/${id}`);
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
+    await page.goto(`/creations/${id}`);
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/studio$`));
     const editor = page.getByRole("region", { name: "Editor" });
     await editor.getByRole("button", { name: "Add slide" }).click();
     const sheet = page.getByRole("dialog", { name: "Add one more slide" });
@@ -51,14 +51,14 @@ test.describe("Carousel Composer", () => {
     await expect(sheet.getByLabel("Instruction (optional)")).toHaveValue("Night scene");
     await sheet.getByRole("button", { name: "Generate one more" }).click();
     await expect(sheet.getByRole("alert")).toHaveText("Image generation isn't connected.");
-    await page.goto(`/artifacts/${id}?details=1`);
+    await page.goto(`/creations/${id}?details=1`);
     await expect(page.getByRole("tab", { name: "Rights" })).toBeVisible();
   });
 
   test("Studio canvas: one slide fills the canvas with its words, the strip moves between slides, and a tap opens the editor", async ({ page, creator }) => {
     const id = await carousel(page);
     const [, second] = await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto(`/creations/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: First light/ })).toBeVisible();
     await expect(editor.getByText("1 / 3")).toBeVisible();
@@ -109,7 +109,7 @@ test.describe("Carousel Composer", () => {
     const id = await carousel(page);
     await seedCarousel(creator.id, id, ["First light", "Second wind", "Third act"]);
     await page.setViewportSize({ width: 360, height: 640 });
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto(`/creations/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3/ })).toBeVisible();
     const thumb = editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" });
@@ -128,8 +128,8 @@ test.describe("Carousel Composer", () => {
     const id = await carousel(page);
     await seedCarousel(creator.id, id, ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]);
     await page.setViewportSize({ width: 360, height: 740 });
-    await page.goto("/space?tab=creations");
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto("/materials?tab=creations");
+    await page.goto(`/creations/${id}/studio`);
     const editor = page.getByRole("region", { name: "Editor" });
     // Text on the image by default (owner, 29 Sep 2026) — draggable right there, not a caption under the frame.
     await expect(editor.getByRole("button", { name: /^Words on the image/ })).toContainText("One");
@@ -149,10 +149,10 @@ test.describe("Carousel Composer", () => {
 
     // Back goes where the creator came from, never round into the Studio again.
     await page.getByRole("link", { name: "Back" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=creations$/);
+    await expect(page).toHaveURL(/\/materials\?tab=creations$/);
     await page.goto("/");
-    await page.goto(`/artifacts/${id}`); // a Carousel's Creation page opens its Studio
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
+    await page.goto(`/creations/${id}`); // a Carousel's Creation page opens its Studio
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/studio$`));
     await page.getByRole("link", { name: "Back" }).click();
     await expect(page).toHaveURL(/\/$/);
   });
@@ -160,7 +160,7 @@ test.describe("Carousel Composer", () => {
   test("slide editor: edit words, place and style them on the image, split, and it all autosaves", async ({ page, creator }) => {
     const id = await carousel(page);
     const [, second] = await seedCarousel(creator.id, id, ["First light", "In the mirror—\nonly loneliness.", "Third act"]);
-    await page.goto(`/artifacts/${id}/studio`);
+    await page.goto(`/creations/${id}/studio`);
     await page
       .getByRole("region", { name: "Editor" })
       .getByRole("link", { name: /^Edit slide 1 of 3/ })
@@ -222,7 +222,7 @@ test.describe("Carousel Composer", () => {
     await expect(page.getByLabel("Words for this slide")).toHaveValue("In the mirror —");
     // Done goes back to the Studio canvas, not the old overview.
     await page.getByRole("link", { name: "Done" }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${id}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${id}/studio$`));
     const editor = page.getByRole("region", { name: "Editor" });
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 3 of 4" }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 3 of 4: only loneliness\./ })).toBeVisible();

@@ -15,7 +15,7 @@ export function CommunityCardItem({ card }: { card: CommunityCardView }) {
     case "conversation": {
       const c = card.conversation;
       const asks = HELP_INTENTS.includes(c.intent) && !card.reason?.startsWith("You're in");
-      const href = `/community/conversations/${c.id}`;
+      const href = `/pulse/conversations/${c.id}`;
       return (
         <Card>
           {/* A request leads with the person ("Priya is looking for"); anything else with who and what kind. */}
@@ -37,7 +37,7 @@ export function CommunityCardItem({ card }: { card: CommunityCardView }) {
             ) : null}
           </p>
           {card.mayHelp ? (
-            <Primary href={`/search?type=material&q=${encodeURIComponent(card.mayHelp.query)}`}>See them</Primary>
+            <Primary href={`/explore?type=material&q=${encodeURIComponent(card.mayHelp.query)}`}>See them</Primary>
           ) : asks && !c.closedAt ? (
             <Primary href={`${href}#reply`}>{c.intent === "critique" ? "Give feedback" : c.intent === "looking_for" ? "Help find it" : "Answer"}</Primary>
           ) : null}
@@ -78,7 +78,7 @@ export function CommunityCardItem({ card }: { card: CommunityCardView }) {
     case "creation":
       return (
         <Card>
-          <Link href={`/artifacts/${card.id}`} className="flex items-center gap-3">
+          <Link href={`/creations/${card.id}`} className="flex items-center gap-3">
             {card.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={card.coverUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" />

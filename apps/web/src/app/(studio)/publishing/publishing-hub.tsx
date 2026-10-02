@@ -185,7 +185,7 @@ export function PublishingHub({
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-ink">
                       {p.artifact ? (
-                        <Link href={`/artifacts/${p.artifact.id}/publish`} className="hover:underline">
+                        <Link href={`/creations/${p.artifact.id}/publish`} className="hover:underline">
                           {p.artifact.title}
                         </Link>
                       ) : (

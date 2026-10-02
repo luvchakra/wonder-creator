@@ -1,7 +1,7 @@
 import { adminPatch, creatorIdOf, expect, newCreator, saveNote, test, uid } from "./fixtures";
 
-// Home → From the community (owner, 1 Oct 2026): a calm glance at what's alive around the creator — never a feed.
-test.describe("Home: from the community", () => {
+// Home → From Pulse (was “From the community”) (owner, 1 Oct 2026): a calm glance at what's alive around the creator — never a feed.
+test.describe("Home: from Pulse", () => {
   test("new work, a thought, an ask and someone to meet — people you follow first, with why, nothing repeated", async ({ page, creator, openContext }, info) => {
     const tag = uid();
     const { page: maya } = await openContext("maya");
@@ -27,10 +27,10 @@ test.describe("Home: from the community", () => {
     ] as const) {
       await page.setViewportSize(size);
       await page.goto("/");
-      const glance = page.getByRole("region", { name: "From the community" });
+      const glance = page.getByRole("region", { name: "From Pulse" });
       // Maya's live Huddle shows once on Home: "Worth hearing" already carries it (she's followed), so the glance doesn't repeat it.
       await expect(page.getByText(`Light and shadow ${tag}`)).toHaveCount(1);
-      const work = glance.getByRole("list", { name: "New work from the community" });
+      const work = glance.getByRole("list", { name: "New work from Pulse" });
       await expect(work).toContainText(`Platform 3 at dawn ${tag}`);
       await expect(work).toContainText(`You follow Maya`);
       await expect(glance).toContainText(`Morning light in my garden ${tag}`);
@@ -43,8 +43,8 @@ test.describe("Home: from the community", () => {
     }
 
     // Each part goes somewhere real.
-    await page.getByRole("region", { name: "From the community" }).getByRole("link", { name: new RegExp(`Platform 3 at dawn ${tag}`) }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${poem.id}$`));
+    await page.getByRole("region", { name: "From Pulse" }).getByRole("link", { name: new RegExp(`Platform 3 at dawn ${tag}`) }).click();
+    await expect(page).toHaveURL(new RegExp(`/creations/${poem.id}$`));
     expect(creator.handle).toBeTruthy();
   });
 
@@ -75,9 +75,9 @@ test.describe("Home: from the community", () => {
     expect((await jo.request.post(`/api/v1/projects/${project.id}/items`, { data: { kind: "material", ids: [noteId], shared: true } })).ok()).toBeTruthy();
 
     await page.goto("/");
-    const glance = page.getByRole("region", { name: "From the community" });
+    const glance = page.getByRole("region", { name: "From Pulse" });
     await expect(glance).toContainText("short films");
-    await expect(glance.getByText(/This week in the community/)).toBeAttached();
+    await expect(glance.getByText(/This week in Pulse/)).toBeAttached();
     // One joined conversation is "Worth hearing"; the other is the catch-up line — each shown once.
     const moved = glance.getByRole("link", { name: /A conversation you joined has moved on/ });
     await expect(moved).toContainText("1 new reply");
@@ -87,7 +87,7 @@ test.describe("Home: from the community", () => {
     await expect(rooms).toContainText(`Cut list for the harbour scene ${tag}`);
     await expect(rooms).toContainText(`Coastline film ${tag}`);
     await rooms.getByRole("link", { name: new RegExp(`Cut list for the harbour scene ${tag}`) }).click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/shared/`));
+    await expect(page).toHaveURL(new RegExp(`/rooms/${project.id}/shared/`));
   });
 
   test("followers and following on the Profile, with lists that open from the counts", async ({ page, creator, openContext }) => {

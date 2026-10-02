@@ -278,7 +278,7 @@ export function SlideTextDialog({
           {keptAs ? (
             <p role="status" className="text-sm text-ink-muted">
               {creationId ? "Added to this Creation's references. " : "Saved to your Materials. "}
-              <a href={`/space/materials/${keptAs}`} className="font-medium text-accent-ink hover:underline">
+              <a href={`/materials/${keptAs}`} className="font-medium text-accent-ink hover:underline">
                 Open Material
               </a>
             </p>

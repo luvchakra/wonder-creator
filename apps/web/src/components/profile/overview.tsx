@@ -20,7 +20,7 @@ export interface ScrapbookGlimpse {
  * The Overview tab — identity at a glance: About, brand openness, selected series, recent Scrapbook moments and how
  * they like to collaborate. Longer detail opens in place rather than on another page.
  */
-export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses, after }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[]; after?: ReactNode }) {
+export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses, before, after }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[]; before?: ReactNode; after?: ReactNode }) {
   const showCollab = collab && (collab.hasProfile || isMe) && collab.availability !== "closed";
   const hasAbout = about.lines.length || about.skills.length || about.openTo.length;
   return (
@@ -53,6 +53,8 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
         </section>
       ) : null}
 
+      {before}
+
       {brand ? (
         <Disclosure icon={<Briefcase aria-hidden />} tone="peach" art={KIT.painted.coastalVignette} title="Open to brand work" summary={[...brand.deliverables, ...brand.platforms].slice(0, 4).join(" · ") || "Brand collaborations and commissions."}>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
@@ -81,7 +83,7 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
           <ul className="mt-1.5 grid grid-cols-3 gap-2">
             {series.slice(0, 3).map((c, i) => (
               <li key={c.id}>
-                <Link href={`/artifacts/${c.id}`} className="group block">
+                <Link href={`/creations/${c.id}`} className="group block">
                   {c.coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.coverUrl} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />

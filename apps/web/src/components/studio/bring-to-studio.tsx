@@ -16,9 +16,9 @@ export interface StudioNote {
  */
 export async function bringToStudio(type: CommunityKind, id: string): Promise<StudioNote> {
   const { session } = await api<{ session: { id: string; artifactId: string } | null }>("/api/v1/studio-sessions/active");
-  if (!session) return { text: "Open a Creation in Creative Studio first, then bring this in.", href: "/space?tab=creations", link: "Your Creations" };
+  if (!session) return { text: "Open a Creation in Creative Studio first, then bring this in.", href: "/materials?tab=creations", link: "Your Creations" };
   await api(`/api/v1/studio-sessions/${session.id}/sources/from-community`, { method: "POST", json: { type, id } });
-  return { text: "On your Working Table.", href: `/artifacts/${session.artifactId}/studio`, link: "Open Studio" };
+  return { text: "On your Working Table.", href: `/creations/${session.artifactId}/studio`, link: "Open Studio" };
 }
 
 export function StudioNoteLine({ note }: { note: StudioNote | null }) {

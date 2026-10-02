@@ -289,7 +289,7 @@ export function artifactCard(page: Page) {
 export async function poemFromNote(page: Page, noteText = `The tide keeps our old names ${uid()}\nGrandmother's lantern on the jetty.`) {
   const materialId = await saveNote(page, noteText);
   const noteTitle = noteText.split("\n")[0];
-  await page.goto(`/space/materials/${materialId}`);
+  await page.goto(`/materials/${materialId}`);
   await page.getByRole("link", { name: "Use in creation" }).click();
   await expect(page).toHaveURL(new RegExp(`/create\\?material=${materialId}`));
   const talk = page.getByRole("region", { name: "meTalk" });
@@ -299,7 +299,7 @@ export async function poemFromNote(page: Page, noteText = `The tide keeps our ol
   const card = artifactCard(page);
   await expect(card).toBeVisible({ timeout: 45_000 });
   const href = await card.getByRole("link", { name: "Open in Creative Studio" }).getAttribute("href");
-  const artifactId = /\/artifacts\/([0-9a-f-]{36})\/studio/.exec(href ?? "")?.[1];
+  const artifactId = /\/creations\/([0-9a-f-]{36})\/studio/.exec(href ?? "")?.[1];
   if (!artifactId) throw new Error(`no artifact link in meTalk (${href})`);
   return { materialId, noteTitle, artifactId };
 }

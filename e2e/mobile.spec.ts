@@ -22,21 +22,21 @@ test.describe("mobile layout @mobile", () => {
 
   test("core screens fit a 360px viewport and keep the Creative Palette in reach", async ({ page }) => {
     // Something to open in the Studio.
-    await page.goto("/space");
+    await page.goto("/materials");
     await page.getByRole("button", { name: "New", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
     await dialog.getByLabel("Title").fill("Pocket poem");
     await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await page.waitForURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
+    await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
     const studio = new URL(page.url()).pathname;
-    const material = `/space/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
+    const material = `/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
 
     const screens: Array<[string, (p: Page) => Promise<void>]> = [
       ["/", (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible()],
       ["/create", (p) => expect(p.getByRole("region", { name: "meTalk" })).toBeVisible()],
-      ["/space", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
-      ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
-      ["/space?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
+      ["/materials", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
+      ["/explore?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
+      ["/materials?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
       [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],
@@ -68,7 +68,7 @@ test.describe("mobile layout @mobile", () => {
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await palette.getByRole("button", { name: /Go to…/ }).click();
     await palette.getByRole("button", { name: "Materials" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas$/);
+    await expect(page).toHaveURL(/\/materials\?tab=ideas$/);
     // Inside Materials the Palette is contextual; the destinations are one step away under Go to….
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await palette.getByRole("button", { name: /Go to…/ }).click();
@@ -82,7 +82,7 @@ test.describe("mobile layout @mobile", () => {
     const res = await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Pocket tide ${uid()}` } });
     const art = (await res.json()).artifact as { id: string; current_version_id: string };
     await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "The tide keeps its own counsel.", baseVersionId: art.current_version_id, label: "Written" } });
-    const material = `/space/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
+    const material = `/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
     await page.request.patch("/api/v1/creators/autonomy", { data: { domain: "creative_generation", level: "execute_with_approval" } });
     const turn = await (await page.request.post("/api/v1/conversations/turn", { data: { message: "Write a poem about the pier at night." } })).text();
     const conversation = /"conversationId":"([0-9a-f-]{36})"/.exec(turn)?.[1];
@@ -91,26 +91,26 @@ test.describe("mobile layout @mobile", () => {
     await page.waitForURL(/\/approvals\/[0-9a-f-]{36}$/);
     const approval = new URL(page.url()).pathname;
     await page.request.patch("/api/v1/creators/autonomy", { data: { reset: true } });
-    const project = `/projects/${((await (await page.request.post("/api/v1/projects", { data: { title: `Pocket project ${uid()}`, brief: "A small film." } })).json()) as { project: { id: string } }).project.id}`;
+    const project = `/rooms/${((await (await page.request.post("/api/v1/projects", { data: { title: `Pocket project ${uid()}`, brief: "A small film." } })).json()) as { project: { id: string } }).project.id}`;
 
-    const crew = `/crews/${((await (await page.request.post(`/api/v1${project}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
+    const crew = `/crews/${((await (await page.request.post(`/api/v1/projects/${project.split("/").pop()}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
     const routes: Array<[string, (p: Page) => Promise<unknown>]> = [
       ["/", (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible()],
       [`/create?c=${conversation}`, (p) => expect(p.getByRole("region", { name: "meTalk" })).toBeVisible()],
       [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
-      ["/space?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
-      [`/artifacts/${art.id}`, (p) => expect(p.getByRole("button", { name: "Download" })).toBeVisible()],
-      [`/artifacts/${art.id}/context?tab=people`, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
-      [`/artifacts/${art.id}/transform`, (p) => expect(p.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible()],
-      [`/artifacts/${art.id}/studio`, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
-      [`/artifacts/${art.id}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
-      [`/artifacts/${art.id}/publish`, (p) => expect(p.getByRole("button", { name: "Next" })).toBeVisible()],
-      [`/artifacts/${art.id}/collaborate`, (p) => expect(p.getByRole("button", { name: "Add a collaborator" })).toBeVisible()],
+      ["/materials?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
+      [`/creations/${art.id}`, (p) => expect(p.getByRole("button", { name: "Download" })).toBeVisible()],
+      [`/creations/${art.id}/context?tab=people`, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
+      [`/creations/${art.id}/transform`, (p) => expect(p.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible()],
+      [`/creations/${art.id}/studio`, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
+      [`/creations/${art.id}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
+      [`/creations/${art.id}/publish`, (p) => expect(p.getByRole("button", { name: "Next" })).toBeVisible()],
+      [`/creations/${art.id}/collaborate`, (p) => expect(p.getByRole("button", { name: "Add a collaborator" })).toBeVisible()],
       ["/approvals", (p) => expect(p.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible()],
       [approval, (p) => expect(p.getByRole("button", { name: "Approve once" })).toBeInViewport()],
       ["/huddles", (p) => expect(p.getByRole("button", { name: "Start a Huddle" })).toBeVisible()],
       ["/scrapbook", (p) => expect(p.getByRole("form", { name: "Share to your Scrapbook" })).toBeVisible()],
-      ["/projects", (p) => expect(p.getByRole("button", { name: "New Creative Room" }).first()).toBeVisible()],
+      ["/rooms", (p) => expect(p.getByRole("button", { name: "New Creative Room" }).first()).toBeVisible()],
       [project, (p) => expect(p.getByRole("link", { name: "Create in this Creative Room" })).toBeVisible()],
       [crew, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
       [`${project}?tab=work`, (p) => expect(p.getByRole("region", { name: "Shared by the crew" })).toBeVisible()],
@@ -119,11 +119,11 @@ test.describe("mobile layout @mobile", () => {
       [`${project}?tab=contributions`, (p) => expect(p.getByRole("region", { name: "Summary" })).toBeVisible()],
       [`${project}?tab=rights`, (p) => expect(p.getByRole("region", { name: "Creative Room policy" })).toBeVisible()],
       [`${project}/complete`, (p) => expect(p.getByRole("region", { name: "Unresolved tasks" })).toBeVisible()],
-      ["/discover?terms=writing", (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
+      ["/people?terms=writing", (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
       ["/publishing", (p) => expect(p.getByRole("region", { name: "Queue" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
-      ["/search?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
+      ["/explore?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
     ];
     for (const width of [320, 375, 390, 430, 480]) {
       await page.setViewportSize({ width, height: 800 });

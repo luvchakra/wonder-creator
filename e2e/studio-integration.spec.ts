@@ -22,7 +22,7 @@ test.describe("Studio integration", () => {
     await page.request.post(`/api/v1/dejavus/${dv.id}/moments`, { data: { entityType: "material", entityId: n2 } });
     const art = await poem(page, `Platform ${tag}`);
 
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const table = await openTable(page);
     await table.getByRole("button", { name: "Bring in" }).click();
     const bring = page.getByRole("dialog", { name: "Bring in" });
@@ -39,7 +39,7 @@ test.describe("Studio integration", () => {
     await page.goto(`/dejavu/${dv.id}`);
     await page.getByRole("button", { name: "Explore in Studio" }).click();
     await page.getByRole("dialog", { name: "Explore in Studio" }).getByRole("button", { name: /In the Studio you were last in/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/studio`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio`));
     const again = await openTable(page);
     await expect(again.getByRole("button", { name: new RegExp(`Railways ${tag} · 2 Moments available`) })).toBeVisible();
     await page.keyboard.press("Escape");
@@ -50,13 +50,13 @@ test.describe("Studio integration", () => {
     void creator;
     const tag = uid();
     const art = await poem(page, `Silence ${tag}`, "Every Sunday my father waited.");
-    await page.goto(`/artifacts/${art.id}/studio`); // the Studio A was last in
+    await page.goto(`/creations/${art.id}/studio`); // the Studio A was last in
     const { page: b } = await openContext("B");
     await newCreator(b);
     const conv = (await (await b.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `Pauses between images ${tag}` } })).json()).conversation.id as string;
     await b.request.post(`/api/v1/open-conversations/${conv}/replies`, { data: { body: `Treat each image like a pause ${tag}` } });
 
-    await page.goto(`/community/conversations/${conv}`);
+    await page.goto(`/pulse/conversations/${conv}`);
     await page.getByRole("button", { name: /More for .*'s reply/ }).click();
     await page.getByRole("menuitem", { name: "Use in Studio" }).click();
     await expect(page.getByRole("status").filter({ hasText: "On your Working Table." })).toBeVisible();
@@ -65,7 +65,7 @@ test.describe("Studio integration", () => {
     await table.getByRole("tab", { name: /Available/ }).click();
     const card = table.getByRole("listitem").filter({ hasText: `Treat each image like a pause ${tag}` });
     await expect(card).toContainText("Reference only");
-    await expect(card).toContainText("Community thought");
+    await expect(card).toContainText("Thought from Pulse");
     const uses = card.getByRole("group");
     await expect(uses.getByRole("button", { name: "Use as creative direction" })).toBeVisible();
     await expect(uses.getByRole("button", { name: "Add to draft" })).toHaveCount(0);
@@ -84,10 +84,10 @@ test.describe("Studio integration", () => {
     void creator;
     const tag = uid();
     const art = await poem(page, `Private poem ${tag}`, `The train was always late ${tag}.\n\nThe second stanza stays private ${tag}.`);
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     await page.getByRole("button", { name: "More", exact: true }).click();
-    await page.getByRole("button", { name: /^Ask Community/ }).click();
-    const ask = page.getByRole("dialog", { name: "Ask Community" });
+    await page.getByRole("button", { name: /^Ask Pulse/ }).click();
+    const ask = page.getByRole("dialog", { name: "Ask Pulse" });
     await expect(ask).toContainText("Selected: The opening");
     await expect(ask).toContainText(`The train was always late ${tag}.`);
     await expect(ask).not.toContainText("second stanza");
@@ -107,11 +107,11 @@ test.describe("Studio integration", () => {
     await b.getByRole("button", { name: "Reply" }).click();
     await expect(b.getByRole("region", { name: "Replies" })).toContainText(`Let the image do the work ${tag}`);
 
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     await expect(page.getByRole("button", { name: /^Working Table:/ })).toContainText("1 new reply");
     const table = await openTable(page);
-    await table.getByRole("button", { name: "1 community response · 1 new" }).click();
-    const responses = page.getByRole("dialog", { name: "Community responses" });
+    await table.getByRole("button", { name: "1 response from Pulse · 1 new" }).click();
+    const responses = page.getByRole("dialog", { name: "Responses from Pulse" });
     await expect(responses).toContainText("About The opening");
     await responses.getByRole("button", { name: "Use in Studio" }).click();
     await expect(responses.getByText(/on the Working Table as feedback/)).toBeVisible();
@@ -132,7 +132,7 @@ test.describe("Studio integration", () => {
         ],
       },
     });
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     let panel = await openTable(page);
     const radio = panel.locator("li > button[aria-expanded]").filter({ hasText: "The chai seller's radio" });
     await radio.click();

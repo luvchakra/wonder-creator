@@ -19,7 +19,7 @@ test.describe("CreatorSend & material", () => {
     // Palette → Materials shows it as an image card.
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
     await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Materials" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas$/);
+    await expect(page).toHaveURL(/\/materials\?tab=ideas$/);
     const card = page.getByRole("link").filter({ hasText: name });
     await expect(card).toBeVisible();
     await expect(card).toContainText("Image");
@@ -28,7 +28,7 @@ test.describe("CreatorSend & material", () => {
     await card.click();
 
     // Material page: the image, status & provenance.
-    await expect(page).toHaveURL(/\/space\/materials\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
     await expect(page.getByLabel("Title")).toHaveValue(name);
     await expect(page.locator("main img").first()).toBeVisible();
     await expect.poll(() => page.locator("main img").first().evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ test.describe("CreatorSend & material", () => {
     await expect(item.getByText(/^Audio ·/)).toBeVisible();
     await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
 
-    await page.goto("/space?tab=ideas&type=audio");
+    await page.goto("/materials?tab=ideas&type=audio");
     const card = page.getByRole("link").filter({ hasText: name });
     await expect(card).toContainText("Audio");
     await card.click();
@@ -74,9 +74,9 @@ test.describe("CreatorSend & material", () => {
     const item = sendItem(page, name);
     await expect(item.getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
 
-    await page.goto("/space?tab=ideas");
+    await page.goto("/materials?tab=ideas");
     await page.getByRole("link").filter({ hasText: name }).click();
-    await expect(page).toHaveURL(/\/space\/materials\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
     await page.getByText("Extracted text").click();
     await expect(page.getByText("Rain on the ghats & the evening bells.")).toBeVisible();
   });
@@ -121,7 +121,7 @@ test.describe("CreatorSend & material", () => {
   test("deleting material asks for confirmation first", async ({ page }) => {
     const text = `Salt on the window, ${uid()}`;
     const id = await saveNote(page, text);
-    await page.goto(`/space/materials/${id}`);
+    await page.goto(`/materials/${id}`);
     await expect(page.getByLabel("Text")).toHaveValue(text);
 
     await page.getByRole("button", { name: "Delete" }).click();
@@ -135,17 +135,17 @@ test.describe("CreatorSend & material", () => {
 
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("dialog", { name: "Delete this material permanently?" }).getByRole("button", { name: "Delete permanently" }).click();
-    await expect(page).toHaveURL(/\/space\?tab=ideas$/);
+    await expect(page).toHaveURL(/\/materials\?tab=ideas$/);
     await expect(page.getByRole("link").filter({ hasText: text })).toHaveCount(0);
 
-    await page.goto(`/space/materials/${id}`);
+    await page.goto(`/materials/${id}`);
     await expect(page.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
   });
 
   test("edit a note's title, text and tags", async ({ page }) => {
     const text = `Harbour lights ${uid()}`;
     const id = await saveNote(page, text);
-    await page.goto(`/space/materials/${id}`);
+    await page.goto(`/materials/${id}`);
     await page.getByLabel("Title").fill("Harbour notebook");
     await page.getByLabel("Text").fill(`${text}\nThe ferry horn at dusk.`);
     await page.getByLabel("Tags").fill("sea");
@@ -164,9 +164,9 @@ test.describe("CreatorSend & material", () => {
     expect((await page.request.post("/api/v1/collections", { data: { name: collection } })).ok()).toBe(true);
     await uploadViaInbox(page, [{ name: `${name}.png`, mimeType: "image/png", buffer: pngBytes() }]);
     await expect(sendItem(page, name).getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
-    await page.goto("/space?tab=ideas");
+    await page.goto("/materials?tab=ideas");
     await page.getByRole("link").filter({ hasText: name }).click();
-    await expect(page).toHaveURL(/\/space\/materials\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
 
     // Details tab is the default: owner, privacy and provenance.
     const facts = page.locator("dl").first();

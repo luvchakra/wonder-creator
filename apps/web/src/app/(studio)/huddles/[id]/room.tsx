@@ -374,7 +374,7 @@ export function HuddleRoom({
             <p>
               About:{" "}
               {state.related.canOpen && state.related.id ? (
-                <Link href={state.related.kind === "artifact" ? `/artifacts/${state.related.id}` : `/space/materials/${state.related.id}`} className="font-medium text-white underline underline-offset-2">
+                <Link href={state.related.kind === "artifact" ? `/creations/${state.related.id}` : `/materials/${state.related.id}`} className="font-medium text-white underline underline-offset-2">
                   {state.related.title}
                 </Link>
               ) : (
@@ -536,7 +536,7 @@ export function HuddleRoom({
             Use in Studio
           </Link>{" "}
           ·{" "}
-          <Link href={`/space/materials/${savedMoment}`} className="font-medium text-accent-ink hover:underline">
+          <Link href={`/materials/${savedMoment}`} className="font-medium text-accent-ink hover:underline">
             View it
           </Link>
         </p>
@@ -701,7 +701,7 @@ function PreserveDialog({ huddleId, text, onClose }: { huddleId: string; text: s
               <Link href={`/studio/use?add=material:${saved}`} className={buttonClasses({ size: "sm" })}>
                 Use in Studio
               </Link>
-              <Link href={`/space/materials/${saved}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
+              <Link href={`/materials/${saved}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
                 View it
               </Link>
               <Button size="sm" variant="ghost" onClick={onClose}>

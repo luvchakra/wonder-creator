@@ -223,7 +223,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title: m.title || "Untitled",
           kind: MATERIAL_KIND[m.type] ?? "Material",
           mediaType: m.type,
-          href: `/space/materials/${m.id}`,
+          href: `/materials/${m.id}`,
           thumbnailUrl: m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null,
         });
       }
@@ -237,7 +237,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title: a.title,
           kind: `${artifactType(a.artifact_type).label} · Creation`,
           mediaType: a.artifact_type,
-          href: `/artifacts/${a.id}`,
+          href: `/creations/${a.id}`,
           thumbnailUrl: null,
         });
     } else if (r.source_type === "collection") {
@@ -250,7 +250,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title: c.name,
           kind: `Collection · ${c.material_collection_items?.[0]?.count ?? 0}`,
           mediaType: "collection",
-          href: `/space/collections/${c.id}`,
+          href: `/materials/collections/${c.id}`,
           thumbnailUrl: null,
         };
     } else if (r.source_type === "comment") {
@@ -264,7 +264,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title: `“${c.body.length > 90 ? `${c.body.slice(0, 88)}…` : c.body}”`,
           kind: `Feedback · ${c.creators?.display_name ?? "A collaborator"}`,
           mediaType: "comment",
-          href: `/artifacts/${s.artifact_id}/collaborate`,
+          href: `/creations/${s.artifact_id}/collaborate`,
           thumbnailUrl: null,
         };
     } else if (r.source_type === "conversation") {
@@ -279,7 +279,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title: c.title,
           kind: `Open Conversation · ${nameOf(c.creator_id)}`,
           mediaType: "conversation",
-          href: `/community/conversations/${c.id}`,
+          href: `/pulse/conversations/${c.id}`,
           thumbnailUrl: null,
         });
     } else if (r.source_type === "conversation_reply") {
@@ -292,9 +292,9 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           createdAt: c.created_at,
           available: true,
           title: `“${clip(c.body)}”`,
-          kind: `Community thought · ${nameOf(c.creator_id)}`,
+          kind: `Thought from Pulse · ${nameOf(c.creator_id)}`,
           mediaType: "conversation_reply",
-          href: `/community/conversations/${c.conversation_id}`,
+          href: `/pulse/conversations/${c.conversation_id}`,
           thumbnailUrl: null,
         });
     } else if (r.source_type === "scrapbook_entry") {
@@ -323,7 +323,7 @@ export async function workingSetView(db: Db, sessionId: string, sign: Sign = asy
           title,
           kind: `Huddle moment · ${h.kind === "artifact" ? "Creation" : (MATERIAL_KIND[h.creative_materials?.type ?? ""] ?? "Idea")}`,
           mediaType: h.creative_materials?.type ?? "huddle",
-          href: h.material_id ? `/space/materials/${h.material_id}` : h.artifact_id ? `/artifacts/${h.artifact_id}` : null,
+          href: h.material_id ? `/materials/${h.material_id}` : h.artifact_id ? `/creations/${h.artifact_id}` : null,
           thumbnailUrl: h.creative_materials?.storage_object_id ? (urls[h.creative_materials.storage_object_id] ?? null) : null,
         };
       }
@@ -354,7 +354,7 @@ export function materialRights(m: { creator_id: string; type: string; source_typ
   if (m.creator_id !== viewer) return { rights: "reference_only" };
   // Someone else's words saved from Community ("Save thought") stay theirs.
   const said = (m.metadata as { community?: { authorId?: string; authorName?: string } } | null)?.community;
-  if (said?.authorId && said.authorId !== viewer) return { rights: "reference_only", attribution: said.authorName ? `By ${said.authorName} · Community` : null };
+  if (said?.authorId && said.authorId !== viewer) return { rights: "reference_only", attribution: said.authorName ? `By ${said.authorName} · Pulse` : null };
   const lic = (m.metadata as { license?: { name?: string; creator?: string | null; provider?: string | null } } | null)?.license;
   if (m.source_type === "external" || lic) return { rights: licenseRights(lic?.name), attribution: attributionLine({ creator: lic?.creator, license: lic?.name, provider: lic?.provider }) };
   if (m.type === "url" || m.source_type === "web" || m.source_type === "youtube") return { rights: "reference_only" };

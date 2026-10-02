@@ -27,7 +27,7 @@ test.describe("CreatorPublish", () => {
     await expect(page.getByText("Publishing preferences saved.").first()).toBeVisible();
 
     // The flow starts from them; CreatorBrain's plan is a suggestion.
-    await page.goto(`/artifacts/${id}/publish`);
+    await page.goto(`/creations/${id}/publish`);
     await expect(page.getByLabel(/Your Wonder Creator profile/)).toBeChecked();
     await page.getByRole("button", { name: "Plan with CreativeMind" }).click();
     await expect(page.getByRole("status").filter({ hasText: "nothing is prepared or sent until you approve" })).toContainText("AI isn't connected");

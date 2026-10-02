@@ -13,7 +13,7 @@ export async function ContextBack({ db, from }: { db: Db; from: string | undefin
   const { data: a } = await db.from("artifacts").select("id, title").eq("id", m[1]!).maybeSingle();
   if (!a) return null;
   return (
-    <Link href={`/artifacts/${a.id}/studio`} className="-ml-2 mb-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-full pr-3 text-[13.5px] font-medium text-ink-muted hover:text-ink">
+    <Link href={`/creations/${a.id}/studio`} className="-ml-2 mb-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-full pr-3 text-[13.5px] font-medium text-ink-muted hover:text-ink">
       <ChevronLeft className="size-5 shrink-0" aria-hidden />
       <span className="truncate">Back to {a.title || "the Creative Studio"}</span>
     </Link>

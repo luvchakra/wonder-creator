@@ -11,7 +11,7 @@ test.describe("licensing", () => {
   test("the creator records a license in four short steps", async ({ page, creator }) => {
     void creator;
     const id = await publicPiece(page, `Lanterns ${uid()}`);
-    await page.goto(`/artifacts/${id}?tab=rights`);
+    await page.goto(`/creations/${id}?tab=rights`);
     await page.getByRole("button", { name: "Add license" }).click();
     const d = page.getByRole("dialog", { name: "Create a license" });
     await d.getByLabel("Licensee (optional)").fill("Harbour Times");
@@ -42,7 +42,7 @@ test.describe("licensing", () => {
 
     const { page: other } = await openContext("B");
     await newCreator(other);
-    await other.goto(`/artifacts/${id}?tab=rights`);
+    await other.goto(`/creations/${id}?tab=rights`);
     await other.getByRole("button", { name: "Request a license" }).click();
     const req = other.getByRole("dialog", { name: "Request a license" });
     await req.getByLabel("How would you like to use it?").fill("On the cover of our spring zine, credited.");
@@ -55,7 +55,7 @@ test.describe("licensing", () => {
     await expect(other.getByText("Waiting for a reply")).toBeVisible();
 
     // The owner is notified and suggests paid terms (needs their password).
-    await owner.goto(`/artifacts/${id}?tab=rights`);
+    await owner.goto(`/creations/${id}?tab=rights`);
     const requests = owner.getByRole("region", { name: "License requests" });
     await expect(requests).toContainText("On the cover of our spring zine, credited.");
     await requests.getByRole("button", { name: "Suggest other terms" }).click();

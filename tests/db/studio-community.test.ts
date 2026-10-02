@@ -42,7 +42,7 @@ describe("Community on the Working Table", () => {
     await addSources(db(a), a.creatorId, session, [{ type: "conversation_reply", id: reply }]);
     const row = (await workingSetView(db(a), session)).sources.find((s) => s.sourceId === reply)!;
     expect(row).toMatchObject({ available: true, state: "available", rights: "reference_only", roles: ["creative_direction"] });
-    expect(row.kind).toContain("Community thought");
+    expect(row.kind).toContain("Thought from Pulse");
     expect(row.author).not.toBe("You");
     // Nothing was copied: the row is a pointer to B's reply.
     expect(expectOk(await admin.from("studio_sources").select("source_type, source_id").eq("id", row.id).single())).toEqual({ source_type: "conversation_reply", source_id: reply });
@@ -85,7 +85,7 @@ describe("Community on the Working Table", () => {
     await addSources(db(a), a.creatorId, session, [{ type: "material", id: materialId }]);
     const row = (await workingSetView(db(a), session)).sources.find((s) => s.sourceId === materialId)!;
     expect(row.rights).toBe("reference_only");
-    expect(row.attribution).toContain("Community");
+    expect(row.attribution).toContain("Pulse");
   });
 });
 

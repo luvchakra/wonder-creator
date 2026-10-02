@@ -14,7 +14,7 @@ test.describe("Collaboration messaging", () => {
     await a.request.post(`/api/v1/projects/${project.id}/tasks`, { data: { title: "Scout the pier" } });
 
     // A CreatorBrain draft is clearly not sent until the creator sends it.
-    await a.goto(`/projects/${project.id}?tab=chat`);
+    await a.goto(`/rooms/${project.id}?tab=chat`);
     await a.getByRole("button", { name: "Draft with CreativeMind" }).click();
     await a.getByLabel("What should the message say?").fill("ask Jo to scout the pier this week");
     await a.getByRole("button", { name: "Write draft" }).click();
@@ -32,7 +32,7 @@ test.describe("Collaboration messaging", () => {
     // Jo is told about the unread message; reading clears it.
     const notes = JSON.stringify(await (await b.request.get("/api/v1/notifications")).json());
     expect(notes).toContain("1 new message in");
-    await b.goto(`/projects/${project.id}?tab=chat`);
+    await b.goto(`/rooms/${project.id}?tab=chat`);
     await expect(b.getByRole("list", { name: "Messages" })).toContainText("scout the pier");
     await expect.poll(async () => JSON.stringify(await (await b.request.get("/api/v1/messages/unread")).json())).not.toContain(crew.id);
 

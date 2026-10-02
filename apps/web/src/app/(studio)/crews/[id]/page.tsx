@@ -32,7 +32,7 @@ export default async function CrewPage({ params }: { params: Promise<{ id: strin
         title={copy.title}
         body={`${closed.crewName}${closed.roleTitle ? ` · ${closed.roleTitle}` : ""}. ${copy.body}`}
         action={
-          <Link href="/projects" className={buttonClasses({ variant: "secondary" })}>
+          <Link href="/rooms" className={buttonClasses({ variant: "secondary" })}>
             Back to Creative Rooms
           </Link>
         }

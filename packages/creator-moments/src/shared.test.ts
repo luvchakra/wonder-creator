@@ -16,8 +16,8 @@ describe("Moments", () => {
     expect(isLiveMomentType("material")).toBe(true);
     expect(isLiveMomentType("creation")).toBe(true);
     expect(isLiveMomentType("huddle")).toBe(false);
-    expect(momentHref({ entityType: "material", entityId: "m1" })).toBe("/space/materials/m1");
-    expect(momentHref({ entityType: "creation", entityId: "c1" })).toBe("/artifacts/c1");
+    expect(momentHref({ entityType: "material", entityId: "m1" })).toBe("/materials/m1");
+    expect(momentHref({ entityType: "creation", entityId: "c1" })).toBe("/creations/c1");
     expect(momentHref({ entityType: "huddle", entityId: "h1" })).toBeNull();
   });
 

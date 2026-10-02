@@ -11,7 +11,7 @@ test.describe("Find collaborators", () => {
     const { project } = (await (await a.request.post("/api/v1/projects", { data: { title: `Night Market ${uid()}` } })).json()) as { project: { id: string } };
     await a.request.post(`/api/v1/projects/${project.id}/crew`, { data: {} });
 
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await a.getByRole("button", { name: "More Creative Room actions" }).click();
     await a.getByRole("menuitem", { name: "Find collaborators" }).click();
     await expect(a.getByRole("heading", { name: "Find collaborators", level: 1 })).toBeVisible();

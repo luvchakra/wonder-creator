@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { expect, newCreator, test, uid } from "./fixtures";
 
 // Communities (docs/communities.md): Orkut-style communities built from Creative Rooms, Open Conversations and crews.
@@ -9,8 +10,8 @@ test.describe("Communities", () => {
     const name = `Poetry & Spoken Word ${tag}`;
 
     // Explore → Community → Communities; start one from the sheet.
-    await page.goto("/community");
-    await page.getByRole("navigation", { name: "Community" }).getByRole("link", { name: "Communities" }).click();
+    await page.goto("/pulse");
+    await page.getByRole("navigation", { name: "Pulse" }).getByRole("link", { name: "Communities" }).click();
     await expect(page).toHaveURL(/filter=communities/);
     await page.getByRole("button", { name: "Start a community" }).first().click();
     const sheet = page.getByRole("dialog", { name: "Start a community" });
@@ -30,7 +31,7 @@ test.describe("Communities", () => {
     // Someone else finds it by interest and looks before joining.
     const { page: b } = await openContext("B");
     await newCreator(b);
-    await b.goto(`/community?filter=communities&q=${encodeURIComponent(tag)}`);
+    await b.goto(`/pulse?filter=communities&q=${encodeURIComponent(tag)}`);
     await b.getByRole("link", { name }).click();
     await expect(b).toHaveURL(communityUrl);
     await b.getByRole("navigation", { name: "Community" }).getByRole("link", { name: "Creations" }).click();
@@ -45,7 +46,7 @@ test.describe("Communities", () => {
     await topicSheet.getByLabel("Topic").fill(`Reading aloud changes the line breaks ${tag}`);
     await topicSheet.getByLabel("First post").fill("When I read it out, the breaks move.");
     await topicSheet.getByRole("button", { name: "Start the topic" }).click();
-    await expect(b).toHaveURL(/\/community\/conversations\/[0-9a-f-]{36}$/);
+    await expect(b).toHaveURL(/\/pulse\/conversations\/[0-9a-f-]{36}$/);
     const topicUrl = b.url();
     await expect(b.getByRole("link", { name: `In ${name}` })).toBeVisible();
 
@@ -83,7 +84,7 @@ test.describe("Communities", () => {
     // Communities are always public: there's no way back to private.
     const back = await page.request.patch(`/api/v1/communities/${id}`, { data: { discoverable: false } });
     expect(back.status()).toBe(422);
-    await page.goto(`/projects/${id}`);
+    await page.goto(`/rooms/${id}`);
     await expect(page.getByRole("link", { name: /This room is a community/ })).toBeVisible();
   });
 
@@ -100,7 +101,7 @@ test.describe("Communities", () => {
     await expect(b.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
 
     // The owner opens it, after being told it's public for good.
-    await page.goto(`/projects/${project.id}`);
+    await page.goto(`/rooms/${project.id}`);
     await page.getByRole("button", { name: "More Creative Room actions" }).click();
     await page.getByRole("menuitem", { name: "Open as a community…" }).click();
     const confirm = page.getByRole("dialog");
@@ -115,5 +116,43 @@ test.describe("Communities", () => {
     await expect(b.getByRole("heading", { level: 1 })).toHaveText(`Coastal Voices ${tag}`);
     // The room's own details stay with its crew.
     expect((await b.request.get(`/api/v1/projects/${project.id}`)).status()).toBe(404);
+  });
+
+  test("every community has a profile picture: chosen when starting it, changed by its hosts, a monogram otherwise", async ({ page, creator, openContext }) => {
+    void creator;
+    const tag = uid();
+    const name = `Night Trains ${tag}`;
+    const png = await sharp({ create: { width: 900, height: 600, channels: 3, background: { r: 120, g: 90, b: 200 } } }).png().toBuffer();
+
+    await page.goto("/pulse?filter=communities");
+    await page.getByRole("button", { name: "Start a community" }).first().click();
+    const sheet = page.getByRole("dialog", { name: "Start a community" });
+    await sheet.getByLabel("Name").fill(name);
+    await sheet.locator("#community-picture").setInputFiles({ name: "cover.png", mimeType: "image/png", buffer: png });
+    await sheet.getByRole("button", { name: "Start the community" }).click();
+    await expect(page).toHaveURL(/\/communities\/[0-9a-f-]{36}$/);
+    const header = page.getByRole("banner").or(page.locator("header").filter({ hasText: name }));
+    const pic = page.locator("header").filter({ hasText: name }).locator("img.rounded-full");
+    await expect(pic).toHaveCount(1);
+    const first = await pic.getAttribute("src");
+    void header;
+
+    // The host changes it from the camera on the picture.
+    await page.locator("#community-avatar-file").setInputFiles({ name: "new.png", mimeType: "image/png", buffer: await sharp({ create: { width: 400, height: 400, channels: 3, background: { r: 240, g: 170, b: 140 } } }).png().toBuffer() });
+    await expect.poll(async () => page.locator("header").filter({ hasText: name }).locator("img.rounded-full").getAttribute("src")).not.toBe(first);
+
+    // Others see it in the list and on the page, without the camera.
+    const { page: b } = await openContext("B");
+    await newCreator(b);
+    await b.goto(`/pulse?filter=communities&q=${encodeURIComponent(tag)}`);
+    await expect(b.getByRole("link", { name }).locator("img.rounded-full")).toHaveCount(1);
+    await b.getByRole("link", { name }).click();
+    await expect(b.getByRole("button", { name: "Change the community's picture" })).toHaveCount(0);
+
+    // A community started without one still has a face: the painted monogram.
+    const plain = `Quiet Hours ${tag}`;
+    const { id } = (await (await page.request.post("/api/v1/communities", { data: { title: plain } })).json()) as { id: string };
+    await page.goto(`/communities/${id}`);
+    await expect(page.locator("header").filter({ hasText: plain }).getByText("Q", { exact: true })).toBeVisible();
   });
 });

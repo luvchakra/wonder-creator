@@ -212,7 +212,7 @@ function Context({ work, dark, immersive }: { work: PublicWorkView; dark: boolea
           <p className={cn("text-[13px]", muted)}>
             {work.conversation.replyCount} {work.conversation.replyCount === 1 ? "response" : "responses"}
           </p>
-          <Link href={`/community/conversations/${work.conversation.id}`} className="mt-1 inline-flex min-h-11 items-center font-medium underline-offset-2 hover:underline">
+          <Link href={`/pulse/conversations/${work.conversation.id}`} className="mt-1 inline-flex min-h-11 items-center font-medium underline-offset-2 hover:underline">
             Join the conversation
           </Link>
         </section>

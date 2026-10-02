@@ -62,7 +62,7 @@ export async function myPrivacyRequests(db: Db) {
  */
 export const EXPORT_TABLES = [
   "creators", "creator_disciplines", "creator_skills", "creator_languages", "creator_interests", "creator_voice_profiles", "creator_boundaries",
-  "creator_autonomy_policies", "creator_open_to", "creator_pages", "creator_visits", "brand_profiles", "collaboration_profiles", "collaborator_shortlist",
+  "creator_autonomy_policies", "creator_open_to", "creator_pages", "creator_visits", "creator_album_photos", "brand_profiles", "collaboration_profiles", "collaborator_shortlist",
   "consent_records", "privacy_requests",
   "creative_materials", "creative_material_tags", "storage_objects", "provenance_records", "reference_shelves", "reference_items", "material_collections",
   "material_collection_items", "intake_items", "capture_receipts",
@@ -100,6 +100,10 @@ const OTHER_OWNER_COLUMNS: Array<[string, string]> = [
   ["audit_logs", "actor_creator_id"],
   ["huddle_join_requests", "requester_creator_id"],
   ["payment_orders", "payer_creator_id"],
+  // Testimonials (docs/testimonials.md): the ones you wrote and the ones written about you (withdrawn ones stay with
+  // their writer only — RLS shows the receiver nothing withdrawn).
+  ["creator_testimonials", "from_creator_id"],
+  ["creator_testimonials", "to_creator_id"],
 ];
 
 export async function exportPersonalData(db: Db, creatorId: string): Promise<Record<string, unknown>> {

@@ -9,7 +9,7 @@ test.describe("Creative Palette", () => {
     const creation = palette.getByRole("navigation", { name: "This Creation" });
 
     // An empty Creation is still an idea: gather material first.
-    await page.goto(`/artifacts/${art.id}`);
+    await page.goto(`/creations/${art.id}`);
     await trigger.click();
     await expect(creation.getByRole("button", { name: "Bring Material" })).toBeFocused();
     await expect(creation.getByRole("button")).toHaveCount(4);
@@ -17,7 +17,7 @@ test.describe("Creative Palette", () => {
 
     // With words on the page it's in progress: continue, bring, refine, people — the rest under More….
     await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "The harbour keeps its lights.", baseVersionId: art.current_version_id, label: "Written" } });
-    await page.goto(`/artifacts/${art.id}`);
+    await page.goto(`/creations/${art.id}`);
     await trigger.click();
     await expect(creation.getByRole("button")).toHaveText([/Continue Creating/, /Bring Material/, /Refine/, /People/]);
     await palette.getByRole("button", { name: "More…" }).click();
@@ -29,7 +29,7 @@ test.describe("Creative Palette", () => {
     await palette.getByRole("button", { name: "Back" }).click();
     await palette.getByRole("button", { name: "More…" }).click();
     await palette.getByRole("button", { name: "Transform" }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${art.id}/transform$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/transform$`));
 
     // Leaving the Creation clears its actions.
     await page.goto("/huddles");
@@ -51,7 +51,7 @@ test.describe("Creative Palette", () => {
     await expect(sheet.getByRole("button", { name: /Let CreativeMind decide/ })).toBeVisible();
     await expect(palette).toHaveCount(0);
     await sheet.getByRole("button", { name: /Carousel/ }).click();
-    await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
     await expect(page.getByRole("link", { name: "Add words" })).toBeVisible();
     // The X closes the Palette, and it stays closed.
     await page.getByRole("button", { name: "Open Creative Palette" }).click();
@@ -65,7 +65,7 @@ test.describe("Creative Palette", () => {
     void creator;
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Platform ${uid()}` } })).json()).artifact as { id: string; current_version_id: string };
     await page.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "Every Sunday my father waited at Platform 3.", baseVersionId: art.current_version_id, label: "Written" } });
-    await page.goto(`/artifacts/${art.id}/studio`);
+    await page.goto(`/creations/${art.id}/studio`);
     const trigger = page.getByRole("button", { name: "Open Creative Palette" });
     const palette = page.getByRole("dialog", { name: "Creative Palette" });
     const bubble = page.locator("[data-palette-preview]");

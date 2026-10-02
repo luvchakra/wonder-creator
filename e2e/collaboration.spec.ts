@@ -12,7 +12,7 @@ test.describe("Collaborative editing", () => {
     await a.request.post(`/api/v1/artifacts/${art.id}/versions`, { data: { content: "Rain on the tin roof.", baseVersionId: art.current_version_id, label: "Written" } });
 
     // The owner adds Mo as a collaborator who can propose changes.
-    await a.goto(`/artifacts/${art.id}`);
+    await a.goto(`/creations/${art.id}`);
     await a.getByRole("button", { name: "More actions" }).click();
     await a.getByRole("menuitem", { name: "Collaborate" }).click();
     await expect(a.getByRole("heading", { name: "Collaborate", level: 1 })).toBeVisible();
@@ -28,7 +28,7 @@ test.describe("Collaborative editing", () => {
     // Mo is notified, opens the piece, and proposes a change.
     const notes = JSON.stringify(await (await b.request.get("/api/v1/notifications")).json());
     expect(notes).toContain("You were added as Co-writer");
-    await b.goto(`/artifacts/${art.id}/collaborate`);
+    await b.goto(`/creations/${art.id}/collaborate`);
     await b.getByRole("button", { name: "Propose a change" }).click();
     const write = b.getByRole("dialog", { name: "Propose a change" });
     await write.getByLabel("Text").fill("Rain on the tin roof,\nand the kettle answers.");

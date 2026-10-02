@@ -192,7 +192,7 @@ export function SendInbox({ initial }: { initial: Item[] }) {
                   <SendPreview item={i} />
                   <div className="min-w-0 flex-1">
                     {i.material ? (
-                      <Link href={`/space/materials/${i.material.id}`} className="block truncate text-[14px] font-medium text-ink hover:text-accent-ink">
+                      <Link href={`/materials/${i.material.id}`} className="block truncate text-[14px] font-medium text-ink hover:text-accent-ink">
                         {title}
                       </Link>
                     ) : (

@@ -164,7 +164,7 @@ export function QuickCapture() {
             <Check className="size-4 shrink-0 text-success" aria-hidden />
             <span className="min-w-0 flex-1">{savedLine}</span>
             {saved?.materialId ? (
-              <Link href={`/space/materials/${saved.materialId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
+              <Link href={`/materials/${saved.materialId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
                 Open
               </Link>
             ) : null}

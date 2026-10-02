@@ -1,3 +1,6 @@
+> **Renamed (owner, 2 Oct 2026):** this surface is called **Pulse** in the UI. "Community" now names the Orkut-style
+> communities (`docs/communities.md`). Routes, tables, packages and APIs keep the `community` name.
+
 # Community + Open Conversations — implementation contract
 
 Owner spec: [`phases/03-community-open-conversations.md`](phases/03-community-open-conversations.md) (Phase 03 of 5).
@@ -11,9 +14,9 @@ engagement ranking or infinite scroll.
 
 ## Where it lives
 
-* **Explore** has four doors (`components/explore-nav.tsx`): Ideas (`/search`), Materials (`/search?type=material`),
-  People (`/discover`) and **Community** (`/community`). The Palette's Explore stays one destination.
-* **Community** (`/community`) has four views:
+* **Explore** has four doors (`components/explore-nav.tsx`): Ideas (`/explore`), Materials (`/explore?type=material`),
+  People (`/people`) and **Community** (`/pulse`). The Palette's Explore stays one destination.
+* **Community** (`/pulse`) has four views:
   * **For you**: a fixed mix of conversations, a Scrapbook thought, a live Huddle, help requests, a public Creation and
     people.
   * **Conversations**: live Huddles, then conversations.

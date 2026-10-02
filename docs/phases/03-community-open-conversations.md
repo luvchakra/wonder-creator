@@ -134,11 +134,11 @@ spam/rate limiting; visibility changes; audit logging. For Critique, make it exp
 ## 19. Suggested API
 
 ```text
-GET  /community · /community/conversations · /community/help · /community/people
+GET  /pulse · /pulse/conversations · /pulse/help · /pulse/people
 POST /conversations · GET /conversations/:id · POST /conversations/:id/replies · PATCH /conversations/:id
 POST /conversations/:id/close · /conversations/:id/start-huddle · /conversations/:id/start-creative-room
 POST /reports · /creators/:id/mute · /creators/:id/block
-GET/PATCH /profile/open-to
+GET/PATCH /me/open-to
 ```
 
 ## 20. UI rules

@@ -336,7 +336,7 @@ export function VisualDirections({
                 {chosen.savedMaterialId ? (
                   <p role="status" className="text-sm text-ink-muted">
                     {savedTo === "creation" ? "Added to this Creation's references. " : "Saved to your Materials. "}
-                    <a href={`/space/materials/${chosen.savedMaterialId}`} className="font-medium text-accent-ink hover:underline">
+                    <a href={`/materials/${chosen.savedMaterialId}`} className="font-medium text-accent-ink hover:underline">
                       Open Material
                     </a>
                   </p>

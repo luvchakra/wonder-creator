@@ -51,7 +51,7 @@ test.describe("CreativeMind orchestration", () => {
       ],
       reply_count_at: 2,
     });
-    await page.goto(`/community/conversations/${id}`);
+    await page.goto(`/pulse/conversations/${id}`);
     const so = page.getByRole("region", { name: "Conversation so far" });
     await expect(so).toContainText("Most prefer a single line per slide.");
     await expect(so).not.toContainText("Summary from earlier");

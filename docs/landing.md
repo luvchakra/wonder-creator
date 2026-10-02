@@ -1,0 +1,43 @@
+# Landing page
+
+Owner brief, 2 Oct 2026: "Redesign the Wonder Creator Landing Page". What signed-out visitors see at `/` (the proxy
+rewrites to `/welcome`). Signed-in creators still get Home.
+
+## Direction
+
+A personal creative universe, not a software brochure: warm cream with paper grain, lavender and peach washes,
+Playfair Display for statements (italic for the one word that carries the feeling) and Inter for everything else. One
+dominant action, **Start Creating** (`/sign-up`), plus a quiet "Explore Wonder Creator" link. No bottom navigation.
+
+## Sections
+
+1. **Hero** — "Everything begins with a little *wonder*." A note, a photograph, a voice memo and a DejaVu thread
+   drift toward one finished Creation (a carousel).
+2. **Your world** — Ideas, Materials, Moments, DejaVu and your sources (Personal Sources), each as a small product
+   scene with one line.
+3. **The journey** — Capture → Discover → Explore → Create → Refine → Share, then CreativeStudio with CreativeMind
+   (Sources, one insight, *Use together*) and the real formats: Writing · Carousel · Images · Video · Audio ·
+   Presentation.
+4. **Together** — Pulse (the open square: Open Conversations), Communities (lasting, interest-based, a Forum), Huddles
+   (live, ephemeral). No likes, trending or ranking.
+5. **CreatorPublish** — a public Creator Page and published Creations in their own forms (poem, video, audio,
+   carousel).
+6. **Final call** — "Your next Creation is *waiting*." with Start Creating.
+7. **Footer** — Wonder Creator links; Trust: Privacy notice, Security, Terms, Data & subprocessors (the real pages);
+   copyright. There is no About or Contact page yet, so the footer doesn't invent one.
+
+## Rules
+
+* Only real features and real names. DejaVu is a thread the creator names; CreativeMind suggestions are only
+  suggestions. Sample names and lines in scenes are illustrative and never presented as testimonials or real work.
+* No certifications, compliance claims, usage numbers or testimonials. Privacy and security live in the footer.
+* Approved art only: the Vector Kit logo, washes, painted botanicals, paper texture and supplied photographs.
+* Motion: a gentle drift on the hero pieces and one rise on the headline; nothing when reduced motion is set.
+* Performance: hero art loads eagerly, everything below the fold lazily, with explicit image sizes.
+* Accessibility: scenes are decorative (`aria-hidden`); headings and lines carry the meaning; axe finds no serious
+  issues with motion on or off; no horizontal scroll at 390px.
+
+## Where it lives
+
+`apps/web/src/app/welcome/page.tsx` (page), `apps/web/src/components/landing/scenes.tsx` (product scenes), the
+`drift` keyframe in `globals.css`. E2E: `e2e/landing.spec.ts`.

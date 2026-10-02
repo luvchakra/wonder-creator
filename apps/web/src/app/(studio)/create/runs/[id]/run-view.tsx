@@ -99,10 +99,10 @@ export function RunView({ initial, providerLive }: { initial: RunProgress; provi
       <div className="mt-6 flex flex-wrap gap-2">
         {p.artifact ? (
           <>
-            <Link href={`/artifacts/${p.artifact.id}/studio`} className={buttonClasses({})}>
+            <Link href={`/creations/${p.artifact.id}/studio`} className={buttonClasses({})}>
               Open “{p.artifact.title}” in the Creative Studio
             </Link>
-            <Link href={`/artifacts/${p.artifact.id}`} className={buttonClasses({ variant: "secondary" })}>
+            <Link href={`/creations/${p.artifact.id}`} className={buttonClasses({ variant: "secondary" })}>
               View <ArrowUpRight className="size-4" aria-hidden />
             </Link>
           </>

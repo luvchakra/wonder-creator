@@ -18,23 +18,23 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
       <KitArt art={KIT.painted.leafSprigSage} sizes="6rem" className="pointer-events-none absolute -right-3 -top-4 -z-10 h-24 w-auto rotate-12 opacity-50" />
       <div className="flex items-baseline justify-between gap-3 pr-10">
         <h2 id="community-title" className="font-display text-[19px] leading-tight text-ink">
-          From the community
+          From Pulse
         </h2>
-        <Link href="/community" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
+        <Link href="/pulse" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
           Explore <ChevronRight className="size-3.5" aria-hidden />
         </Link>
       </div>
       {/* This week, in words — no numbers. */}
       {g.week ? (
         <p className="mt-1 pr-6 font-display text-[14px] italic leading-snug text-ink-muted">
-          <span className="sr-only">This week in the community: </span>
+          <span className="sr-only">This week in Pulse: </span>
           {g.week}
         </p>
       ) : null}
 
       <div className="mt-2.5 space-y-3">
         {g.catchUp ? (
-          <Link href={g.catchUp.conversations === 1 ? `/community/conversations/${g.catchUp.firstId}` : "/community?filter=conversations"} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white/75 px-3 py-2 hover:bg-white">
+          <Link href={g.catchUp.conversations === 1 ? `/pulse/conversations/${g.catchUp.firstId}` : "/pulse?filter=conversations"} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white/75 px-3 py-2 hover:bg-white">
             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
               <MessagesSquare className="size-4" aria-hidden />
             </span>
@@ -69,12 +69,12 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
         {g.creations.length ? (
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">New work</h3>
-            <ul aria-label="New work from the community" className="-mx-3 mt-1.5 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
+            <ul aria-label="New work from Pulse" className="-mx-3 mt-1.5 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
               {g.creations.map((c, i) => {
                 const cover = g.covers[c.id];
                 return (
                   <li key={c.id} className="w-[8.75rem] shrink-0 snap-start">
-                    <Link href={`/artifacts/${c.id}`} className="group block">
+                    <Link href={`/creations/${c.id}`} className="group block">
                       <span className="relative block aspect-[4/5] overflow-hidden rounded-xl bg-surface-muted shadow-[0_8px_20px_-14px_rgb(60_40_80/0.6)]">
                         {cover ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -122,7 +122,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
               </Link>
             ) : null}
             {g.ask ? (
-              <Link href={`/community/conversations/${g.ask.conversation.id}`} className="block rounded-2xl border border-border-soft bg-white/80 p-3 hover:bg-white">
+              <Link href={`/pulse/conversations/${g.ask.conversation.id}`} className="block rounded-2xl border border-border-soft bg-white/80 p-3 hover:bg-white">
                 <span className="flex items-center gap-1.5 text-[12px] text-ink-muted">
                   <Avatar name={g.ask.author.name} src={avatars[g.ask.author.id]} size={20} />
                   <span className="truncate">{helpHeadline(g.ask.conversation.intent, g.ask.author.name)}</span>
@@ -139,7 +139,7 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
         ) : null}
 
         {g.person ? (
-          <Link href={g.person.person.handle ? `/creators/${g.person.person.handle}` : "/discover"} className="flex min-h-14 items-center gap-3 rounded-2xl bg-white/70 px-3 py-2 hover:bg-white">
+          <Link href={g.person.person.handle ? `/creators/${g.person.person.handle}` : "/people"} className="flex min-h-14 items-center gap-3 rounded-2xl bg-white/70 px-3 py-2 hover:bg-white">
             <Avatar name={g.person.person.name} src={avatars[g.person.person.id]} size={40} />
             <span className="min-w-0 flex-1">
               <span className="block text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">Someone to meet</span>
@@ -167,7 +167,7 @@ export function RoomsGlance({ items, avatars }: { items: RoomItem[]; avatars: Re
       <ul className="mt-1.5 divide-y divide-border-soft">
         {items.map((i) => (
           <li key={`${i.projectId}:${i.itemId}`}>
-            <Link href={`/projects/${i.projectId}/shared/${i.itemId}`} className="flex min-h-12 items-center gap-3 py-2 hover:underline">
+            <Link href={`/rooms/${i.projectId}/shared/${i.itemId}`} className="flex min-h-12 items-center gap-3 py-2 hover:underline">
               <span className="relative shrink-0">
                 <Avatar name={i.by.name} src={avatars[i.by.id]} size={32} />
                 <span className="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-border-soft">

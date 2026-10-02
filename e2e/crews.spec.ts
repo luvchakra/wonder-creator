@@ -10,7 +10,7 @@ test.describe("CreatorCrew", () => {
     const { project } = (await res.json()) as { project: { id: string } };
 
     // Project > Crew: start it, then invite Bea with a role that isn't a film role.
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await a.getByRole("region", { name: "Crew" }).getByRole("button", { name: "Start a crew" }).click();
     const start = a.getByRole("dialog", { name: "Start a crew" });
     await expect(start.getByLabel("Crew name")).toHaveValue(title);
@@ -32,7 +32,7 @@ test.describe("CreatorCrew", () => {
     await expect(a.getByRole("region", { name: "Invited" })).toContainText("Harmonies & field recordings");
 
     // Bea sees the invitation (notifications and Projects), with the project, role and note, and joins.
-    await b.goto("/projects");
+    await b.goto("/rooms");
     await b.getByRole("link", { name: /invited you to join/ }).click();
     await expect(b).toHaveURL(new RegExp(`${crewUrl}$`));
     const card = b.getByRole("region", { name: "Your invitation" });
@@ -44,7 +44,7 @@ test.describe("CreatorCrew", () => {
     await expect(b.getByText("Active", { exact: true })).toBeVisible();
 
     // Bea reads the project but can't change it.
-    await b.goto(`/projects/${project.id}`);
+    await b.goto(`/rooms/${project.id}`);
     await expect(b.getByRole("heading", { name: title, level: 1 })).toBeVisible();
     await expect(b.getByText(/You’re in the crew/)).toBeVisible();
     await expect(b.getByRole("link", { name: "Create in this Creative Room" })).toHaveCount(0);
@@ -75,7 +75,7 @@ test.describe("CreatorCrew", () => {
     await expect(confirm).toContainText("stays credited");
     await confirm.getByRole("button", { name: "Remove" }).click();
     await expect(a.getByRole("region", { name: "Former members" })).toContainText(bea.name);
-    await b.goto(`/projects/${project.id}`);
+    await b.goto(`/rooms/${project.id}`);
     await expect(b.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
   });
 });
@@ -134,7 +134,7 @@ test.describe("Crew invitations", () => {
     const decline = b.getByRole("dialog", { name: /^Decline / });
     await decline.getByLabel("Reason (optional)").fill("Booked that month, sorry!");
     await decline.getByRole("button", { name: "Decline" }).click();
-    await b.waitForURL(/\/projects$/);
+    await b.waitForURL(/\/rooms$/);
     await b.goto(`/crews/${crew.id}`);
     await expect(b.getByRole("heading", { name: "You declined this invitation" })).toBeVisible();
 

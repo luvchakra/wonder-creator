@@ -396,7 +396,7 @@ export function Talk({
           {artifactCtx || attached.length || (collectionCtx && !conversationId) || projectCtx ? (
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
               {projectCtx && conversationId ? (
-                <Link href={`/projects/${projectCtx.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-accent-ink hover:underline">
+                <Link href={`/rooms/${projectCtx.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-accent-ink hover:underline">
                   Creative Room: {projectCtx.title}
                 </Link>
               ) : projectCtx ? (
@@ -497,7 +497,7 @@ function MessageView({
               {m.materialIds.slice(0, 6).map((id) =>
                 materials[id] ? (
                   <li key={id} className="size-16 overflow-hidden rounded-xl border border-border-soft sm:size-20">
-                    <Link href={`/space/materials/${id}`} aria-label={materials[id].title ?? "Material"}>
+                    <Link href={`/materials/${id}`} aria-label={materials[id].title ?? "Material"}>
                       <MaterialVisual m={materials[id]} />
                     </Link>
                   </li>
@@ -571,10 +571,10 @@ function MessageView({
                 <p className="font-display text-xl text-ink">{(p.title as string) ?? "Updated Creation"}</p>
               </div>
               <div className="flex gap-2">
-                <Link href={`/artifacts/${p.artifactId}/studio`} className={buttonClasses({ size: "sm" })}>
+                <Link href={`/creations/${p.artifactId}/studio`} className={buttonClasses({ size: "sm" })}>
                   Open in Creative Studio
                 </Link>
-                <Link href={`/artifacts/${p.artifactId}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
+                <Link href={`/creations/${p.artifactId}`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
                   View <ArrowUpRight className="size-4" aria-hidden />
                 </Link>
               </div>
@@ -683,7 +683,7 @@ function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (
             <>
               Done.{" "}
               {result?.artifact?.id || result?.artifactId ? (
-                <Link className="font-medium text-accent-ink hover:underline" href={`/artifacts/${result.artifact?.id ?? result.artifactId}`}>
+                <Link className="font-medium text-accent-ink hover:underline" href={`/creations/${result.artifact?.id ?? result.artifactId}`}>
                   Open it
                 </Link>
               ) : null}
@@ -707,7 +707,7 @@ function ProposalCard({ p, onDecide }: { p: Record<string, unknown>; onDecide: (
             Approve once
           </Button>
           {typeof p.artifactId === "string" ? (
-            <Link href={`/artifacts/${p.artifactId}/studio`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
+            <Link href={`/creations/${p.artifactId}/studio`} className={buttonClasses({ size: "sm", variant: "secondary" })}>
               Change
             </Link>
           ) : (

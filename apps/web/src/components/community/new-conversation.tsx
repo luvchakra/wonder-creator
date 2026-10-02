@@ -48,7 +48,7 @@ function Body() {
           inviteHandles: visibility === "limited" ? handles.split(/[\s,]+/).map((h) => h.replace(/^@/, "").trim()).filter(Boolean) : undefined,
         },
       });
-      router.push(`/community/conversations/${r.conversation.id}`);
+      router.push(`/pulse/conversations/${r.conversation.id}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);

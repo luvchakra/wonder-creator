@@ -33,7 +33,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
         setEditOpen(false);
         router.replace(`/approvals/${res.approval.id}`);
       } else if ("kind" in res) {
-        router.push(`/artifacts/${res.kind === "version" ? res.artifactId : res.artifact.id}`);
+        router.push(`/creations/${res.kind === "version" ? res.artifactId : res.artifact.id}`);
       } else {
         setDeclineOpen(false);
         router.refresh();
@@ -76,7 +76,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
         <Row term="What changes">{a.impact}</Row>
         {a.target.title ? (
           <Row term={a.target.kind === "artifact" ? "Creation" : "Conversation"}>
-            <Link href={a.target.kind === "artifact" ? `/artifacts/${a.target.id}` : `/create?c=${a.target.id}`} className="text-accent-ink hover:underline">
+            <Link href={a.target.kind === "artifact" ? `/creations/${a.target.id}` : `/create?c=${a.target.id}`} className="text-accent-ink hover:underline">
               {a.target.title}
             </Link>
           </Row>

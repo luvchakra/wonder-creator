@@ -13,7 +13,7 @@ test.describe("Projects", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Your account" }).click();
     await page.getByRole("menuitem", { name: "Creative Rooms" }).click();
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/rooms$/);
     await expect(page.getByRole("heading", { name: "No Creative Rooms yet" })).toBeVisible();
     await page.getByRole("button", { name: "New Creative Room" }).first().click();
     const create = page.getByRole("dialog", { name: "New Creative Room" });
@@ -21,7 +21,7 @@ test.describe("Projects", () => {
     await create.getByLabel("Brief").fill("A short film about memory and the passing of time.");
     await create.getByLabel("Already underway").check();
     await create.getByRole("button", { name: "Create Creative Room" }).click();
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
     const projectId = page.url().split("/").pop()!;
     await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
     await expect(page.getByLabel("Status")).toHaveValue("active");
@@ -53,7 +53,7 @@ test.describe("Projects", () => {
     await expect(page.getByText(`In Creative Room: ${title}`)).toBeVisible();
     const turn = await page.request.post("/api/v1/conversations/turn", { data: { message: "Write a poem about the monsoon on the balcony.", projectId } });
     expect(turn.ok()).toBeTruthy();
-    await page.goto(`/projects/${projectId}`);
+    await page.goto(`/rooms/${projectId}`);
     await expect(page.getByRole("region", { name: "Conversations" }).getByRole("listitem")).toHaveCount(1);
     await expect(page.getByRole("region", { name: "Creations" }).getByRole("listitem")).toHaveCount(1);
 
@@ -68,9 +68,9 @@ test.describe("Projects", () => {
     const confirm = page.getByRole("dialog", { name: "Delete this Creative Room?" });
     await expect(confirm).toContainText("are not deleted");
     await confirm.getByRole("button", { name: "Delete Creative Room" }).click();
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/rooms$/);
     await expect(page.getByText(title)).toHaveCount(0);
-    await page.goto(`/space/materials/${noteId}`);
+    await page.goto(`/materials/${noteId}`);
     await expect(page.getByText(note).first()).toBeVisible();
   });
 
@@ -79,7 +79,7 @@ test.describe("Projects", () => {
     const { project } = (await res.json()) as { project: { id: string } };
     const { page: other } = await openContext("Other");
     await newCreator(other, { name: `Other ${uid()}` });
-    await other.goto(`/projects/${project.id}`);
+    await other.goto(`/rooms/${project.id}`);
     await expect(other.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
     const api = await other.request.get(`/api/v1/projects/${project.id}`);
     expect(api.status()).toBe(404);

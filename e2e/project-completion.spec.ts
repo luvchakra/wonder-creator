@@ -23,7 +23,7 @@ test.describe("Project completion", () => {
     });
 
     // With a crew, the status menu can't complete or archive; the checklist does.
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await expect(a.getByLabel("Status").locator("option", { hasText: "Completed" })).toHaveCount(0);
     await a.getByRole("button", { name: "More Creative Room actions" }).click();
     await a.getByRole("menuitem", { name: /Complete, archive or dissolve crew/ }).click();
@@ -53,7 +53,7 @@ test.describe("Project completion", () => {
     await expect(a.getByRole("region", { name: "Completion history" })).toContainText("crew dissolved");
 
     // Ro still sees the project, its tasks and the crew, now completed.
-    await b.goto(`/projects/${project.id}?tab=tasks`);
+    await b.goto(`/rooms/${project.id}?tab=tasks`);
     await expect(b.getByText("Send thank-you notes")).toBeVisible();
     await b.goto(`/crews/${crew.id}`);
     await expect(b.getByText("Completed").first()).toBeVisible();

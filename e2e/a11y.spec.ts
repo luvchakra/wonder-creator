@@ -24,30 +24,30 @@ test.describe("accessibility", () => {
     test.setTimeout(180_000);
     const res = await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Accessible tide ${uid()}` } });
     const art = (await res.json()).artifact as { id: string };
-    const material = `/space/materials/${await saveNote(page, `A note ${uid()}`)}`;
-    const project = `/projects/${((await (await page.request.post("/api/v1/projects", { data: { title: `Accessible project ${uid()}`, brief: "Tides." } })).json()) as { project: { id: string } }).project.id}`;
-    const crew = `/crews/${((await (await page.request.post(`/api/v1${project}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
+    const material = `/materials/${await saveNote(page, `A note ${uid()}`)}`;
+    const project = `/rooms/${((await (await page.request.post("/api/v1/projects", { data: { title: `Accessible project ${uid()}`, brief: "Tides." } })).json()) as { project: { id: string } }).project.id}`;
+    const crew = `/crews/${((await (await page.request.post(`/api/v1/projects/${project.split("/").pop()}/crew`, { data: {} })).json()) as { crew: { id: string } }).crew.id}`;
     const routes = [
       "/",
       "/create",
-      "/space",
+      "/materials",
       material,
-      `/artifacts/${art.id}`,
-      `/artifacts/${art.id}/studio`,
-      `/artifacts/${art.id}/context`,
-      `/artifacts/${art.id}/context?tab=related`,
-      `/artifacts/${art.id}/transform`,
-      `/artifacts/${art.id}/compare`,
+      `/creations/${art.id}`,
+      `/creations/${art.id}/studio`,
+      `/creations/${art.id}/context`,
+      `/creations/${art.id}/context?tab=related`,
+      `/creations/${art.id}/transform`,
+      `/creations/${art.id}/compare`,
       "/settings?section=collaboration",
       "/settings?section=brand",
-      `/artifacts/${art.id}/share`,
-      `/artifacts/${art.id}/publish`,
-      `/artifacts/${art.id}/derivatives`,
-      `/artifacts/${art.id}/collaborate`,
+      `/creations/${art.id}/share`,
+      `/creations/${art.id}/publish`,
+      `/creations/${art.id}/derivatives`,
+      `/creations/${art.id}/collaborate`,
       "/approvals",
       "/huddles",
       "/scrapbook",
-      "/projects",
+      "/rooms",
       project,
       `${project}?tab=work`,
       `${project}?tab=chat`,
@@ -55,9 +55,9 @@ test.describe("accessibility", () => {
       `${project}?tab=contributions`,
       `${project}?tab=rights`,
       `${project}/complete`,
-      `/discover?project=${project.split("/").pop()}&terms=writing`,
+      `/people?project=${project.split("/").pop()}&terms=writing`,
       crew,
-      "/search?q=tide",
+      "/explore?q=tide",
       "/messages",
       "/publishing",
       "/settings",

@@ -36,12 +36,12 @@ test.describe("Profile views", () => {
     await expect(page.getByRole("list", { name: "Moments" }).getByRole("article")).toContainText(["Quote"]);
 
     // Community: what they've asked for.
-    await page.getByRole("navigation", { name: "Profile views" }).getByRole("link", { name: "Community" }).click();
+    await page.getByRole("navigation", { name: "Profile views" }).getByRole("link", { name: "Pulse" }).click();
     const help = page.getByRole("link", { name: `Open Seeking feedback on a short film ${tag}` });
     await expect(help).toBeVisible();
     await expect(page.getByText("Help request")).toBeVisible();
     await help.click();
-    await expect(page).toHaveURL(new RegExp(`/community/conversations/${ask}$`));
+    await expect(page).toHaveURL(new RegExp(`/pulse/conversations/${ask}$`));
 
     // Someone else sees only what's public: drafts stay private, the public moment and request show.
     const { page: other } = await openContext("other");

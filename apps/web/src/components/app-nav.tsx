@@ -1,15 +1,16 @@
 "use client";
 import { Avatar, ContextStrip, Logo, cn, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
-import { Brain, FolderKanban, LogOut, Megaphone, Wallet, MessageCircle, NotebookPen, Send, Settings, UserRound } from "lucide-react";
+import { Brain, FolderKanban, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useContextStrip } from "./creative-palette";
+import { MessagesButton } from "./messages-button";
 import { NotificationsButton } from "./notifications";
 import { NavSearch } from "./nav-search";
 
 /**
- * The top bar (UI redesign §6): logo, the Context Strip, search, notifications and your account — nothing else. There is no module tab
+ * The top bar (UI redesign §6): logo, the Context Strip, search, messages, notifications and your account — nothing else. There is no module tab
  * bar and no bottom navigation: destinations and actions live in the corner Creative Palette.
  */
 export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
@@ -37,6 +38,7 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
           <div className={cn("flex shrink-0 items-center gap-1.5", searchOpen && "min-w-0 flex-1 justify-end lg:flex-none")}>
             <NavSearch open={searchOpen} onOpenChange={setSearchOpen} />
             <span className={cn("contents", searchOpen && "hidden sm:contents")}>
+              <MessagesButton />
               <NotificationsButton />
               <Menu>
                 <MenuTrigger className="rounded-full focus-visible:outline-2" aria-label="Your account">
@@ -47,10 +49,10 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                     <p className="truncate font-medium text-ink">{me.name}</p>
                     {me.handle ? <p className="text-sm text-ink-subtle">@{me.handle}</p> : null}
                   </div>
-                  <MenuItem onSelect={() => router.push("/profile")}>
+                  <MenuItem onSelect={() => router.push("/me")}>
                     <UserRound className="size-4" aria-hidden /> Profile
                   </MenuItem>
-                  <MenuItem onSelect={() => router.push("/projects")}>
+                  <MenuItem onSelect={() => router.push("/rooms")}>
                     <FolderKanban className="size-4" aria-hidden /> Creative Rooms
                   </MenuItem>
                   <MenuItem onSelect={() => router.push("/campaigns")}>
@@ -61,9 +63,6 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                 </MenuItem>
                 <MenuItem onSelect={() => router.push("/publishing")}>
                     <Send className="size-4" aria-hidden /> Publishing
-                  </MenuItem>
-                  <MenuItem onSelect={() => router.push("/messages")}>
-                    <MessageCircle className="size-4" aria-hidden /> Messages
                   </MenuItem>
                   <MenuItem onSelect={() => router.push("/scrapbook")}>
                     <NotebookPen className="size-4" aria-hidden /> Scrapbook

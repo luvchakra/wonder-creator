@@ -247,7 +247,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       kind: "comment",
       candidate: (c.artifact_id === pick?.id ? "active_work_change" : "collaborator_response") as HomeCandidateKind,
       title: `${(c.creators as { display_name: string } | null)?.display_name ?? "Someone"} commented on “${titleOf.get(c.artifact_id) ?? "your Creation"}”`,
-      href: `/artifacts/${c.artifact_id}?tab=about#comments`,
+      href: `/creations/${c.artifact_id}?tab=about#comments`,
       at: c.created_at,
     })),
     ...(visuals ?? []).map((g) => ({
@@ -255,7 +255,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       kind: "visuals_ready",
       candidate: "completed_output" as const,
       title: `Visuals for “${(g.artifacts as { title: string } | null)?.title ?? "your Creation"}” are ready`,
-      href: `/artifacts/${g.artifact_id}`,
+      href: `/creations/${g.artifact_id}`,
       at: g.completed_at!,
     })),
     ...(failedPubs ?? []).map((p) => ({ id: `publish:${p.id}`, kind: "publish_failed", candidate: "requires_decision" as const, title: `Publishing “${p.title}” to ${p.destination_name} failed`, href: "/publishing", at: p.updated_at })),
@@ -305,7 +305,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       id: `community:${h.id}`,
       kind: "community_help",
       title: `${helpHeadline(h.headlineIntent, h.name)}: ${h.title}`,
-      href: `/community/conversations/${h.id}`,
+      href: `/pulse/conversations/${h.id}`,
       at: new Date(now).toISOString(),
       actor: { id: h.authorId, name: h.name },
       reason: h.reason,
@@ -570,7 +570,7 @@ async function somethingToStart(db: Db, now: number): Promise<HomeStart | null> 
   for (const l of links ?? []) count.set(l.dejavu_id, { n: (count.get(l.dejavu_id)?.n ?? 0) + 1, name: (l.dejavus as unknown as { name: string }).name });
   const shared = [...count.entries()].filter(([, v]) => v.n >= 2).sort((a, b) => b[1].n - a[1].n)[0];
   if (shared) return { text: `${shared[1].n} recent Materials share “${shared[1].name}”.`, href: `/dejavu/${shared[0]}` };
-  if (ids.length >= 3) return { text: `${ids.length} recent Materials are waiting for a first Creation.`, href: "/space?tab=ideas" };
+  if (ids.length >= 3) return { text: `${ids.length} recent Materials are waiting for a first Creation.`, href: "/materials?tab=ideas" };
   return null;
 }
 

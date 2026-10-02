@@ -246,8 +246,8 @@ export async function listAudit(db: Db, raw: unknown): Promise<{ entries: AuditE
   const matTitle = new Map((mats.data ?? []).map((x) => [x.id, x.title]));
   const entries = page.map(({ ref, ...e }) => {
     let entity: AuditEntry["entity"] = null;
-    if (ref?.kind === "artifact") entity = artTitle.has(ref.id) ? { label: `Creation: ${artTitle.get(ref.id)}`, href: `/artifacts/${ref.id}` } : { label: "A Creation that's no longer here", href: null };
-    if (ref?.kind === "material") entity = matTitle.has(ref.id) ? { label: `Material: ${matTitle.get(ref.id) || "Untitled"}`, href: `/space/materials/${ref.id}` } : { label: "Material that's no longer here", href: null };
+    if (ref?.kind === "artifact") entity = artTitle.has(ref.id) ? { label: `Creation: ${artTitle.get(ref.id)}`, href: `/creations/${ref.id}` } : { label: "A Creation that's no longer here", href: null };
+    if (ref?.kind === "material") entity = matTitle.has(ref.id) ? { label: `Material: ${matTitle.get(ref.id) || "Untitled"}`, href: `/materials/${ref.id}` } : { label: "Material that's no longer here", href: null };
     if (ref?.kind === "approval") entity = { label: "The request", href: `/approvals/${ref.id}` };
     return { ...e, entity };
   });

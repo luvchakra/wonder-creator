@@ -16,10 +16,10 @@ test.describe("Crew workspace", () => {
     const note = `Shot list: sunrise at the fort ${uid()}`;
     const noteId = await saveNote(a, note);
     expect((await a.request.post(`/api/v1/projects/${project.id}/items`, { data: { kind: "material", ids: [noteId] } })).ok()).toBeTruthy();
-    await b.goto(`/projects/${project.id}?tab=work`);
+    await b.goto(`/rooms/${project.id}?tab=work`);
     await expect(b.getByRole("region", { name: "Shared by the crew" })).not.toContainText(note);
 
-    await a.goto(`/projects/${project.id}?tab=work`);
+    await a.goto(`/rooms/${project.id}?tab=work`);
     await expect(a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Work" })).toHaveAttribute("aria-current", "page");
     const material = a.getByRole("region", { name: "Material & references" });
     await material.getByRole("button", { name: `Options for ${note}` }).click();
@@ -37,7 +37,7 @@ test.describe("Crew workspace", () => {
     // Ren shares their own note back.
     const renNote = `Contact sheet notes ${uid()}`;
     await saveNote(b, renNote);
-    await b.goto(`/projects/${project.id}?tab=work`);
+    await b.goto(`/rooms/${project.id}?tab=work`);
     await b.getByRole("button", { name: "Share your work" }).click();
     const share = b.getByRole("dialog", { name: "Share with the crew" });
     await share.getByRole("radio", { name: "Material" }).click();
@@ -48,13 +48,13 @@ test.describe("Crew workspace", () => {
     await expect(a.getByRole("region", { name: "Shared by the crew" })).toContainText(`Shared by ${ren.name}`);
 
     // Crew chat, pointing at shared work.
-    await b.goto(`/projects/${project.id}?tab=chat`);
+    await b.goto(`/rooms/${project.id}?tab=chat`);
     await b.getByLabel("Message the crew").fill("Sunrise at the fort works for me.");
     await b.getByLabel("Point to", { exact: true }).selectOption({ label: `Shared: ${note}` });
     await b.getByRole("button", { name: "Send" }).click();
     const messages = b.getByRole("list", { name: "Messages" });
     await expect(messages).toContainText("Sunrise at the fort works for me.");
-    await a.goto(`/projects/${project.id}?tab=chat`);
+    await a.goto(`/rooms/${project.id}?tab=chat`);
     await expect(a.getByRole("list", { name: "Messages" })).toContainText("Sunrise at the fort works for me.");
     await expect(a.getByRole("list", { name: "Messages" }).getByRole("link", { name: note })).toBeVisible();
     await a.getByRole("button", { name: "Message options" }).click();
@@ -62,7 +62,7 @@ test.describe("Crew workspace", () => {
     await expect(a.getByText("No messages yet. Say hello to the crew.")).toBeVisible();
 
     // The owner stops sharing: Ren can't open it any more.
-    await a.goto(`/projects/${project.id}?tab=work`);
+    await a.goto(`/rooms/${project.id}?tab=work`);
     await a.getByRole("region", { name: "Material & references" }).getByRole("button", { name: `Options for ${note}` }).click();
     await a.getByRole("menuitem", { name: "Stop sharing with crew" }).click();
     await expect(a.getByText(`“${note}” is no longer shared with the crew.`).first()).toBeVisible();

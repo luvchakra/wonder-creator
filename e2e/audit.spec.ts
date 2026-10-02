@@ -22,7 +22,7 @@ test.describe("Security & activity", () => {
     await expect(link).toContainText("Creation: Harbour notes");
     await link.getByText("Made a private link").click();
     await expect(link.getByText("Downloads allowed")).toBeVisible();
-    await expect(link.getByRole("link", { name: "Open Creation" })).toHaveAttribute("href", `/artifacts/${id}`);
+    await expect(link.getByRole("link", { name: "Open Creation" })).toHaveAttribute("href", `/creations/${id}`);
 
     // Filters live in a sheet.
     await page.getByRole("button", { name: /^Filter/ }).click();

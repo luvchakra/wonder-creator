@@ -48,7 +48,7 @@ export function DejaVuView({
     setError(null);
     try {
       const r = await api<{ artifactId: string }>(`/api/v1/dejavus/${dejavu.id}/explore`, { method: "POST", json: { fresh } });
-      router.push(`/artifacts/${r.artifactId}/studio`);
+      router.push(`/creations/${r.artifactId}/studio`);
     } catch (e) {
       setError(errorMessage(e));
       setExploring(null);
@@ -241,7 +241,7 @@ export function DejaVuView({
           title="Nothing carries this DejaVu yet"
           body="Add it from any Material or Creation with + DejaVu."
           action={
-            <Link href="/space?tab=ideas" className={buttonClasses({ size: "md" })}>
+            <Link href="/materials?tab=ideas" className={buttonClasses({ size: "md" })}>
               Open Materials
             </Link>
           }

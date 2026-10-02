@@ -19,7 +19,7 @@ test.describe("Crew tasks & milestones", () => {
     await b.request.post(`/api/v1/crews/${crew.id}/respond`, { data: { accept: true } });
 
     // Project > Tasks: a milestone, then a task assigned to Sol that needs approval.
-    await a.goto(`/projects/${project.id}`);
+    await a.goto(`/rooms/${project.id}`);
     await a.getByRole("navigation", { name: "Creative Room sections" }).getByRole("link", { name: "Tasks" }).click();
     await expect(a.getByText("No tasks yet.")).toBeVisible();
     await a.getByRole("region", { name: "Milestones" }).getByRole("button", { name: "Add" }).click();
@@ -42,7 +42,7 @@ test.describe("Crew tasks & milestones", () => {
     await expect(todo).toContainText("Needs approval");
 
     // Sol moves it along with the accessible menu; done needs approval.
-    await b.goto(`/projects/${project.id}?tab=tasks`);
+    await b.goto(`/rooms/${project.id}?tab=tasks`);
     await b.getByRole("button", { name: "Options for Record guide vocals" }).click();
     await b.getByRole("menuitem", { name: "Move to In progress" }).click();
     await expect(b.getByRole("region", { name: "In progress" })).toContainText("Record guide vocals");

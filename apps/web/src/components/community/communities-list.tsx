@@ -2,10 +2,10 @@ import type { CommunityListItem } from "@wonder/creator-community";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
-import { CommunityArt } from "./community-art";
+import { CommunityAvatar } from "./community-art";
 
 /** A short list of communities: picture, name, what it's about, and when it last moved. No rank, no likes, no member counts. */
-export function CommunitiesList({ title, items, covers }: { title: string; items: CommunityListItem[]; covers: Record<string, string> }) {
+export function CommunitiesList({ title, items, pictures }: { title: string; items: CommunityListItem[]; pictures: Record<string, string> }) {
   const id = `communities-${title.toLowerCase().replace(/[^a-z]+/g, "-")}`;
   return (
     <section aria-labelledby={id} className="space-y-1.5">
@@ -16,7 +16,7 @@ export function CommunitiesList({ title, items, covers }: { title: string; items
         {items.map((c) => (
           <li key={c.id}>
             <Link href={`/communities/${c.id}`} className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-black/[0.02]">
-              <CommunityArt id={c.id} coverUrl={c.coverMaterialId ? covers[c.coverMaterialId] : null} className="size-12 shrink-0 rounded-xl" />
+              <CommunityAvatar id={c.id} title={c.title} src={c.avatarObjectId ? pictures[c.avatarObjectId] : null} size={48} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-[16.5px] leading-snug text-ink">{c.title}</span>
                 {c.brief ? <span className="block truncate text-[13px] text-ink-muted">{c.brief}</span> : null}

@@ -141,12 +141,12 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   for (const r of licenseAsks.data ?? []) {
     const who = (r.creators as { display_name: string } | null)?.display_name || "A creator";
     const title = (r.artifacts as { title: string } | null)?.title ?? "your Creation";
-    out.push({ id: `license-ask:${r.id}`, kind: "license_request", title: `${who} asked to license “${title}”`, detail: "Review the proposed use and terms", href: `/artifacts/${r.artifact_id}?tab=rights`, at: r.created_at, actor: { id: r.requester_creator_id, name: who } });
+    out.push({ id: `license-ask:${r.id}`, kind: "license_request", title: `${who} asked to license “${title}”`, detail: "Review the proposed use and terms", href: `/creations/${r.artifact_id}?tab=rights`, at: r.created_at, actor: { id: r.requester_creator_id, name: who } });
   }
   for (const r of licenseAnswers.data ?? []) {
     const title = (r.artifacts as { title: string } | null)?.title ?? "a Creation";
     const verb = r.status === "approved" ? "approved" : r.status === "declined" ? "declined" : "sent a counter-offer for";
-    out.push({ id: `license-answer:${r.id}`, kind: "license_response", title: `The creator ${verb} your license request for “${title}”`, detail: null, href: `/artifacts/${r.artifact_id}`, at: r.responded_at ?? new Date().toISOString() });
+    out.push({ id: `license-answer:${r.id}`, kind: "license_response", title: `The creator ${verb} your license request for “${title}”`, detail: null, href: `/creations/${r.artifact_id}`, at: r.responded_at ?? new Date().toISOString() });
   }
   // Direct shares from the last week (they stay under Shared with you for as long as they're live).
   for (const r of (shared.data ?? []).filter((x) => x.shared_at >= since).slice(0, 10)) {
@@ -154,31 +154,31 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   for (const p of toReview.data ?? []) {
     const who = (p.creators as { display_name: string } | null)?.display_name || "A collaborator";
-    out.push({ id: `proposal-review:${p.id}`, kind: "proposal_review", title: `${who} proposed a change to “${(p.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: p.summary, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.created_at, actor: { id: p.creator_id, name: who } });
+    out.push({ id: `proposal-review:${p.id}`, kind: "proposal_review", title: `${who} proposed a change to “${(p.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: p.summary, href: `/creations/${p.artifact_id}/collaborate`, at: p.created_at, actor: { id: p.creator_id, name: who } });
   }
   for (const p of decided.data ?? []) {
-    out.push({ id: `proposal-decided:${p.id}`, kind: "proposal_decided", title: `Your change to “${(p.artifacts as { title: string } | null)?.title ?? "a Creation"}” was ${p.status}`, detail: null, href: `/artifacts/${p.artifact_id}/collaborate`, at: p.decided_at ?? new Date().toISOString() });
+    out.push({ id: `proposal-decided:${p.id}`, kind: "proposal_decided", title: `Your change to “${(p.artifacts as { title: string } | null)?.title ?? "a Creation"}” was ${p.status}`, detail: null, href: `/creations/${p.artifact_id}/collaborate`, at: p.decided_at ?? new Date().toISOString() });
   }
   for (const c of addedAs.data ?? []) {
-    out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a Creation"}”`, detail: null, href: `/artifacts/${c.artifact_id}/collaborate`, at: c.created_at });
+    out.push({ id: `collab:${c.artifact_id}`, kind: "collaborator_added", title: `You were added as ${c.role} on “${(c.artifacts as { title: string } | null)?.title ?? "a Creation"}”`, detail: null, href: `/creations/${c.artifact_id}/collaborate`, at: c.created_at });
   }
   for (const u of unread) {
     const n = `${u.unread} new ${u.unread === 1 ? "message" : "messages"}`;
     out.push(
       u.kind === "crew"
-        ? { id: `crew-chat:${u.id}`, kind: "message", title: `${n} in ${u.title}`, detail: u.latestAuthor ? `Latest from ${u.latestAuthor}` : null, href: `/projects/${u.projectId}?tab=chat`, at: u.latestAt }
+        ? { id: `crew-chat:${u.id}`, kind: "message", title: `${n} in ${u.title}`, detail: u.latestAuthor ? `Latest from ${u.latestAuthor}` : null, href: `/rooms/${u.projectId}?tab=chat`, at: u.latestAt }
         : { id: `dm:${u.id}`, kind: "message", title: `${u.title} sent you ${u.unread === 1 ? "a message" : n}`, detail: null, href: `/messages/${u.id}`, at: u.latestAt, actor: { id: null, name: u.title } },
     );
   }
   for (const c of claims.data ?? []) {
     const who = (c.creators as { display_name: string } | null)?.display_name || "A collaborator";
-    out.push({ id: `rights-claim:${c.id}`, kind: "rights_claim", title: `${who} made an ownership claim on “${(c.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: "Acknowledge or dispute it", href: `/projects/${c.project_id}?tab=rights`, at: c.created_at, actor: { id: c.creator_id, name: who } });
+    out.push({ id: `rights-claim:${c.id}`, kind: "rights_claim", title: `${who} made an ownership claim on “${(c.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: "Acknowledge or dispute it", href: `/rooms/${c.project_id}?tab=rights`, at: c.created_at, actor: { id: c.creator_id, name: who } });
   }
   for (const t of (await testimonials).data ?? []) {
     const writer = (t.creators as { display_name: string } | null)?.display_name || "Someone";
     const receiver = t.receiver as { display_name: string; handle: string | null } | null;
     if (t.status === "pending" && t.to_creator_id === creatorId) {
-      out.push({ id: `testimonial:${t.id}`, kind: "testimonial", title: `${writer} wrote you a testimonial`, detail: "Read it, then show it or keep it private", href: "/profile", at: t.created_at, actor: { id: t.from_creator_id, name: writer } });
+      out.push({ id: `testimonial:${t.id}`, kind: "testimonial", title: `${writer} wrote you a testimonial`, detail: "Read it, then show it or keep it private", href: "/me", at: t.created_at, actor: { id: t.from_creator_id, name: writer } });
     } else if (receiver?.handle) {
       out.push({ id: `testimonial-shown:${t.id}`, kind: "testimonial_shown", title: `${receiver.display_name} is showing your testimonial`, detail: null, href: `/creators/${receiver.handle}`, at: t.decided_at ?? t.created_at });
     }

@@ -37,7 +37,7 @@ export default async function DejaVusPage() {
           title="No DejaVus yet"
           body="Give any Material or Creation a DejaVu — a person, place, idea or feeling that keeps coming back."
           action={
-            <Link href="/space?tab=ideas" className={buttonClasses({ size: "md" })}>
+            <Link href="/materials?tab=ideas" className={buttonClasses({ size: "md" })}>
               Open Materials
             </Link>
           }

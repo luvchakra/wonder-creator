@@ -35,7 +35,7 @@ test.describe("creating with CreativeMind", () => {
     const card = artifactCard(page);
     await expect(card).toBeVisible();
     await expect(card).toContainText("Poem");
-    await expect(card.getByRole("link", { name: /View/ })).toHaveAttribute("href", /\/artifacts\/[0-9a-f-]{36}$/);
+    await expect(card.getByRole("link", { name: /View/ })).toHaveAttribute("href", /\/creations\/[0-9a-f-]{36}$/);
     await expect(page.getByText("CreativeMind is in offline development mode")).toBeVisible();
 
     // The conversation is listed and the draft opens.
@@ -97,7 +97,7 @@ test.describe("creating with CreativeMind", () => {
     await expect(card.getByText("Drafted by the offline development model (placeholder).")).toBeVisible();
 
     await card.getByRole("link", { name: /View/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/artifacts/${artifactId}$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}$`));
     await expect(page.getByText("v1 In Progress")).toBeVisible();
     await expect(page.getByRole("article")).not.toBeEmpty();
     await page.getByRole("tab", { name: "Materials (1)" }).click();
@@ -108,13 +108,13 @@ test.describe("creating with CreativeMind", () => {
     const word = `zephyr${uid()}`;
     await saveNote(page, `${word} in the rigging`);
     // A blank piece created from Space, with the same word in its title.
-    await page.goto("/space");
+    await page.goto("/materials");
     await page.getByRole("button", { name: "New", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
     await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
     await dialog.getByLabel("Title").fill(`Song of ${word}`);
     await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await expect(page).toHaveURL(/\/artifacts\/[0-9a-f-]{36}\/studio$/);
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
     const artifactUrl = page.url().replace(/\/studio$/, "");
 
     await page.getByRole("button", { name: "Search your creativity" }).click();
