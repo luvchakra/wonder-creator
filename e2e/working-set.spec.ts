@@ -384,7 +384,7 @@ test.describe("CreativeStudio Working Set", () => {
     await providers.getByRole("radio", { name: /Pixabay/ }).click();
     await expect(table.getByText(/Pixabay isn't connected/)).toBeVisible();
     // The API is equally honest.
-    const r = await (await page.request.get(`/api/v1/external-images?provider=pexels&q=rain`)).json();
+    const r = await (await page.request.get(`/api/v1/external-images?provider=unsplash&q=rain`)).json();
     expect(r.connected).toBe(false);
     expect(r.results).toEqual([]);
   });

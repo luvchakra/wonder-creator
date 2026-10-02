@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { DomainError, isDomainError, log } from "@wonder/core";
 import { newSlideFromMaterial } from "@wonder/creator-brain";
-import { downloadExternalImage, EXTERNAL_PROVIDERS, EXTERNAL_PROVIDER_LABEL, lookupExternalImage } from "@wonder/creator-library";
+import { downloadExternalImage, EXTERNAL_PROVIDERS, EXTERNAL_PROVIDER_LABEL, lookupExternalImage, markExternalImageUsed } from "@wonder/creator-library";
 import { processIntake, receiveFile } from "@wonder/creator-send";
 import { addSources, canInsert, outputModeOf, RIGHTS_HINT, RIGHTS_LABEL, updateSource, workingSetView } from "@wonder/creator-studio";
 import { after } from "next/server";
@@ -34,10 +34,13 @@ export const POST = withApi<{ id: string }>(
     assertUuid(id);
     const b = schema.parse(await readJson(req));
     const view = await workingSetView(db, id, studioSigner(db));
-    const img = await lookupExternalImage(b.provider, b.imageId, externalKeys());
+    const keys = externalKeys();
+    const img = await lookupExternalImage(b.provider, b.imageId, keys);
     // Rights gate (Phase 04 §8): a picture whose licence doesn't allow reuse can be a reference, never a slide.
     if (b.use === "slide" && !canInsert(img.rights)) throw new DomainError("forbidden", `${RIGHTS_LABEL[img.rights]}: ${RIGHTS_HINT[img.rights]}`);
     const bytes = await downloadExternalImage(img);
+    // Providers that ask to be told when a picture is used (Unsplash) hear about it; it never blocks the import.
+    after(() => markExternalImageUsed(b.provider, img, keys));
     const deps = { db, service: serviceClient(), creatorId, provider: (await providerFor(creatorId)).provider };
     const item = await receiveFile(deps, {
       batchId: randomUUID(),

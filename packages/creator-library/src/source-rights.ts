@@ -4,7 +4,7 @@
  * CreativeMind, and never a legal opinion.
  *
  * - reuse_permitted: may go into the output under its terms (the creator's own work; CC0 / Public Domain Mark; the
- *   Pixabay and Pexels licences).
+ *   Pixabay, Unsplash and Pexels licences).
  * - attribution_required: may go into the output with its credit kept (CC BY, CC BY-SA).
  * - reference_only: may steer an idea, a tone or a look, but isn't copied into the output (someone else's Community
  *   words or Creations; licences that forbid changes).
@@ -39,7 +39,7 @@ export function licenseRights(license: string | null | undefined): RightsState {
   const l = (license ?? "").trim().toUpperCase();
   if (!l) return "unknown";
   if (/^(CC0|PDM)\b/.test(l) || l.startsWith("PUBLIC DOMAIN")) return "reuse_permitted";
-  if (l === "PIXABAY CONTENT LICENSE" || l === "PEXELS LICENSE") return "reuse_permitted";
+  if (l === "PIXABAY CONTENT LICENSE" || l === "UNSPLASH LICENSE" || l === "PEXELS LICENSE") return "reuse_permitted";
   if (/^CC BY\b/.test(l)) {
     // No-derivatives licences don't allow the changes a Creation makes (crops, text on the picture).
     if (/\bND\b/.test(l)) return "reference_only";

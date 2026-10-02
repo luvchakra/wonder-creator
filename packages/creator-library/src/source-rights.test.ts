@@ -7,6 +7,7 @@ describe("source rights (Phase 04 §8)", () => {
     expect(licenseRights("PDM 1.0")).toBe("reuse_permitted");
     expect(licenseRights("Pixabay Content License")).toBe("reuse_permitted");
     expect(licenseRights("Pexels License")).toBe("reuse_permitted");
+    expect(licenseRights("Unsplash License")).toBe("reuse_permitted");
     expect(licenseRights("CC BY 4.0")).toBe("attribution_required");
     expect(licenseRights("CC BY-SA 2.0")).toBe("attribution_required");
     expect(licenseRights("CC BY-ND 4.0")).toBe("reference_only");
