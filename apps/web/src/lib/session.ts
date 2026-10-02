@@ -2,6 +2,7 @@ import "server-only";
 import type { Db, Tables } from "@wonder/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { mfaPending } from "./mfa";
 import { createClient } from "./supabase/server";
 
 export interface Session {
@@ -25,6 +26,8 @@ export const getSession = cache(async (): Promise<Session | null> => {
 export async function requireSession(opts: { allowOnboarding?: boolean } = {}): Promise<Session> {
   const s = await getSession();
   if (!s) redirect("/sign-in");
+  // Two-step verification set up but not passed in this session (password only so far).
+  if (await mfaPending(s.db)) redirect("/sign-in/verify");
   if (!opts.allowOnboarding && s.creator.onboarding_step !== "complete" && !s.creator.handle) redirect("/onboarding");
   return s;
 }

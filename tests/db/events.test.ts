@@ -179,3 +179,16 @@ describe("internal app.* functions", () => {
     expect(res.error).not.toBeNull();
   });
 });
+
+describe("audit integrity", () => {
+  it("financial, privacy-request, consent and admin entries can't be written from a creator's session", async () => {
+    const c = await createTestCreator("auditReserved");
+    for (const action of ["payment.captured", "ledger.posted", "refund.issued", "privacy_request.closed", "consent.granted", "admin.role_granted", "reconciliation.passed"]) {
+      expectDenied(await c.client.rpc("record_audit_log", { p_action: action, p_object_type: "x", p_object_id: c.creatorId }));
+    }
+    // Ordinary self-reported entries still work, marked as coming from a session.
+    expectOk(await c.client.rpc("record_audit_log", { p_action: "auth.signed_in", p_object_type: "creator", p_object_id: c.creatorId }));
+    const rows = expectOk(await c.client.from("audit_logs").select("action, metadata").eq("actor_creator_id", c.creatorId));
+    expect(rows).toEqual([{ action: "auth.signed_in", metadata: { via: "session" } }]);
+  });
+});

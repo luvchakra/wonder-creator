@@ -7,6 +7,8 @@ import { indexStaleSubjects, selectProvider } from "@wonder/creator-brain";
 import { after, NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { flagOn, requireFeature } from "./features";
+import { mfaPending } from "./mfa";
+import { clientIp } from "./request-ip";
 import type { Flag } from "./flags";
 import { createClient } from "./supabase/server";
 import { serviceClient, serviceConfigured } from "./supabase/service";
@@ -37,6 +39,8 @@ export interface ApiOptions {
   reindex?: boolean;
   /** A rollout flag (Phase 05 §19): while it's off, the route answers as if it didn't exist. */
   feature?: Flag;
+  /** Allow a session that still owes two-step verification (only for recording the sign-in itself). */
+  allowPendingMfa?: boolean;
 }
 
 function problem(status: number, code: string, message: string, requestId: string, details?: unknown) {
@@ -57,10 +61,15 @@ export function withApi<P = Record<string, string>>(
     const started = Date.now();
     try {
       if (opts.feature) requireFeature(flagOn(opts.feature));
-      // Cross-site request protection for cookie-authenticated mutations.
+      // Cross-site request protection for cookie-authenticated mutations: a foreign Origin, or a browser saying the
+      // request came from another site (Fetch Metadata), is refused. Server-to-server callers (webhooks) send neither.
       if (req.method !== "GET" && req.method !== "HEAD") {
         const origin = req.headers.get("origin");
         if (origin && new URL(origin).host !== req.headers.get("host")) {
+          throw new DomainError("forbidden", "Cross-site requests are not allowed.");
+        }
+        const site = req.headers.get("sec-fetch-site");
+        if (site && site !== "same-origin" && site !== "none" && !opts.public) {
           throw new DomainError("forbidden", "Cross-site requests are not allowed.");
         }
       }
@@ -73,9 +82,11 @@ export function withApi<P = Record<string, string>>(
         const { data } = await db.from("creators").select("id").eq("user_id", userId).maybeSingle();
         if (!data && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
         creatorId = data?.id ?? "";
+        // Two-step verification set up but not yet passed in this session: nothing proceeds until it is.
+        if (!opts.allowPendingMfa && (await mfaPending(db))) throw new DomainError("unauthenticated", "Finish two-step verification to continue.");
       }
       const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
-      await limiter.check(`${userId || req.headers.get("x-forwarded-for") || "anon"}:${req.nextUrl.pathname}:${req.method}`, limit, 60_000);
+      await limiter.check(`${userId || clientIp(req)}:${req.nextUrl.pathname}:${req.method}`, limit, 60_000);
 
       const params = (await route.params) ?? ({} as P);
       const result = await handler({ db, userId, creatorId, requestId, req }, params);

@@ -103,3 +103,17 @@ notifications are informational only (no follower-centric mechanics).
 | Creator Page templates (owner spec `phases/07-creator-page-templates.md` + board, 30 Sep 2026) | Done | `docs/creator-page-templates.md`. Migration 066: `template_id` + per-template `template_settings` on `creator_pages`; one publication-safe payload for public and owner preview (`creator_page_preview`); cards carry excerpts, DejaVus a public cover. Five renderers (Immersive Artistic, Minimal Editorial, Cinematic Dark, Creative Collage, Soft Gradient) over one model with type-aware work and Moments, the asset registry over the background library, container-query layouts for phone and desktop. Appearance on `/creator-page`: style cards, live phone/desktop preview, Use this template, per-template settings; owner-only "Edit Creator Page" on the public page. Tests: unit, DB, e2e incl. 20 template screenshots |
 | Home: From the community (owner, 1 Oct 2026: "home page seems quite empty") | Done | One calm glance under the creator's own rows (`homeCommunityGlance`): a live Huddle, up to four new public works in their own pictures (text work as its opening lines on a painted wash), one Scrapbook thought, one open ask with Offer a thought, and someone to meet — people you follow or worked with first, each with why; never a feed, never popularity, nothing repeated from the rows above. Docs: `home-quick-capture.md`. Tests: `tests/db/home-community.test.ts`, `e2e/home-community.spec.ts` |
 | Home additions + Profile follower counts (owner, 2 Oct 2026) | Done | Home: "This week in the community" in words (no numbers), "A conversation you joined has moved on" (others' replies since you last read or replied, never repeating Worth hearing), and "New in your Creative Rooms" (what room-mates shared lately). Profile: follower / following counts that open lists (`/creators/<handle>/followers`, `/following`) with Follow toggles and "Follows you"; counts on the in-app Profile only, never ranking anything (decisions.md §12). Migration 067 (`follow_counts`, `follow_list`). Tests: `shared.test.ts`, `tests/db/follows.test.ts`, `tests/db/home-community.test.ts`, `e2e/home-community.spec.ts` |
+
+# Compliance & platform hardening (owner, 2 Oct 2026)
+
+Request: Razorpay and Stripe integration, GDPR and DPDP compliance, SOX and other financial controls, IT security best
+practices, and a landing page that highlights them. Compliance here means **built to support** these regimes; legal
+wording and certification need counsel and auditors (docs/compliance/).
+
+| Item | Status | Notes |
+|---|---|---|
+| C-1 Security hardening | Done | Password policy (10+, letters and digits, common-list, no email) in browser and server; password reset; change password with step-up; TOTP two-step verification (sign-in gate, API 401 until verified); Fetch Metadata CSRF refusal; COOP/CORP/Origin-Agent-Cluster headers; audit-log integrity (reserved server-only namespaces, `via: session` stamp, no truncate); CI: CodeQL, gitleaks, npm audit, Dependabot; security.txt and /legal/security |
+| C-2 Privacy (GDPR / DPDP) | In progress | |
+| C-3 Payments (Stripe / Razorpay) | Not started | |
+| C-4 Financial controls (SOX-style) | Not started | |
+| C-5 Landing page | Not started | |
