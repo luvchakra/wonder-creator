@@ -20,6 +20,8 @@ type Props = {
   attachments: Record<string, { title: string; href: string }>;
   dejavus: { momentId: string | null; dejavus: DejaVu[] };
   summary?: ConversationSummaryView | null;
+  /** Communities this topic is in that the viewer can see (docs/communities.md). */
+  communities?: Array<{ id: string; title: string; isHost: boolean }>;
 };
 
 /**
@@ -27,7 +29,7 @@ type Props = {
  * one reply box. Conversions (Huddle, Creative Room), DejaVu, reporting, muting and blocking sit under More; the owner's
  * controls (edit, close, visibility, remove a reply) only appear for the owner.
  */
-export function ConversationView({ detail, viewerId, attachments, dejavus, summary }: Props) {
+export function ConversationView({ detail, viewerId, attachments, dejavus, summary, communities = [] }: Props) {
   const router = useRouter();
   const c = detail.conversation;
   const [reply, setReply] = useState("");
@@ -63,12 +65,25 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
     });
   const author = detail.author;
   const catchUp = detail.catchUp ? catchUpLine(detail.catchUp) : null;
+  const home = communities[0] ?? null;
+  // Owners and moderators of a community the topic is in may remove posts there (the database decides).
+  const canRemoveReplies = detail.isOwner || detail.isModerator || communities.some((x) => x.isHost);
+  const links = detail.links.filter((l) => !(l.kind === "project" && communities.some((x) => x.id === l.id)));
 
   return (
     <article className="mx-auto max-w-2xl space-y-3">
-      <Link href="/community?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
-        <ArrowLeft className="size-4" aria-hidden /> Community
-      </Link>
+      {home ? (
+        <Link href={`/communities/${home.id}`} className="inline-flex min-h-11 max-w-full items-center gap-1.5 text-[13.5px] text-ink-muted hover:text-ink">
+          <ArrowLeft className="size-4 shrink-0" aria-hidden />
+          <span className="truncate">
+            In <span className="font-medium text-accent-ink">{home.title}</span>
+          </span>
+        </Link>
+      ) : (
+        <Link href="/community?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
+          <ArrowLeft className="size-4" aria-hidden /> Community
+        </Link>
+      )}
 
       {c.removedAt ? (
         <p role="status" className="rounded-2xl bg-danger-soft px-3 py-2 text-[13px] text-danger">
@@ -215,9 +230,9 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
 
       <DejaVuChips entityType="conversation" entityId={c.id} initial={dejavus} />
 
-      {detail.links.length || detail.preservedFromHuddles ? (
+      {links.length || detail.preservedFromHuddles ? (
         <section aria-label="What grew from this" className="space-y-1 rounded-2xl border border-border-soft bg-surface/90 px-3 py-2">
-          {detail.links.map((l) =>
+          {links.map((l) =>
             l.kind === "huddle" ? (
               <Link key={l.id} href={`/huddles/${l.id}`} className="flex min-h-11 items-center gap-2 text-[13.5px] text-ink hover:underline">
                 <AudioLines className="size-4 text-live" aria-hidden /> {l.live ? "Live Huddle about this — Join" : `Huddle: ${l.title ?? "ended"}`}
@@ -330,7 +345,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                       </MenuItem>
                     ) : (
                       <>
-                        {detail.isOwner || detail.isModerator ? (
+                        {canRemoveReplies ? (
                           <MenuItem
                             onSelect={() =>
                               void act("remove-reply", async () => {
@@ -397,7 +412,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
         </form>
       )}
 
-      <EditSheet open={sheet === "edit"} onOpenChange={(o) => !o && setSheet(null)} detail={detail} onSaved={() => (setSheet(null), router.refresh())} />
+      <EditSheet open={sheet === "edit"} onOpenChange={(o) => !o && setSheet(null)} detail={detail} inCommunity={communities.length > 0} onSaved={() => (setSheet(null), router.refresh())} />
       <ReportSheet open={sheet === "report"} onOpenChange={(o) => !o && setSheet(null)} target={reportTarget} onDone={() => (setSheet(null), setNotice("Thanks — it's been reported for review."))} />
       <Dialog open={sheet === "block"} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent title={`Block ${author.name}?`} description="You won't see each other's conversations, replies or profiles, and they can't message you. They aren't told." art={KIT.iconChip.message}>
@@ -423,7 +438,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
   );
 }
 
-function EditSheet({ open, onOpenChange, detail, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; detail: ConversationDetail; onSaved: () => void }) {
+function EditSheet({ open, onOpenChange, detail, inCommunity, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; detail: ConversationDetail; inCommunity?: boolean; onSaved: () => void }) {
   const c = detail.conversation;
   const [title, setTitle] = useState(c.title);
   const [body, setBody] = useState(c.body ?? "");
@@ -460,7 +475,8 @@ function EditSheet({ open, onOpenChange, detail, onSaved }: { open: boolean; onO
           <label className="block space-y-1 text-[13px] font-medium text-ink">
             <span>Who can see it</span>
             <select value={visibility} onChange={(e) => setVisibility(e.target.value as ConversationVisibility)} className="h-11 w-full rounded-xl border border-border-soft bg-surface px-3 text-[14px] font-normal">
-              {CONVERSATION_VISIBILITIES.map((v) => (
+              {/* Communities are always public: a topic in one can't be narrowed to Limited. */}
+              {CONVERSATION_VISIBILITIES.filter((v) => !inCommunity || v !== "limited").map((v) => (
                 <option key={v} value={v}>
                   {VISIBILITY_LABEL[v]}
                 </option>

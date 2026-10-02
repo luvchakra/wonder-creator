@@ -288,6 +288,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: null,
         items: [
+          // Testimonials (docs/testimonials.md): offered only when the server would accept one.
+          ...(f.canWrite && i.creatorHandle ? [{ id: "testimonial", label: "Write a testimonial", icon: "pen" as const, class: "collaboration" as const, target: route(`/creators/${i.creatorHandle}?write=testimonial`), score: 80 }] : []),
           { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/discover"), score: 70 },
           { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/projects"), score: 60 },
         ],
@@ -301,6 +303,27 @@ export function rulesFor(ctx: PaletteContext): Rules {
           { id: "huddle", label: "Start Huddle", icon: "users", class: "collaboration", target: route("/huddles"), score: 60 },
         ],
       };
+
+    // A Community (docs/communities.md): members start topics and share their work; everyone can see who's in it.
+    case "community": {
+      // Start a topic is the page's own primary action, and Forum/Huddles/Members are its visible views, so the Palette
+      // offers what's next beyond them (interaction-minimalism: don't duplicate the page's controls).
+      const room = `/projects/${i.projectId}`;
+      return {
+        title: "This community",
+        items: f.member
+          ? [
+              { id: "share", label: "Share a Creation here", icon: "add", class: "share", target: route(`${room}?tab=work`), score: 100 },
+              { id: "huddle", label: "Chat & Huddle", icon: "users", class: "collaboration", target: route(`${room}?tab=chat`), score: 90 },
+              { id: "room", label: "Open Creative Room", icon: "room", class: "navigation", target: route(room), score: 80 },
+              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/community?filter=communities"), score: 70 },
+            ]
+          : [
+              { id: "all", label: "All communities", icon: "compass", class: "navigation", target: route("/community?filter=communities"), score: 80 },
+              { id: "community", label: "Community", icon: "people", class: "navigation", target: route("/community"), score: 70 },
+            ],
+      };
+    }
 
     case "search":
     case "explore":

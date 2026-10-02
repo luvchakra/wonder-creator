@@ -8,6 +8,7 @@
     "./vocabulary": "./src/vocabulary.ts",
     "./autonomy": "./src/autonomy.ts",
     "./collaboration-options": "./src/collaboration-options.ts",
-    "./privacy-options": "./src/privacy-options.ts"
+    "./privacy-options": "./src/privacy-options.ts",
+    "./testimonials-options": "./src/testimonials-options.ts"
   }
 }

@@ -564,11 +564,12 @@ Do not show five dashboard sections simultaneously.
 ## Home content order
 
 1. greeting;
-2. current/recent Creation;
-3. CreativeMind insight;
-4. recent Material;
-5. optional next contextual element;
-6. Palette.
+2. Scrapbook — a thin compose row, then two or three thin rows with the last scraps from everyone you can see, newest first (owner, 2 Oct 2026);
+3. current/recent Creation;
+4. CreativeMind insight;
+5. recent Material;
+6. optional next contextual element;
+7. Palette.
 
 ## Empty state
 

@@ -1,4 +1,4 @@
-import { getConversation } from "@wonder/creator-community";
+import { getConversation, topicCommunities } from "@wonder/creator-community";
 import { entityDejaVus } from "@wonder/creator-moments";
 import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
@@ -33,6 +33,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const visible: Record<string, { title: string; href: string }> = {};
   for (const m of mats.data ?? []) visible[m.id] = { title: m.title || "A Material", href: `/space/materials/${m.id}` };
   for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/artifacts/${a.id}` };
+  const communities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
   const dejavus = await entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] }));
   // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
   const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;
@@ -42,7 +43,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   return (
     <>
       <PaletteScope context={{ page: "explore" }} />
-      <ConversationView detail={detail} viewerId={creator.id} attachments={visible} dejavus={dejavus} summary={summary} />
+      <ConversationView detail={detail} viewerId={creator.id} attachments={visible} dejavus={dejavus} summary={summary} communities={communities} />
     </>
   );
 }

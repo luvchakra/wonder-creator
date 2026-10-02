@@ -1287,6 +1287,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_testimonials": {
+                  Row: {
+                    "body": string,"context_id": string | null,"context_type": string | null,"created_at": string,"decided_at": string | null,"from_creator_id": string,"id": string,"on_creator_page": boolean,"status": string,"to_creator_id": string,"updated_at": string
+                  }
+                  Insert: {
+                    "body": string,"context_id"?: string | null,"context_type"?: string | null,"created_at"?: string,"decided_at"?: string | null,"from_creator_id": string,"id"?: string,"on_creator_page"?: boolean,"status"?: string,"to_creator_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"context_id"?: string | null,"context_type"?: string | null,"created_at"?: string,"decided_at"?: string | null,"from_creator_id"?: string,"id"?: string,"on_creator_page"?: boolean,"status"?: string,"to_creator_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_testimonials_from_creator_id_fkey"
+      columns: ["from_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "creator_testimonials_to_creator_id_fkey"
+      columns: ["to_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_visits": {
                   Row: {
                     "creator_id": string,"last_seen_at": string,"previous_seen_at": string | null
@@ -1327,13 +1352,13 @@ isOneToOne: true
                   ]
                 },"creators": {
                   Row: {
-                    "avatar_object_id": string | null,"bio": string | null,"collaboration_availability": string,"created_at": string,"display_name": string,"handle": string | null,"id": string,"location": string | null,"onboarding_step": string,"show_location": boolean,"tenant_id": string,"updated_at": string,"user_id": string,"visibility": Database["public"]['Enums']["profile_visibility"]
+                    "avatar_object_id": string | null,"bio": string | null,"collaboration_availability": string,"created_at": string,"display_name": string,"handle": string | null,"id": string,"location": string | null,"onboarding_step": string,"show_location": boolean,"tenant_id": string,"testimonials_from": string,"updated_at": string,"user_id": string,"visibility": Database["public"]['Enums']["profile_visibility"]
                   }
                   Insert: {
-                    "avatar_object_id"?: string | null,"bio"?: string | null,"collaboration_availability"?: string,"created_at"?: string,"display_name"?: string,"handle"?: string | null,"id"?: string,"location"?: string | null,"onboarding_step"?: string,"show_location"?: boolean,"tenant_id": string,"updated_at"?: string,"user_id": string,"visibility"?: Database["public"]['Enums']["profile_visibility"]
+                    "avatar_object_id"?: string | null,"bio"?: string | null,"collaboration_availability"?: string,"created_at"?: string,"display_name"?: string,"handle"?: string | null,"id"?: string,"location"?: string | null,"onboarding_step"?: string,"show_location"?: boolean,"tenant_id": string,"testimonials_from"?: string,"updated_at"?: string,"user_id": string,"visibility"?: Database["public"]['Enums']["profile_visibility"]
                   }
                   Update: {
-                    "avatar_object_id"?: string | null,"bio"?: string | null,"collaboration_availability"?: string,"created_at"?: string,"display_name"?: string,"handle"?: string | null,"id"?: string,"location"?: string | null,"onboarding_step"?: string,"show_location"?: boolean,"tenant_id"?: string,"updated_at"?: string,"user_id"?: string,"visibility"?: Database["public"]['Enums']["profile_visibility"]
+                    "avatar_object_id"?: string | null,"bio"?: string | null,"collaboration_availability"?: string,"created_at"?: string,"display_name"?: string,"handle"?: string | null,"id"?: string,"location"?: string | null,"onboarding_step"?: string,"show_location"?: boolean,"tenant_id"?: string,"testimonials_from"?: string,"updated_at"?: string,"user_id"?: string,"visibility"?: Database["public"]['Enums']["profile_visibility"]
                   }
                   Relationships: [
                     {
@@ -2969,13 +2994,13 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string
+                    "brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string,"visibility": string
                   }
                   Insert: {
-                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string,"visibility"?: string
                   }
                   Update: {
-                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string
+                    "brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visibility"?: string
                   }
                   Relationships: [
                     {
@@ -4035,6 +4060,9 @@ isOneToOne: false
 "can_message_creator":
 { Args: { "p_other": string }; Returns: boolean
                            },
+"can_write_testimonial_for":
+{ Args: { "p_creator": string }; Returns: boolean
+                           },
 "cancel_publication":
 { Args: { "p_publication": string }; Returns: {
               "approved_at": string | null,
@@ -4101,6 +4129,27 @@ isOneToOne: false
 { Args: { "p_artifact": string }; Returns: {
               "commercial_channels": (string)[],"commercial_use": string
             }[]
+                           },
+"community_card":
+{ Args: { "p_project": string }; Returns: {
+              "brief": string,"cover_material_id": string,"crew_id": string,"id": string,"is_host": boolean,"is_member": boolean,"member_count": number,"owner_id": string,"owner_name": string,"status": string,"title": string
+            }[]
+                           },
+"community_join":
+{ Args: { "p_project": string }; Returns: string
+                           },
+"community_list":
+{ Args: { "p_limit"?: number,"p_query"?: string }; Returns: {
+              "brief": string,"cover_material_id": string,"id": string,"is_member": boolean,"last_activity_at": string,"member_count": number,"owner_id": string,"owner_name": string,"title": string,"topic_count": number
+            }[]
+                           },
+"community_members":
+{ Args: { "p_project": string }; Returns: {
+              "access": string,"avatar_object_id": string,"creator_id": string,"display_name": string,"handle": string,"joined_at": string,"role_title": string
+            }[]
+                           },
+"community_remove_topic":
+{ Args: { "p_conversation": string,"p_project": string,"p_reason"?: string }; Returns: undefined
                            },
 "complete_project":
 { Args: { "p_acknowledge_open"?: boolean,"p_confirm_title": string,"p_dissolve_crew": boolean,"p_note"?: string,"p_outcome": string,"p_project": string }; Returns: string
@@ -4447,6 +4496,11 @@ isOneToOne: false
 "public_creator_page":
 { Args: { "p_handle": string }; Returns: Json
                            },
+"public_creator_page_testimonials":
+{ Args: { "p_handle": string }; Returns: {
+              "body": string,"created_at": string,"from_handle": string,"from_name": string,"id": string
+            }[]
+                           },
 "public_dejavu":
 { Args: { "p_dejavu": string,"p_handle": string }; Returns: Json
                            },
@@ -4563,6 +4617,23 @@ isOneToOne: false
 { Args: { "p_creator"?: string,"p_limit"?: number }; Returns: {
               "creator_id": string,"subject_id": string,"subject_type": string
             }[]
+                           },
+"testimonial_decide":
+{ Args: { "p_action": string,"p_id": string,"p_on_creator_page"?: boolean }; Returns: undefined
+                           },
+"testimonial_withdraw":
+{ Args: { "p_to": string }; Returns: undefined
+                           },
+"testimonial_write":
+{ Args: { "p_body": string,"p_context_id"?: string,"p_context_type"?: string,"p_to": string }; Returns: string
+                           },
+"testimonials_of":
+{ Args: { "p_creator": string }; Returns: {
+              "body": string,"context_id": string,"context_label": string,"context_type": string,"created_at": string,"decided_at": string,"from_avatar_object_id": string,"from_handle": string,"from_id": string,"from_name": string,"id": string,"on_creator_page": boolean,"status": string,"worked_together": boolean
+            }[]
+                           },
+"testimonials_setting":
+{ Args: { "p_from": string }; Returns: undefined
                            },
 "unread_messages":
 { Args: Record<PropertyKey, never>; Returns: {

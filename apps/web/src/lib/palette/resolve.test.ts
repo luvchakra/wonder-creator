@@ -65,6 +65,12 @@ describe("context-aware Palette", () => {
     expect(room(null)[0]).toBe("Start Creation");
   });
 
+  it("a community offers what's next beyond its own page controls, by membership", () => {
+    const community = (member: boolean) => labels({ page: "community", ids: { projectId: "p1" }, facts: { member, host: false } });
+    expect(community(true)).toEqual(["Share a Creation here", "Chat & Huddle", "Open Creative Room", "All communities"]);
+    expect(community(false)).toEqual(["All communities", "Community"]);
+  });
+
   it("Settings only offers a way out", () => {
     expect(labels({ page: "settings" })).toEqual(["Home", "Me"]);
   });

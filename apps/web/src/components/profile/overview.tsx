@@ -20,7 +20,7 @@ export interface ScrapbookGlimpse {
  * The Overview tab — identity at a glance: About, brand openness, selected series, recent Scrapbook moments and how
  * they like to collaborate. Longer detail opens in place rather than on another page.
  */
-export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[] }) {
+export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses, after }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[]; after?: ReactNode }) {
   const showCollab = collab && (collab.hasProfile || isMe) && collab.availability !== "closed";
   const hasAbout = about.lines.length || about.skills.length || about.openTo.length;
   return (
@@ -121,6 +121,8 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
           </ul>
         </section>
       ) : null}
+
+      {after}
 
       {showCollab ? (
         <Disclosure icon={<HeartHandshake aria-hidden />} tone="teal" art={KIT.painted.flowerBranch} title={isMe ? "How you collaborate" : "Collaboration style"} summary={collabSummary(collab)} edit={isMe ? "/settings?section=collaboration" : undefined}>
