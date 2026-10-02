@@ -1,5 +1,5 @@
 import { OPEN_TO_LABEL, listConversations, openToOf } from "@wonder/creator-community";
-import { brandSummaryOf, collaborationProfileOf, getCreatorByHandle } from "@wonder/creator-identity";
+import { brandSummaryOf, collaborationProfileOf, followCounts, getCreatorByHandle } from "@wonder/creator-identity";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts } from "@wonder/creator-library";
 import { canMessage } from "@wonder/creator-projects";
@@ -55,13 +55,14 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
   const base = `/creators/${c.handle}`;
   const name = c.display_name || c.handle || "Creator";
 
-  const [live, myLive, follow, avatars, brand, messageable] = await Promise.all([
+  const [live, myLive, follow, avatars, brand, messageable, counts] = await Promise.all([
     liveCards(db, { creatorId: c.id, limit: 3 }).catch(() => []),
     isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }).catch(() => []),
     isMe ? Promise.resolve({ data: null }) : db.from("creator_follows").select("followed_creator_id").eq("follower_creator_id", me.id).eq("followed_creator_id", c.id).maybeSingle(),
     avatarUrls(db, [c.id]),
     brandSummaryOf(db, c.id).catch(() => null),
     isMe ? Promise.resolve(false) : canMessage(db, c.id),
+    followCounts(db, c.id).catch(() => null),
   ]);
 
   let body: ReactNode = null;
@@ -145,6 +146,17 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
               </li>
             ) : null}
           </ul>
+          {counts ? (
+            <p aria-label="Followers and following" className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-muted">
+              <Link href={`${base}/followers`} className="relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-[''] hover:underline">
+                <span className="font-semibold text-ink tabular-nums">{counts.followers}</span> {counts.followers === 1 ? "follower" : "followers"}
+              </Link>
+              <Link href={`${base}/following`} className="relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-[''] hover:underline">
+                <span className="font-semibold text-ink tabular-nums">{counts.following}</span> following
+              </Link>
+              {!isMe && counts.followsMe ? <span className="rounded-full bg-accent-softer px-2 py-0.5 text-[11.5px] text-accent-ink">Follows you</span> : null}
+            </p>
+          ) : null}
           <div className={cn("mt-2.5", isMe ? "grid grid-cols-3 gap-1.5" : "flex flex-wrap items-center gap-2")}>
             {isMe ? (
               <>

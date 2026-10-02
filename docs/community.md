@@ -5,7 +5,8 @@ Reference board: [`phases/boards/phases-overview-2026-09-29.png`](phases/boards/
 5–6 and 11. The board is a reference, never a runtime asset.
 
 Community is a creative exchange layer over what already exists: Scrapbook, Creations, Huddles, People and Creative
-Rooms. The Open Conversation is the only new thing. There are **no** follower counts, likes, karma, trending scores,
+Rooms. The Open Conversation is the only new thing. There are **no** likes, karma, trending scores, follower-based
+ranking (follower counts appear only on the in-app Profile — decisions.md §12),
 engagement ranking or infinite scroll.
 
 ## Where it lives

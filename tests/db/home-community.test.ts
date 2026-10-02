@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { homeCommunityGlance } from "@wonder/creator-community";
+import { createConversation, homeCommunityGlance, markRead, replyToConversation } from "@wonder/creator-community";
 import { createArtifact } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createTestCreator, expectOk, type TestCreator } from "./helpers";
@@ -48,4 +48,15 @@ describe("Home: from the community", () => {
     expect(g.thought?.body).toBe(`A friend's thought ${tag}`);
     expect(g.thought?.reason).toMatch(/^You follow /);
   });
+
+  it("says when a conversation you joined has moved on — others' replies since you last read or replied", async () => {
+    const conv = await createConversation(db(stranger), stranger.creatorId, { intent: "discuss", title: `On slowness ${tag}`, visibility: "community" });
+    await replyToConversation(db(me), me.creatorId, conv.id, { body: "I walk to notice." });
+    expect((await homeCommunityGlance(db(me), me.creatorId)).catchUp).toBeNull();
+    await replyToConversation(db(friend), friend.creatorId, conv.id, { body: "Same — the long way home." });
+    expect((await homeCommunityGlance(db(me), me.creatorId)).catchUp).toMatchObject({ conversations: 1, newReplies: 1, firstId: conv.id, title: `On slowness ${tag}` });
+    await markRead(db(me), me.creatorId, conv.id);
+    expect((await homeCommunityGlance(db(me), me.creatorId)).catchUp).toBeNull();
+  });
 });
+

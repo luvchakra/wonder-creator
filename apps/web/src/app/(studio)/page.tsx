@@ -5,7 +5,7 @@ import Link from "next/link";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
-import { CommunityGlance } from "@/components/home/community-glance";
+import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { TrackedLink } from "@/components/home/tracked-link";
@@ -34,7 +34,7 @@ export default async function HomePage() {
 
   const home = await buildHomePayload(db, creator.id);
   scheduleDiscovery(db, creator.id);
-  const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community].filter(Boolean).length;
+  const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms].filter(Boolean).length;
   after(() => {
     track("home_opened", creator.id);
     track("home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
@@ -195,6 +195,8 @@ export default async function HomePage() {
             ) : null}
           </div>
         ) : null}
+
+        {home.rooms ? <RoomsGlance items={home.rooms} avatars={home.avatars} /> : null}
 
         {home.community ? <CommunityGlance g={home.community} avatars={home.avatars} /> : null}
 

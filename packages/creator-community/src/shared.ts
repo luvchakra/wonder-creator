@@ -83,3 +83,34 @@ export function catchUpLine(c: { newReplies: number; newParticipants: number }):
   if (c.newParticipants) parts.push(`${c.newParticipants} new ${c.newParticipants === 1 ? "participant" : "participants"}`);
   return parts.join(" · ");
 }
+
+const PLURAL: Record<string, string> = {
+  poem: "poems", lyrics: "lyrics", spoken_word: "spoken-word pieces", essay: "essays", story: "stories", article: "articles", blog_post: "posts",
+  short_film: "short films", documentary: "documentaries", reel_concept: "reels", film_treatment: "film treatments",
+  carousel: "carousels", photo_essay: "photo essays", art_series: "art series", visual_concept: "visual concepts", poster: "posters", moodboard: "moodboards",
+  song_concept: "songs", podcast_concept: "podcasts", narration: "narrations", sound_design: "sound pieces",
+};
+const INTENT_PHRASE: Partial<Record<ConversationIntent, string>> = {
+  critique: "people asking for feedback",
+  ask: "questions looking for answers",
+  looking_for: "invitations to collaborate",
+  explore_together: "invitations to explore together",
+};
+
+/**
+ * "This week in the community" — one line of what's been happening, with no numbers (owner, 2 Oct 2026). Types are the
+ * kinds of public work shared this week, most present first; intents are the open asks; a live Huddle may close it
+ * (Home leaves it out — the Huddle has its own place there).
+ * Null when nothing happened.
+ */
+export function weekLine(input: { types: string[]; intents: ConversationIntent[]; liveTopic?: string | null }): string | null {
+  const kinds = [...new Set(input.types.map((t) => PLURAL[t]).filter((x): x is string => !!x))].slice(0, 2);
+  const parts: string[] = [];
+  if (kinds.length) parts.push(`new ${kinds.join(" and ")}`);
+  else if (input.types.length) parts.push("new work");
+  for (const i of [...new Set(input.intents)]) if (INTENT_PHRASE[i] && parts.length < 3) parts.push(INTENT_PHRASE[i]!);
+  if (input.liveTopic) parts.push(`a Huddle live now on ${input.liveTopic.replace(/[.\s]+$/, "")}`);
+  if (!parts.length) return null;
+  const line = parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+  return line.charAt(0).toUpperCase() + line.slice(1) + ".";
+}

@@ -1,7 +1,7 @@
 import { OPEN_TO_LABEL, helpHeadline, type HomeCommunityGlance } from "@wonder/creator-community";
 import { artifactType } from "@wonder/creator-studio/types";
 import { Avatar, AvatarStack, KIT, KitArt, cn } from "@wonder/ui";
-import { ArrowRight, ChevronRight, HandHelping, Radio } from "lucide-react";
+import { ArrowRight, ChevronRight, DoorOpen, FileText, HandHelping, Image as ImageIcon, MessagesSquare, Radio } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/client-time";
 
@@ -24,8 +24,29 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
           Explore <ChevronRight className="size-3.5" aria-hidden />
         </Link>
       </div>
+      {/* This week, in words — no numbers. */}
+      {g.week ? (
+        <p className="mt-1 pr-6 font-display text-[14px] italic leading-snug text-ink-muted">
+          <span className="sr-only">This week in the community: </span>
+          {g.week}
+        </p>
+      ) : null}
 
       <div className="mt-2.5 space-y-3">
+        {g.catchUp ? (
+          <Link href={g.catchUp.conversations === 1 ? `/community/conversations/${g.catchUp.firstId}` : "/community?filter=conversations"} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white/75 px-3 py-2 hover:bg-white">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
+              <MessagesSquare className="size-4" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-medium text-ink">{g.catchUp.conversations === 1 ? "A conversation you joined has moved on" : `${g.catchUp.conversations} conversations you joined have moved on`}</span>
+              <span className="block truncate text-[12.5px] text-ink-muted">
+                {g.catchUp.conversations === 1 ? `“${g.catchUp.title}”` : `Latest: “${g.catchUp.title}”`} · {g.catchUp.newReplies} new {g.catchUp.newReplies === 1 ? "reply" : "replies"}
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+          </Link>
+        ) : null}
         {g.live ? (
           <Link href={`/huddles/${g.live.huddleId}`} className="relative isolate flex items-center gap-3 overflow-hidden rounded-2xl bg-white/75 p-3 hover:bg-white/90">
             <KitArt art={KIT.wash.washLavender} sizes="20rem" className="absolute inset-y-0 right-0 -z-10 h-full w-2/3 object-cover opacity-60" />
@@ -129,6 +150,43 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
           </Link>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+type RoomItem = { projectId: string; projectTitle: string; itemId: string; title: string; kind: string; by: { id: string; name: string }; at: string };
+
+/** New in your Creative Rooms: what room-mates shared lately — the rooms you're actually in, newest first. */
+export function RoomsGlance({ items, avatars }: { items: RoomItem[]; avatars: Record<string, string> }) {
+  return (
+    <section id="rooms" aria-labelledby="rooms-title" className="relative isolate scroll-mt-20 overflow-hidden rounded-3xl border border-border-soft bg-surface/90 p-3 shadow-[var(--shadow-card)]">
+      <KitArt art={KIT.wash.washPeach} sizes="12rem" className="pointer-events-none absolute -right-10 -top-12 -z-10 h-32 w-auto opacity-50" />
+      <h2 id="rooms-title" className="flex items-center gap-2 font-display text-[17px] leading-tight text-ink">
+        <DoorOpen className="size-4 text-accent-ink" aria-hidden /> New in your Creative Rooms
+      </h2>
+      <ul className="mt-1.5 divide-y divide-border-soft">
+        {items.map((i) => (
+          <li key={`${i.projectId}:${i.itemId}`}>
+            <Link href={`/projects/${i.projectId}/shared/${i.itemId}`} className="flex min-h-12 items-center gap-3 py-2 hover:underline">
+              <span className="relative shrink-0">
+                <Avatar name={i.by.name} src={avatars[i.by.id]} size={32} />
+                <span className="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-border-soft">
+                  {i.kind === "material" ? <ImageIcon className="size-2.5" aria-hidden /> : <FileText className="size-2.5" aria-hidden />}
+                </span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] text-ink">
+                  <span className="font-medium">{i.by.name.split(" ")[0]}</span> shared <span className="font-display italic">“{i.title}”</span>
+                </span>
+                <span className="block truncate text-[12px] text-ink-subtle">
+                  {i.projectTitle} · <RelativeTime iso={i.at} />
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

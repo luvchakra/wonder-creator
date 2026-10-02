@@ -30,3 +30,11 @@
    expressive ones. Decorative art may be authored in code when nothing supplied fits (provenance in `ASSETS.md`); the
    logo, wordmark, app icon and supplied art are never altered. Accessibility never bends. UI isn't done until it has
    been compared with its board at phone and desktop widths. See CLAUDE.md → Aesthetic excellence.
+12. **Follower and following counts on the in-app Profile (owner, 2 Oct 2026).** "Followers and following count on the
+   profile page." The owner's own guardrail ("no follower counts") is narrowed, not dropped: counts show on the in-app
+   Profile only, each opening a list of people (`/creators/<handle>/followers`, `/following`). They never appear on the
+   public Creator Page, on cards, in Community or Home, and nothing is ever ranked or ordered by them; likes stay out
+   entirely. Follow rows stay private to their two creators; others reach them only through `follow_counts` (plain
+   totals, only for a profile the viewer may see) and `follow_list` (only people the viewer may see — blocks and
+   profile visibility respected), migration `…067`.
+

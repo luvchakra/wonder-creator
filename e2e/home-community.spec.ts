@@ -1,4 +1,4 @@
-import { adminPatch, creatorIdOf, expect, newCreator, test, uid } from "./fixtures";
+import { adminPatch, creatorIdOf, expect, newCreator, saveNote, test, uid } from "./fixtures";
 
 // Home → From the community (owner, 1 Oct 2026): a calm glance at what's alive around the creator — never a feed.
 test.describe("Home: from the community", () => {
@@ -47,4 +47,74 @@ test.describe("Home: from the community", () => {
     await expect(page).toHaveURL(new RegExp(`/artifacts/${poem.id}$`));
     expect(creator.handle).toBeTruthy();
   });
+
+  test("this week in words, a conversation you joined moving on, and new work from your Creative Rooms", async ({ page, creator: _me, openContext }) => {
+    test.setTimeout(120_000);
+    const tag = uid();
+    const { page: jo } = await openContext("jo");
+    const j = await newCreator(jo, { name: `Jo ${tag}` });
+    const joId = await creatorIdOf(j.id);
+
+    // This week: Jo shares a public, finished short film and asks for feedback.
+    const film = (await (await jo.request.post("/api/v1/artifacts", { data: { artifactType: "short_film", title: `Harbour lights ${tag}`, content: "INT. FERRY — NIGHT" } })).json()).artifact as { id: string };
+    await adminPatch("artifacts", `id=eq.${film.id}`, { privacy: "public", status: "final" });
+    const conv = (await (await jo.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `On slowness ${tag}` } })).json()).conversation.id as string;
+    const conv2 = (await (await jo.request.post("/api/v1/open-conversations", { data: { intent: "discuss", title: `On waiting ${tag}` } })).json()).conversation.id as string;
+    // I join both conversations; Jo answers afterwards.
+    for (const c of [conv, conv2]) {
+      expect((await page.request.post(`/api/v1/open-conversations/${c}/replies`, { data: { body: "I walk to notice." } })).ok()).toBe(true);
+      expect((await jo.request.post(`/api/v1/open-conversations/${c}/replies`, { data: { body: "The long way home." } })).ok()).toBe(true);
+    }
+
+    // My Creative Room, with Jo in its crew sharing a note.
+    const { project } = (await (await page.request.post("/api/v1/projects", { data: { title: `Coastline film ${tag}`, status: "active" } })).json()) as { project: { id: string } };
+    const { crew } = (await (await page.request.post(`/api/v1/projects/${project.id}/crew`, { data: {} })).json()) as { crew: { id: string } };
+    expect((await page.request.post(`/api/v1/crews/${crew.id}/members`, { data: { creatorId: joId, roleTitle: "Editor" } })).ok()).toBeTruthy();
+    expect((await jo.request.post(`/api/v1/crews/${crew.id}/respond`, { data: { accept: true } })).ok()).toBeTruthy();
+    const noteId = await saveNote(jo, `Cut list for the harbour scene ${tag}`);
+    expect((await jo.request.post(`/api/v1/projects/${project.id}/items`, { data: { kind: "material", ids: [noteId], shared: true } })).ok()).toBeTruthy();
+
+    await page.goto("/");
+    const glance = page.getByRole("region", { name: "From the community" });
+    await expect(glance).toContainText("short films");
+    await expect(glance.getByText(/This week in the community/)).toBeAttached();
+    // One joined conversation is "Worth hearing"; the other is the catch-up line — each shown once.
+    const moved = glance.getByRole("link", { name: /A conversation you joined has moved on/ });
+    await expect(moved).toContainText("1 new reply");
+    await expect(page.getByText(`On slowness ${tag}`)).toHaveCount(1);
+    await expect(page.getByText(`On waiting ${tag}`)).toHaveCount(1);
+    const rooms = page.getByRole("region", { name: "New in your Creative Rooms" });
+    await expect(rooms).toContainText(`Cut list for the harbour scene ${tag}`);
+    await expect(rooms).toContainText(`Coastline film ${tag}`);
+    await rooms.getByRole("link", { name: new RegExp(`Cut list for the harbour scene ${tag}`) }).click();
+    await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/shared/`));
+  });
+
+  test("followers and following on the Profile, with lists that open from the counts", async ({ page, creator, openContext }) => {
+    const tag = uid();
+    const { page: kim } = await openContext("kim");
+    const k = await newCreator(kim, { name: `Kim ${tag}` });
+    const kimId = await creatorIdOf(k.id);
+    expect((await kim.request.post(`/api/v1/creators/${await creatorIdOf(creator.id)}/follow`, { data: { on: true } })).ok()).toBe(true);
+
+    await page.goto(`/creators/${creator.handle}`);
+    const counts = page.getByLabel("Followers and following");
+    await expect(counts).toContainText("1 follower");
+    await expect(counts).toContainText("0 following");
+    await counts.getByRole("link", { name: /follower/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/creators/${creator.handle}/followers$`));
+    const list = page.getByRole("list", { name: "Followers" });
+    await expect(list).toContainText(`Kim ${tag}`);
+    // Follow back from the list; my Following count follows.
+    await list.getByRole("button", { name: `Follow Kim ${tag}` }).click();
+    await expect(list.getByRole("button", { name: `Unfollow Kim ${tag}` })).toHaveAttribute("aria-pressed", "true");
+    await page.goto(`/creators/${creator.handle}`);
+    await expect(page.getByLabel("Followers and following")).toContainText("1 following");
+
+    // On Kim's profile I see that Kim follows me.
+    await page.goto(`/creators/${k.handle}`);
+    await expect(page.getByLabel("Followers and following")).toContainText("Follows you");
+    expect(kimId).toBeTruthy();
+  });
 });
+

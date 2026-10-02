@@ -3835,6 +3835,14 @@ isOneToOne: false
               "availability": string,"bio": string,"creator_id": string,"disciplines": (string)[],"display_name": string,"follows_me": boolean,"handle": string,"i_follow": boolean,"in_project": string,"interest_match": boolean,"interests": (string)[],"languages": (string)[],"location": string,"location_match": boolean,"matched_terms": (string)[],"met_in_huddles": number,"published_pieces": number,"shared_crews": number,"skills": (string)[],"worked_together": number
             }[]
                            },
+"follow_counts":
+{ Args: { "p_creator": string }; Returns: Json
+                           },
+"follow_list":
+{ Args: { "p_before"?: string,"p_creator": string,"p_kind": string,"p_limit"?: number }; Returns: {
+              "avatar_object_id": string,"creator_id": string,"display_name": string,"followed_at": string,"handle": string,"i_follow": boolean
+            }[]
+                           },
 "handle_available":
 { Args: { "p_handle": string }; Returns: boolean
                            },

@@ -71,6 +71,12 @@ Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/
 * **A thought**: one public Scrapbook entry, people the creator follows or has worked with first.
 * **An ask**: one open request (ask, critique, looking for) not already shown in "You could help", with Offer a thought.
 * **Someone to meet**: one creator the viewer doesn't follow yet (people they know first), with why or what they're open to.
+* **This week** (owner, 2 Oct 2026): one line in words — kinds of new public work, the open asks — never numbers
+  (`weekLine`).
+* **A conversation you joined has moved on**: conversations the creator replied to (not their own) with others'
+  replies since they last read or replied; the one already in Worth hearing is left out.
+* **New in your Creative Rooms** (its own card, above): work room-mates shared in the last two weeks, newest three,
+  read through the room's own sharing functions.
 * **Explore** opens Community. Each part appears only when it's real; the section disappears when there's nothing.
 * Same rules as Community: the viewer's own access, muted/blocked creators never appear, ordered by closeness then time —
   never by replies, likes or popularity. Nothing repeats a row above (Worth hearing, You could help).
