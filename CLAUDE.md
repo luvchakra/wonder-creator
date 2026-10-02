@@ -150,6 +150,13 @@ Huddle keeps its name. **Communities are always public** and so are their topics
 follower counts or ranking. Contract: `docs/communities.md`. Implementation: `packages/creator-community/src/communities.ts`,
 `/api/v1/communities`, `/communities/[id]`.
 
+## Testimonials (owner, 2 Oct 2026)
+
+As Orkut had them: someone else writes a short note about you; it shows on your Profile only after you show it, and you
+can hide it any time. Anyone who can see the profile may write (the creator's setting can narrow it to people they
+worked with, or off); "worked together" is derived by the server, never typed; the public Creator Page shows only what
+the creator opted in. No counts, no ranking, never written by AI. Contract: `docs/testimonials.md`.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.

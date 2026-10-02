@@ -7,3 +7,4 @@ export * from "./collaboration";
 export * from "./brand";
 export * from "./follows";
 export * from "./privacy";
+export * from "./testimonials";

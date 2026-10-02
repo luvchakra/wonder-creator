@@ -288,6 +288,8 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: null,
         items: [
+          // Testimonials (docs/testimonials.md): offered only when the server would accept one.
+          ...(f.canWrite && i.creatorHandle ? [{ id: "testimonial", label: "Write a testimonial", icon: "pen" as const, class: "collaboration" as const, target: route(`/creators/${i.creatorHandle}?write=testimonial`), score: 80 }] : []),
           { id: "people", label: "Explore People", icon: "people", class: "collaboration", target: route("/discover"), score: 70 },
           { id: "rooms", label: "Your Creative Rooms", icon: "room", class: "navigation", target: route("/projects"), score: 60 },
         ],

@@ -1,5 +1,5 @@
 import { OPEN_TO_LABEL, listConversations, openToOf } from "@wonder/creator-community";
-import { brandSummaryOf, collaborationProfileOf, followCounts, getCreatorByHandle } from "@wonder/creator-identity";
+import { brandSummaryOf, canWriteTestimonial, collaborationProfileOf, followCounts, getCreatorByHandle, sharedContexts, testimonialsOf } from "@wonder/creator-identity";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts } from "@wonder/creator-library";
 import { canMessage } from "@wonder/creator-projects";
@@ -15,10 +15,12 @@ import { CommunityTab } from "@/components/profile/community";
 import { CreationsTab } from "@/components/profile/creations";
 import { MomentsTab } from "@/components/profile/moments";
 import { OverviewTab } from "@/components/profile/overview";
+import { TestimonialsSection } from "@/components/profile/testimonials";
 import { surface } from "@/components/profile/shared";
 import { avatarUrls } from "@/lib/avatars";
 import { profileCreations } from "@/lib/profile";
 import { loadCreatorPage } from "@/lib/public-pages";
+import { flagOn } from "@/lib/features";
 import { requireSession } from "@/lib/session";
 import { ProfileActions } from "./profile-actions";
 
@@ -65,6 +67,17 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
     followCounts(db, c.id).catch(() => null),
   ]);
 
+  // Testimonials (docs/testimonials.md): what others wrote, once this creator chose to show it.
+  const testimonialsOn = flagOn("testimonials_enabled");
+  const [testimonials, canWrite] = testimonialsOn
+    ? await Promise.all([testimonialsOf(db, c.id).catch(() => []), isMe ? Promise.resolve(false) : canWriteTestimonial(db, me.id, c.id).catch(() => false)])
+    : [[], false];
+  const shared = canWrite || testimonials.some((t) => t.from.id === me.id) ? await sharedContexts(db, me.id, c.id).catch(() => []) : [];
+  const testimonialAvatars = testimonials.length ? await avatarUrls(db, testimonials.map((t) => t.from.id)).catch(() => ({}) as Record<string, string>) : {};
+  const testimonialsBlock = testimonialsOn ? (
+    <TestimonialsSection items={testimonials} isMe={isMe} viewerId={me.id} creator={{ id: c.id, name, handle: c.handle ?? handle }} avatars={testimonialAvatars} canWrite={canWrite} shared={shared} base={base} limit={tab === "overview" ? 2 : undefined} />
+  ) : null;
+
   let body: ReactNode = null;
   if (tab === "overview") {
     const [collab, openTo, creations, scrap] = await Promise.all([
@@ -94,6 +107,7 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
         collab={collab}
         series={series}
         glimpses={ordered}
+        after={testimonialsBlock}
       />
     );
   } else if (tab === "creations") {
@@ -103,7 +117,12 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
     body = <MomentsTab posts={posts} isMe={isMe} />;
   } else {
     const [convs, page] = await Promise.all([listConversations(db, me.id, { authorId: c.id, limit: 8 }).catch(() => ({ cards: [] })), c.handle ? loadCreatorPage(c.handle).catch(() => null) : Promise.resolve(null)]);
-    body = <CommunityTab huddles={live} conversations={convs.cards.map((x) => x.conversation)} shared={(page?.works ?? []).slice(0, 3)} handle={c.handle ?? handle} isMe={isMe} pagePublished={!!page} />;
+    body = (
+      <div className="space-y-2.5">
+        <div id="testimonials">{testimonialsBlock}</div>
+        <CommunityTab huddles={live} conversations={convs.cards.map((x) => x.conversation)} shared={(page?.works ?? []).slice(0, 3)} handle={c.handle ?? handle} isMe={isMe} pagePublished={!!page} />
+      </div>
+    );
   }
 
   const pill = "relative inline-flex min-h-8 min-w-0 items-center justify-center gap-1 rounded-full py-1 text-center leading-tight max-[379px]:[&>svg]:hidden border border-border-soft bg-surface px-1 text-[12px] font-medium text-accent-ink before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] hover:bg-accent-softer";
@@ -111,7 +130,7 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
 
   return (
     <>
-      <PaletteScope context={{ page: isMe ? "me" : "creator" }} />
+      <PaletteScope context={{ page: isMe ? "me" : "creator", ids: { creatorHandle: c.handle ?? handle }, facts: { canWrite: canWrite && !testimonials.some((t) => t.from.id === me.id) } }} />
       <div className="mx-auto max-w-3xl space-y-3">
         <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="none" position="center 40%" className="-mx-4 h-36 sm:-mx-6 sm:h-44 lg:mx-0 lg:rounded-3xl" />
         <section aria-label="Profile" className={cn(surface, "relative -mt-16 rounded-3xl bg-surface/95 px-3.5 pb-3.5 pt-3.5 backdrop-blur-sm")}>

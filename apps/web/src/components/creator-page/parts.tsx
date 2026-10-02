@@ -229,6 +229,17 @@ export function AboutBlock({ data, t }: { data: PublicCreatorPage; t: Tone }) {
   return (
     <div className="space-y-1.5">
       {data.creator.bio ? <p className={cn("whitespace-pre-line text-[14px] leading-relaxed", T.ink)}>{data.creator.bio}</p> : null}
+      {data.testimonials?.length ? (
+        // Testimonials the creator chose for the page (docs/testimonials.md): in their words, newest first, no counts.
+        <ul aria-label="Testimonials" className="space-y-2 pt-1">
+          {data.testimonials.slice(0, 3).map((q) => (
+            <li key={q.id}>
+              <blockquote className={cn("font-display text-[15.5px] italic leading-snug", T.ink)}>“{q.body}”</blockquote>
+              <p className={cn("mt-0.5 text-[12px]", T.muted)}>— {q.fromName}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {data.creator.location || data.links.length ? (
         <p className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]", T.muted)}>
           {data.creator.location ? (

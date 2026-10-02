@@ -36,6 +36,8 @@ export const TELEMETRY_EVENTS = [
   "huddle_from_conversation",
   "creative_room_from_conversation",
   "community_joined",
+  "testimonial_written",
+  "testimonial_shown",
   "community_topic_started",
   "ask_community_sent",
 ] as const;

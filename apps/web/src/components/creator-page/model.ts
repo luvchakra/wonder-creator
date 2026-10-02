@@ -29,7 +29,7 @@ export function pageModel(data: PublicCreatorPage): PageModel {
     dejavu: dejavus.length,
     moments: data.moments.length,
     conversations: data.conversations.length,
-    about: data.creator.bio || data.creator.location || data.links.length ? 1 : 0,
+    about: data.creator.bio || data.creator.location || data.links.length || data.testimonials?.length ? 1 : 0,
     open_to: data.openTo.length,
     links: data.links.length,
   });

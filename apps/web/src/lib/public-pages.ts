@@ -128,9 +128,11 @@ export interface PublicCreatorPage {
   moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageUrl: string | null }>;
   conversations: Array<{ id: string; title: string; replyCount: number; createdAt: string }>;
   openTo: string[];
+  /** Testimonials the creator chose to show here too (docs/testimonials.md); absent on older fixtures. */
+  testimonials?: Array<{ id: string; fromName: string; fromHandle: string | null; body: string; createdAt: string }>;
 }
 
-type RawCreatorPage = Omit<PublicCreatorPage, "works" | "moments" | "creator" | "dejavus" | "templateId"> & {
+type RawCreatorPage = Omit<PublicCreatorPage, "works" | "moments" | "creator" | "dejavus" | "templateId" | "testimonials"> & {
   creator: Omit<PublicCreatorPage["creator"], "avatarUrl"> & { avatarObjectId: string | null };
   templateId: string;
   works: RawCard[];
@@ -138,9 +140,10 @@ type RawCreatorPage = Omit<PublicCreatorPage, "works" | "moments" | "creator" | 
   moments: Array<{ id: string; body: string; kind: string; createdAt: string; imageObjectId: string | null }>;
 };
 
-function toCreatorPage(raw: RawCreatorPage): PublicCreatorPage {
+function toCreatorPage(raw: RawCreatorPage, testimonials: NonNullable<PublicCreatorPage["testimonials"]> = []): PublicCreatorPage {
   return {
     ...raw,
+    testimonials,
     templateId: resolveTemplateId(raw.templateId),
     sections: normalizeSections(raw.sections),
     creator: { ...raw.creator, roles: raw.creator.roles ?? [], avatarUrl: link(raw.creator.avatarObjectId) },
@@ -152,15 +155,22 @@ function toCreatorPage(raw: RawCreatorPage): PublicCreatorPage {
 
 export async function loadCreatorPage(handle: string): Promise<PublicCreatorPage | null> {
   const db = await createClient();
-  const { data } = await db.rpc("public_creator_page", { p_handle: handle });
-  return data ? toCreatorPage(data as unknown as RawCreatorPage) : null;
+  const [{ data }, { data: quotes }] = await Promise.all([db.rpc("public_creator_page", { p_handle: handle }), db.rpc("public_creator_page_testimonials", { p_handle: handle })]);
+  return data ? toCreatorPage(data as unknown as RawCreatorPage, (quotes ?? []).map((q) => ({ id: q.id, fromName: q.from_name, fromHandle: q.from_handle, body: q.body, createdAt: q.created_at }))) : null;
 }
 
 /** The signed-in creator's own page exactly as the public would see it — published or not (the owner's preview). */
 export async function loadCreatorPagePreview(): Promise<PublicCreatorPage | null> {
   const db = await createClient();
   const { data } = await db.rpc("creator_page_preview");
-  return data ? toCreatorPage(data as unknown as RawCreatorPage) : null;
+  if (!data) return null;
+  const raw = data as unknown as RawCreatorPage;
+  // The owner's preview shows the testimonials they chose for the page, published or not.
+  const { data: quotes } = await db.rpc("testimonials_of", { p_creator: raw.creator.id });
+  return toCreatorPage(
+    raw,
+    (quotes ?? []).filter((q) => q.status === "shown" && q.on_creator_page).map((q) => ({ id: q.id, fromName: q.from_name, fromHandle: q.from_handle, body: q.body, createdAt: q.created_at })),
+  );
 }
 
 export interface PublicDejaVuPage {

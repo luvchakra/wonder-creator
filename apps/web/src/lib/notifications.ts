@@ -4,7 +4,7 @@ import { liveCards } from "@wonder/creator-huddle";
 import { inviteThreadsWaiting, myCrewInvites, unreadMessages } from "@wonder/creator-projects";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim" | "message";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim" | "message" | "testimonial" | "testimonial_shown";
 
 export interface Notification {
   id: string;
@@ -27,6 +27,13 @@ const RUN_STALE_MS = 10 * 60 * 1000;
  */
 export async function listNotifications(db: Db, creatorId: string): Promise<Notification[]> {
   const since = new Date(Date.now() - FAILED_INTAKE_WINDOW_MS).toISOString();
+  // Testimonials (docs/testimonials.md): ones waiting for your decision, and yours that were shown this week.
+  const testimonials = db
+    .from("creator_testimonials")
+    .select("id, from_creator_id, to_creator_id, status, created_at, decided_at, creators!creator_testimonials_from_creator_id_fkey(display_name), receiver:creators!creator_testimonials_to_creator_id_fkey(display_name, handle)")
+    .or(`and(to_creator_id.eq.${creatorId},status.eq.pending),and(from_creator_id.eq.${creatorId},status.eq.shown,decided_at.gte.${since})`)
+    .order("created_at", { ascending: false })
+    .limit(10);
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
   const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads, toReview, decided, addedAs, claims, unread] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
@@ -166,6 +173,15 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   for (const c of claims.data ?? []) {
     const who = (c.creators as { display_name: string } | null)?.display_name || "A collaborator";
     out.push({ id: `rights-claim:${c.id}`, kind: "rights_claim", title: `${who} made an ownership claim on “${(c.artifacts as { title: string } | null)?.title ?? "your Creation"}”`, detail: "Acknowledge or dispute it", href: `/projects/${c.project_id}?tab=rights`, at: c.created_at, actor: { id: c.creator_id, name: who } });
+  }
+  for (const t of (await testimonials).data ?? []) {
+    const writer = (t.creators as { display_name: string } | null)?.display_name || "Someone";
+    const receiver = t.receiver as { display_name: string; handle: string | null } | null;
+    if (t.status === "pending" && t.to_creator_id === creatorId) {
+      out.push({ id: `testimonial:${t.id}`, kind: "testimonial", title: `${writer} wrote you a testimonial`, detail: "Read it, then show it or keep it private", href: "/profile", at: t.created_at, actor: { id: t.from_creator_id, name: writer } });
+    } else if (receiver?.handle) {
+      out.push({ id: `testimonial-shown:${t.id}`, kind: "testimonial_shown", title: `${receiver.display_name} is showing your testimonial`, detail: null, href: `/creators/${receiver.handle}`, at: t.decided_at ?? t.created_at });
+    }
   }
   for (const c of crewInvites) {
     out.push({ id: `crew:${c.crewId}`, kind: "crew_invite", title: `${c.invitedBy} invited you to join ${c.crewName}`, detail: c.roleTitle ? `As ${c.roleTitle} · ${c.projectTitle}` : c.projectTitle, href: `/crews/${c.crewId}`, at: c.invitedAt, actor: { id: null, name: c.invitedBy } });

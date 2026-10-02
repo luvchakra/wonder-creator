@@ -6,7 +6,8 @@ import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent
 import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { TESTIMONIALS_FROM, TESTIMONIALS_FROM_HINT, TESTIMONIALS_FROM_LABEL, type TestimonialsFrom } from "@wonder/creator-identity/testimonials-options";
 import { api, errorMessage } from "@/lib/client";
 import { OpenToEditor } from "@/components/community/open-to";
 import { PrivacyPanel } from "./privacy-panel";
@@ -480,6 +481,8 @@ function PrivacySection({ profile, blocked, readiness, email }: Props) {
         ) : null}
       </fieldset>
 
+      <TestimonialsSetting />
+
       <section>
         <h3 className="text-sm font-medium text-ink">Account</h3>
         <ul className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft text-sm">
@@ -766,5 +769,52 @@ function BrandSection({ brand }: Props) {
         {status}
       </div>
     </form>
+  );
+}
+
+/** Testimonials (docs/testimonials.md): who may write one for you. Each still waits for you to show it. */
+function TestimonialsSetting() {
+  const [from, setFrom] = useState<TestimonialsFrom | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void api<{ from: TestimonialsFrom }>("/api/v1/testimonials/settings").then((r) => live && setFrom(r.from)).catch(() => live && setFrom("anyone"));
+    return () => {
+      live = false;
+    };
+  }, []);
+  async function choose(next: TestimonialsFrom) {
+    const prev = from;
+    setFrom(next);
+    try {
+      await api("/api/v1/testimonials/settings", { method: "PATCH", json: { from: next } });
+      setMsg("Saved.");
+    } catch (e) {
+      setFrom(prev);
+      setMsg(errorMessage(e));
+    }
+  }
+  if (from === null) return null;
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-ink">Testimonials</legend>
+      <p className="text-[13px] text-ink-muted">Who may write one about you. Nothing shows on your profile until you choose to show it.</p>
+      <div className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft">
+        {TESTIMONIALS_FROM.map((v) => (
+          <label key={v} className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2 first:rounded-t-xl last:rounded-b-xl has-[:checked]:bg-accent-softer">
+            <input type="radio" name="testimonials_from" value={v} checked={from === v} onChange={() => void choose(v)} className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]" />
+            <span className="min-w-0">
+              <span className="block text-sm text-ink">{TESTIMONIALS_FROM_LABEL[v]}</span>
+              <span className="text-[13px] text-ink-muted">{TESTIMONIALS_FROM_HINT[v]}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {msg ? (
+        <p role="status" className="mt-1 text-[12.5px] text-ink-muted">
+          {msg}
+        </p>
+      ) : null}
+    </fieldset>
   );
 }

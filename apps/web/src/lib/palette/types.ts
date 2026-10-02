@@ -69,9 +69,9 @@ export interface PaletteContext {
   lifecycle?: Lifecycle;
   permissions?: Permission[];
   /** Ids of the object on screen, for building its links. */
-  ids?: { artifactId?: string; materialId?: string; projectId?: string; crewId?: string; huddleId?: string; collectionId?: string; approvalArtifactId?: string };
+  ids?: { artifactId?: string; materialId?: string; projectId?: string; crewId?: string; huddleId?: string; collectionId?: string; approvalArtifactId?: string; creatorHandle?: string };
   /** Small facts that change the offer (e.g. a room with or without an active Creation). */
-  facts?: { activeCreationId?: string | null; related?: string | null; hasCrew?: boolean; format?: string; name?: string | null; member?: boolean; host?: boolean };
+  facts?: { activeCreationId?: string | null; related?: string | null; hasCrew?: boolean; format?: string; name?: string | null; member?: boolean; host?: boolean; canWrite?: boolean };
   /** What the navbar Context Strip says about this screen (docs/ui-redesign/context-strip.md). */
   strip?: StripFacts;
   /** Current path, to mark the global destination you're on. */
