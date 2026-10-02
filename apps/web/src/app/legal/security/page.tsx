@@ -35,7 +35,7 @@ export default function SecurityPolicyPage() {
 
       <h2>Reporting a vulnerability</h2>
       <p>
-        If you believe you&rsquo;ve found a security problem, please tell us privately{contact ? <> at <a href={contact.replace(/^mailto:/, "mailto:")} className="underline">{contact.replace(/^mailto:/, "")}</a></> : null} before
+        If you believe you&rsquo;ve found a security problem, please tell us privately{contact ? <> at <a href={/^[^:\s]+@/.test(contact) ? `mailto:${contact}` : contact} className="underline">{contact.replace(/^mailto:/, "")}</a></> : null} before
         sharing it with anyone else. Include what you found, how to reproduce it and what you think the impact is. We&rsquo;ll acknowledge your report, keep you informed and credit you if you&rsquo;d like.
       </p>
       <ul>

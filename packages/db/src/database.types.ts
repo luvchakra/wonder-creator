@@ -446,13 +446,13 @@ isOneToOne: true
                   ]
                 },"business_records": {
                   Row: {
-                    "amount": number,"artifact_id": string | null,"counterparty": string | null,"created_at": string,"creator_id": string,"currency": string,"description": string | null,"direction": string,"id": string,"kind": string,"note": string | null,"occurred_on": string,"settled_at": string | null,"source_event_id": string | null,"source_id": string | null,"source_type": string,"status": string,"updated_at": string
+                    "amount": number,"artifact_id": string | null,"counterparty": string | null,"created_at": string,"creator_id": string,"currency": string,"description": string | null,"direction": string,"id": string,"kind": string,"note": string | null,"occurred_on": string,"payment_order_id": string | null,"settled_at": string | null,"source_event_id": string | null,"source_id": string | null,"source_type": string,"status": string,"updated_at": string
                   }
                   Insert: {
-                    "amount": number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id": string,"currency": string,"description"?: string | null,"direction": string,"id"?: string,"kind": string,"note"?: string | null,"occurred_on"?: string,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type": string,"status"?: string,"updated_at"?: string
+                    "amount": number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id": string,"currency": string,"description"?: string | null,"direction": string,"id"?: string,"kind": string,"note"?: string | null,"occurred_on"?: string,"payment_order_id"?: string | null,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type": string,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id"?: string,"currency"?: string,"description"?: string | null,"direction"?: string,"id"?: string,"kind"?: string,"note"?: string | null,"occurred_on"?: string,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type"?: string,"status"?: string,"updated_at"?: string
+                    "amount"?: number,"artifact_id"?: string | null,"counterparty"?: string | null,"created_at"?: string,"creator_id"?: string,"currency"?: string,"description"?: string | null,"direction"?: string,"id"?: string,"kind"?: string,"note"?: string | null,"occurred_on"?: string,"payment_order_id"?: string | null,"settled_at"?: string | null,"source_event_id"?: string | null,"source_id"?: string | null,"source_type"?: string,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -466,6 +466,12 @@ isOneToOne: false
       columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "business_records_payment_order_id_fkey"
+      columns: ["payment_order_id"]
+isOneToOne: false
+      referencedRelation: "payment_orders"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "business_records_source_event_id_fkey"
@@ -2096,6 +2102,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"ledger_entries": {
+                  Row: {
+                    "account": string,"creator_id": string,"credit_minor": number,"currency": string,"debit_minor": number,"id": number,"journal_id": string,"memo": string,"order_id": string | null,"posted_at": string,"refund_id": string | null
+                  }
+                  Insert: {
+                    "account": string,"creator_id": string,"credit_minor"?: number,"currency": string,"debit_minor"?: number,"id"?: never,"journal_id": string,"memo": string,"order_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null
+                  }
+                  Update: {
+                    "account"?: string,"creator_id"?: string,"credit_minor"?: number,"currency"?: string,"debit_minor"?: number,"id"?: never,"journal_id"?: string,"memo"?: string,"order_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ledger_entries_order_id_fkey"
+      columns: ["order_id"]
+isOneToOne: false
+      referencedRelation: "payment_orders"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ledger_entries_refund_id_fkey"
+      columns: ["refund_id"]
+isOneToOne: false
+      referencedRelation: "payment_refunds"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"license_requests": {
                   Row: {
                     "artifact_id": string,"counter_terms": Json | null,"created_at": string,"id": string,"license_id": string | null,"owner_creator_id": string,"proposed_use": string,"requester_creator_id": string,"responded_at": string | null,"response_note": string | null,"status": string,"terms": NonNullable<Json>,"updated_at": string
@@ -2515,6 +2546,99 @@ isOneToOne: false
     },{
       foreignKeyName: "ownership_assertions_responded_by_fkey"
       columns: ["responded_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_events": {
+                  Row: {
+                    "body_sha256": string,"event_type": string,"id": number,"order_id": string | null,"outcome": string,"provider": string,"provider_event_id": string,"received_at": string,"summary": NonNullable<Json>
+                  }
+                  Insert: {
+                    "body_sha256": string,"event_type": string,"id"?: never,"order_id"?: string | null,"outcome": string,"provider": string,"provider_event_id": string,"received_at"?: string,"summary"?: NonNullable<Json>
+                  }
+                  Update: {
+                    "body_sha256"?: string,"event_type"?: string,"id"?: never,"order_id"?: string | null,"outcome"?: string,"provider"?: string,"provider_event_id"?: string,"received_at"?: string,"summary"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_events_order_id_fkey"
+      columns: ["order_id"]
+isOneToOne: false
+      referencedRelation: "payment_orders"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_orders": {
+                  Row: {
+                    "amount_minor": number,"artifact_id": string | null,"checkout_url": string | null,"created_at": string,"creator_id": string | null,"currency": string,"description": string,"expires_at": string,"id": string,"license_id": string | null,"opened_by": string | null,"paid_at": string | null,"payer_creator_id": string | null,"provider": string | null,"provider_order_ref": string | null,"provider_payment_ref": string | null,"refunded_minor": number,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "amount_minor": number,"artifact_id"?: string | null,"checkout_url"?: string | null,"created_at"?: string,"creator_id"?: string | null,"currency": string,"description": string,"expires_at"?: string,"id"?: string,"license_id"?: string | null,"opened_by"?: string | null,"paid_at"?: string | null,"payer_creator_id"?: string | null,"provider"?: string | null,"provider_order_ref"?: string | null,"provider_payment_ref"?: string | null,"refunded_minor"?: number,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount_minor"?: number,"artifact_id"?: string | null,"checkout_url"?: string | null,"created_at"?: string,"creator_id"?: string | null,"currency"?: string,"description"?: string,"expires_at"?: string,"id"?: string,"license_id"?: string | null,"opened_by"?: string | null,"paid_at"?: string | null,"payer_creator_id"?: string | null,"provider"?: string | null,"provider_order_ref"?: string | null,"provider_payment_ref"?: string | null,"refunded_minor"?: number,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_orders_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: false
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_orders_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_orders_license_id_fkey"
+      columns: ["license_id"]
+isOneToOne: false
+      referencedRelation: "licenses"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_orders_opened_by_fkey"
+      columns: ["opened_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_orders_payer_creator_id_fkey"
+      columns: ["payer_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_refunds": {
+                  Row: {
+                    "amount_minor": number,"created_at": string,"creator_id": string | null,"id": string,"order_id": string,"provider_refund_ref": string | null,"reason": string,"requested_by": string | null,"settled_at": string | null,"status": string,"updated_at": string
+                  }
+                  Insert: {
+                    "amount_minor": number,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"order_id": string,"provider_refund_ref"?: string | null,"reason": string,"requested_by"?: string | null,"settled_at"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount_minor"?: number,"created_at"?: string,"creator_id"?: string | null,"id"?: string,"order_id"?: string,"provider_refund_ref"?: string | null,"reason"?: string,"requested_by"?: string | null,"settled_at"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_refunds_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_refunds_order_id_fkey"
+      columns: ["order_id"]
+isOneToOne: false
+      referencedRelation: "payment_orders"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_refunds_requested_by_fkey"
+      columns: ["requested_by"]
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]
@@ -4015,6 +4139,105 @@ isOneToOne: false
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
                            },
+"payment_apply_event":
+{ Args: { "p_amount"?: number,"p_body_sha256": string,"p_currency"?: string,"p_event_id": string,"p_event_type": string,"p_kind": string,"p_payment"?: string,"p_provider": string,"p_ref"?: string,"p_refund_ref"?: string }; Returns: string
+                           },
+"payment_order_attach":
+{ Args: { "p_expires_at": string,"p_order": string,"p_provider": string,"p_ref": string,"p_url": string }; Returns: {
+              "amount_minor": number,
+"artifact_id": string | null,
+"checkout_url": string | null,
+"created_at": string,
+"creator_id": string | null,
+"currency": string,
+"description": string,
+"expires_at": string,
+"id": string,
+"license_id": string | null,
+"opened_by": string | null,
+"paid_at": string | null,
+"payer_creator_id": string | null,
+"provider": string | null,
+"provider_order_ref": string | null,
+"provider_payment_ref": string | null,
+"refunded_minor": number,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "payment_orders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"payment_order_open":
+{ Args: { "p_license": string }; Returns: {
+              "amount_minor": number,
+"artifact_id": string | null,
+"checkout_url": string | null,
+"created_at": string,
+"creator_id": string | null,
+"currency": string,
+"description": string,
+"expires_at": string,
+"id": string,
+"license_id": string | null,
+"opened_by": string | null,
+"paid_at": string | null,
+"payer_creator_id": string | null,
+"provider": string | null,
+"provider_order_ref": string | null,
+"provider_payment_ref": string | null,
+"refunded_minor": number,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "payment_orders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"payment_refund_attach":
+{ Args: { "p_failed"?: boolean,"p_ref": string,"p_refund": string }; Returns: {
+              "amount_minor": number,
+"created_at": string,
+"creator_id": string | null,
+"id": string,
+"order_id": string,
+"provider_refund_ref": string | null,
+"reason": string,
+"requested_by": string | null,
+"settled_at": string | null,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "payment_refunds"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"payment_refund_request":
+{ Args: { "p_amount_minor": number,"p_order": string,"p_reason": string }; Returns: {
+              "amount_minor": number,
+"created_at": string,
+"creator_id": string | null,
+"id": string,
+"order_id": string,
+"provider_refund_ref": string | null,
+"reason": string,
+"requested_by": string | null,
+"settled_at": string | null,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "payment_refunds"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "project_open_items_of":
 { Args: { "p_project": string }; Returns: Json
                            },

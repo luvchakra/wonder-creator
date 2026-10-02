@@ -1,0 +1,48 @@
+name: Database migrations
+
+# Applies supabase/migrations/*.sql files that production hasn't seen yet, in filename order, each in one transaction,
+# when they reach main (docs/deploy-migrations.md). Applied files are recorded in app.applied_migrations.
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply pending migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::warning::The SUPABASE_DB_URL secret isn't set — no migrations were applied."
+            exit 0
+          fi
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "create table if not exists app.applied_migrations (filename text primary key, applied_at timestamptz not null default now(), applied_by text not null default current_user, checksum text); revoke all on app.applied_migrations from public, anon, authenticated;"
+          applied="$(psql "$DATABASE_URL" -Atc 'select filename from app.applied_migrations')"
+          pending=0
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            name="$(basename "$f")"
+            [[ "$name" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]] || { echo "::error::Unexpected migration file name: $name"; exit 1; }
+            if grep -qxF "$name" <<<"$applied"; then continue; fi
+            sum="$(sha256sum "$f" | cut -d' ' -f1)"
+            echo "Applying $name"
+            { cat "$f"; printf '\ninsert into app.applied_migrations(filename, checksum) values (%s, %s);\n' "'$name'" "'$sum'"; } \
+              | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -1 -f -
+            pending=$((pending + 1))
+          done
+          echo "Applied $pending migration(s)."

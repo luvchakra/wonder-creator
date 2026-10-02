@@ -4,7 +4,7 @@ import { Ledger } from "./ledger";
 
 export const metadata = { title: "Business" };
 
-/** CreatorBusiness (P1-19): what the creator's work has earned and cost — recorded, never paid through Wonder Creator. */
+/** CreatorBusiness (P1-19): what the creator's work has earned and cost. Licence fees paid through Stripe or Razorpay settle here automatically; everything else is recorded by the creator. */
 export default async function BusinessPage() {
   const { db } = await requireSession();
   const records = await listBusinessRecords(db);

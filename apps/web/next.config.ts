@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
     "@wonder/creator-library",
     "@wonder/creator-community",
     "@wonder/creator-moments",
+    "@wonder/creator-payments",
     "@wonder/creator-send",
     "@wonder/creator-talk",
     "@wonder/creator-brain",

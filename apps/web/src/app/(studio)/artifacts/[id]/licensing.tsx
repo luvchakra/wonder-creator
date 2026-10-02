@@ -4,6 +4,7 @@ import { Badge, Button, Dialog, DialogContent, Field, Input, Switch, Textarea, c
 import { ArrowLeft, Scale } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LicencePayment } from "@/components/payments/licence-payment";
 import { stepUpErrorMessage, useStepUp } from "@/components/step-up";
 import { api, errorMessage } from "@/lib/client";
 
@@ -18,6 +19,7 @@ export interface LicenseRequestView {
   consequential: boolean;
   counterConsequential: boolean;
   responseNote: string | null;
+  licenseId?: string | null;
   requester: { id: string; name: string; handle: string | null };
   createdAt: string;
 }
@@ -537,6 +539,7 @@ export function RequesterLicensing({ artifactId, title, requests, stance }: { ar
               </div>
               <TermsSummary className="mt-2" lines={r.summary} />
               {r.responseNote ? <p className="mt-2 text-ink">“{r.responseNote}”</p> : null}
+              {r.status === "approved" && r.licenseId ? <ApprovedFee licenseId={r.licenseId} terms={r.counterTerms ?? r.terms} /> : null}
               {r.status === "countered" && r.counterSummary ? (
                 <div className="mt-3 rounded-xl bg-accent-softer p-3">
                   <p className="font-medium text-ink">Their terms</p>
@@ -578,4 +581,10 @@ export function RequesterLicensing({ artifactId, title, requests, stance }: { ar
       {open ? <RequestLicenseDialog open onOpenChange={setOpen} artifactId={artifactId} title={title} commercialOffered={stance?.commercialUse !== "not_offered"} /> : null}
     </section>
   );
+}
+
+/** The licensee's side of a paid licence: pay its fee on the provider's page. */
+function ApprovedFee({ licenseId, terms }: { licenseId: string; terms: LicenseTerms }) {
+  if (!terms.feeAmount || !terms.feeCurrency) return null;
+  return <LicencePayment licenseId={licenseId} role="licensee" fee={{ amount: terms.feeAmount, currency: terms.feeCurrency }} />;
 }
