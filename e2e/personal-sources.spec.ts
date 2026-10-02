@@ -1,4 +1,4 @@
-import { expect, seedNotes, test } from "./fixtures";
+import { expect, pngBytes, seedNotes, test } from "./fixtures";
 
 test.describe("Personal Sources", () => {
   test("connect your notes, sync on your terms, review a group and bring in only what you choose", async ({ page, creator }) => {
@@ -61,5 +61,49 @@ test.describe("Personal Sources", () => {
     await expect(page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Notes" })).toContainText("Not connected");
     const mats = await (await page.request.get("/api/v1/materials?filter=notes")).json();
     expect(JSON.stringify(mats)).toContain("Platform 3 at dawn");
+  });
+
+  test("photos: only the ones you choose, as tiny previews; originals come in only when you bring them in", async ({ page, creator }) => {
+    void creator;
+    await page.goto("/sources");
+    const photos = page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Photos" });
+    await expect(photos).toContainText("Only the photos you choose");
+    const uploads: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && r.url().includes("/api/v1/send")) uploads.push(r.url());
+    });
+    // Four different photos (different sizes, so different fingerprints), all from today.
+    await page.getByLabel("Choose photos").setInputFiles([12, 14, 16, 18].map((n) => ({ name: `IMG_${n}.png`, mimeType: "image/png", buffer: pngBytes(n) })));
+    await expect(page.getByRole("status").filter({ hasText: "Looked at 4 photos." })).toBeVisible({ timeout: 30_000 });
+    expect(uploads).toEqual([]);
+    await page.getByRole("link", { name: /A day you kept in photos/ }).click();
+    const grid = page.getByRole("checkbox", { name: /^Photo/ });
+    await expect(grid).toHaveCount(4);
+    await grid.first().locator("..").click();
+    await expect(grid.first()).not.toBeChecked();
+    await page.getByRole("button", { name: "Add selected to Materials · 3 items" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=ideas/, { timeout: 30_000 });
+    // Only the three chosen originals were uploaded.
+    expect(uploads).toHaveLength(3);
+  });
+
+  test("search your world, and look further back only when asked", async ({ page, creator }) => {
+    await seedNotes(creator.id, [
+      { title: "Howrah at sunrise", text: "Railway bridge and the river in Kolkata.", daysAgo: 600 },
+      { title: "Recent", text: "A new idea about trains.", daysAgo: 1 },
+    ]);
+    await page.goto("/sources");
+    await page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Notes" }).getByRole("button", { name: "Connect" }).click();
+    await expect(page.getByRole("list", { name: "Your sources" }).getByRole("listitem").filter({ hasText: "Notes" })).toContainText("Last synced", { timeout: 30_000 });
+    await page.getByRole("link", { name: "Search your world" }).click();
+    await page.getByRole("searchbox", { name: "Search your world" }).fill("Kolkata");
+    await expect(page.getByRole("status").filter({ hasText: "Nothing found yet." })).toBeVisible();
+    await page.getByRole("button", { name: "Look further back" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "1 thing found" })).toBeVisible({ timeout: 30_000 });
+    // Nothing is chosen for the creator.
+    await expect(page.getByRole("button", { name: /^Add selected to Materials$/ })).toBeDisabled();
+    await page.locator("label").filter({ hasText: "Howrah at sunrise" }).click();
+    await page.getByRole("button", { name: "Add selected to Materials · 1 item" }).click();
+    await expect(page).toHaveURL(/\/space\?tab=ideas/);
   });
 });

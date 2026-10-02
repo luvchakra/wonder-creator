@@ -16,7 +16,7 @@ import { buildHomePayload, type HomeContinueItem, type HomePayload } from "@/lib
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
 import { flagOn } from "@/lib/features";
-import { homeWorld } from "@/lib/sources";
+import { homeWorld, sourcesHomeOn } from "@/lib/sources";
 import { track } from "@/lib/telemetry";
 import { HomeBegin } from "./home-begin";
 
@@ -35,7 +35,7 @@ export default async function HomePage() {
   preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
 
-  const [home, world] = await Promise.all([buildHomePayload(db, creator.id), flagOn("personal_sources_enabled") ? homeWorld(db) : null]);
+  const [home, world] = await Promise.all([buildHomePayload(db, creator.id), flagOn("personal_sources_enabled") && sourcesHomeOn() ? homeWorld(db) : null]);
   scheduleDiscovery(db, creator.id);
   const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms].filter(Boolean).length;
   after(() => {

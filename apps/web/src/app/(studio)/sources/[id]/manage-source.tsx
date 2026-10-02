@@ -1,6 +1,6 @@
 "use client";
 import type { Provider } from "@wonder/creator-sources";
-import { Button, ConfirmDialog, KIT, KitArt } from "@wonder/ui";
+import { Button, ConfirmDialog, KIT, KitArt, Segmented, Switch } from "@wonder/ui";
 import { ChevronLeft, Lock, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,8 +12,8 @@ import { api, errorMessage } from "@/lib/client";
 
 const WHAT: Record<Provider, string> = {
   native_notes: "Your notes and ideas from the last six months, then whatever's new each time you sync. They already live in Wonder Creator; syncing only finds the ones worth returning to.",
-  gmail: "Recent mail only, never spam, promotions or security mail.",
-  google_calendar: "A short window of past and upcoming events.",
+  gmail: "Recent mail only — never spam, promotions, newsletters or security mail — and only subjects and Gmail's short previews until you bring something in.",
+  google_calendar: "A short window of past and upcoming events — only each event's title, date and town. Never attendees, descriptions, call links or addresses; declined, cancelled and online meetings are left out.",
   external_notes: "Notes you choose to import.",
   phone_photos: "Only the photos you select.",
   cloud_photos: "Only the albums you choose.",
@@ -23,7 +23,7 @@ export function ManageSource({
   source: s,
   activeJob,
 }: {
-  source: { id: string; provider: Provider; label: string; status: string; lastSyncedAt: string | null; connectedAt: string; indexed: number };
+  source: { id: string; provider: Provider; label: string; status: string; lastSyncedAt: string | null; connectedAt: string; indexed: number; account: string | null; scope: Record<string, unknown> };
   activeJob: { id: string; status: string; phase: string } | null;
 }) {
   const router = useRouter();
@@ -31,6 +31,17 @@ export function ManageSource({
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function reconnect() {
+    setBusy(true);
+    try {
+      const r = await api<{ url: string }>("/api/v1/personal-sources/google/connect", { method: "POST", json: { provider: s.provider } });
+      window.location.assign(r.url);
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
 
   async function disconnect() {
     setBusy(true);
@@ -56,6 +67,7 @@ export function ManageSource({
           <h1 className="font-display text-[26px] leading-tight text-ink">{s.label}</h1>
           <p className="text-[13px] text-ink-muted">
             {s.status === "needs_reconnect" ? "Needs reconnecting" : "Connected"}
+            {s.account ? ` · ${s.account}` : ""}
             {s.lastSyncedAt ? (
               <>
                 {" · "}Last synced <RelativeTime iso={s.lastSyncedAt} />
@@ -67,6 +79,18 @@ export function ManageSource({
         </div>
       </header>
 
+      {s.provider === "phone_photos" ? (
+        <section aria-label="Photos" className="mt-4 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
+          <p className="text-[15px] font-medium text-ink">Only what you choose</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">{WHAT[s.provider]} Wonder Creator keeps when each was taken and a tiny preview — the originals stay on your device until you bring one in.</p>
+          <p className="mt-1 text-[12.5px] text-ink-subtle">
+            {s.indexed} {s.indexed === 1 ? "photo" : "photos"} chosen
+          </p>
+          <Link href="/sources" className="mt-2 inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
+            Choose more photos
+          </Link>
+        </section>
+      ) : (
       <section aria-label="Sync" className="mt-4 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
         <p className="text-[15px] font-medium text-ink">Sync this source</p>
         <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">{WHAT[s.provider]}</p>
@@ -95,6 +119,18 @@ export function ManageSource({
           )}
         </div>
       </section>
+      )}
+
+      {s.status === "needs_reconnect" && (s.provider === "gmail" || s.provider === "google_calendar") ? (
+        <div role="status" className="mt-3 flex items-center gap-3 rounded-2xl bg-warning-soft px-3 py-2.5">
+          <p className="min-w-0 flex-1 text-[13.5px] text-warning-ink">Google no longer lets Wonder Creator read this {s.provider === "gmail" ? "mailbox" : "calendar"}. Reconnect to keep syncing.</p>
+          <Button size="sm" variant="secondary" loading={busy} onClick={() => void reconnect()}>
+            Reconnect
+          </Button>
+        </div>
+      ) : null}
+
+      {s.provider === "gmail" ? <GmailScope id={s.id} scope={s.scope} /> : s.provider === "google_calendar" ? <CalendarScope id={s.id} scope={s.scope} /> : null}
 
       <section aria-label="Privacy" className="relative isolate mt-3 overflow-hidden rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
         <KitArt art={KIT.painted.leafSprigSage} sizes="5rem" className="pointer-events-none absolute -bottom-3 -right-2 -z-10 h-auto w-20 opacity-60" />
@@ -130,5 +166,121 @@ export function ManageSource({
         onConfirm={() => void disconnect()}
       />
     </div>
+  );
+}
+
+/** What Gmail discovery may look at (board "Gmail settings"): how far back, and whether mail you sent counts. */
+function GmailScope({ id, scope }: { id: string; scope: Record<string, unknown> }) {
+  const [days, setDays] = useState(String(scope.lookbackDays === 7 || scope.lookbackDays === 90 ? scope.lookbackDays : 30) as "7" | "30" | "90");
+  const [sent, setSent] = useState(scope.includeSent === true);
+  const [saved, setSaved] = useState<string | null>(null);
+  async function save(next: { lookbackDays: number; includeSent: boolean }) {
+    setSaved(null);
+    try {
+      await api(`/api/v1/personal-sources/connections/${id}`, { method: "PATCH", json: { scopeSettings: next } });
+      setSaved("Saved — used from your next sync.");
+    } catch (e) {
+      setSaved(errorMessage(e));
+    }
+  }
+  return (
+    <section aria-labelledby="scope-title" className="mt-3 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
+      <h2 id="scope-title" className="text-[15px] font-medium text-ink">
+        Sync scope
+      </h2>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[13.5px] text-ink-muted">Mail from the last</span>
+        <Segmented
+          label="How far back"
+          value={days}
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+            { value: "90", label: "90 days" },
+          ]}
+          onChange={(v) => {
+            setDays(v);
+            void save({ lookbackDays: Number(v), includeSent: sent });
+          }}
+        />
+      </div>
+      <div className="mt-2 flex min-h-11 items-center justify-between gap-3">
+        <span className="text-[13.5px] text-ink-muted">Include mail you sent</span>
+        <Switch
+          label="Include mail you sent"
+          checked={sent}
+          onCheckedChange={(v) => {
+            setSent(v);
+            void save({ lookbackDays: Number(days), includeSent: v });
+          }}
+        />
+      </div>
+      <p className="mt-1 text-[12.5px] text-ink-subtle">Newsletters, promotions, social and security mail are always left out.</p>
+      {saved ? (
+        <p role="status" className="mt-1 text-[12.5px] text-ink-muted">
+          {saved}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Calendar's window: how far back and ahead discovery may look. */
+function CalendarScope({ id, scope }: { id: string; scope: Record<string, unknown> }) {
+  const [past, setPast] = useState(String([7, 30, 90].includes(Number(scope.pastDays)) ? scope.pastDays : 30) as "7" | "30" | "90");
+  const [ahead, setAhead] = useState(String([0, 30, 60].includes(Number(scope.futureDays)) ? scope.futureDays : 60) as "0" | "30" | "60");
+  const [saved, setSaved] = useState<string | null>(null);
+  async function save(next: { pastDays: number; futureDays: number }) {
+    setSaved(null);
+    try {
+      await api(`/api/v1/personal-sources/connections/${id}`, { method: "PATCH", json: { scopeSettings: next } });
+      setSaved("Saved — used from your next sync.");
+    } catch (e) {
+      setSaved(errorMessage(e));
+    }
+  }
+  return (
+    <section aria-labelledby="scope-title" className="mt-3 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
+      <h2 id="scope-title" className="text-[15px] font-medium text-ink">
+        Sync scope
+      </h2>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[13.5px] text-ink-muted">Events from the last</span>
+        <Segmented
+          label="How far back"
+          value={past}
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+            { value: "90", label: "90 days" },
+          ]}
+          onChange={(v) => {
+            setPast(v);
+            void save({ pastDays: Number(v), futureDays: Number(ahead) });
+          }}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[13.5px] text-ink-muted">and the next</span>
+        <Segmented
+          label="How far ahead"
+          value={ahead}
+          options={[
+            { value: "0", label: "None" },
+            { value: "30", label: "30 days" },
+            { value: "60", label: "60 days" },
+          ]}
+          onChange={(v) => {
+            setAhead(v);
+            void save({ pastDays: Number(past), futureDays: Number(v) });
+          }}
+        />
+      </div>
+      {saved ? (
+        <p role="status" className="mt-1 text-[12.5px] text-ink-muted">
+          {saved}
+        </p>
+      ) : null}
+    </section>
   );
 }

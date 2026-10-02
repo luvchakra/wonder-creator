@@ -732,13 +732,13 @@ isOneToOne: false
                   ]
                 },"context_candidates": {
                   Row: {
-                    "counts": NonNullable<Json>,"created_at": string,"creator_id": string,"expires_at": string,"explanation": string,"id": string,"imported_material_ids": (string)[],"quote": string | null,"record_ids": (string)[],"score": number,"signature": string,"state": string,"title": string,"updated_at": string
+                    "counts": NonNullable<Json>,"created_at": string,"creator_id": string,"enriched_at": string | null,"enrichment_hash": string | null,"expires_at": string,"explanation": string,"id": string,"imported_material_ids": (string)[],"quote": string | null,"record_ids": (string)[],"score": number,"signature": string,"state": string,"suggested_format": string | null,"suggestion": string | null,"title": string,"updated_at": string
                   }
                   Insert: {
-                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id": string,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature": string,"state"?: string,"title": string,"updated_at"?: string
+                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id": string,"enriched_at"?: string | null,"enrichment_hash"?: string | null,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature": string,"state"?: string,"suggested_format"?: string | null,"suggestion"?: string | null,"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id"?: string,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature"?: string,"state"?: string,"title"?: string,"updated_at"?: string
+                    "counts"?: NonNullable<Json>,"created_at"?: string,"creator_id"?: string,"enriched_at"?: string | null,"enrichment_hash"?: string | null,"expires_at"?: string,"explanation"?: string,"id"?: string,"imported_material_ids"?: (string)[],"quote"?: string | null,"record_ids"?: (string)[],"score"?: number,"signature"?: string,"state"?: string,"suggested_format"?: string | null,"suggestion"?: string | null,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3713,13 +3713,13 @@ isOneToOne: false
                   ]
                 },"source_sync_jobs": {
                   Row: {
-                    "ai_calls": number,"attempts": number,"cancel_requested": boolean,"candidate_count": number,"connection_id": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"idempotency_key": string,"indexed_count": number,"mode": string,"pages_fetched": number,"parent_id": string | null,"phase": string,"priority": number,"run_after": string,"scanned_count": number,"scope_hash": string,"started_at": string | null,"status": string,"transferred_bytes": number,"updated_at": string
+                    "ai_calls": number,"attempts": number,"cancel_requested": boolean,"candidate_count": number,"connection_id": string | null,"created_at": string,"creator_id": string,"error_code": string | null,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"idempotency_key": string,"indexed_count": number,"mode": string,"pages_fetched": number,"parent_id": string | null,"phase": string,"priority": number,"query": string | null,"run_after": string,"scanned_count": number,"scope_hash": string,"started_at": string | null,"status": string,"transferred_bytes": number,"updated_at": string
                   }
                   Insert: {
-                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key": string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
+                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id": string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key": string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"query"?: string | null,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key"?: string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
+                    "ai_calls"?: number,"attempts"?: number,"cancel_requested"?: boolean,"candidate_count"?: number,"connection_id"?: string | null,"created_at"?: string,"creator_id"?: string,"error_code"?: string | null,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"idempotency_key"?: string,"indexed_count"?: number,"mode"?: string,"pages_fetched"?: number,"parent_id"?: string | null,"phase"?: string,"priority"?: number,"query"?: string | null,"run_after"?: string,"scanned_count"?: number,"scope_hash"?: string,"started_at"?: string | null,"status"?: string,"transferred_bytes"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
