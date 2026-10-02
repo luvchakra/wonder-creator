@@ -15,7 +15,9 @@ import { CommunityTab } from "@/components/profile/community";
 import { CreationsTab } from "@/components/profile/creations";
 import { MomentsTab } from "@/components/profile/moments";
 import { OverviewTab } from "@/components/profile/overview";
+import { AlbumPreview } from "@/components/profile/album";
 import { TestimonialsSection } from "@/components/profile/testimonials";
+import { albumOf } from "@/lib/album";
 import { surface } from "@/components/profile/shared";
 import { avatarUrls } from "@/lib/avatars";
 import { profileCreations } from "@/lib/profile";
@@ -78,6 +80,10 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
     <TestimonialsSection items={testimonials} isMe={isMe} viewerId={me.id} creator={{ id: c.id, name, handle: c.handle ?? handle }} avatars={testimonialAvatars} canWrite={canWrite} shared={shared} base={base} limit={tab === "overview" ? 2 : undefined} />
   ) : null;
 
+  // Photo album (docs/photo-album.md): a glimpse on the Overview; the whole album has its own page.
+  const album = tab === "overview" && flagOn("photo_album_enabled") ? await albumOf(db, c.id, 5).catch(() => []) : [];
+  const albumBlock = tab === "overview" && flagOn("photo_album_enabled") ? <AlbumPreview photos={album} href={`${base}/album`} isMe={isMe} /> : null;
+
   let body: ReactNode = null;
   if (tab === "overview") {
     const [collab, openTo, creations, scrap] = await Promise.all([
@@ -107,6 +113,7 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
         collab={collab}
         series={series}
         glimpses={ordered}
+        before={albumBlock}
         after={testimonialsBlock}
       />
     );

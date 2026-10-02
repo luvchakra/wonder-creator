@@ -20,7 +20,7 @@ export interface ScrapbookGlimpse {
  * The Overview tab — identity at a glance: About, brand openness, selected series, recent Scrapbook moments and how
  * they like to collaborate. Longer detail opens in place rather than on another page.
  */
-export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses, after }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[]; after?: ReactNode }) {
+export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses, before, after }: { base: string; isMe: boolean; about: { lines: string[]; skills: string[]; openTo: string[] }; brand: BrandSummary | null; collab: PublicCollaborationProfile | null; series: ProfileCreation[]; glimpses: ScrapbookGlimpse[]; before?: ReactNode; after?: ReactNode }) {
   const showCollab = collab && (collab.hasProfile || isMe) && collab.availability !== "closed";
   const hasAbout = about.lines.length || about.skills.length || about.openTo.length;
   return (
@@ -52,6 +52,8 @@ export function OverviewTab({ base, isMe, about, brand, collab, series, glimpses
           </div>
         </section>
       ) : null}
+
+      {before}
 
       {brand ? (
         <Disclosure icon={<Briefcase aria-hidden />} tone="peach" art={KIT.painted.coastalVignette} title="Open to brand work" summary={[...brand.deliverables, ...brand.platforms].slice(0, 4).join(" · ") || "Brand collaborations and commissions."}>

@@ -1035,6 +1035,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"creator_album_photos": {
+                  Row: {
+                    "caption": string | null,"created_at": string,"creator_id": string,"height": number,"id": string,"object_id": string,"position": number,"thumb_object_id": string,"updated_at": string,"width": number
+                  }
+                  Insert: {
+                    "caption"?: string | null,"created_at"?: string,"creator_id": string,"height": number,"id"?: string,"object_id": string,"position"?: number,"thumb_object_id": string,"updated_at"?: string,"width": number
+                  }
+                  Update: {
+                    "caption"?: string | null,"created_at"?: string,"creator_id"?: string,"height"?: number,"id"?: string,"object_id"?: string,"position"?: number,"thumb_object_id"?: string,"updated_at"?: string,"width"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "creator_album_photos_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "creator_album_photos_object_id_fkey"
+      columns: ["object_id"]
+isOneToOne: false
+      referencedRelation: "storage_objects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "creator_album_photos_thumb_object_id_fkey"
+      columns: ["thumb_object_id"]
+isOneToOne: false
+      referencedRelation: "storage_objects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"creator_autonomy_policies": {
                   Row: {
                     "creator_id": string,"domain": Database["public"]['Enums']["autonomy_domain"],"level": Database["public"]['Enums']["autonomy_level"],"updated_at": string

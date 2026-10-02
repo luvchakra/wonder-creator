@@ -38,6 +38,7 @@ export const TELEMETRY_EVENTS = [
   "community_joined",
   "testimonial_written",
   "testimonial_shown",
+  "album_photo_added",
   "community_topic_started",
   "ask_community_sent",
 ] as const;

@@ -21,6 +21,7 @@ export const FLAG_STAGE = {
   personal_sources_enabled: "B",
   communities_enabled: "B",
   testimonials_enabled: "B",
+  photo_album_enabled: "B",
   semantic_connections_enabled: "D",
   dejavu_ai_suggestions_enabled: "D",
   conversation_summaries_enabled: "D",
