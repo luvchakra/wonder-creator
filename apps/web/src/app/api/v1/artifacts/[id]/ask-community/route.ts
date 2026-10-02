@@ -41,7 +41,7 @@ export const POST = withApi<{ id: string }>(
       fragment: b.fragment,
       invite,
     });
-    track("ask_community_sent", creatorId);
+    track(db, "ask_community_sent", creatorId);
     return { conversation };
   },
   { feature: "ask_community_enabled", rateLimit: 6 },

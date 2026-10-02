@@ -113,7 +113,7 @@ wording and certification need counsel and auditors (docs/compliance/).
 | Item | Status | Notes |
 |---|---|---|
 | C-1 Security hardening | Done | Password policy (10+, letters and digits, common-list, no email) in browser and server; password reset; change password with step-up; TOTP two-step verification (sign-in gate, API 401 until verified); Fetch Metadata CSRF refusal; COOP/CORP/Origin-Agent-Cluster headers; audit-log integrity (reserved server-only namespaces, `via: session` stamp, no truncate); CI: CodeQL, gitleaks, npm audit, Dependabot; security.txt and /legal/security |
-| C-2 Privacy (GDPR / DPDP) | In progress | |
+| C-2 Privacy (GDPR / DPDP) | Done | Versioned notice; per-purpose, append-only consent records with proof (version, method, time); required consents gate every signed-in page and are re-asked when the notice changes; optional usage measures and emails off by default and withdrawable in Settings (telemetry honours it); 18+ declaration; data-principal requests (access, correction, erasure, portability, objection, consent withdrawal, nomination, grievance) with 30-day due dates and server-written audit; complete export checked against the schema by a DB test; daily retention purge; public Privacy notice, Terms and Subprocessors; RoPA, retention schedule and breach runbook in docs/compliance/privacy.md. Owner: entity details, Grievance Officer, DPAs, counsel review |
 | C-3 Payments (Stripe / Razorpay) | Not started | |
 | C-4 Financial controls (SOX-style) | Not started | |
 | C-5 Landing page | Not started | |

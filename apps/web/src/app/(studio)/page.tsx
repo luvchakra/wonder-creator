@@ -36,8 +36,8 @@ export default async function HomePage() {
   scheduleDiscovery(db, creator.id);
   const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms].filter(Boolean).length;
   after(() => {
-    track("home_opened", creator.id);
-    track("home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
+    track(db, "home_opened", creator.id);
+    track(db, "home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
   });
   const first = (creator.display_name || "Creator").split(" ")[0];
   const quiet = home.mode === "quiet";

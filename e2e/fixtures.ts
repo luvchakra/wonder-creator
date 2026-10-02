@@ -148,6 +148,13 @@ export async function onboardViaApi(page: Page, c: { name: string; handle: strin
   }
 }
 
+/** Agree to the Terms, Privacy notice and 18+ declaration (what the /consent page posts). */
+export async function acceptNoticeViaApi(page: Page) {
+  const choices = ["terms", "privacy_notice", "age_confirmation"].map((purpose) => ({ purpose, granted: true }));
+  const r = await page.request.post("/api/v1/privacy/consents", { data: { method: "consent_prompt", choices } });
+  if (!r.ok()) throw new Error(`consent failed: ${r.status()} ${await r.text()}`);
+}
+
 /**
  * A fresh, fully onboarded creator signed in on `page`.
  * Account via the admin API, sign-in via the UI, onboarding via the API.
@@ -156,7 +163,9 @@ export async function newCreator(page: Page, opts: { name?: string; handlePrefix
   const name = opts.name ?? `Test ${uid()}`;
   const user = await createAuthUser(name);
   const handle = uniqueHandle(opts.handlePrefix);
-  await signInViaUi(page, user, /^\/onboarding$/);
+  // A new account has agreed to nothing yet: sign-in leads to the notice, which we accept through the API.
+  await signInViaUi(page, user, /^\/consent$/);
+  await acceptNoticeViaApi(page);
   await onboardViaApi(page, { name, handle }, opts.onboarding);
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(user.firstName);
@@ -170,6 +179,7 @@ export async function signUpViaUi(page: Page, name: string): Promise<{ email: st
   await page.getByLabel("Your name").fill(name);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("checkbox", { name: /18 or older/ }).check();
   await page.getByRole("button", { name: /Let's begin/ }).click();
   await page.waitForURL("**/onboarding");
   return { email, password: PASSWORD, name };

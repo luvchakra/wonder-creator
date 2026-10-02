@@ -12,6 +12,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,7 +23,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     setError(null);
     const supabase = createClient();
     if (mode === "sign-up") {
-      const problem = passwordProblem(password, { email });
+      const problem = !agreed ? "Tick the box to agree before creating your account." : passwordProblem(password, { email });
       if (problem) {
         setError(problem);
         setBusy(false);
@@ -37,6 +38,8 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       else if (!data.session) setNotice("Check your email to confirm your account, then come back to sign in.");
       else {
         await recordSecurityEvent("signed_up");
+        // Proof of the notice they agreed to (GDPR Art. 7(1); DPDP §6). If this fails, /consent asks again.
+        await recordSignUpConsent();
         router.replace("/onboarding");
         router.refresh();
       }
@@ -77,6 +80,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       <Field label="Password" htmlFor="password" hint={mode === "sign-up" ? "At least 10 characters, with letters and numbers." : undefined}>
         <Input id="password" type="password" autoComplete={mode === "sign-up" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} required />
       </Field>
+      {mode === "sign-up" ? (
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm text-ink">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]" />
+          <span>
+            I&rsquo;m 18 or older and I agree to the{" "}
+            <a href="/legal/terms" target="_blank" className="font-medium text-accent-ink underline underline-offset-2">Terms</a> and the{" "}
+            <a href="/legal/privacy" target="_blank" className="font-medium text-accent-ink underline underline-offset-2">Privacy notice</a>.
+          </span>
+        </label>
+      ) : null}
       {mode === "sign-in" ? (
         <p className="-mt-2 text-right text-sm">
           <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline">
@@ -116,6 +129,12 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       </p>
     </form>
   );
+}
+
+/** Required consents given on the sign-up form; optional purposes stay off until the creator turns them on. */
+async function recordSignUpConsent() {
+  const choices = ["terms", "privacy_notice", "age_confirmation"].map((purpose) => ({ purpose, granted: true }));
+  await fetch("/api/v1/privacy/consents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ method: "sign_up", choices }) }).catch(() => undefined);
 }
 
 /** Adds the sign-in to the creator's security history; never blocks signing in. */

@@ -16,7 +16,7 @@ export const POST = withApi<{ id: string }>(
     assertUuid(id);
     const b = schema.parse(await readJson(req));
     const added = await addSources(db, creatorId, id, [{ type: b.type, id: b.id }], "available");
-    track("community_reply_used_in_studio", creatorId);
+    track(db, "community_reply_used_in_studio", creatorId);
     return { added, workingSet: await workingSetView(db, id, studioSigner(db)) };
   },
   { feature: "community_to_studio_enabled", rateLimit: 60 },

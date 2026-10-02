@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { OpenToEditor } from "@/components/community/open-to";
+import { PrivacyPanel } from "./privacy-panel";
 import { SecurityPanel } from "./security-panel";
 
 const SECTIONS = [
@@ -503,7 +504,7 @@ function PrivacySection({ profile, blocked, readiness, email }: Props) {
             <a href="/api/v1/account/export" className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.02]">
               <span className="min-w-0">
                 <span className="block text-ink">Export my data</span>
-                <span className="text-[13px] text-ink-muted">Materials, Creations, conversations and account data.</span>
+                <span className="text-[13px] text-ink-muted">Everything we hold about you, as one machine-readable file.</span>
               </span>
               <Download className="size-4 shrink-0 text-ink-muted" aria-hidden />
             </a>
@@ -511,6 +512,8 @@ function PrivacySection({ profile, blocked, readiness, email }: Props) {
         </ul>
         <p className="mt-1.5 text-xs text-ink-subtle">Your material is never used to train AI models. Imported content is treated as data and can never change your settings.</p>
       </section>
+
+      <PrivacyPanel />
 
       <section>
         <h3 className="text-sm font-medium text-ink">Blocked creators</h3>

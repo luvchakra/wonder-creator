@@ -13,7 +13,7 @@ export const PATCH = withApi<{ id: string }>(
   async ({ db, creatorId, req }, { id }) => {
     const { status } = schema.parse(await readJson(req));
     await resolveConnection(db, requireUuid(id, "connection"), status);
-    track(status === "dismissed" ? "connection_dismissed" : status === "used" ? "connection_used" : "connection_opened", creatorId);
+    track(db, status === "dismissed" ? "connection_dismissed" : status === "used" ? "connection_used" : "connection_opened", creatorId);
     return { ok: true };
   },
   { feature: "semantic_connections_enabled", rateLimit: 60 },
