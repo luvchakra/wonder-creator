@@ -14,7 +14,7 @@ import { SourceIcon } from "./working-set";
  * The Working Table (owner board "Working Table Redesign", 29 Sep 2026): pulled up from the bottom bar, it holds what's
  * on the table in three tabs — In use, Available, External. Each material is a card that stays collapsed with its
  * quick actions visible; the one opened last shows what it holds. External searches royalty-free pictures (Openverse,
- * Pixabay, Pexels) right here: "Use as slide", "Use for mood", "Add to Table". Pinning, selecting several and "Use
+ * Pixabay, Unsplash) right here: "Use as slide", "Use for mood", "Add to Table". Pinning, selecting several and "Use
  * together" live one tap away under Manage.
  */
 
@@ -431,9 +431,9 @@ function SourceBody({ row, sessionId, artifactId, onUsePart }: { row: WorkingSou
 
 /* ---------------------------------------------------------------- External */
 
-type Provider = "openverse" | "pixabay" | "pexels";
-const PROVIDER_LABEL: Record<Provider, string> = { openverse: "Openverse", pixabay: "Pixabay", pexels: "Pexels" };
-type Pic = { provider: Provider; id: string; title: string; thumbUrl: string; creator: string | null; license: string; sourceUrl: string; rights: RightsState; attribution: string | null };
+type Provider = "openverse" | "pixabay" | "unsplash";
+const PROVIDER_LABEL: Record<Provider, string> = { openverse: "Openverse", pixabay: "Pixabay", unsplash: "Unsplash" };
+type Pic = { provider: Provider; id: string; title: string; thumbUrl: string; creator: string | null; creatorUrl?: string | null; license: string; sourceUrl: string; rights: RightsState; attribution: string | null };
 
 /** Royalty-free pictures, searched right here (board 3). Every picture shows its licence; nothing is used until tapped. */
 function External({ sessionId, creationTitle, carousel, slideId, onAdded }: { sessionId: string | null; creationTitle: string; carousel: boolean; slideId: string | null; onAdded: (r: ExternalAdded) => void }) {
@@ -535,10 +535,24 @@ function External({ sessionId, creationTitle, carousel, slideId, onAdded }: { se
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={pic.thumbUrl} alt={pic.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="aspect-[4/3] w-full object-cover" />
               </div>
-              <p className="truncate px-2.5 pt-1.5 text-[11.5px] text-ink-subtle" title={`${pic.creator ?? ""} · ${pic.license} · ${RIGHTS_LABEL[pic.rights]}`}>
-                {pic.creator ? `${pic.creator} · ` : ""}
-                {pic.license}
-              </p>
+              {pic.provider === "unsplash" ? (
+                // Unsplash's credit, as its API guidelines ask: photographer and Unsplash, both linked.
+                <p className="truncate px-2.5 pt-1.5 text-[11.5px] text-ink-subtle" title={`${pic.attribution ?? ""} · ${pic.license}`}>
+                  Photo by{" "}
+                  <a href={pic.creatorUrl ?? pic.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+                    {pic.creator}
+                  </a>{" "}
+                  on{" "}
+                  <a href="https://unsplash.com/?utm_source=wonder_creator&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+                    Unsplash
+                  </a>
+                </p>
+              ) : (
+                <p className="truncate px-2.5 pt-1.5 text-[11.5px] text-ink-subtle" title={`${pic.creator ?? ""} · ${pic.license} · ${RIGHTS_LABEL[pic.rights]}`}>
+                  {pic.creator ? `${pic.creator} · ` : ""}
+                  {pic.license}
+                </p>
+              )}
               <p className="truncate px-2.5 text-[11.5px] text-ink-subtle">
                 {RIGHTS_LABEL[pic.rights]} ·{" "}
                 <a href={pic.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">

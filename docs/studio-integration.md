@@ -23,7 +23,7 @@ weren't added to, private Scrapbook entries and anything across a block are refu
 
 | State | Where it comes from | What it allows |
 | --- | --- | --- |
-| Reuse permitted | your own things; CC0 / PDM; Pixabay and Pexels licences | into the piece |
+| Reuse permitted | your own things; CC0 / PDM; Pixabay and Unsplash licences (and the Pexels licence on earlier imports) | into the piece |
 | Attribution required | CC BY, CC BY-SA (credit kept on the source: “By … · licence · provider”) | into the piece, credited |
 | Reference only | someone else's Community words, Creations, Materials; saved thoughts; web links; CC BY-ND | steer only |
 | Rights unknown | no licence on record | steer only — never silently inserted |
@@ -46,9 +46,12 @@ One doorway, eleven kinds: Materials, My Creations, Capture, Link / YouTube, Col
 - **Community**: search conversations, replies and Scrapbook entries the creator can see (`?only=community`). Recent
   stays the creator's own things.
 - **Royalty-free images** (§9): the Working Table's External tab. Provider-neutral adapters —
-  `ExternalImageProvider { id, label, connected, search, getAsset }` in `external-images.ts` (Openverse, Pixabay,
-  Pexels). Each result shows provider, creator, licence, rights state and source link; the licence is looked up again on
-  the server, and it's kept in the Material's provenance.
+  `ExternalImageProvider { id, label, connected, search, getAsset, markUsed? }` in `external-images.ts` (Openverse,
+  Pixabay, Unsplash — Unsplash replaced Pexels, which stopped issuing API keys, 2 Oct 2026). Each result shows provider,
+  creator, licence, rights state and source link; the licence is looked up again on the server, and it's kept in the
+  Material's provenance. Unsplash (`UNSPLASH_ACCESS_KEY`, the app's Access Key) follows its API guidelines: pictures
+  load from Unsplash's own addresses, each is credited "Photo by … on Unsplash" with UTM-tagged links to the
+  photographer and Unsplash, and bringing one in calls its `download_location` (after the response, never blocking).
 
 ## Explore a whole DejaVu (§5)
 

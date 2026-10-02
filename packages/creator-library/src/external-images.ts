@@ -8,21 +8,24 @@ import {
 
 /**
  * Royalty-free pictures from outside Wonder Creator (owner board "Working Table", 29 Sep 2026: "External royalty-free
- * picks — search Pixabay, Pexels and Openverse directly inside the working table").
+ * picks — search Pixabay, Pexels and Openverse directly inside the working table"). Pexels stopped issuing API keys
+ * (owner, 2 Oct 2026), so Unsplash takes its place.
  *
  * Provider-neutral: every provider maps to one `ExternalImage` shape carrying what the creator needs to use it
  * honestly — who made it, under which licence, and where it came from. Openverse needs no key and is filtered to
- * images licensed for commercial use and modification; Pixabay and Pexels need a server-side key and say
- * "not connected" without one (never a fake result). Every request goes through `safeFetch` (SSRF guard, size cap).
+ * images licensed for commercial use and modification; Pixabay and Unsplash need a server-side key and say
+ * "not connected" without one (never a fake result). Unsplash's API terms are kept: pictures load from Unsplash's own
+ * addresses, every one is credited "Photo by … on Unsplash" with links back, and choosing one is reported to Unsplash's
+ * download endpoint. Every request goes through `safeFetch` (SSRF guard, size cap).
  * Search text is the creator's own; nothing private is sent.
  */
 
-export const EXTERNAL_PROVIDERS = ["openverse", "pixabay", "pexels"] as const;
+export const EXTERNAL_PROVIDERS = ["openverse", "pixabay", "unsplash"] as const;
 export type ExternalProvider = (typeof EXTERNAL_PROVIDERS)[number];
 export const EXTERNAL_PROVIDER_LABEL: Record<ExternalProvider, string> = {
   openverse: "Openverse",
   pixabay: "Pixabay",
-  pexels: "Pexels",
+  unsplash: "Unsplash",
 };
 
 export interface ExternalImage {
@@ -40,11 +43,15 @@ export interface ExternalImage {
   attribution: string | null;
   /** Other copies of the same picture to try if the original host refuses us (e.g. Openverse's own proxy). */
   fallbackUrls?: string[];
+  /** The creator's page at the provider, when it should be linked from the credit (Unsplash). */
+  creatorUrl?: string | null;
+  /** Provider endpoint to call when the picture is actually used (Unsplash's download tracking). */
+  useTrackingUrl?: string | null;
 }
 
 export interface ExternalKeys {
   pixabay?: string | null;
-  pexels?: string | null;
+  unsplash?: string | null;
 }
 
 export const externalConnected = (p: ExternalProvider, keys: ExternalKeys) =>
@@ -109,13 +116,18 @@ type Pixabay = {
   user?: string;
   pageURL: string;
 };
-type Pexels = {
-  id: number;
-  alt?: string;
-  url: string;
-  photographer?: string;
-  src: { medium: string; large: string; large2x?: string };
+type Unsplash = {
+  id: string;
+  alt_description?: string | null;
+  description?: string | null;
+  urls: { raw: string; full: string; regular: string; small: string; thumb: string };
+  links: { html: string; download_location: string };
+  user: { name?: string | null; username: string; links: { html: string } };
 };
+
+/** Unsplash asks for every link back to carry the app's referral tags. */
+const UNSPLASH_UTM = "utm_source=wonder_creator&utm_medium=referral";
+const withUtm = (url: string) => `${url}${url.includes("?") ? "&" : "?"}${UNSPLASH_UTM}`;
 
 const withRights = (
   img: Omit<ExternalImage, "rights" | "attribution">,
@@ -160,18 +172,28 @@ const fromPixabay = (r: Pixabay): ExternalImage =>
     licenseUrl: "https://pixabay.com/service/license-summary/",
     sourceUrl: r.pageURL,
   });
-const fromPexels = (r: Pexels): ExternalImage =>
-  withRights({
-    provider: "pexels",
-    id: String(r.id),
-    title: (r.alt ?? "").trim() || "Pexels photo",
-    thumbUrl: r.src.medium,
-    imageUrl: r.src.large2x || r.src.large,
-    creator: r.photographer ?? null,
-    license: "Pexels License",
-    licenseUrl: "https://www.pexels.com/license/",
-    sourceUrl: r.url,
-  });
+const fromUnsplash = (r: Unsplash): ExternalImage => {
+  const creator = (r.user.name ?? "").trim() || r.user.username;
+  return {
+    ...withRights({
+      provider: "unsplash",
+      id: r.id,
+      title: (r.alt_description ?? r.description ?? "").trim().slice(0, 140) || "Unsplash photo",
+      thumbUrl: r.urls.small,
+      // A large rendition from Unsplash's image service (never the multi-megabyte original).
+      imageUrl: `${r.urls.raw}${r.urls.raw.includes("?") ? "&" : "?"}w=2400&fm=jpg&q=85`,
+      fallbackUrls: [r.urls.regular],
+      creator,
+      license: "Unsplash License",
+      licenseUrl: "https://unsplash.com/license",
+      sourceUrl: withUtm(r.links.html),
+      creatorUrl: withUtm(r.user.links.html),
+      useTrackingUrl: r.links.download_location,
+    }),
+    // The credit Unsplash's API guidelines ask for, wherever the picture is shown or used.
+    attribution: `Photo by ${creator} on Unsplash`,
+  };
+};
 
 export interface ExternalSearchOptions {
   limit?: number;
@@ -192,6 +214,8 @@ export interface ExternalImageProvider {
   ): Promise<ExternalImage[]>;
   /** One picture by id, straight from the provider — licence and address are never taken from the browser. */
   getAsset(id: string, keys: ExternalKeys): Promise<ExternalImage>;
+  /** Tell the provider a picture was used, when its terms ask for it. */
+  markUsed?(img: ExternalImage, keys: ExternalKeys): Promise<void>;
 }
 
 const pageSize = (o?: ExternalSearchOptions) =>
@@ -243,32 +267,35 @@ const pixabay: ExternalImageProvider = {
   },
 };
 
-const pexels: ExternalImageProvider = {
-  id: "pexels",
-  label: "Pexels",
-  connected: (keys) => !!keys.pexels,
+const unsplashHeaders = (keys: ExternalKeys) => ({ authorization: `Client-ID ${keys.unsplash!}`, "accept-version": "v1" });
+
+const unsplash: ExternalImageProvider = {
+  id: "unsplash",
+  label: "Unsplash",
+  connected: (keys) => !!keys.unsplash,
   async search(q, keys, o) {
     const j = (await getJson(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=${pageSize(o)}`,
-      { authorization: keys.pexels! },
-    )) as { photos?: Pexels[] };
-    return (j.photos ?? []).map(fromPexels);
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${pageSize(o)}&content_filter=high`,
+      unsplashHeaders(keys),
+    )) as { results?: Unsplash[] };
+    return (j.results ?? []).map(fromUnsplash);
   },
   async getAsset(id, keys) {
-    if (!/^\d{1,15}$/.test(id))
+    if (!/^[A-Za-z0-9_-]{6,32}$/.test(id))
       throw new DomainError("not_found", "That picture isn't available.");
-    return fromPexels(
-      (await getJson(`https://api.pexels.com/v1/photos/${id}`, {
-        authorization: keys.pexels!,
-      })) as Pexels,
-    );
+    return fromUnsplash((await getJson(`https://api.unsplash.com/photos/${id}`, unsplashHeaders(keys))) as Unsplash);
+  },
+  async markUsed(img, keys) {
+    // Only Unsplash's own API address is ever called with the key.
+    if (!img.useTrackingUrl || !img.useTrackingUrl.startsWith("https://api.unsplash.com/")) return;
+    await getJson(img.useTrackingUrl, unsplashHeaders(keys));
   },
 };
 
 export const EXTERNAL_IMAGE_PROVIDERS: Record<
   ExternalProvider,
   ExternalImageProvider
-> = { openverse, pixabay, pexels };
+> = { openverse, pixabay, unsplash };
 
 /** Up to 12 pictures for a search. `connected: false` when the provider has no key here (nothing is shown). */
 export async function searchExternalImages(
@@ -296,6 +323,20 @@ export async function lookupExternalImage(
       `${p.label} isn't connected.`,
     );
   return p.getAsset(id, keys);
+}
+
+/**
+ * Report that a picture was used, for providers whose terms ask for it (Unsplash's download tracking). Never blocks or
+ * fails bringing the picture in.
+ */
+export async function markExternalImageUsed(provider: ExternalProvider, img: ExternalImage, keys: ExternalKeys): Promise<void> {
+  const p = EXTERNAL_IMAGE_PROVIDERS[provider];
+  if (!p.markUsed || !p.connected(keys)) return;
+  try {
+    await p.markUsed(img, keys);
+  } catch (e) {
+    log("warn", "external_image.mark_used_failed", { provider, code: isDomainError(e) ? e.code : "error" });
+  }
 }
 
 // Image hosts (Flickr among them) refuse requests that don't look like a browser-compatible client; this still says
