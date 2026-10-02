@@ -157,6 +157,12 @@ can hide it any time. Anyone who can see the profile may write (the creator's se
 worked with, or off); "worked together" is derived by the server, never typed; the public Creator Page shows only what
 the creator opted in. No counts, no ranking, never written by AI. Contract: `docs/testimonials.md`.
 
+## Photo album (owner, 2 Oct 2026)
+
+Pictures a creator chooses to show on their Profile: a glimpse on the Overview, the full album at
+`/creators/[handle]/album`, a quiet full-screen viewer. Visible to whoever can see the profile; only the creator changes
+it; uploads are checked, resized server-side and stripped of metadata (location included). Contract: `docs/photo-album.md`.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.

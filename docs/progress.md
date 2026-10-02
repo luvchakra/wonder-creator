@@ -159,3 +159,16 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 | Item | Status | Notes |
 |---|---|---|
 | Old Community → Pulse | Done | Presentation only: Explore door, page title and filters nav, topic back-link, Profile tab, Home "From Pulse", Studio "Ask Pulse" / "Responses from Pulse", Bring in filter, Palette labels; the conversation visibility once labelled "Community" now reads "Signed-in creators". Routes (`/community`), tables, packages and APIs unchanged. "Community" now means only the Orkut-style communities |
+
+## Photo album and Messages in the top bar (owner, 2 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Messages icon in the navbar | Done | Next to notifications, with an unread count (direct and crew); links to `/messages`; removed the duplicate account-menu item |
+| Photo album | Done | Contract `docs/photo-album.md`. Migration 079; server-side resize to WebP master + thumbnail with metadata (location) stripped; Profile glimpse, masonry album page with captions, full-screen viewer; owner adds, captions, reorders, removes. 3 DB cases, 3 E2E tests |
+
+## Landing page redesign (owner brief, 2 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Landing page | Done | Contract `docs/landing.md`. Editorial hero ("Everything begins with a little wonder."), Your world, the journey with CreativeStudio and the real formats, Together (Pulse, Communities, Huddles), CreatorPublish, final call, compact footer with the real legal pages. One dominant CTA; reduced motion respected; axe clean; no horizontal scroll at 390px |

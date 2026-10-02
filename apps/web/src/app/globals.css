@@ -42,6 +42,11 @@
   from { transform: scaleY(0.35); }
   to { transform: scaleY(1); }
 }
+/* Landing page: pieces of inspiration drift a few pixels, keeping their tilt (stilled by reduced motion below). */
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--tilt, 0deg)); }
+  50% { transform: translate3d(0, -7px, 0) rotate(var(--tilt, 0deg)); }
+}
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
