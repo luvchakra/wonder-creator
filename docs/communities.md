@@ -16,7 +16,7 @@ Built from what already exists. No new community tables, no new global navigatio
 | Creations | Work members shared with the room's crew |
 
 UI terms change in the presentation layer only. Tables, routes and APIs keep their names. The older open space for
-conversations, asks and people (`/community`, the `creator-community` package) is called **Pulse** in the UI from
+conversations, asks and people (`/pulse`, the `creator-community` package) is called **Pulse** in the UI from
 2 Oct 2026, so "Community" means only these communities.
 
 ## Rules
@@ -34,6 +34,10 @@ conversations, asks and people (`/community`, the `creator-community` package) i
   link only their own topics.
 * **Moderation.** The owner and moderators take a topic out of the forum (`community_remove_topic`; the topic stays with
   its author) and remove posts in its topics (`open_conversation_remove_reply`, audited `by: community_host`).
+* **Profile picture** (owner, 2 Oct 2026). Every community has a face: the picture its owner or a moderator chose
+  (migration 080, `community_set_avatar`; it must be the setter's own clean image, made a 512px square WebP with
+  metadata stripped), or a painted monogram. It shows on the community page (hosts change it from the camera on the
+  picture), in community lists and beside "In ‹community›" on topics, and can be chosen when starting a community.
 * **No popularity.** Lists are ordered by latest activity. No likes, follower counts, trending or ranking.
 
 ## Where it lives
@@ -42,7 +46,7 @@ conversations, asks and people (`/community`, the `creator-community` package) i
 * Domain: `packages/creator-community/src/communities.ts`.
 * API: `/api/v1/communities` (list, start), `/api/v1/communities/:id` (read, open as a community), `join`, `leave`,
   `topics`, `topics/:topicId` (remove). Flag `communities_enabled`.
-* UI: Explore › Pulse › **Communities** (`/community?filter=communities`, search, Your communities, Discover);
+* UI: Explore › Pulse › **Communities** (`/pulse?filter=communities`, search, Your communities, Discover);
   `/communities/[id]` (Forum · Creations · Huddles · Members); the room owner's **Open as a community…**; a topic shows
   **In ‹community›** above its title. Home's Worth hearing and You could help name the community.
 * Palette (`page: "community"`): members get Share a Creation here, Chat & Huddle, Open Creative Room, All communities.

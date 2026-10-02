@@ -5,11 +5,12 @@ import { AudioLines, ChevronRight, FileText, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RelativeTime } from "@/components/client-time";
-import { CommunityArt } from "@/components/community/community-art";
+import { CommunityArt, CommunityAvatar } from "@/components/community/community-art";
+import { CommunityAvatarButton } from "@/components/community/community-avatar-button";
 import { JoinCommunityButton, RemoveTopicButton, StartTopicButton } from "@/components/community/community-actions";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
-import { communityCovers } from "@/lib/communities";
+import { communityAvatars, communityCovers } from "@/lib/communities";
 import { flagOn } from "@/lib/features";
 import { requireSession } from "@/lib/session";
 
@@ -42,6 +43,8 @@ export default async function CommunityPage({ params, searchParams }: { params: 
     view === "creations" && community.isMember ? listSharedItems(db, id).catch(() => []) : Promise.resolve([]),
     communityCovers([community.coverMaterialId]),
   ]);
+  const pictures = await communityAvatars([community.avatarObjectId]);
+  const picture = community.avatarObjectId ? (pictures[community.avatarObjectId] ?? null) : null;
   const hosts = members.filter((m) => m.access !== "member");
   const avatars = await avatarUrls(db, members.slice(0, view === "members" ? 200 : 6).map((m) => m.id)).catch(() => ({}) as Record<string, string>);
   const coverUrl = community.coverMaterialId ? (covers[community.coverMaterialId] ?? null) : null;
@@ -52,16 +55,22 @@ export default async function CommunityPage({ params, searchParams }: { params: 
     <>
       <PaletteScope context={{ page: "community", ids: { projectId: id }, facts: { member: community.isMember, host: community.isHost }, strip: { label: `${community.title} · Community` } }} />
       <div className="mx-auto max-w-2xl space-y-4">
-        <Link href="/community?filter=communities" className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-ink-muted hover:text-ink">
+        <Link href="/pulse?filter=communities" className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-ink-muted hover:text-ink">
           <ChevronRight className="size-4 rotate-180" aria-hidden /> Communities
         </Link>
 
         <header className="relative overflow-hidden rounded-3xl shadow-[var(--shadow-lift)]">
           <CommunityArt id={id} coverUrl={coverUrl} className="h-[200px] w-full sm:h-[240px]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/75 via-[#1e1b4b]/20 to-transparent" aria-hidden />
-          <div className="absolute inset-x-0 bottom-0 space-y-1 p-4 text-white sm:p-5">
-            <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-white/80">Open community</p>
-            <h1 className="break-words font-display text-[30px] leading-[1.1] [text-wrap:balance] sm:text-[38px]">{community.title}</h1>
+          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white sm:gap-4 sm:p-5">
+            <span className="relative shrink-0">
+              <CommunityAvatar id={id} title={community.title} src={picture} size={72} className="shadow-[0_8px_24px_-8px_rgb(0_0_0/0.5)] ring-[3px]" />
+              {community.isHost ? <CommunityAvatarButton communityId={id} className="absolute -bottom-2 -right-2" /> : null}
+            </span>
+            <div className="min-w-0 space-y-1">
+              <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-white/80">Open community</p>
+              <h1 className="break-words font-display text-[28px] leading-[1.1] [text-wrap:balance] sm:text-[38px]">{community.title}</h1>
+            </div>
           </div>
         </header>
 
@@ -97,7 +106,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
             <ul aria-label="Topics" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)]">
               {topics.map((t) => (
                 <li key={t.id} className="flex items-center">
-                  <Link href={`/community/conversations/${t.id}`} className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5 hover:bg-black/[0.02]">
+                  <Link href={`/pulse/conversations/${t.id}`} className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5 hover:bg-black/[0.02]">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-display text-[16px] leading-snug text-ink">{t.title}</span>
                       <span className="mt-0.5 block truncate text-[12.5px] text-ink-subtle">
@@ -130,7 +139,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
             <ul aria-label="Creations shared here" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)]">
               {shared.map((x) => (
                 <li key={x.itemId}>
-                  <Link href={`/projects/${id}/shared/${x.itemId}`} className="flex min-h-14 items-center gap-3 px-3.5 py-2.5 hover:bg-black/[0.02]">
+                  <Link href={`/rooms/${id}/shared/${x.itemId}`} className="flex min-h-14 items-center gap-3 px-3.5 py-2.5 hover:bg-black/[0.02]">
                     <span aria-hidden className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-accent-soft/70">
                       <FileText className="size-4 text-accent-ink" />
                     </span>
@@ -147,7 +156,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
               ))}
             </ul>
           ) : (
-            <EmptyState art={KIT.painted.flowerBranch} title="Nothing shared yet" body="Share a Creation with the community from its Creative Room." action={<Link href={`/projects/${id}?tab=work`} className="inline-flex min-h-11 items-center text-[14px] font-medium text-accent-ink hover:underline">Share a Creation</Link>} />
+            <EmptyState art={KIT.painted.flowerBranch} title="Nothing shared yet" body="Share a Creation with the community from its Creative Room." action={<Link href={`/rooms/${id}?tab=work`} className="inline-flex min-h-11 items-center text-[14px] font-medium text-accent-ink hover:underline">Share a Creation</Link>} />
           )
         ) : null}
 

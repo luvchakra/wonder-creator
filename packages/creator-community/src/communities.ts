@@ -20,6 +20,8 @@ export interface CommunityListItem {
   brief: string;
   owner: { id: string; name: string };
   coverMaterialId: string | null;
+  /** The community's profile picture (a storage object), when its hosts set one. */
+  avatarObjectId: string | null;
   memberCount: number;
   topicCount: number;
   lastActivityAt: string;
@@ -52,6 +54,7 @@ export interface Community {
   brief: string;
   owner: { id: string; name: string };
   coverMaterialId: string | null;
+  avatarObjectId: string | null;
   crewId: string | null;
   memberCount: number;
   isMember: boolean;
@@ -68,6 +71,7 @@ export async function listCommunities(db: Db, opts: { query?: string; limit?: nu
     brief: r.brief ?? "",
     owner: { id: r.owner_id, name: r.owner_name || "Creator" },
     coverMaterialId: r.cover_material_id,
+    avatarObjectId: r.avatar_object_id,
     memberCount: r.member_count,
     topicCount: r.topic_count,
     lastActivityAt: r.last_activity_at,
@@ -87,6 +91,7 @@ export async function getCommunity(db: Db, projectId: string): Promise<Community
     brief: r.brief ?? "",
     owner: { id: r.owner_id, name: r.owner_name || "Creator" },
     coverMaterialId: r.cover_material_id,
+    avatarObjectId: r.avatar_object_id,
     crewId: r.crew_id,
     memberCount: r.member_count,
     isMember: r.is_member,
@@ -206,13 +211,23 @@ export async function removeTopic(db: Db, projectId: string, conversationId: str
 }
 
 /** Communities a topic belongs to that the viewer can see (for the topic page's "In …" line). */
-export async function topicCommunities(db: Db, conversationId: string): Promise<Array<{ id: string; title: string; isHost: boolean }>> {
+export async function topicCommunities(db: Db, conversationId: string): Promise<Array<{ id: string; title: string; isHost: boolean; avatarObjectId: string | null }>> {
   const { data } = await db.from("open_conversation_links").select("project_id").eq("conversation_id", conversationId).eq("kind", "project");
-  const out: Array<{ id: string; title: string; isHost: boolean }> = [];
+  const out: Array<{ id: string; title: string; isHost: boolean; avatarObjectId: string | null }> = [];
   for (const l of data ?? []) {
     if (!l.project_id) continue;
     const c = await getCommunity(db, l.project_id).catch(() => null);
-    if (c) out.push({ id: c.id, title: c.title, isHost: c.isHost });
+    if (c) out.push({ id: c.id, title: c.title, isHost: c.isHost, avatarObjectId: c.avatarObjectId });
   }
   return out;
+}
+
+/** Hosts set (or clear, with null) the community's profile picture: an image they uploaded. */
+export async function setCommunityAvatar(db: Db, projectId: string, objectId: string | null): Promise<void> {
+  const { error } = await db.rpc("community_set_avatar", { p_project: projectId, p_object: objectId as string });
+  if (error) {
+    if (error.code === "42501") throw new DomainError("forbidden", "Only the owner and moderators can change the community's picture.");
+    if (error.code === "P0002") throw new DomainError("not_found", "We couldn't find that community.");
+    throw fromDbError(error);
+  }
 }

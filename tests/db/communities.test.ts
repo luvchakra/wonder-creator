@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminClient, cleanupTestCreators, createTestCreator, expectDenied, expectNoRowsAffected, expectOk, loose, type TestCreator } from "./helpers";
+import { randomUUID } from "node:crypto";
+import { adminClient, cleanupTestCreators, createTestCreator, expectDenied, expectNoRowsAffected, expectOk, fakeSha, loose, type TestCreator } from "./helpers";
 
 /**
  * Communities (docs/communities.md): a discoverable Creative Room. Anyone signed in may find and join it; the room's
@@ -171,5 +172,44 @@ describe("Communities — always public; private rooms unchanged", () => {
     expectOk(await owner.client.rpc("open_conversation_link", { p_conversation: own, p_kind: "project", p_target: privateRoom }));
     expectOk(await owner.client.from("open_conversations").update({ visibility: "community" }).eq("id", own));
     expectOk(await owner.client.from("open_conversations").update({ visibility: "limited" }).eq("id", own));
+  });
+});
+
+describe("Communities — profile picture", () => {
+  const image = async (c: TestCreator, mime = "image/webp", status: "clean" | "pending" = "clean") =>
+    expectOk(
+      await admin
+        .from("storage_objects")
+        .insert({ creator_id: c.creatorId, bucket: "creator-media", path: `${c.creatorId}/community-${randomUUID()}`, mime_type: mime, size_bytes: 900, sha256: fakeSha(), security_status: status })
+        .select("id")
+        .single(),
+    ).id as string;
+
+  it("the owner and moderators set it from their own image; everyone who can see the community sees it", async () => {
+    const own = await image(owner);
+    expectOk(await owner.client.rpc("community_set_avatar", { p_project: community, p_object: own }));
+    expect(expectOk(await stranger.client.rpc("community_card", { p_project: community }))[0]!.avatar_object_id).toBe(own);
+    expect(expectOk(await stranger.client.rpc("community_list", { p_limit: 60 })).find((r) => r.id === community)!.avatar_object_id).toBe(own);
+    // A moderator may change it, with their own upload.
+    const mod = await createTestCreator("cPicMod");
+    expectOk(await mod.client.rpc("community_join", { p_project: community }));
+    const crew = expectOk(await owner.client.rpc("community_card", { p_project: community }))[0]!.crew_id!;
+    expectOk(await owner.client.rpc("crew_set_role", { p_crew: crew, p_creator: mod.creatorId, p_access: "admin" }));
+    expectOk(await mod.client.rpc("community_set_avatar", { p_project: community, p_object: await image(mod) }));
+  });
+
+  it("members can't; and it must be the setter's own clean image", async () => {
+    const m = await createTestCreator("cPicMember");
+    expectOk(await m.client.rpc("community_join", { p_project: community }));
+    expectDenied(await m.client.rpc("community_set_avatar", { p_project: community, p_object: await image(m) }), "42501");
+    expectDenied(await owner.client.rpc("community_set_avatar", { p_project: community, p_object: await image(m) }), "42501");
+    expectDenied(await owner.client.rpc("community_set_avatar", { p_project: community, p_object: await image(owner, "application/pdf") }), "42501");
+    expectDenied(await owner.client.rpc("community_set_avatar", { p_project: community, p_object: await image(owner, "image/png", "pending") }), "42501");
+    // Not even a direct owner update can point at someone else's file.
+    expectDenied(await owner.client.from("projects").update({ avatar_object_id: await image(m) }).eq("id", community), "42501");
+    // A private room isn't a community.
+    expectDenied(await owner.client.rpc("community_set_avatar", { p_project: privateRoom, p_object: await image(owner) }), "P0002");
+    // Clearing it is allowed.
+    expectOk(await owner.client.rpc("community_set_avatar", { p_project: community, p_object: null as unknown as string }));
   });
 });

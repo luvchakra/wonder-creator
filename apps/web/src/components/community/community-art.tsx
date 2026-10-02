@@ -26,3 +26,29 @@ export function CommunityArt({ id, coverUrl, className, sprig = true }: { id: st
     </span>
   );
 }
+
+const MONO = ["#6b4fc8", "#b4533f", "#2f7a62", "#5a5fc9", "#8a5a2b"] as const;
+
+/**
+ * A community's profile picture: the picture its hosts chose, or a painted monogram (a wash with the first letter in
+ * Playfair) so every community has a face. Round, with a soft ring.
+ */
+export function CommunityAvatar({ id, title, src, size = 48, className }: { id: string; title: string; src?: string | null; size?: number; className?: string }) {
+  const style = { width: size, height: size };
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" width={size} height={size} style={style} className={cn("shrink-0 rounded-full object-cover ring-2 ring-white", className)} />;
+  }
+  const { wash } = pick(id);
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 17 + id.charCodeAt(i)) >>> 0;
+  const letter = (title.trim().match(/\p{L}|\p{N}/u)?.[0] ?? "C").toUpperCase();
+  return (
+    <span aria-hidden style={style} className={cn("relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-surface-muted ring-2 ring-white", className)}>
+      <KitArt art={wash} className="absolute inset-0 size-full scale-150 object-cover" />
+      <span className="relative font-display italic leading-none" style={{ fontSize: Math.round(size * 0.46), color: MONO[h % MONO.length] }}>
+        {letter}
+      </span>
+    </span>
+  );
+}
