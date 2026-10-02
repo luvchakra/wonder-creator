@@ -39,6 +39,7 @@ import { VisualDirections } from "@/components/visual-directions";
 import { MaterialGrid, type GraphNode } from "./context-parts";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
+import { LicencePayment } from "@/components/payments/licence-payment";
 import { ChannelChips, CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
 
 interface Version {
@@ -61,7 +62,7 @@ interface Rights {
   commercial_use: string;
   commercial_channels: string[];
   rights_owners: Array<{ id: string; owner_name: string; share_percent: number; owner_creator_id: string | null }>;
-  licenses: Array<{ id: string; license_type: string; licensee_name: string | null; status: string; territory: string; exclusive: boolean; starts_on: string | null; ends_on: string | null; usage_channels: string[] }>;
+  licenses: Array<{ id: string; license_type: string; licensee_name: string | null; status: string; territory: string; exclusive: boolean; starts_on: string | null; ends_on: string | null; usage_channels: string[]; fee_amount?: number | null; fee_currency?: string | null }>;
   events: Array<{ id: string; event: string; created_at: string; title: string; kind: "rights" | "license" | "publication" | "derivative"; derivativeId?: string }>;
 }
 
@@ -1110,7 +1111,7 @@ function RightsPanel({
           <ul className="mt-3 space-y-2">
             {rights.licenses.map((l) => (
               <li key={l.id} className="flex items-center justify-between gap-2 rounded-xl bg-surface-muted p-3 text-sm">
-                <span>
+                <span className="min-w-0">
                   <span className="font-medium text-ink">{LICENSE_LABEL[l.license_type]}</span>
                   <span className="block text-xs text-ink-subtle">
                     {l.licensee_name || "Any licensee"} · {l.territory}
@@ -1118,6 +1119,9 @@ function RightsPanel({
                     {l.usage_channels?.length ? ` · ${channelLabels(l.usage_channels).join(", ")}` : ""}
                     {l.ends_on ? ` · until ${l.ends_on}` : ""}
                   </span>
+                  {isOwner && l.status === "active" && Number(l.fee_amount) > 0 && l.fee_currency ? (
+                    <LicencePayment licenseId={l.id} role="owner" fee={{ amount: Number(l.fee_amount), currency: l.fee_currency }} />
+                  ) : null}
                 </span>
                 <span className="flex items-center gap-2">
                   <Badge tone={l.status === "active" ? "success" : l.status === "revoked" ? "danger" : "neutral"}>{l.status}</Badge>

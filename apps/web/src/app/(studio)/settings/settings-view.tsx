@@ -65,7 +65,7 @@ type Props = {
     exclusivity: "open" | "case_by_case" | "non_exclusive_only";
   };
   blocked: Array<{ id: string; name: string; handle: string | null }>;
-  readiness: { ai: { provider: string; live: boolean; note: string }; mediaConfigured: boolean };
+  readiness: { ai: { provider: string; live: boolean; note: string }; mediaConfigured: boolean; payments: { stripe: boolean; razorpay: boolean; any: boolean } };
 };
 
 export function SettingsView(props: Props) {
@@ -499,6 +499,12 @@ function PrivacySection({ profile, blocked, readiness, email }: Props) {
           <li className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
             <span className="text-ink">Huddle voice & video</span>
             <Badge tone={readiness.mediaConfigured ? "success" : "neutral"}>{readiness.mediaConfigured ? "Connected" : "Not connected (text chat only)"}</Badge>
+          </li>
+          <li className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
+            <span className="text-ink">Licence payments</span>
+            <Badge tone={readiness.payments.any ? "success" : "neutral"}>
+              {readiness.payments.any ? [readiness.payments.razorpay && "Razorpay", readiness.payments.stripe && "Stripe"].filter(Boolean).join(" · ") : "Not connected"}
+            </Badge>
           </li>
           <li>
             <a href="/api/v1/account/export" className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.02]">

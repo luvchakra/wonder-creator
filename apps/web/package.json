@@ -20,6 +20,7 @@
     "@wonder/creator-identity": "^0.1.0",
     "@wonder/creator-library": "^0.1.0",
     "@wonder/creator-moments": "^0.1.0",
+    "@wonder/creator-payments": "^0.1.0",
     "@wonder/creator-projects": "^0.1.0",
     "@wonder/creator-send": "^0.1.0",
     "@wonder/creator-soundtrack": "^0.1.0",

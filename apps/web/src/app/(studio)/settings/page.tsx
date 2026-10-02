@@ -1,6 +1,7 @@
 import { providerReadiness } from "@wonder/creator-brain";
 import { getAutonomy, getBoundaries, getBrandProfile, getCollaborationProfile, getIdentity, getVoice } from "@wonder/creator-identity";
 import { selectMediaProvider } from "@wonder/creator-huddle/media";
+import { paymentsConfigFromEnv, paymentsReadiness } from "@wonder/creator-payments";
 import { PageTitle } from "@wonder/ui";
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
@@ -59,7 +60,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           collaboration={collaboration}
           brand={brand}
           blocked={(blocks.data ?? []).map((b) => ({ id: b.blocked_creator_id, name: (b.creators as { display_name: string } | null)?.display_name ?? "Creator", handle: (b.creators as { handle: string | null } | null)?.handle ?? null }))}
-          readiness={{ ai: providerReadiness(), mediaConfigured: selectMediaProvider().configured }}
+          readiness={{ ai: providerReadiness(), mediaConfigured: selectMediaProvider().configured, payments: paymentsReadiness(paymentsConfigFromEnv()) }}
         />
       </div>
     </>

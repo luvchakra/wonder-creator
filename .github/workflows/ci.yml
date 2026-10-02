@@ -73,6 +73,9 @@ jobs:
               `SUPABASE_SECRET_KEY=${d.SECRET_KEY}`,
               "CRON_SECRET=ci-cron-secret-0000000000000000",
               "WONDERCREATOR_AI_PROVIDER=offline",
+              // Payments e2e: a key Stripe refuses (checkout fails honestly) and a test-only webhook secret.
+              "STRIPE_SECRET_KEY=e2e-not-a-real-key",
+              "STRIPE_WEBHOOK_SECRET=e2e-webhook-secret",
             ].join("\n"));'
       - run: npm run build
       - name: Start app
