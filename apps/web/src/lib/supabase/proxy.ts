@@ -29,7 +29,14 @@ export async function updateSession(request: NextRequest) {
 
   // Don't run code between createServerClient and getClaims(): it would
   // make session refresh bugs hard to track down.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  // Signed-out visitors to `/` see the public landing page; signed-in creators get their Home at the same URL.
+  if (!data?.claims && request.nextUrl.pathname === "/") {
+    const landing = NextResponse.rewrite(new URL("/welcome", request.url), { request });
+    response.cookies.getAll().forEach((c) => landing.cookies.set(c));
+    return landing;
+  }
 
   return response;
 }

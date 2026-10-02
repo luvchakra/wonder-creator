@@ -1,5 +1,14 @@
 import { createHmac } from "node:crypto";
-import { expect, signInViaUi, test } from "./fixtures";
+import { expect, signInViaUi, test, type Page } from "./fixtures";
+
+/**
+ * "Sign out" for a test: leave the signed-in page first, so its background requests (which answer a lost session by
+ * going to /sign-in) can't race the test's own navigation, then drop the session cookies.
+ */
+async function dropSession(page: Page) {
+  await page.goto("/legal/security");
+  await page.context().clearCookies();
+}
 
 /** RFC 6238 TOTP (SHA-1, 6 digits, 30 s) from a base32 secret — what an authenticator app computes. */
 function totp(secret: string, at = Date.now()): string {
@@ -27,7 +36,7 @@ test.describe("Account security", () => {
     await expect(panel.getByRole("status")).toContainText("Two-step verification is on");
 
     // Sign out, sign in with the password only: the code is required before anything else.
-    await page.context().clearCookies();
+    await dropSession(page);
     await signInViaUi(page, creator, /\/sign-in\/verify$/);
     expect((await page.request.get("/api/v1/creators/me")).status()).toBe(401);
     await page.goto("/");
@@ -60,9 +69,9 @@ test.describe("Account security", () => {
     await panel.getByRole("button", { name: "Change password" }).click();
     await expect(panel.getByRole("status")).toContainText("Password changed.");
 
-    await page.context().clearCookies();
+    await dropSession(page);
     await signInViaUi(page, { email: creator.email, password: "a quiet harbour 2026" }, /^\/$/);
-    await page.context().clearCookies();
+    await dropSession(page);
     await page.goto("/sign-in");
     await page.getByRole("link", { name: "Forgot your password?" }).click();
     await page.getByLabel("Email").fill("nobody-here@example.com");

@@ -1,7 +1,7 @@
 "use client";
 import { Button, Field, Input } from "@wonder/ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -9,14 +9,20 @@ import { createClient } from "@/lib/supabase/client";
  * find out who's registered.
  */
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent) {
+  const [error, setError] = useState<string | null>(null);
+  // Until the page is interactive a click would submit the form natively (a reload, no answer), so the button waits.
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false);
+  // The field's own value is read on submit: text typed (or autofilled) before the page finished loading still counts.
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const email = String(new FormData(e.currentTarget).get("email") ?? "").trim();
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) return setError("Enter the email address you signed up with.");
+    setError(null);
     setBusy(true);
     await createClient()
-      .auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` })
+      .auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` })
       .catch(() => undefined);
     setSent(true);
     setBusy(false);
@@ -28,14 +34,19 @@ export default function ForgotPasswordPage() {
         <p className="mt-1.5 text-ink-muted">We&rsquo;ll email you a link to choose a new one.</p>
       </div>
       <Field label="Email" htmlFor="email">
-        <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
       {sent ? (
         <p role="status" className="rounded-xl bg-accent-softer p-3 text-sm text-ink">
           If there&rsquo;s an account for that email, a reset link is on its way. It works once and expires soon.
         </p>
       ) : null}
-      <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!email.includes("@")}>
+      <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!ready}>
         Send reset link
       </Button>
       <p className="text-center text-sm text-ink-muted">
@@ -46,3 +57,5 @@ export default function ForgotPasswordPage() {
     </form>
   );
 }
+
+const noSubscribe = () => () => undefined;
