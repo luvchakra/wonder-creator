@@ -459,7 +459,15 @@ export interface ImportResult {
  * Bring chosen records from a candidate in as Materials (spec §10): only the records the creator selected, only from
  * that candidate, each with provenance. Notes that already are Materials are reused, never copied.
  */
-export async function importCandidate(deps: SourcesDeps, db: Db, creatorId: string, candidateId: string, recordIds: string[]): Promise<ImportResult> {
+export async function importCandidate(
+  deps: SourcesDeps,
+  db: Db,
+  creatorId: string,
+  candidateId: string,
+  recordIds: string[],
+  /** Photos: the Material each chosen photo's original became (uploaded from the creator's device just now). */
+  photoMaterials: Record<string, string> = {},
+): Promise<ImportResult> {
   const { service } = deps;
   const { data: cand } = await service.from("context_candidates").select("id, record_ids, state, imported_material_ids").eq("id", candidateId).eq("creator_id", creatorId).maybeSingle();
   if (!cand) throw new DomainError("not_found", "We couldn't find that.");
@@ -469,13 +477,24 @@ export async function importCandidate(deps: SourcesDeps, db: Db, creatorId: stri
   if (!chosen.length) throw new DomainError("validation", "Choose at least one thing to bring in.");
   const { data: records } = await service
     .from("source_context_records")
-    .select("id, connection_id, provider_item_id, source_type, occurred_at, safe_title, safe_excerpt, material_id, source_connections(id, creator_id, provider, status, scope_settings, last_successful_sync_at)")
+    .select("id, connection_id, provider_item_id, source_type, occurred_at, safe_title, safe_excerpt, material_id, fingerprint, source_connections(id, creator_id, provider, status, scope_settings, last_successful_sync_at)")
     .eq("creator_id", creatorId)
     .in("id", chosen);
   const materialIds: string[] = [];
   for (const r of records ?? []) {
     if (r.material_id) {
       materialIds.push(r.material_id);
+      continue;
+    }
+    if (r.source_type === "photo") {
+      // The original never left the device during discovery; it must be the very same photo (same SHA-256).
+      const mid = photoMaterials[r.id];
+      if (!mid) throw new DomainError("validation", "Choose these photos again to bring them in at full quality.");
+      const { data: m } = await db.from("creative_materials").select("id, storage_objects(sha256)").eq("id", mid).eq("creator_id", creatorId).maybeSingle();
+      const sha = (m?.storage_objects as { sha256?: string } | null)?.sha256;
+      if (!m || !sha || sha !== r.fingerprint) throw new DomainError("validation", "That isn't the same photo. Choose it again from your device.");
+      materialIds.push(mid);
+      await service.from("source_context_records").update({ material_id: mid, hydration_level: 4 }).eq("id", r.id).eq("creator_id", creatorId);
       continue;
     }
     const conn = r.source_connections as unknown as ConnectionRow | null;
@@ -513,6 +532,7 @@ export async function importCandidate(deps: SourcesDeps, db: Db, creatorId: stri
 
 export { ConnectorError } from "./errors";
 export { nativeNotes } from "./connectors/native-notes";
+export { indexPhotos, PHOTO_BATCH, THUMB_MAX_BYTES, type PhotoInput } from "./photos";
 export { gmailConnector, gmailScope } from "./connectors/gmail";
 export { calendarConnector, calendarScope, placeOf } from "./connectors/calendar";
 export { CALENDAR_SCOPE, GMAIL_SCOPE, GOOGLE_SCOPES, googleConsent, googleExchange, googleRevoke, type GoogleClient, type GoogleSource } from "./connectors/google";

@@ -125,8 +125,8 @@ Contract: `docs/personal-sources.md`. Sync discovers; the creator decides what b
 | Item | Status | Notes |
 |---|---|---|
 | PS-A Foundation | Done | Migration 074 (connections, Vault credentials, cursors, sync jobs, context index, candidates; RLS, retention, export); `@wonder/creator-sources` engine (202 + after-response slices, budgets, checkpoints, dedupe, cancel, crash resume, per-source failure isolation, central redaction); native Notes connector; cheap grouping (place/day clusters, unfinished thought, recurring phrase); `/sources`, manage, review/import; Home › From your world with a quiet Sync |
-| PS-B Gmail | Next | Least-privilege read-only OAuth separate from sign-in; needs owner Google Cloud setup and verification |
-| PS-C Calendar + Notes | Planned | |
-| PS-D Photos | Planned | |
+| PS-B Gmail | Done (needs owner Google setup) | Own read-only consent (PKCE, sealed state), Vault refresh token, bounded window, metadata + snippet only, history cursor with bounded recovery, redacted import, revoke on disconnect |
+| PS-C Calendar + Notes | Done | Calendar: own consent (events.readonly), bounded window + sync token, title/date/town only; cross-source grouping (mail naming a place joins its group). Native notes since A; external notes via import |
+| PS-D Photos | Done | Device picker only; SHA-256, date and ≤12 KB thumbnail per photo, inline in the record; photo-day groups led by the creator's photo; only chosen originals uploaded, verified by SHA-256 |
 | PS-E CreativeMind enrichment | Planned | |
 | PS-F Hardening / load | Planned | |

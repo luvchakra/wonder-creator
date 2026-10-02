@@ -4,8 +4,9 @@ import { Button, KIT, KitArt, cn } from "@wonder/ui";
 import { Check, ChevronLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LocalTime } from "@/components/client-time";
+import { localOriginal, rememberOriginal, sha256Hex } from "@/components/sources/local-photos";
 import { api, errorMessage } from "@/lib/client";
 import type { CandidateCard, CandidateItem } from "@/lib/sources";
 
@@ -32,11 +33,45 @@ export function ReviewCandidate({ c }: { c: CandidateCard & { items: CandidateIt
       return next;
     });
 
+  const [missing, setMissing] = useState(0);
+  const again = useRef<HTMLInputElement>(null);
+
+  /** Upload the originals of the chosen photos (from this device, this visit) — only now, only these. */
+  async function photoOriginals(): Promise<Record<string, string> | null> {
+    const photos = c.items.filter((i) => i.sourceType === "photo" && picked.has(i.id) && !i.imported);
+    const lacking = photos.filter((p) => !p.fingerprint || !localOriginal(p.fingerprint));
+    if (lacking.length) {
+      setMissing(lacking.length);
+      return null;
+    }
+    const out: Record<string, string> = {};
+    for (const p of photos) {
+      const form = new FormData();
+      form.append("files", localOriginal(p.fingerprint!)!);
+      const r = await api<{ accepted: Array<{ materialId: string | null }>; rejected: Array<{ message: string }> }>("/api/v1/send", { method: "POST", body: form });
+      const mid = r.accepted[0]?.materialId;
+      if (!mid) throw new Error(r.rejected[0]?.message ?? "A photo couldn't be brought in.");
+      out[p.id] = mid;
+    }
+    return out;
+  }
+  async function chooseAgain(files: FileList | null) {
+    for (const f of [...(files ?? [])]) rememberOriginal(await sha256Hex(f), f);
+    const still = c.items.filter((i) => i.sourceType === "photo" && picked.has(i.id) && !i.imported && (!i.fingerprint || !localOriginal(i.fingerprint))).length;
+    setMissing(still);
+    if (again.current) again.current.value = "";
+  }
+
   async function bring(to: "materials" | "studio") {
     setBusy(to);
     setError(null);
     try {
-      const r = await api<{ next: string }>(`/api/v1/personal-sources/candidates/${c.id}/import`, { method: "POST", json: { recordIds: [...picked], to } });
+      const photoMaterials = await photoOriginals();
+      if (!photoMaterials) {
+        setBusy(null);
+        return;
+      }
+      const r = await api<{ next: string }>(`/api/v1/personal-sources/candidates/${c.id}/import`, { method: "POST", json: { recordIds: [...picked], to, photoMaterials } });
       router.push(r.next);
       router.refresh();
     } catch (e) {
@@ -66,7 +101,11 @@ export function ReviewCandidate({ c }: { c: CandidateCard & { items: CandidateIt
         <KitArt art={KIT.painted.blossomSprig} sizes="7rem" priority className="pointer-events-none absolute -bottom-3 -right-2 -z-10 h-auto w-24 opacity-90" />
         <h1 className="pr-16 font-display text-[28px] leading-tight text-ink">{c.title}</h1>
         <p className="mt-0.5 text-[13px] text-ink-muted">{c.counts}</p>
-        {c.quote ? <p className="mt-2 pr-14 font-display text-[16px] italic leading-snug text-ink">“{c.quote}”</p> : <p className="mt-1.5 pr-14 text-[13.5px] text-ink-muted">{c.explanation}</p>}
+        {c.quote ? (
+          <p className="mt-2 pr-14 font-display text-[16px] italic leading-snug text-ink">“{c.quote}”</p>
+        ) : c.explanation ? (
+          <p className="mt-1.5 pr-14 text-[13.5px] text-ink-muted">{c.explanation}</p>
+        ) : null}
       </header>
       <p className="mt-2 text-[13px] text-ink-muted">Choose what to bring in. The rest stays where it is.</p>
 
@@ -111,6 +150,26 @@ export function ReviewCandidate({ c }: { c: CandidateCard & { items: CandidateIt
                 </button>
               ) : null}
             </div>
+            {t === "photo" ? (
+              <ul className="mt-1 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                {items.map((i) => {
+                  const on = picked.has(i.id) || i.imported;
+                  return (
+                    <li key={i.id}>
+                      <label className={cn("relative block aspect-square cursor-pointer overflow-hidden rounded-xl bg-surface-muted", i.imported && "cursor-default")}>
+                        <input type="checkbox" className="peer sr-only" checked={on} disabled={i.imported} onChange={() => toggle(i.id)} aria-label={`Photo${i.occurredAt ? ` from ${new Date(i.occurredAt).toDateString()}` : ""}${i.imported ? " (already in your Materials)" : ""}`} />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {i.previewRef ? <img src={i.previewRef} alt="" className="size-full object-cover" /> : null}
+                        <span aria-hidden className="absolute inset-0 rounded-xl ring-inset peer-focus-visible:ring-2 peer-focus-visible:ring-accent" />
+                        <span aria-hidden className={cn("absolute left-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full border-2 border-white shadow", on ? "bg-accent text-white" : "bg-black/20")}>
+                          {on ? <Check className="size-3.5" /> : null}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
             <ul className="mt-1 divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/95 shadow-[var(--shadow-card)]">
               {items.map((i) => {
                 const on = picked.has(i.id);
@@ -144,9 +203,20 @@ export function ReviewCandidate({ c }: { c: CandidateCard & { items: CandidateIt
                 );
               })}
             </ul>
+            )}
           </section>
         );
       })}
+
+      {missing ? (
+        <div role="status" className="mt-4 rounded-2xl bg-warning-soft px-3 py-2.5 text-[13.5px] text-warning-ink">
+          To bring {missing === 1 ? "this photo" : `these ${missing} photos`} in at full quality, choose {missing === 1 ? "it" : "them"} again from your device — the originals never left it.
+          <input ref={again} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose the photos again" onChange={(e) => void chooseAgain(e.currentTarget.files)} />
+          <Button size="sm" variant="secondary" className="mt-2" onClick={() => again.current?.click()}>
+            Choose photos
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
         <p role="alert" className="mt-3 text-sm text-danger">

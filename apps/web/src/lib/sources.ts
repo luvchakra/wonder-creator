@@ -46,6 +46,8 @@ export function connectors(): ConnectorRegistry {
 
 /** Sources the creator can connect right now without a provider consent screen. */
 export const DIRECT_CONNECT: Provider[] = ["native_notes"];
+/** Sources the creator feeds by choosing items on their device (no background access). */
+export const PICK_CONNECT: Provider[] = ["phone_photos"];
 /** Sources connected through the provider's own consent screen. */
 export const OAUTH_CONNECT: Provider[] = ["gmail", "google_calendar"];
 
@@ -69,6 +71,8 @@ export interface SourceRow {
   available: boolean;
   /** Connects through the provider's consent screen (not a direct insert). */
   oauth: boolean;
+  /** Fed by choosing items on the device (Photos). */
+  pick: boolean;
   /** Account the source belongs to, e.g. the Gmail address. */
   account: string | null;
   activeJob: { id: string; status: JobStatus; phase: string; scanned: number } | null;
@@ -90,7 +94,8 @@ export async function sourceRows(db: Db): Promise<SourceRow[]> {
       connectionId: c?.id ?? null,
       status: (c?.status ?? "not_connected") as ConnectionStatus,
       lastSyncedAt: c?.last_successful_sync_at ?? null,
-      available: !!reg[provider] && (DIRECT_CONNECT.includes(provider) || OAUTH_CONNECT.includes(provider)),
+      available: PICK_CONNECT.includes(provider) || (!!reg[provider] && (DIRECT_CONNECT.includes(provider) || OAUTH_CONNECT.includes(provider))),
+      pick: PICK_CONNECT.includes(provider),
       oauth: OAUTH_CONNECT.includes(provider),
       account: c?.account_display_name ?? null,
       activeJob: j ? { id: j.id, status: j.status as JobStatus, phase: j.phase, scanned: j.scanned_count } : null,
@@ -105,18 +110,33 @@ export interface CandidateCard {
   quote: string | null;
   counts: string;
   state: string;
+  /** The creator's own photo from the group, when there is one (real imagery first). */
+  cover: string | null;
 }
 
 /** The few groups worth exploring, best first. */
 export async function candidateCards(db: Db, limit = 5): Promise<CandidateCard[]> {
   const { data } = await db
     .from("context_candidates")
-    .select("id, title, explanation, quote, counts, state")
+    .select("id, title, explanation, quote, counts, state, record_ids")
     .in("state", ["new", "reviewed"])
     .gt("expires_at", new Date().toISOString())
     .order("score", { ascending: false })
     .limit(limit);
-  return (data ?? []).map((c) => ({ id: c.id, title: c.title, explanation: c.explanation, quote: c.quote, counts: countsLine(c.counts as Record<string, number>), state: c.state }));
+  const ids = [...new Set((data ?? []).flatMap((c) => c.record_ids))];
+  const { data: photos } = ids.length
+    ? await db.from("source_context_records").select("id, preview_ref").in("id", ids).eq("source_type", "photo").not("preview_ref", "is", null).order("occurred_at")
+    : { data: [] };
+  const preview = new Map((photos ?? []).map((p) => [p.id, p.preview_ref]));
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    title: c.title,
+    explanation: c.explanation,
+    quote: c.quote,
+    counts: countsLine(c.counts as Record<string, number>),
+    state: c.state,
+    cover: c.record_ids.map((r) => preview.get(r)).find(Boolean) ?? null,
+  }));
 }
 
 export interface CandidateItem {
@@ -127,6 +147,8 @@ export interface CandidateItem {
   excerpt: string | null;
   occurredAt: string | null;
   previewRef: string | null;
+  /** A photo's SHA-256 (to match the original on the device at import). */
+  fingerprint: string | null;
   imported: boolean;
 }
 
@@ -137,7 +159,7 @@ export async function candidateDetail(db: Db, id: string): Promise<(CandidateCar
   const { data: rs } = c.record_ids.length
     ? await db
         .from("source_context_records")
-        .select("id, source_type, safe_title, safe_excerpt, occurred_at, preview_ref, material_id, hydration_level, source_connections(provider)")
+        .select("id, source_type, safe_title, safe_excerpt, occurred_at, preview_ref, material_id, hydration_level, fingerprint, source_connections(provider)")
         .in("id", c.record_ids)
         .order("occurred_at", { ascending: false })
     : { data: [] };
@@ -148,6 +170,7 @@ export async function candidateDetail(db: Db, id: string): Promise<(CandidateCar
     quote: c.quote,
     counts: countsLine(c.counts as Record<string, number>),
     state: c.state,
+    cover: (rs ?? []).find((r) => r.source_type === "photo" && r.preview_ref)?.preview_ref ?? null,
     items: (rs ?? []).map((r) => ({
       id: r.id,
       sourceType: r.source_type as CandidateItem["sourceType"],
@@ -156,6 +179,7 @@ export async function candidateDetail(db: Db, id: string): Promise<(CandidateCar
       excerpt: r.safe_excerpt,
       occurredAt: r.occurred_at,
       previewRef: r.preview_ref,
+      fingerprint: r.source_type === "photo" ? r.fingerprint : null,
       imported: r.hydration_level === 4,
     })),
   };

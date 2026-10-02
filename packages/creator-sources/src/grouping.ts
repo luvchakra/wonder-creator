@@ -145,12 +145,14 @@ function dayClusters(rs: ContextRecord[], tz: string, now: Date): CandidateDraft
   const out: CandidateDraft[] = [];
   for (const [day, group] of byDay) {
     const kinds = new Set(group.map((r) => r.sourceType)).size;
-    if (group.length < 3 || kinds < 2) continue;
+    const photos = group.filter((r) => r.sourceType === "photo").length;
+    // Several sources agreeing on a day — or a day the creator photographed a lot.
+    if (!(group.length >= 3 && kinds >= 2) && photos < 4) continue;
     const at = group[0]!.occurredAt!;
     out.push({
       signature: sig("day", day),
       title: `${weekday(at, tz)}, ${dayMonth(at, tz)}`,
-      explanation: `One day across your ${kindsPhrase(group)}.`,
+      explanation: kinds === 1 ? "A day you kept in photos." : `One day across your ${kindsPhrase(group)}.`,
       quote: quoteFrom(group),
       recordIds: group.map((r) => r.id),
       counts: countsOf(group),

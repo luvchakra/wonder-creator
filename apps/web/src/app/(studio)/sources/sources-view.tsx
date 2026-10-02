@@ -3,13 +3,15 @@ import { Button, KIT, KitArt, buttonClasses, cn } from "@wonder/ui";
 import { ArrowRight, ChevronLeft, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
+import { readPhoto, type LocalPhoto } from "@/components/sources/local-photos";
 import { SourceIcon, phaseText } from "@/components/sources/source-bits";
 import { api, errorMessage } from "@/lib/client";
 import type { CandidateCard, SourceRow } from "@/lib/sources";
 
 const ACTIVE = new Set(["queued", "running", "paused"]);
+const MAX_PHOTOS = 200;
 
 const RETURNED = (name: string, what: string): Record<string, { text: string; ok: boolean }> => ({
   connected: { text: `${name} is connected. A first, short sync of your recent ${what} has started.`, ok: true },
@@ -27,6 +29,8 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(() => initial.some((s) => s.activeJob));
   const connected = sources.filter((s) => s.connectionId);
+  // Sync is for sources Wonder Creator can look at; Photos only ever has what the creator chose.
+  const syncable = connected.filter((s) => !s.pick);
   const syncing = sources.some((s) => s.activeJob && ACTIVE.has(s.activeJob.status));
 
   // A server refresh brings new rows: take them (React's "adjust state on prop change" pattern, no effect).
@@ -95,6 +99,32 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
       setPolling(true);
       router.refresh();
     });
+  // Photos: the browser's own picker; only fingerprints, dates and tiny thumbnails leave the device.
+  const picker = useRef<HTMLInputElement>(null);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
+  async function pickPhotos(files: FileList | null) {
+    const list = [...(files ?? [])].slice(0, MAX_PHOTOS);
+    if (!list.length) return;
+    await run("phone_photos", async () => {
+      let done = 0;
+      let unreadable = 0;
+      for (let i = 0; i < list.length; i += 25) {
+        const batch: LocalPhoto[] = [];
+        for (const f of list.slice(i, i + 25)) {
+          const p = await readPhoto(f);
+          if (p) batch.push(p);
+          else unreadable++;
+          done++;
+          setPhotoNote(`Looking at ${done} of ${list.length} photos…`);
+        }
+        if (batch.length) await api("/api/v1/personal-sources/photos", { method: "POST", json: { photos: batch } });
+      }
+      setPhotoNote(`Looked at ${list.length - unreadable} ${list.length - unreadable === 1 ? "photo" : "photos"}${unreadable ? ` · ${unreadable} couldn't be read here` : ""}${files && files.length > MAX_PHOTOS ? ` · the first ${MAX_PHOTOS} only` : ""}.`);
+      router.refresh();
+    });
+    if (picker.current) picker.current.value = "";
+  }
+
   const cancel = () =>
     run("cancel", async () => {
       const ids = sources.map((s) => s.activeJob?.id).filter((x): x is string => !!x);
@@ -127,7 +157,18 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
               <p className="text-[15px] font-medium text-ink">{s.label}</p>
               <SourceStatus s={s} />
             </div>
-            {s.connectionId ? (
+            {s.pick ? (
+              <span className="flex items-center">
+                <Button size="sm" variant="soft" loading={busy === s.provider} onClick={() => picker.current?.click()}>
+                  Select photos
+                </Button>
+                {s.connectionId ? (
+                  <Link href={`/sources/${s.connectionId}`} aria-label={`Manage ${s.label}`} className="-mr-1 inline-flex size-11 items-center justify-center rounded-full text-ink-subtle hover:bg-surface-muted">
+                    <ChevronRight className="size-5" aria-hidden />
+                  </Link>
+                ) : null}
+              </span>
+            ) : s.connectionId ? (
               <Link href={`/sources/${s.connectionId}`} aria-label={`Manage ${s.label}`} className="-mr-1 inline-flex size-11 items-center justify-center rounded-full text-ink-subtle hover:bg-surface-muted">
                 <ChevronRight className="size-5" aria-hidden />
               </Link>
@@ -139,6 +180,13 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
           </li>
         ))}
       </ul>
+
+      <input ref={picker} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose photos" onChange={(e) => void pickPhotos(e.currentTarget.files)} />
+      {photoNote ? (
+        <p role="status" className="mt-2 text-[13px] text-ink-muted">
+          {photoNote}
+        </p>
+      ) : null}
 
       <aside className="mt-3 flex gap-2.5 rounded-2xl bg-accent-softer/70 px-3 py-2.5 text-[13px] leading-snug text-ink-muted">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
@@ -154,7 +202,7 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
         </p>
       ) : null}
 
-      {connected.length ? (
+      {syncable.length ? (
         <div className="mt-3">
           {syncing ? (
             <div className="flex items-center gap-3 rounded-2xl border border-border-soft bg-surface/95 px-3 py-2" role="status">
@@ -182,8 +230,15 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
               <li key={c.id}>
                 <Link href={`/sources/candidates/${c.id}`} className="group relative isolate flex h-full gap-3 overflow-hidden rounded-2xl border border-border-soft bg-surface/95 p-2.5 shadow-[var(--shadow-card)] hover:border-accent/40">
                   <span aria-hidden className="relative isolate size-20 shrink-0 overflow-hidden rounded-xl bg-surface-muted">
-                    <KitArt art={KIT.wash[WASHES[i % WASHES.length]!]} sizes="6rem" className="absolute inset-0 -z-10 size-full scale-125 object-cover" />
-                    <KitArt art={KIT.painted[SPRIGS[i % SPRIGS.length]!]} sizes="5rem" className="absolute -bottom-1 -right-1 h-auto w-16 opacity-90" />
+                    {c.cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.cover} alt="" className="size-full object-cover" />
+                    ) : (
+                      <>
+                        <KitArt art={KIT.wash[WASHES[i % WASHES.length]!]} sizes="6rem" className="absolute inset-0 -z-10 size-full scale-125 object-cover" />
+                        <KitArt art={KIT.painted[SPRIGS[i % SPRIGS.length]!]} sizes="5rem" className="absolute -bottom-1 -right-1 h-auto w-16 opacity-90" />
+                      </>
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-[17px] leading-snug text-ink">{c.title}</span>
@@ -214,6 +269,22 @@ function SourceStatus({ s }: { s: SourceRow }) {
       <p className="flex items-center gap-1.5 text-[12.5px] text-ink-muted">
         <Loader2 className="size-3 shrink-0 text-accent motion-safe:animate-spin" aria-hidden />
         {phaseText(s.provider, s.activeJob.status, s.activeJob.phase)}
+      </p>
+    );
+  }
+  if (s.pick) {
+    return (
+      <p className="text-[12.5px] text-ink-subtle">
+        {s.lastSyncedAt ? (
+          <>
+            Last chosen <RelativeTime iso={s.lastSyncedAt} />
+          </>
+        ) : (
+          <>
+            Only the photos you choose
+            <span className="block">Originals stay on your device</span>
+          </>
+        )}
       </p>
     );
   }

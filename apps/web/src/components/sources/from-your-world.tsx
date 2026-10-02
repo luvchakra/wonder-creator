@@ -20,7 +20,12 @@ export function FromYourWorld({ connected, candidate, more, activeJobIds }: { co
         {connected ? <SyncChip activeJobIds={activeJobIds} /> : null}
       </div>
       {candidate ? (
-        <div className="pr-14">
+        <div className={candidate.cover ? "flex gap-3" : "pr-14"}>
+          {candidate.cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={candidate.cover} alt="" className="mt-1 size-20 shrink-0 rounded-xl object-cover shadow-[var(--shadow-card)]" />
+          ) : null}
+          <div className="min-w-0">
           <p className="mt-0.5 font-display text-[19px] leading-snug text-ink">{candidate.title}</p>
           {candidate.counts ? <p className="text-[12.5px] text-ink-muted">{candidate.counts}</p> : null}
           {candidate.quote ? <p className="mt-1 line-clamp-2 font-display text-[14px] italic leading-snug text-ink-muted">“{candidate.quote}”</p> : null}
@@ -33,6 +38,7 @@ export function FromYourWorld({ connected, candidate, more, activeJobIds }: { co
                 {more} more
               </Link>
             ) : null}
+          </div>
           </div>
         </div>
       ) : connected ? (

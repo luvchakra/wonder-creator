@@ -55,7 +55,7 @@ source_connections → source_sync_jobs (bounded)   → context_candidates   →
 | A Foundation | Models, manual Sync, queue isolation, budgets, dedupe, checkpoints, cancel, Home card, native Notes connector | Done |
 | B Gmail | Separate least-privilege read-only OAuth, bounded first scan, metadata-first, history cursor, review/import | Done (needs owner Google setup) |
 | C Calendar + Notes | Bounded date windows, cross-source grouping; external notes only via documented APIs or import | Calendar + cross-source grouping done; external notes via import (D) |
-| D Photos | PWA file picker/share first; thumbnails/metadata, clusters; no bulk originals | |
+| D Photos | PWA file picker/share first; thumbnails/metadata, clusters; no bulk originals | Done (device picker; cloud pickers later) |
 | E CreativeMind | Shortlist-only enrichment, one concise suggestion, targeted "look further back" | |
 | F Hardening | Provider failure, expiry, rate limits, huge mailbox, large photo sets, congestion, load tests | |
 
@@ -111,3 +111,17 @@ addresses; declined, cancelled, out-of-office/focus/working-location and online 
 
 Cross-source grouping: a mail or note without a place joins a place's group when it names that place and falls within
 three days of it ("a travel email near a calendar event").
+
+## Photos (phase D)
+
+No background access to a camera roll: the creator chooses photos in the browser's own picker (`Select photos`, up to
+200 at a time). On the device (`apps/web/src/components/sources/local-photos.ts`) each photo gives its SHA-256, when it
+was taken (EXIF `DateTimeOriginal`, else the file date) and a ≤12 KB JPEG thumbnail; only that is sent, 25 per request,
+500 an hour (`POST /api/v1/personal-sources/photos`). The server content-checks every thumbnail and keeps it inside the
+record (migration 075), so it is private by RLS and disappears with the record — expiry, disconnect or erasure — with
+nothing left in storage. A day the creator photographed a lot (4+) becomes a group led by their own photo.
+
+Originals stay in the browser's memory for that visit. Bringing a photo in uploads **only the chosen originals** through
+the normal upload checks (`/api/v1/send`); the import accepts it only when the uploaded file's SHA-256 matches the
+photo that was discovered. On a later visit the creator is asked to choose those photos again — the originals never
+left the device. Cloud photo libraries need their providers' own pickers and consent; not built yet.

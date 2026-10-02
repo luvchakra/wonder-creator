@@ -1,6 +1,7 @@
-import { ConnectorError, cancelSync, importCandidate, nativeNotes, requestSync, runSyncJobs, DEFAULT_BUDGETS, type Connector, type SourcesDeps } from "@wonder/creator-sources/server";
+import { createHash } from "node:crypto";
+import { ConnectorError, cancelSync, importCandidate, indexPhotos, nativeNotes, requestSync, runSyncJobs, DEFAULT_BUDGETS, type Connector, type SourcesDeps } from "@wonder/creator-sources/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminClient, cleanupTestCreators, createProvenance, createTestCreator, expectDenied, expectNoRowsAffected, expectOk, loose, type TestCreator } from "./helpers";
+import { adminClient, cleanupTestCreators, createProvenance, createTestCreator, expectDenied, expectNoRowsAffected, expectOk, loose, registerStorageObject, type TestCreator } from "./helpers";
 
 /**
  * Personal Sources (docs/personal-sources.md): RLS on every table, credentials server-only, and the sync pipeline's
@@ -229,5 +230,53 @@ describe("Personal Sources — sync pipeline", () => {
     expect(res.source_context_records).toBeGreaterThanOrEqual(1);
     expect(res.context_candidates).toBeGreaterThanOrEqual(1);
     expect(expectOk(await f.client.from("source_context_records").select("id"))).toEqual([]);
+  });
+});
+
+describe("Personal Sources — photos chosen on the device", () => {
+  // A real 1×1 JPEG (content-detected), as a browser would send for a thumbnail.
+  const JPEG = Buffer.from(
+    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+    "base64",
+  );
+  const thumb = `data:image/jpeg;base64,${JPEG.toString("base64")}`;
+  const sha = (n: number) => createHash("sha256").update(`photo-${n}`).digest("hex");
+
+  it("keeps only metadata and a real, tiny thumbnail; a burst of photos from one day becomes a group", async () => {
+    const p = await createTestCreator("srcPhotos");
+    const conn = expectOk(await p.client.from("source_connections").insert({ creator_id: p.creatorId, provider: "phone_photos" }).select("id").single()).id;
+    const day = new Date(Date.now() - 3 * DAY).toISOString();
+    const photos = [1, 2, 3, 4, 5].map((n) => ({ sha256: sha(n), takenAt: day, width: 4000, height: 3000, thumb }));
+    const bad = [
+      { sha256: sha(6), takenAt: day, thumb: "data:image/jpeg;base64,PHN2Zz48L3N2Zz4=" }, // not a JPEG at all
+      { sha256: "nope", takenAt: day, thumb },
+      { sha256: sha(7), takenAt: day, thumb: `data:image/jpeg;base64,${Buffer.alloc(20_000, 1).toString("base64")}` },
+    ];
+    const r = await indexPhotos(admin, p.creatorId, conn, [...photos, ...bad]);
+    expect(r).toMatchObject({ indexed: 5, skipped: 3 });
+    const rows = expectOk(await p.client.from("source_context_records").select("source_type, preview_ref, fingerprint, hydration_level"));
+    expect(rows).toHaveLength(5);
+    expect(rows.every((x) => x.source_type === "photo" && x.preview_ref!.startsWith("data:image/jpeg;base64,") && x.hydration_level === 2)).toBe(true);
+    // Re-sending the same photos never duplicates them.
+    await indexPhotos(admin, p.creatorId, conn, photos);
+    expect(expectOk(await p.client.from("source_context_records").select("id"))).toHaveLength(5);
+    const cand = expectOk(await p.client.from("context_candidates").select("id, title, explanation, record_ids").single());
+    expect(cand.explanation).toBe("A day you kept in photos.");
+    // Another creator's connection can't be fed.
+    await expect(indexPhotos(admin, b.creatorId, conn, photos)).rejects.toMatchObject({ code: "not_found" });
+    // A thumbnail can't smuggle anything bigger or other than an image into the index.
+    expectDenied(await admin.from("source_context_records").update({ preview_ref: "javascript:alert(1)" }).eq("connection_id", conn));
+
+    // Import needs the very same original (matching SHA-256), uploaded by this creator.
+    const rec = expectOk(await p.client.from("source_context_records").select("id, fingerprint").eq("fingerprint", sha(1)).single());
+    await expect(importCandidate(deps(), p.client, p.creatorId, cand.id, [rec.id])).rejects.toMatchObject({ code: "validation" });
+    const other = await registerStorageObject(p);
+    const prov = await createProvenance(p, "upload");
+    const wrong = expectOk(await p.client.from("creative_materials").insert({ creator_id: p.creatorId, type: "image", provenance_id: prov, storage_object_id: other }).select("id").single()).id;
+    await expect(importCandidate(deps(), p.client, p.creatorId, cand.id, [rec.id], { [rec.id]: wrong })).rejects.toMatchObject({ code: "validation" });
+    await admin.from("storage_objects").update({ sha256: sha(1) }).eq("id", other);
+    const res = await importCandidate(deps(), p.client, p.creatorId, cand.id, [rec.id], { [rec.id]: wrong });
+    expect(res.materialIds).toEqual([wrong]);
+    expect(expectOk(await p.client.from("source_context_records").select("material_id, hydration_level").eq("id", rec.id).single())).toEqual({ material_id: wrong, hydration_level: 4 });
   });
 });

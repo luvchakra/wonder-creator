@@ -79,6 +79,18 @@ export function ManageSource({
         </div>
       </header>
 
+      {s.provider === "phone_photos" ? (
+        <section aria-label="Photos" className="mt-4 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
+          <p className="text-[15px] font-medium text-ink">Only what you choose</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">{WHAT[s.provider]} Wonder Creator keeps when each was taken and a tiny preview — the originals stay on your device until you bring one in.</p>
+          <p className="mt-1 text-[12.5px] text-ink-subtle">
+            {s.indexed} {s.indexed === 1 ? "photo" : "photos"} chosen
+          </p>
+          <Link href="/sources" className="mt-2 inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
+            Choose more photos
+          </Link>
+        </section>
+      ) : (
       <section aria-label="Sync" className="mt-4 rounded-2xl border border-border-soft bg-surface/95 px-3 py-3 shadow-[var(--shadow-card)]">
         <p className="text-[15px] font-medium text-ink">Sync this source</p>
         <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">{WHAT[s.provider]}</p>
@@ -107,6 +119,7 @@ export function ManageSource({
           )}
         </div>
       </section>
+      )}
 
       {s.status === "needs_reconnect" && (s.provider === "gmail" || s.provider === "google_calendar") ? (
         <div role="status" className="mt-3 flex items-center gap-3 rounded-2xl bg-warning-soft px-3 py-2.5">
