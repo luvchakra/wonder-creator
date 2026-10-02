@@ -1,5 +1,5 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { countsLine, PROVIDER_LABEL, type ConnectionStatus, type JobStatus, type Provider } from "@wonder/creator-sources";
 import { calendarConnector, gmailConnector, nativeNotes, runSyncJobs, type ConnectorRegistry, type GoogleClient, type GoogleSource, type SourcesDeps } from "@wonder/creator-sources/server";
 import type { Db } from "@wonder/db";
@@ -235,9 +235,13 @@ export function openOAuth(sealed: string | undefined): OAuthState | null {
   }
 }
 
+let derived: { from: string; key: Buffer } | null = null;
 function oauthKey(): Buffer {
-  // Derived from the OAuth client secret: present whenever Gmail can be connected, and never sent to the browser.
-  return createHash("sha256").update(`wc-personal-sources:${process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? ""}`).digest();
+  // Derived (scrypt) from the OAuth client secret: present whenever Google sources can be connected, never sent to the
+  // browser. Memoised: derivation is deliberately slow.
+  const secret = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
+  if (derived?.from !== secret) derived = { from: secret, key: scryptSync(secret, "wc-personal-sources-oauth-state", 32) };
+  return derived.key;
 }
 
 /** Search the creator's own index (titles, previews, places) — what discovery already found, nothing fetched. */
