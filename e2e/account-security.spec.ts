@@ -74,6 +74,8 @@ test.describe("Account security", () => {
     await dropSession(page);
     await page.goto("/sign-in");
     await page.getByRole("link", { name: "Forgot your password?" }).click();
+    // Fill only once the reset page is showing (the sign-in page has an Email field too).
+    await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
     await page.getByLabel("Email").fill("nobody-here@example.com");
     await page.getByRole("button", { name: "Send reset link" }).click();
     // The same answer whether or not there's an account.
