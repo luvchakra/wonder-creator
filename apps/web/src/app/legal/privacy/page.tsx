@@ -36,7 +36,7 @@ export default function PrivacyNoticePage() {
             </tr>
           </thead>
           <tbody className="text-[14px]">
-            <tr><td>Email, password (hashed), name, handle</td><td>Your account and signing in</td><td>Contract (GDPR 6(1)(b)); consent / legitimate use (DPDP §§6–7)</td></tr>
+            <tr><td>Email, password (hashed), name, handle — or, if you continue with Google, the name and email address your Google account shares</td><td>Your account and signing in</td><td>Contract (GDPR 6(1)(b)); consent / legitimate use (DPDP §§6–7)</td></tr>
             <tr><td>Profile, Materials, Creations, notes, voice, uploads</td><td>Providing the studio you asked for</td><td>Contract; your consent</td></tr>
             <tr><td>Material you ask CreativeMind to work on</td><td>AI assistance, only when you use it</td><td>Contract; your consent</td></tr>
             <tr><td>Huddle audio/video, messages</td><td>Live sessions — dissolved when everyone leaves; only what you choose to keep is stored</td><td>Contract</td></tr>

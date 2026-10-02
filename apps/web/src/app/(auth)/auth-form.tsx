@@ -5,15 +5,23 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { GoogleButton } from "./google-button";
 
-export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
+/** Why a redirect back to sign-in happened (set by /auth/callback). */
+const RETURN_ERRORS: Record<string, string> = {
+  oauth: "Google sign-in didn't finish. Try again, or use your email.",
+  link: "That link has expired or was already used. Sign in again.",
+};
+
+export function AuthForm({ mode, google = false }: { mode: "sign-in" | "sign-up"; google?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
+  const returnError = RETURN_ERRORS[params.get("error") ?? ""] ?? null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(returnError);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -48,8 +56,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       if (error) setError("That email and password don't match. Try again.");
       else {
         await recordSecurityEvent("signed_in");
-        const next = params.get("next");
-        const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+        const safeNext = safeNextOf(params.get("next"));
         // Two-step verification set up: the code comes next.
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
@@ -69,6 +76,17 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         <h1 className="font-display text-3xl text-ink">{mode === "sign-in" ? "Welcome back" : "Welcome to Wonder Creator"}</h1>
         <p className="mt-1.5 text-ink-muted">{mode === "sign-in" ? "Pick up where you left off." : "A place to think, create and bring your creative ideas to life."}</p>
       </div>
+      {google ? (
+        <>
+          <GoogleButton next={safeNextOf(params.get("next"))} onError={setError} />
+          {mode === "sign-up" ? <p className="-mt-2 text-center text-[12.5px] text-ink-muted">You&rsquo;ll be asked to agree to the Terms and Privacy notice next.</p> : null}
+          <div className="flex items-center gap-3 text-[12.5px] text-ink-subtle" aria-hidden>
+            <span className="h-px flex-1 bg-border-soft" />
+            or with email
+            <span className="h-px flex-1 bg-border-soft" />
+          </div>
+        </>
+      ) : null}
       {mode === "sign-up" ? (
         <Field label="Your name" htmlFor="name">
           <Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
@@ -140,4 +158,9 @@ async function recordSignUpConsent() {
 /** Adds the sign-in to the creator's security history; never blocks signing in. */
 async function recordSecurityEvent(event: "signed_in" | "signed_up") {
   await fetch("/api/v1/account/security-events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event }) }).catch(() => undefined);
+}
+
+/** Only same-site paths are followed after signing in. */
+function safeNextOf(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
 }
