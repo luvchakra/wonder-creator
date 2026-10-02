@@ -68,7 +68,7 @@ export default async function HomePage() {
         </header>
 
         {/* The Scrapbook first (owner, 2 Oct 2026): the latest thoughts from everyone you can see, in order shared. */}
-        <ScrapbookStrip db={db} viewerId={creator.id} />
+        <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
 
         {/* The one dominant action: continue (or something worth starting, or a calm beginning). */}
         {home.continue ? (

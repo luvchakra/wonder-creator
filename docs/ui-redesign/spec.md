@@ -564,7 +564,7 @@ Do not show five dashboard sections simultaneously.
 ## Home content order
 
 1. greeting;
-2. Scrapbook strip — the latest thoughts from everyone you can see, in the order shared (owner, 2 Oct 2026);
+2. Scrapbook — a thin compose row, then two or three thin rows with the last scraps from everyone you can see, newest first (owner, 2 Oct 2026);
 3. current/recent Creation;
 4. CreativeMind insight;
 5. recent Material;
