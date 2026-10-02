@@ -21,6 +21,10 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  // Only when the backend itself is https (a local http Supabase behind a production build would otherwise break).
+  ...(isDev || !supabaseUrl.startsWith("https://") ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -47,6 +51,8 @@ const nextConfig: NextConfig = {
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), payment=()" },
       { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+      { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+      { key: "Origin-Agent-Cluster", value: "?1" },
     ];
     return [
       {
@@ -66,6 +72,10 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: csp },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
+          // Our windows don't share a browsing context group with other sites' (no window.opener tricks), and our
+          // responses can't be pulled into other sites' pages.
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          { key: "Cross-Origin-Resource-Policy", value: "same-site" },
           ...common,
         ],
       },

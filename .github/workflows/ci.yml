@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for the workflow token.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Lint, typecheck, unit tests, build

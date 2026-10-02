@@ -1,4 +1,5 @@
 "use client";
+import { passwordProblem } from "@wonder/core";
 import { Button, Field, Input } from "@wonder/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,8 +22,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     setError(null);
     const supabase = createClient();
     if (mode === "sign-up") {
-      if (password.length < 10) {
-        setError("Use at least 10 characters for your password.");
+      const problem = passwordProblem(password, { email });
+      if (problem) {
+        setError(problem);
         setBusy(false);
         return;
       }
@@ -44,7 +46,14 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       else {
         await recordSecurityEvent("signed_in");
         const next = params.get("next");
-        router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+        const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+        // Two-step verification set up: the code comes next.
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+          router.replace(`/sign-in/verify?next=${encodeURIComponent(safeNext)}`);
+          return;
+        }
+        router.replace(safeNext);
         router.refresh();
       }
     }
@@ -65,9 +74,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       <Field label="Email" htmlFor="email">
         <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </Field>
-      <Field label="Password" htmlFor="password" hint={mode === "sign-up" ? "At least 10 characters." : undefined}>
+      <Field label="Password" htmlFor="password" hint={mode === "sign-up" ? "At least 10 characters, with letters and numbers." : undefined}>
         <Input id="password" type="password" autoComplete={mode === "sign-up" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} required />
       </Field>
+      {mode === "sign-in" ? (
+        <p className="-mt-2 text-right text-sm">
+          <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline">
+            Forgot your password?
+          </Link>
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { OpenToEditor } from "@/components/community/open-to";
+import { SecurityPanel } from "./security-panel";
 
 const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
@@ -442,7 +443,7 @@ function AutonomySection({ autonomy }: Props) {
   );
 }
 
-function PrivacySection({ profile, blocked, readiness }: Props) {
+function PrivacySection({ profile, blocked, readiness, email }: Props) {
   const [visibility, setVisibility] = useState(profile.visibility);
   const { busy, save, status } = useSaver();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -450,6 +451,7 @@ function PrivacySection({ profile, blocked, readiness }: Props) {
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-ink">Privacy & Security</h2>
       <p className="text-[13px] text-ink-muted">You own your materials and Creations. They&apos;re private unless you share them, and CreativeMind works only on what you choose.</p>
+      <SecurityPanel email={email ?? null} />
       <fieldset>
         <legend className="text-sm font-medium text-ink">Profile visibility</legend>
         <div className="mt-1.5 divide-y divide-border-soft rounded-xl border border-border-soft">

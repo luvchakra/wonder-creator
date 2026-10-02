@@ -3,3 +3,4 @@ export * from "./privacy";
 export * from "./events";
 export * from "./log";
 export * from "./util";
+export * from "./security/password";
