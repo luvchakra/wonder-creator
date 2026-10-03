@@ -3,7 +3,7 @@ import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, ChevronDown, ChevronUp, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -68,7 +68,7 @@ export function Studio({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -186,6 +186,18 @@ export function Studio({
   const [selection, setSelection] = useState<string>("");
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
+  // Refine lives in a sheet: the Palette's Refine (and old links) arrive as #creativemind; a revision on the canvas closes it.
+  const writingCanvas = artifact.type !== "carousel";
+  useEffect(() => {
+    if (!writingCanvas) return;
+    const open = () => {
+      if (window.location.hash === "#creativemind") setSheet("refine");
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, [writingCanvas]);
+  if (proposal && sheet === "refine") setSheet(null);
   const [view, setView] = useState<"changes" | "original" | "proposed">("changes");
   const [q, setQ] = useState(quality);
   const [lastQuality, setLastQuality] = useState(quality);
@@ -646,28 +658,32 @@ export function Studio({
               )}
             </div>
           ) : mode === "view" ? (
-            // Immersive reading (board §1): the Creation over its cover; tap, or the pen, to edit.
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className="group relative block w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              aria-label="Edit the text"
-            >
+            // Immersive reading (board §1; owner, 3 Oct 2026: "capture the full canvas… the text should scroll so one can
+            // read the full text"): the Creation over its cover, filling the screen; the words scroll over the picture.
+            // The pen (below) edits; the corner button opens it on a page of its own.
+            <div className="relative h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={artifact.coverUrl ?? BACKGROUNDS.coastalVillage} alt="" className="absolute inset-0 size-full object-cover" />
-              <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,40,0.25)_0%,rgba(20,18,40,0.55)_45%,rgba(20,18,40,0.88)_100%)]" />
-              <span className="relative block min-h-[60dvh] px-5 pb-8 pt-[22vh] text-white sm:px-8">
-                <span className="block font-display text-[34px] leading-[1.05] sm:text-[44px]">{title || "Untitled"}</span>
-                <span
+              <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.6)_40%,rgba(20,18,40,0.88)_100%)]" />
+              <div tabIndex={0} aria-label={`${title || "Untitled"}, read`} className="absolute inset-0 overflow-y-auto overscroll-contain px-5 pb-10 pt-[18vh] text-white [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-8">
+                <h2 className="font-display text-[34px] leading-[1.05] [text-shadow:0_1px_14px_rgba(0,0,0,0.45)] sm:text-[44px]">{title || "Untitled"}</h2>
+                <p
                   className={cn(
-                    "mt-4 block max-h-[38dvh] overflow-hidden whitespace-pre-wrap text-white/90 [mask-image:linear-gradient(180deg,#000_75%,transparent)]",
+                    "mt-4 whitespace-pre-wrap text-white/95 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]",
                     artifact.format === "verse" ? "font-display text-[19px] leading-8" : "font-display text-[17px] leading-7",
                   )}
                 >
-                  {content}
-                </span>
-              </span>
-            </button>
+                  {content || "Nothing written yet. Tap the pen to start."}
+                </p>
+              </div>
+              <Link
+                href={`/creations/${artifact.id}/read`}
+                aria-label="Open it on its own page"
+                className="absolute right-2.5 top-2.5 inline-flex size-11 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm hover:bg-black/40"
+              >
+                <Maximize2 className="size-4" aria-hidden />
+              </Link>
+            </div>
           ) : (
             <>
               <label htmlFor="editor" className="sr-only">
@@ -681,7 +697,7 @@ export function Studio({
                 onBlur={() => setTimeout(() => setSelection(""), 200)}
                 autoFocus={!!version?.content}
                 spellCheck
-                className={cn("block min-h-[62dvh] w-full resize-y rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10", editorFont)}
+                className={cn("block h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10", editorFont)}
                 placeholder="Start with anything…"
               />
             </>
@@ -689,11 +705,13 @@ export function Studio({
         </section>
       )}
 
-      {/* Refine + quality stay contextual to the canvas, below it (§15.2), never a pane. */}
-      {!isCarousel ? (
-        <section id="creativemind" aria-labelledby="creativemind-title" className="mt-4 scroll-mt-20 space-y-3">
-          <h2 id="creativemind-title" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-ink-subtle">
-            <span aria-hidden className="size-3 rounded-full" style={{ background: "var(--brand-gradient)" }} /> Refine with CreativeMind
+      {/* Refine + quality (owner, 3 Oct 2026: "no need of quality and other options on the page, keep it minimal, focus on
+          content"): a sheet from More, or the Palette's Refine (#creativemind). It closes once a revision is on the canvas. */}
+      <Dialog open={sheet === "refine" && !isCarousel} onOpenChange={(o) => !o && setSheet(null)}>
+        <DialogContent title="Refine with CreativeMind" description="Suggestions only. Nothing changes until you keep a revision." art={KIT.iconChip.sparkles}>
+        <section id="creativemind" aria-labelledby="creativemind-title" className="space-y-3">
+          <h2 id="creativemind-title" className="sr-only">
+            Refine with CreativeMind
           </h2>
           <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Suggestions">
             {actions.map((a) => (
@@ -737,7 +755,8 @@ export function Studio({
             onChanged={() => router.refresh()}
           />
         </section>
-      ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* One quiet CreativeMind nudge about what's unused (§31–32). */}
       {/* On a Carousel the slide strip sits right above the bar, so the nudge lives in the bar itself (below). */}
@@ -946,6 +965,12 @@ export function Studio({
         <DialogContent title="Save, version and publish" description="Keep experimenting; save when ready." art={KIT.mark.starGold}>
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
             {[
+              ...(!isCarousel
+                ? [
+                    { label: "Read it on its own", hint: "Just the words, full screen", act: () => router.push(`/creations/${artifact.id}/read`) },
+                    { label: "Refine with CreativeMind", hint: "Improve, shorten, or a quality review", act: () => setSheet("refine") },
+                  ]
+                : []),
               ...(!isCarousel ? [{ label: "Save version", hint: `v${(base?.number ?? 0) + 1} – ${artifact.typeLabel} (${title || "Untitled"})`, act: () => setSheet("save") }] : []),
               ...(isCarousel
                 ? [

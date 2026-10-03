@@ -5,7 +5,8 @@ test.describe("Quality review & selective refinement", () => {
 
   test("choose a suggestion, preview, regenerate, keep, then compare; set another aside", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
-    await page.goto(`/creations/${artifactId}/studio`);
+    // Quality lives in the Refine sheet (owner, 3 Oct 2026); #creativemind opens it, as the Palette's Refine does.
+    await page.goto(`/creations/${artifactId}/studio#creativemind`);
     const quality = page.getByRole("region", { name: "Quality" });
     const suggestions = quality.getByRole("list", { name: "Suggestions" });
     await expect(suggestions).toContainText("Try a closer detail");
@@ -34,7 +35,7 @@ test.describe("Quality review & selective refinement", () => {
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}\\?tab=versions$`));
     await expect(page.getByText("Applied quality suggestions: Try a closer detail")).toBeVisible();
     await expect(page.getByRole("region", { name: "Compare versions" })).toBeVisible();
-    await page.goto(`/creations/${artifactId}/studio`);
+    await page.goto(`/creations/${artifactId}/studio#creativemind`);
 
     // The review is now for an earlier version; review again, then set a finding aside.
     await expect(quality.getByText(/From an earlier version/)).toBeVisible();
