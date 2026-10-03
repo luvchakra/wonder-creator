@@ -1,6 +1,6 @@
 "use client";
-import { Avatar, ContextStrip, Logo, cn, Menu, MenuContent, MenuItem, MenuTrigger } from "@wonder/ui";
-import { Brain, FolderKanban, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings, UserRound } from "lucide-react";
+import { Avatar, ContextStrip, KIT, KitArt, Logo, cn, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@wonder/ui";
+import { Brain, FolderKanban, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -41,40 +41,51 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
               <MessagesButton />
               <NotificationsButton />
               <Menu>
-                <MenuTrigger className="rounded-full focus-visible:outline-2" aria-label="Your account">
-                  <Avatar name={me.name} src={me.avatarUrl} size={40} />
+                {/* Pressed: the avatar gains the accent ring while the menu is open (Radix sets data-state). */}
+                <MenuTrigger
+                  className="inline-flex size-11 items-center justify-center rounded-full transition-transform duration-150 active:scale-90 focus-visible:outline-2 focus-visible:outline-accent motion-reduce:transition-none data-[state=open]:bg-accent-soft [&>*]:data-[state=open]:ring-2 [&>*]:data-[state=open]:ring-accent"
+                  aria-label="Your account"
+                >
+                  <Avatar name={me.name} src={me.avatarUrl} size={36} />
                 </MenuTrigger>
-                <MenuContent>
-                  <div className="px-3 pb-2 pt-1.5">
-                    <p className="truncate font-medium text-ink">{me.name}</p>
-                    {me.handle ? <p className="text-sm text-ink-subtle">@{me.handle}</p> : null}
-                  </div>
-                  <MenuItem onSelect={() => router.push("/me")}>
-                    <UserRound className="size-4" aria-hidden /> Profile
-                  </MenuItem>
-                  <MenuItem onSelect={() => router.push("/rooms")}>
-                    <FolderKanban className="size-4" aria-hidden /> Creative Rooms
-                  </MenuItem>
-                  <MenuItem onSelect={() => router.push("/campaigns")}>
-                  <Megaphone className="size-4" aria-hidden /> Campaigns
-                </MenuItem>
-                <MenuItem onSelect={() => router.push("/business")}>
-                  <Wallet className="size-4" aria-hidden /> Business
-                </MenuItem>
-                <MenuItem onSelect={() => router.push("/publishing")}>
-                    <Send className="size-4" aria-hidden /> Publishing
-                  </MenuItem>
+                {/* Your account (owner, 3 Oct 2026: match the rest of the app): who you are, then what's yours, then your work, then the
+                    account itself. Destinations the Palette already offers (Home, Create, Materials, Huddles, Explore, Me) aren't repeated. */}
+                <MenuContent className="w-64">
+                  <Link href="/me" className="relative isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-2.5 py-2 hover:bg-surface-muted focus-visible:outline-2">
+                    <KitArt art={KIT.painted.leafSprigSage} sizes="4rem" className="pointer-events-none absolute -right-2 -top-3 -z-10 h-12 w-auto opacity-50" />
+                    <Avatar name={me.name} src={me.avatarUrl} size={36} />
+                    <span className="min-w-0">
+                      <span className="block truncate font-display text-[16px] leading-tight text-ink">{me.name}</span>
+                      <span className="block truncate text-[12px] text-ink-subtle">{me.handle ? `@${me.handle} · ` : ""}View profile</span>
+                    </span>
+                  </Link>
+                  <MenuSeparator />
+                  <MenuLabel>Yours</MenuLabel>
                   <MenuItem onSelect={() => router.push("/scrapbook")}>
-                    <NotebookPen className="size-4" aria-hidden /> Scrapbook
+                    <NotebookPen className="size-4 text-ink-subtle" aria-hidden /> Scrapbook
                   </MenuItem>
                   <MenuItem onSelect={() => router.push("/memory")}>
-                    <Brain className="size-4" aria-hidden /> Creative Memory
+                    <Brain className="size-4 text-ink-subtle" aria-hidden /> Creative Memory
                   </MenuItem>
+                  <MenuItem onSelect={() => router.push("/rooms")}>
+                    <FolderKanban className="size-4 text-ink-subtle" aria-hidden /> Creative Rooms
+                  </MenuItem>
+                  <MenuLabel>Out in the world</MenuLabel>
+                  <MenuItem onSelect={() => router.push("/publishing")}>
+                    <Send className="size-4 text-ink-subtle" aria-hidden /> Publishing
+                  </MenuItem>
+                  <MenuItem onSelect={() => router.push("/campaigns")}>
+                    <Megaphone className="size-4 text-ink-subtle" aria-hidden /> Campaigns
+                  </MenuItem>
+                  <MenuItem onSelect={() => router.push("/business")}>
+                    <Wallet className="size-4 text-ink-subtle" aria-hidden /> Business
+                  </MenuItem>
+                  <MenuSeparator />
                   <MenuItem onSelect={() => router.push("/settings")}>
-                    <Settings className="size-4" aria-hidden /> Settings
+                    <Settings className="size-4 text-ink-subtle" aria-hidden /> Settings
                   </MenuItem>
                   <MenuItem onSelect={signOut}>
-                    <LogOut className="size-4" aria-hidden /> Sign out
+                    <LogOut className="size-4 text-ink-subtle" aria-hidden /> Sign out
                   </MenuItem>
                 </MenuContent>
               </Menu>

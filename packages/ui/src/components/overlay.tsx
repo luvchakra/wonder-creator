@@ -135,14 +135,21 @@ export function Switch({ checked, onCheckedChange, label, disabled, id }: { chec
 
 export const Menu = M.Root;
 export const MenuTrigger = M.Trigger;
-export function MenuContent({ children, align = "end" }: { children: React.ReactNode; align?: "start" | "end" }) {
+export function MenuContent({ children, align = "end", className }: { children: React.ReactNode; align?: "start" | "end"; className?: string }) {
   return (
     <M.Portal>
-      <M.Content align={align} sideOffset={6} className="z-50 min-w-48 rounded-2xl border border-border-soft bg-surface p-1.5 shadow-xl">
+      <M.Content align={align} sideOffset={6} className={cn("z-50 min-w-48 rounded-2xl border border-border-soft bg-surface p-1.5 shadow-xl", className)}>
         {children}
       </M.Content>
     </M.Portal>
   );
+}
+/** A quiet group heading inside a menu (uppercase, 11px), never focusable. */
+export function MenuLabel({ children }: { children: React.ReactNode }) {
+  return <M.Label className="px-3 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">{children}</M.Label>;
+}
+export function MenuSeparator() {
+  return <M.Separator className="my-1 h-px bg-border-soft" />;
 }
 export function MenuItem({ children, onSelect, destructive }: { children: React.ReactNode; onSelect?: () => void; destructive?: boolean }) {
   return (
