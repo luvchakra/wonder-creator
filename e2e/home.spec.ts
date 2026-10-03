@@ -46,5 +46,8 @@ test.describe("Home Canvas", () => {
     await expect(rows.getByRole("link")).toHaveText([new RegExp(`Newest ${tag}`), new RegExp(`Third ${tag}`), new RegExp(`Second ${tag}`), "All my creations"]);
     await expect(page.locator("[data-primary-action]")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
+    // The Scrapbook above ends the same way: its last row opens all scraps.
+    await page.getByRole("region", { name: "Scrapbook" }).getByRole("link", { name: "All scraps" }).click();
+    await expect(page).toHaveURL(/\/scrapbook$/);
   });
 });
