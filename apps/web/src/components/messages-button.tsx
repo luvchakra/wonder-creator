@@ -1,10 +1,10 @@
 "use client";
-import { cn } from "@wonder/ui";
 import { MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { navIconClass } from "./nav-icon";
 
 const POLL_MS = 60_000;
 
@@ -40,7 +40,7 @@ export function MessagesButton() {
       href="/messages"
       aria-label={unread ? `Messages, ${unread} unread` : "Messages"}
       aria-current={here ? "page" : undefined}
-      className={cn("relative inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-black/[0.04] focus-visible:outline-2", here && "text-accent-ink")}
+      className={navIconClass(here)}
     >
       <MessageCircle className="size-5" aria-hidden />
       {unread ? (

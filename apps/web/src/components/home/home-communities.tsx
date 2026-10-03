@@ -19,7 +19,7 @@ export function HomeCommunities({ mine, hearing }: { mine: Mine | null; hearing:
       {none ? null : <KitArt art={KIT.painted.leafSprigSage} sizes="7rem" className="pointer-events-none absolute -bottom-3 right-2 -z-10 hidden h-24 w-auto opacity-60 sm:block" />}
       <div className="flex items-center justify-between pl-3 pr-1.5">
         <h2 id="communities-title" className="py-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
-          Communities
+          My Communities
         </h2>
         {none ? null : (
           <Link href="/pulse?filter=communities" className="inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[13px] font-medium text-accent-ink hover:underline">

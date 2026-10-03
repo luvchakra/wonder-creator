@@ -87,5 +87,17 @@ test.describe("Photo album", () => {
     await page.getByRole("banner").getByRole("link", { name: /^Messages/ }).click();
     await expect(page).toHaveURL(/\/messages$/);
     await expect(page.getByRole("banner").getByRole("link", { name: /^Messages/ })).toHaveAttribute("aria-current", "page");
+    // A pressed top-bar icon shows it (owner, 3 Oct 2026): the accent disc while its page or panel is open.
+    await expect(page.getByRole("banner").getByRole("link", { name: /^Messages/ })).toHaveClass(/bg-accent-soft/);
+    // While the menu is open, Radix hides the rest of the page from assistive tech, so find the trigger by its label.
+    const account = page.locator('button[aria-label="Your account"]');
+    await expect(account).toHaveAttribute("data-state", "closed");
+    await account.click();
+    await expect(account).toHaveAttribute("data-state", "open");
+    await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Messages reads like a conversation list: the list, a search field, and one way to start a new one.
+    await expect(page.getByPlaceholder("Search conversations").or(page.getByText("No conversations yet"))).toBeVisible();
+    await expect(page.getByRole("link", { name: "New message" })).toHaveAttribute("href", "/people");
   });
 });

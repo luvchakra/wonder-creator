@@ -37,7 +37,7 @@ test.describe("Communities", () => {
     const { page: b } = await openContext("B");
     await newCreator(b);
     await b.goto("/");
-    await expect(b.getByRole("region", { name: "Communities" }).getByRole("link", { name: /Find people who make what you make/ })).toHaveAttribute("href", "/pulse?filter=communities");
+    await expect(b.getByRole("region", { name: "My Communities" }).getByRole("link", { name: /Find people who make what you make/ })).toHaveAttribute("href", "/pulse?filter=communities");
     await b.goto(`/pulse?filter=communities&q=${encodeURIComponent(tag)}`);
     await b.getByRole("link", { name }).click();
     await expect(b).toHaveURL(communityUrl);
@@ -48,7 +48,7 @@ test.describe("Communities", () => {
     await expect(b.getByRole("button", { name: "Start a topic" }).first()).toBeVisible();
     // Home now shows it among their communities.
     await b.goto("/");
-    await b.getByRole("region", { name: "Communities" }).getByRole("list", { name: "Your communities" }).getByRole("link", { name }).click();
+    await b.getByRole("region", { name: "My Communities" }).getByRole("list", { name: "Your communities" }).getByRole("link", { name }).click();
     await expect(b).toHaveURL(communityUrl);
 
     // A member starts a topic; it opens with the community named above it.

@@ -1,4 +1,5 @@
 "use client";
+import { navIconClass } from "./nav-icon";
 import { Popover, PopoverContent, PopoverTrigger, Spinner } from "@wonder/ui";
 import { AlertCircle, Bell, Brain, Loader, Scale, Share2, UserPlus, Users, UsersRound, MessageCircle, MessageCircleQuestion, FilePenLine } from "lucide-react";
 import Link from "next/link";
@@ -57,7 +58,7 @@ export function NotificationsButton() {
         if (o) void load();
       }}
     >
-      <PopoverTrigger className="relative inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-black/[0.04] focus-visible:outline-2" aria-label={label}>
+      <PopoverTrigger className={navIconClass()} aria-label={label}>
         <Bell className="size-5" aria-hidden />
         {count ? (
           <span aria-hidden className="absolute right-1 top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-semibold leading-5 text-white">

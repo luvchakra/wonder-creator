@@ -72,7 +72,7 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
         ref={triggerRef}
         type="button"
         onClick={() => onOpenChange(true)}
-        className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm text-ink-subtle hover:border-[#cfd0ff] sm:min-w-56 sm:px-4"
+        className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm text-ink-subtle transition-transform duration-150 hover:border-[#cfd0ff] active:scale-95 motion-reduce:transition-none sm:min-w-56 sm:px-4"
         aria-label="Search your creativity"
       >
         <Search className="size-4" aria-hidden />

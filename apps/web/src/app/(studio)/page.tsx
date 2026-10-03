@@ -7,6 +7,7 @@ import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
 import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
 import { HomeCommunities } from "@/components/home/home-communities";
+import { HomeTestimonials } from "@/components/home/home-testimonials";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
@@ -68,7 +69,7 @@ export default async function HomePage() {
           <p className="mt-0.5 text-[13px] text-ink-muted">{quiet ? "Nothing needs your attention." : home.contextLine}</p>
         </header>
 
-        {/* The Scrapbook first (owner, 2 Oct 2026): the latest thoughts from everyone you can see, in order shared. */}
+        {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
         <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
 
         {/* The one dominant action: continue (thin rows of the work in progress), else something worth starting, else a calm beginning. */}
@@ -209,6 +210,8 @@ export default async function HomePage() {
         {home.communities || home.worthHearing ? (
           <HomeCommunities mine={home.communities?.mine ?? null} hearing={home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null} />
         ) : null}
+
+        {flagOn("testimonials_enabled") ? <HomeTestimonials db={db} creator={{ id: creator.id, handle: creator.handle ?? null }} /> : null}
 
         {home.rooms ? <RoomsGlance items={home.rooms} avatars={home.avatars} /> : null}
 
