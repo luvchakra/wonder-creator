@@ -56,7 +56,10 @@ these rules rather than changing the page.
 
 **Layout** (board 1).
 * A one-line greeting, and the same truth under it.
-* An image-backed Continue card with the round arrow; this is the one dominant action.
+* **Continue rows** (owner, 3 Oct 2026, replacing the image-backed card): up to three thin rows for the last edited
+  Creations in progress (draft or in review), newest first, each with a small cover, its type and "Edited …" or a
+  plain hint (Unsaved changes, Visuals are being created, new comments), opening in the Creative Studio; then **All my
+  creations** (`/creations` → Materials › Creations). The newest row is the one dominant action.
 * The Quick note and Voice note pills.
 * The modules as compact rows. "While you were away" and "You could help" open in place.
 

@@ -119,9 +119,8 @@ test.describe("Home orchestration", () => {
     await page.goto("/");
     await expect(page.locator("[data-home-mode]")).toHaveAttribute("data-home-mode", "quiet");
     await expect(page.getByText("Nothing needs your attention.")).toBeVisible();
-    const cont = page.getByRole("region", { name: title });
-    await expect(cont).toContainText("Where you left it.");
-    await expect(cont.getByRole("link", { name: "Continue Creating" })).toBeVisible();
+    const cont = page.getByRole("list", { name: "Creations in progress" });
+    await expect(cont.getByRole("link", { name: new RegExp(title) })).toHaveAttribute("data-primary-action", "true");
     for (const name of ["While you were away", "Your world is connecting", "A DejaVu surfaced", "A little spark", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
     // One large action only.
     await expect(page.locator("[data-primary-action]")).toHaveCount(1);

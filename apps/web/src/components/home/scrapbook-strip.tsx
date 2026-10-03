@@ -11,7 +11,7 @@ import { ScrapbookCompose } from "./scrapbook-compose";
 /**
  * The Scrapbook at the top of Home (owner, 2 Oct 2026): one thin compose row, then two or three thin rows with the
  * last scraps written by anyone the creator can see, newest first — never a feed: no likes, counts or ranking, and
- * muted or blocked creators never appear. "All" opens the Scrapbook.
+ * muted or blocked creators never appear. A last row, "All scraps", opens the Scrapbook (owner, 3 Oct 2026).
  */
 const ROWS = 3;
 
@@ -22,14 +22,9 @@ export async function ScrapbookStrip({ db, viewer }: { db: Db; viewer: { id: str
 
   return (
     <section aria-labelledby="scrapbook-strip-title" className="relative">
-      <div className="flex items-center justify-between gap-2">
-        <h2 id="scrapbook-strip-title" className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
-          Scrapbook
-        </h2>
-        <Link href="/scrapbook" className="inline-flex min-h-11 items-center gap-0.5 text-[13px] font-medium text-accent-ink hover:underline">
-          All <ChevronRight className="size-4" aria-hidden />
-        </Link>
-      </div>
+      <h2 id="scrapbook-strip-title" className="flex min-h-11 items-center text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+        Scrapbook
+      </h2>
       <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
         <ScrapbookCompose name={viewer.name} avatarUrl={avatars[viewer.id]} />
         {shown.length ? (
@@ -53,6 +48,10 @@ export async function ScrapbookStrip({ db, viewer }: { db: Db; viewer: { id: str
         ) : (
           <p className="px-3 py-2 text-[12.5px] text-ink-subtle">Nothing written yet. The last scraps from people you can see show here.</p>
         )}
+        <Link href="/scrapbook" className="flex min-h-11 items-center gap-2.5 px-3 py-1.5 text-[13.5px] font-medium text-accent-ink hover:bg-surface-muted">
+          <span className="min-w-0 flex-1">All scraps</span>
+          <ChevronRight className="size-4 shrink-0" aria-hidden />
+        </Link>
       </div>
     </section>
   );
