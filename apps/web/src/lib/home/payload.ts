@@ -37,6 +37,17 @@ export interface HomeContinueItem {
   sources: { total: number; unused: number } | null;
 }
 
+/** One thin Continue row on Home: a Creation in progress, most recently edited first. */
+export interface HomeInProgressItem {
+  id: string;
+  title: string;
+  typeLabel: string;
+  updatedAt: string;
+  coverUrl: string | null;
+  /** "Unsaved changes", "Visuals are being created", "2 new comments", or null. Never a score. */
+  hint: string | null;
+}
+
 export interface HomeStart {
   text: string;
   href: string;
@@ -87,6 +98,8 @@ export interface HomePayload {
   contextLine: string;
   lastVisit: string | null;
   continue?: HomeContinueItem;
+  /** Continue rows (owner, 3 Oct 2026): the last three edited Creations in progress, then "All my creations". */
+  inProgress?: HomeInProgressItem[];
   start?: HomeStart;
   /** A brand-new creator with nothing yet: Home shows its calm beginning. */
   beginning?: { hasMaterials: boolean };
@@ -150,7 +163,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     .eq("creator_id", creatorId)
     .neq("status", "archived")
     .order("updated_at", { ascending: false })
-    .limit(6);
+    .limit(10);
   if (error) throw error;
   const workIds = (works ?? []).map((w) => w.id);
 
@@ -240,6 +253,22 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       sources: sources?.length ? { total: sources.length, unused: sources.filter((s) => s.state === "available").length } : null,
     };
   }
+
+  // Continue rows (owner, 3 Oct 2026): the last three edited Creations still in progress (draft or in review).
+  const inProgressRows = (works ?? []).filter((w) => w.status === "draft" || w.status === "in_review").slice(0, 3);
+  const rowCovers = inProgressRows.length ? ((await safe("row_covers", coverUrls(db, inProgressRows))) ?? {}) : {};
+  const inProgress: HomeInProgressItem[] = inProgressRows.map((w) => {
+    const s = sessionOf.get(w.id);
+    const n = commentsByWork.get(w.id) ?? 0;
+    return {
+      id: w.id,
+      title: w.title,
+      typeLabel: artifactType(w.artifact_type).label,
+      updatedAt: w.updated_at,
+      coverUrl: rowCovers[w.id] ?? null,
+      hint: s?.draft && s.draft_saved_at && s.draft_saved_at > w.updated_at ? "Unsaved changes" : busy.has(w.id) ? "Visuals are being created" : n ? `${n} new ${n === 1 ? "comment" : "comments"}` : null,
+    };
+  });
 
   /* ------------------------------------------------------------------ While you were away */
   const { away, asks } = splitHomeItems(notifications ?? [], lastVisit, now);
@@ -419,6 +448,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     }),
     lastVisit,
     continue: cont,
+    inProgress: inProgress.length ? inProgress : undefined,
     start,
     beginning: !cont && !start ? { hasMaterials: (materialCount ?? 0) > 0 } : undefined,
     quickCapture: { textEnabled: true, voiceEnabled: flags().quick_capture_voice_enabled },

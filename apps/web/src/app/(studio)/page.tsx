@@ -1,6 +1,6 @@
 import { greetingFor } from "@wonder/core";
 import { Avatar, BACKGROUNDS, Watercolor, buttonClasses, cn } from "@wonder/ui";
-import { ArrowRight, Check, ChevronRight, Heart, Link2, MessageCircle, Play, Sparkles, Sun } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Heart, Link2, MessageCircle, Sparkles, Sun } from "lucide-react";
 import Link from "next/link";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
@@ -14,7 +14,7 @@ import { FromYourWorld } from "@/components/sources/from-your-world";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
-import { buildHomePayload, type HomeContinueItem, type HomePayload } from "@/lib/home/payload";
+import { buildHomePayload, type HomeInProgressItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
 import { flagOn } from "@/lib/features";
@@ -71,9 +71,9 @@ export default async function HomePage() {
         {/* The Scrapbook first (owner, 2 Oct 2026): the latest thoughts from everyone you can see, in order shared. */}
         <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
 
-        {/* The one dominant action: continue (or something worth starting, or a calm beginning). */}
-        {home.continue ? (
-          <ContinueCard c={home.continue} quiet={quiet} />
+        {/* The one dominant action: continue (thin rows of the work in progress), else something worth starting, else a calm beginning. */}
+        {home.inProgress ? (
+          <ContinueRows items={home.inProgress} />
         ) : home.start ? (
           <section aria-labelledby="start-title" className="rounded-2xl border border-border-soft bg-surface/90 p-3 shadow-[var(--shadow-card)]">
             <p id="start-title" className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
@@ -233,55 +233,44 @@ export default async function HomePage() {
   );
 }
 
-function ContinueCard({ c, quiet }: { c: HomeContinueItem; quiet: boolean }) {
+/**
+ * Continue (owner, 3 Oct 2026: "instead of a large continue image, show 4 thin rows"): the last three edited Creations
+ * in progress, each opening in the Creative Studio, then "All my creations". The newest is the page's primary action.
+ */
+function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
   return (
-    <section aria-labelledby="current-creation" className="relative isolate overflow-hidden rounded-2xl shadow-[var(--shadow-card)]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={c.coverUrl ?? BACKGROUNDS.sunsetCoast} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
-      <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.15)_40%,rgba(20,18,40,0.8)_100%)]" />
-      <div className="flex min-h-[10.5rem] flex-col justify-between p-3 text-white">
-        <p className="flex items-center justify-between text-[11.5px] font-semibold uppercase tracking-[0.12em] text-white/85">
-          Continue
-          {c.playable ? (
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-white/85 text-ink">
-              <Play className="size-3.5 translate-x-px fill-current" aria-hidden />
-            </span>
-          ) : null}
-        </p>
-        <div className="flex items-end gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 id="current-creation" className="font-display text-[21px] leading-tight">
-              <Link href={`/creations/${c.id}`} className="break-words hover:underline">
-                {c.title}
-              </Link>
-            </h2>
-            <p className="text-[12.5px] text-white/85">
-              {c.version ? `v${c.version} · ` : ""}
-              {c.typeLabel} · Edited <RelativeTime iso={c.updatedAt} />
-            </p>
-            <p className="mt-0.5 text-[13px] text-white">
-              {quiet ? "Where you left it." : (c.hint.text ?? "Pick up where you left off.")}
-              {c.sources ? (
-                <span className="text-white/80">
-                  {" "}
-                  · {c.sources.total} {c.sources.total === 1 ? "source" : "sources"}
-                  {c.sources.unused ? ` · ${c.sources.unused} unused` : ""}
+    <section aria-labelledby="continue-title">
+      <h2 id="continue-title" className="flex min-h-11 items-center text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+        Continue
+      </h2>
+      <ul aria-label="Creations in progress" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
+        {items.map((c, i) => (
+          <li key={c.id}>
+            <TrackedLink
+              event="home_continue_clicked"
+              href={`/creations/${c.id}/studio`}
+              {...(i === 0 ? { "data-primary-action": true } : {})}
+              className="flex min-h-12 items-center gap-2.5 px-3 py-1.5 hover:bg-surface-muted"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={c.coverUrl ?? BACKGROUNDS.sunsetCoast} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display text-[15.5px] leading-snug text-ink">{c.title}</span>
+                <span className={cn("block truncate text-[11.5px]", c.hint ? "text-accent-ink" : "text-ink-subtle")}>
+                  {c.typeLabel} · {c.hint ?? <>Edited <RelativeTime iso={c.updatedAt} /></>}
                 </span>
-              ) : null}
-            </p>
-          </div>
-          {/* The one dominant action. */}
-          <TrackedLink
-            event="home_continue_clicked"
-            href={`/creations/${c.id}/studio`}
-            data-primary-action
-            aria-label="Continue Creating"
-            className="inline-flex size-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/15 text-white backdrop-blur hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            <ArrowRight className="size-5" aria-hidden />
-          </TrackedLink>
-        </div>
-      </div>
+              </span>
+              <ArrowRight className="size-4 shrink-0 text-accent" aria-hidden />
+            </TrackedLink>
+          </li>
+        ))}
+        <li>
+          <Link href="/creations" className="flex min-h-11 items-center gap-2.5 px-3 py-1.5 text-[13.5px] font-medium text-accent-ink hover:bg-surface-muted">
+            <span className="min-w-0 flex-1">All my creations</span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden />
+          </Link>
+        </li>
+      </ul>
     </section>
   );
 }

@@ -12,6 +12,8 @@ test("old addresses land on the same page under its new name", async ({ page, cr
     ["/community", /\/pulse$/],
     ["/projects", /\/rooms$/],
     ["/communities", /\/pulse\?filter=communities$/],
+    ["/creations", /\/materials\?tab=creations$/],
+    ["/artifacts", /\/materials\?tab=creations$/],
   ];
   for (const [from, to] of moved) {
     await page.goto(from);
