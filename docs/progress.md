@@ -194,3 +194,5 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 | Members only | Done | Topics, posts, shared Creations and Huddles from a community topic need membership, enforced in the database; topics offer Join instead of a reply box |
 | Home: Communities | Done | "Worth hearing" is now **Communities**: what's new in one of your communities first, your communities as a row of faces, Discover; an invitation when you have none |
 | Home: Continue rows | Done | The large Continue image became four thin rows: the last three edited Creations in progress (opening in the Studio), then All my creations. The Scrapbook rows end the same way, with All scraps (replacing the header "All" link). `/creations` (and old `/artifacts` links) now open Materials › Creations instead of a 404 |
+| Home: fixed sections | Done | My Scrapbook (own scraps; each row opens in place with a chevron, one at a time, Collapse), Continue, My Communities, My Testimonials — always present, never duplicated; From Pulse no longer repeats the creator's own scrap |
+

@@ -11,7 +11,10 @@ Home is the orchestration layer of the creator's life. It is not a feed, a dashb
 **Payload.** `buildHomePayload` (`apps/web/src/lib/home/payload.ts`) builds Home as structured slots. It is served to
 the page directly and to `GET /api/v1/home`, and it applies every priority rule on the server:
 * Always: `mode`, `contextLine` and `quickCapture`.
-* Then Continue, or "Something worth starting", or the calm beginning.
+* Fixed sections (owner, 3 Oct 2026), always present and never repeated below: **My Scrapbook** (compose, the creator's
+  own last three scraps as rows that open in place — one at a time, with Collapse — then All scraps), **Continue** (or
+  "Something worth starting", or the calm beginning), then after the dynamic rows **My Communities** and **My
+  Testimonials** (the latest shown, the ones waiting, All testimonials). From Pulse never shows the viewer's own scrap.
 * Then these optional slots: `whileAway`, `worldConnecting`, `dejavu`, `spark`, `worthHearing` and `couldHelp`.
 
 **Loading and failure.**

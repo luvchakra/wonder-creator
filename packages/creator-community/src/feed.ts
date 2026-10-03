@@ -369,7 +369,8 @@ export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excl
     const { data: vs } = vids.length ? await db.from("artifact_versions").select("id, artifact_id, content").in("id", vids) : { data: [] };
     for (const v of vs ?? []) if (v.content?.trim()) excerpts.set(v.artifact_id, v.content.trim().slice(0, 200));
   }
-  const thought = byCloseness(thoughts).find((t) => t.body.trim() || t.imageUrl) ?? null;
+  // Never the viewer's own scrap: those live in My Scrapbook above (owner, 3 Oct 2026: no duplicate sections).
+  const thought = byCloseness(thoughts).find((t) => t.author.id !== viewerId && (t.body.trim() || t.imageUrl)) ?? null;
   const ask = asks.cards.find((c) => c.conversation.creatorId !== viewerId && !exclude.has(c.conversation.id) && !c.conversation.closedAt) ?? null;
   const [catchUp, week] = await Promise.all([
     conversationCatchUp(db, viewerId, exclude).catch(() => null),
