@@ -89,7 +89,8 @@ test.describe("Photo album", () => {
     await expect(page.getByRole("banner").getByRole("link", { name: /^Messages/ })).toHaveAttribute("aria-current", "page");
     // A pressed top-bar icon shows it (owner, 3 Oct 2026): the accent disc while its page or panel is open.
     await expect(page.getByRole("banner").getByRole("link", { name: /^Messages/ })).toHaveClass(/bg-accent-soft/);
-    const account = page.getByRole("button", { name: "Your account" });
+    // While the menu is open, Radix hides the rest of the page from assistive tech, so find the trigger by its label.
+    const account = page.locator('button[aria-label="Your account"]');
     await expect(account).toHaveAttribute("data-state", "closed");
     await account.click();
     await expect(account).toHaveAttribute("data-state", "open");
