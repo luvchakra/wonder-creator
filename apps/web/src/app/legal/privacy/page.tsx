@@ -1,5 +1,6 @@
 import { NOTICE_VERSION } from "@wonder/creator-identity/privacy-options";
 import Link from "next/link";
+import { contactLink } from "@/components/public/site-chrome";
 
 export const metadata = { title: "Privacy notice" };
 
@@ -8,7 +9,7 @@ export const metadata = { title: "Privacy notice" };
  * NOTICE_VERSION, which asks every creator to agree again. Wording is reviewed by counsel (docs/compliance/privacy.md).
  */
 export default function PrivacyNoticePage() {
-  const privacy = process.env.WONDERCREATOR_PRIVACY_CONTACT?.trim();
+  const privacy = contactLink(process.env.WONDERCREATOR_PRIVACY_CONTACT);
   const grievance = process.env.WONDERCREATOR_GRIEVANCE_OFFICER?.trim();
   return (
     <article>
@@ -22,7 +23,7 @@ export default function PrivacyNoticePage() {
       <h2>Who we are</h2>
       <p>
         Wonder Creator is the controller (GDPR) and Data Fiduciary (DPDP) for the personal data described here.
-        {privacy ? <> Write to us about privacy at <a href={`mailto:${privacy}`} className="underline">{privacy}</a>.</> : " You can reach us about privacy from Settings › Privacy & Security › Make a privacy request."}
+        {privacy ? <> Write to us about privacy at <a href={privacy.href} className="underline">{privacy.label}</a>.</> : " You can reach us about privacy from Settings › Privacy & Security › Make a privacy request."}
       </p>
 
       <h2>What we process and why</h2>

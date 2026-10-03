@@ -179,3 +179,9 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 |---|---|---|
 | Routes renamed (owner override) | Done | `/creations` (was `/artifacts`), `/rooms` (`/projects`), `/pulse` (`/community`), `/materials` (`/space`, `/space/materials/[id]` → `/materials/[id]`), `/explore` (`/search`), `/people` (`/discover`), `/me` (`/profile`). Permanent redirects keep every old address working; APIs and `/p/*` unchanged |
 | Community profile pictures | Done | Migration 080; hosts set it from their own image (or a painted monogram); shown on the community page, lists and topics; optional when starting a community |
+
+## About and Contact (owner, 3 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| About and Contact pages | Done | `/about` and `/contact` on the public site, linked from the shared footer and the legal pages. Contact shows only configured inboxes (new `WONDERCREATOR_CONTACT_EMAIL`) and in-product routes. Fixed the privacy notice's `mailto:mailto:` link. `/communities` now opens the Communities list |

@@ -1,4 +1,4 @@
-import { BACKGROUNDS, KIT, KitArt, Logo, buttonClasses, cn } from "@wonder/ui";
+import { BACKGROUNDS, KIT, KitArt, buttonClasses, cn } from "@wonder/ui";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import {
   STEP_ICON,
   StudioScene,
 } from "@/components/landing/scenes";
+import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 
 export const metadata: Metadata = {
   title: { absolute: "Wonder Creator — Everything begins with a little wonder" },
@@ -57,16 +58,7 @@ export default function WelcomePage() {
     <div className="relative min-h-dvh overflow-x-clip bg-cream text-ink">
       <KitArt art={KIT.texture.texturePaper} priority className="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[140vh] w-full object-cover opacity-[0.35]" />
 
-      <header className="relative z-20">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-[max(env(safe-area-inset-top),1rem)] sm:px-6">
-          <Link href="/" aria-label="Wonder Creator home" className="inline-flex min-h-11 items-center">
-            <Logo height={34} />
-          </Link>
-          <Link href="/sign-in" className="inline-flex min-h-11 items-center rounded-full px-3 text-[14px] font-medium text-ink hover:bg-white/60">
-            Sign in
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="main" className="relative z-10">
         {/* 1 · Hero */}
@@ -236,48 +228,7 @@ export default function WelcomePage() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-border-soft/80 bg-cream">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
-          <div>
-            <Logo height={28} />
-            <p className="mt-2 max-w-xs text-[13px] leading-snug text-ink-muted">A personal creative universe, where ordinary days become Creations.</p>
-          </div>
-          <nav aria-label="Wonder Creator" className="text-[13px]">
-            <p className="font-medium text-ink">Wonder Creator</p>
-            <ul className="mt-1">
-              {[
-                ["/sign-up", "Start Creating"],
-                ["/sign-in", "Sign in"],
-                ["#world", "Explore"],
-              ].map(([href, label]) => (
-                <li key={href}>
-                  <Link href={href!} className="inline-flex min-h-9 items-center text-ink-muted hover:text-ink hover:underline">
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <nav aria-label="Legal" className="text-[13px]">
-            <p className="font-medium text-ink">Trust</p>
-            <ul className="mt-1">
-              {[
-                ["/legal/privacy", "Privacy notice"],
-                ["/legal/security", "Security"],
-                ["/legal/terms", "Terms"],
-                ["/legal/subprocessors", "Data & subprocessors"],
-              ].map(([href, label]) => (
-                <li key={href}>
-                  <Link href={href!} className="inline-flex min-h-9 items-center text-ink-muted hover:text-ink hover:underline">
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-        <p className="mx-auto max-w-6xl px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)] text-[12px] text-ink-subtle sm:px-6">© {new Date().getFullYear()} Wonder Creator</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
