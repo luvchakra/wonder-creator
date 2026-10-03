@@ -8,6 +8,13 @@ async function openStudio(page: Page, artifactId: string) {
   if (await pen.isVisible()) await pen.click();
 }
 
+/** Refine lives in a sheet off the canvas (owner, 3 Oct 2026: "keep it minimal, focus on content"): More → Refine. */
+async function openRefine(page: Page) {
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /Refine with CreativeMind/ }).click();
+  await expect(page.getByRole("dialog", { name: "Refine with CreativeMind" })).toBeVisible();
+}
+
 test.describe("Studio, versions and lineage", () => {
   test.beforeEach(({ creator }) => void creator);
 
@@ -18,6 +25,7 @@ test.describe("Studio, versions and lineage", () => {
     const before = await page.getByLabel("Poem text").inputValue();
     expect(before.length).toBeGreaterThan(0);
 
+    await openRefine(page);
     await page.getByRole("region", { name: "Refine with CreativeMind" }).getByRole("button", { name: /Improve this/ }).click();
     await expect(page.getByText("CreativeMind suggested a revision. Your current version stays in history either way.")).toBeVisible({ timeout: 45_000 });
     // The proposal shows what would be added.
@@ -40,6 +48,7 @@ test.describe("Studio, versions and lineage", () => {
   test("a discarded proposal changes nothing", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
     await openStudio(page, artifactId);
+    await openRefine(page);
     await page.getByRole("button", { name: /Make it shorter/ }).click();
     await expect(page.getByRole("button", { name: "Discard" })).toBeVisible({ timeout: 45_000 });
     await page.getByRole("button", { name: "Discard" }).click();
@@ -133,5 +142,25 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("heading", { name: "Used in" })).toBeVisible();
     const usedIn = page.getByRole("complementary").locator("section").filter({ has: page.getByRole("heading", { name: "Used in" }) });
     await expect(usedIn.getByRole("link")).toHaveAttribute("href", `/creations/${artifactId}`);
+  });
+
+  test("the canvas is the writing: no panels below it, the full text scrolls over the cover, and it opens on its own page", async ({ page }) => {
+    const { artifactId } = await poemFromNote(page);
+    await page.goto(`/creations/${artifactId}/studio`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    await expect(editor).toBeVisible();
+    // Nothing competes with the canvas on the page.
+    await expect(page.getByRole("region", { name: "Quality" })).toHaveCount(0);
+    await expect(page.getByPlaceholder("Describe what to change…")).toHaveCount(0);
+    // The palette's Refine still reaches it (#creativemind opens the sheet).
+    await page.goto(`/creations/${artifactId}/studio#creativemind`);
+    await expect(page.getByRole("dialog", { name: "Refine with CreativeMind" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Reading on its own page: just the words, and one way back.
+    await page.getByRole("link", { name: "Open it on its own page" }).click();
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/read$`));
+    await expect(page.getByRole("article").getByRole("heading", { level: 1 })).toBeVisible();
+    await page.getByRole("link", { name: "Close reading" }).click();
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/studio$`));
   });
 });
