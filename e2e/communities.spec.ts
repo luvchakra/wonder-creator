@@ -15,7 +15,11 @@ test.describe("Communities", () => {
     await expect(page).toHaveURL(/filter=communities/);
     await page.getByRole("button", { name: "Start a community" }).first().click();
     const sheet = page.getByRole("dialog", { name: "Start a community" });
-    await expect(sheet).toContainText("Communities are always public");
+    // Public by default; Unlisted and Private are one tap away. Only members post.
+    await expect(sheet.getByRole("radio", { name: /Public/ })).toBeChecked();
+    await expect(sheet.getByRole("radio", { name: /Unlisted/ })).toBeVisible();
+    await expect(sheet.getByRole("radio", { name: /Private/ })).toBeVisible();
+    await expect(sheet).toContainText("Only members can start topics and post");
     await sheet.getByLabel("Name").fill(name);
     await sheet.getByLabel("What it’s about").fill("A place for people who write to be heard.");
     await sheet.getByRole("button", { name: "Start the community" }).click();
@@ -23,21 +27,29 @@ test.describe("Communities", () => {
     const communityUrl = page.url();
     const id = communityUrl.split("/").pop()!;
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-    await expect(page.getByText("Open community")).toBeVisible();
+    await expect(page.getByText("Public community")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Who can find this community: Public/ })).toBeVisible();
     // The owner doesn't join or leave; their primary action is starting a topic.
     await expect(page.getByRole("button", { name: /Join community|Leave this community/ })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Community" }).getByRole("link")).toHaveText(["Forum", "Creations", "Huddles", "Members"]);
 
-    // Someone else finds it by interest and looks before joining.
+    // Someone else finds it by interest and looks before joining. Home invites them to find one.
     const { page: b } = await openContext("B");
     await newCreator(b);
+    await b.goto("/");
+    await expect(b.getByRole("region", { name: "Communities" }).getByRole("link", { name: /Find people who make what you make/ })).toHaveAttribute("href", "/pulse?filter=communities");
     await b.goto(`/pulse?filter=communities&q=${encodeURIComponent(tag)}`);
     await b.getByRole("link", { name }).click();
     await expect(b).toHaveURL(communityUrl);
     await b.getByRole("navigation", { name: "Community" }).getByRole("link", { name: "Creations" }).click();
     await expect(b.getByText("Members see the Creations shared here.")).toBeVisible();
+    await expect(b.getByText("Join to start topics and post.")).toBeVisible();
     await b.getByRole("button", { name: "Join community" }).click();
     await expect(b.getByRole("button", { name: "Start a topic" }).first()).toBeVisible();
+    // Home now shows it among their communities.
+    await b.goto("/");
+    await b.getByRole("region", { name: "Communities" }).getByRole("list", { name: "Your communities" }).getByRole("link", { name }).click();
+    await expect(b).toHaveURL(communityUrl);
 
     // A member starts a topic; it opens with the community named above it.
     await b.goto(communityUrl);
@@ -66,6 +78,20 @@ test.describe("Communities", () => {
     await expect(b.getByRole("region", { name: "Owner & moderators" })).toContainText("Owner");
     await expect(b.getByRole("region", { name: /^Members/ })).toBeVisible();
 
+    // Only members add anything: after leaving, the topic offers Join instead of a reply box, and the API refuses.
+    await b.goto(communityUrl);
+    await b.getByRole("button", { name: "Leave this community" }).click();
+    await b.getByRole("dialog").getByRole("button", { name: "Leave" }).click();
+    await expect(b.getByRole("button", { name: "Join community" })).toBeVisible();
+    await b.goto(topicUrl);
+    await expect(b.getByText(`Join ${name} to reply.`)).toBeVisible();
+    await expect(b.getByLabel("Your reply")).toHaveCount(0);
+    const topicId = topicUrl.split("/").pop()!;
+    expect((await b.request.post(`/api/v1/open-conversations/${topicId}/replies`, { data: { body: "Still here?" } })).ok()).toBe(false);
+    expect((await b.request.post(`/api/v1/communities/${id}/topics`, { data: { title: "Sneaking a topic in" } })).ok()).toBe(false);
+    await b.getByRole("button", { name: "Join community" }).click();
+    await expect(b.getByLabel("Your reply")).toBeVisible();
+
     // The owner takes the topic out of the forum; it stays with its author.
     await page.goto(communityUrl);
     await page.getByRole("button", { name: new RegExp(`More for “Reading aloud changes the line breaks ${tag}”`) }).click();
@@ -75,20 +101,25 @@ test.describe("Communities", () => {
     await b.goto(topicUrl);
     await expect(b.getByRole("heading", { level: 1 })).toContainText("Reading aloud");
 
-    // Leaving asks first; joining again is one tap.
-    await b.goto(communityUrl);
-    await b.getByRole("button", { name: "Leave this community" }).click();
-    await b.getByRole("dialog").getByRole("button", { name: "Leave" }).click();
-    await expect(b.getByRole("button", { name: "Join community" })).toBeVisible();
-
-    // Communities are always public: there's no way back to private.
-    const back = await page.request.patch(`/api/v1/communities/${id}`, { data: { discoverable: false } });
-    expect(back.status()).toBe(422);
+    // Unlisted: no longer listed or searchable, but its link still works.
+    await page.goto(communityUrl);
+    await page.getByRole("button", { name: /Who can find this community/ }).click();
+    const privacy = page.getByRole("dialog", { name: "Who can find this community" });
+    await privacy.getByRole("radio", { name: /Unlisted/ }).check();
+    await privacy.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Unlisted community")).toBeVisible();
+    const { page: c } = await openContext("C");
+    await newCreator(c);
+    expect(((await (await c.request.get(`/api/v1/communities?q=${tag}`)).json()) as { communities: unknown[] }).communities).toHaveLength(0);
+    await c.goto(communityUrl);
+    await expect(c.getByRole("heading", { level: 1 })).toHaveText(name);
+    // A community stays one; "discoverable" is no longer a setting.
+    expect((await page.request.patch(`/api/v1/communities/${id}`, { data: { discoverable: false } })).status()).toBe(422);
     await page.goto(`/rooms/${id}`);
     await expect(page.getByRole("link", { name: /This room is a community/ })).toBeVisible();
   });
 
-  test("private Creative Rooms stay private until their owner opens one as a community", async ({ page, creator, openContext }) => {
+  test("Creative Rooms stay private until their owner opens one; a Private community takes only the people it invites", async ({ page, creator, openContext }) => {
     void creator;
     const tag = uid();
     const { project } = (await (await page.request.post("/api/v1/projects", { data: { title: `Coastal Voices ${tag}`, brief: "Our film.", status: "active" } })).json()) as { project: { id: string } };
@@ -100,22 +131,32 @@ test.describe("Communities", () => {
     await b.goto(`/communities/${project.id}`);
     await expect(b.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
 
-    // The owner opens it, after being told it's public for good.
+    // The owner opens it as a Private community.
     await page.goto(`/rooms/${project.id}`);
     await page.getByRole("button", { name: "More Creative Room actions" }).click();
     await page.getByRole("menuitem", { name: "Open as a community…" }).click();
-    const confirm = page.getByRole("dialog");
-    await expect(confirm).toContainText("This can't be undone");
-    await confirm.getByRole("button", { name: "Open as a community" }).click();
+    const open = page.getByRole("dialog", { name: "Open this room as a community" });
+    await open.getByRole("radio", { name: /Private/ }).check();
+    await open.getByRole("button", { name: "Open as a community" }).click();
     await expect(page.getByRole("link", { name: /This room is a community/ })).toBeVisible();
     await page.getByRole("button", { name: "More Creative Room actions" }).click();
     await expect(page.getByRole("menuitem", { name: /community|private/i })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
+    // Still invisible to others, and closed to joining.
+    expect((await b.request.get(`/api/v1/communities/${project.id}`)).status()).toBe(404);
+    expect((await b.request.post(`/api/v1/communities/${project.id}/join`)).status()).toBe(404);
+
+    // Invited, they see it and accept by joining.
+    const { crew } = (await (await page.request.post(`/api/v1/projects/${project.id}/crew`, { data: {} })).json()) as { crew: { id: string } };
+    const bId = ((await (await b.request.get("/api/v1/creators/me")).json()) as { identity: { creator: { id: string } } }).identity.creator.id;
+    expect((await page.request.post(`/api/v1/crews/${crew.id}/members`, { data: { creatorId: bId } })).ok()).toBeTruthy();
     await b.goto(`/communities/${project.id}`);
     await expect(b.getByRole("heading", { level: 1 })).toHaveText(`Coastal Voices ${tag}`);
-    // The room's own details stay with its crew.
-    expect((await b.request.get(`/api/v1/projects/${project.id}`)).status()).toBe(404);
+    await expect(b.getByText("Private community")).toBeVisible();
+    await expect(b.getByText("You're invited. Join to read along and post.")).toBeVisible();
+    await b.getByRole("button", { name: "Accept and join" }).click();
+    await expect(b.getByRole("button", { name: "Start a topic" }).first()).toBeVisible();
   });
 
   test("every community has a profile picture: chosen when starting it, changed by its hosts, a monogram otherwise", async ({ page, creator, openContext }) => {

@@ -142,13 +142,16 @@ sync never runs inside a request, is bounded, checkpointed, deduplicated and iso
 without an explicit choice; disconnect deletes what was discovered. Contract: `docs/personal-sources.md`.
 Implementation: `packages/creator-sources`, `apps/web/src/lib/sources.ts`, `/api/v1/personal-sources`, `/sources`.
 
-## Communities (owner brief, 2 Oct 2026)
+## Communities (owner brief, 2 Oct 2026; privacy 3 Oct 2026)
 
-Orkut-style communities built from existing features: a Community is a public Creative Room, Members are its crew,
-Owner/Moderators are crew owner/admins, the Forum's Topics are linked Open Conversations and Posts are their replies;
-Huddle keeps its name; the older open space formerly called Community is now **Pulse** in the UI (owner, 2 Oct 2026). **Communities are always public** and so are their topics; private Rooms are unchanged. No likes,
-follower counts or ranking. Contract: `docs/communities.md`. Implementation: `packages/creator-community/src/communities.ts`,
-`/api/v1/communities`, `/communities/[id]`.
+Orkut-style communities built from existing features: a Community is a Creative Room opened as one, Members are its
+crew, Owner/Moderators are crew owner/admins, the Forum's Topics are linked Open Conversations and Posts are their
+replies; Huddle keeps its name; the older open space formerly called Community is now **Pulse** in the UI (owner, 2 Oct
+2026). **Privacy is Public, Unlisted or Private** (owner, 3 Oct 2026; replaces "always public"): Public is listed and
+open to join, Unlisted only from its link, Private only for members and invitees. **Only members add anything** (topics,
+posts, shared Creations, Huddles), enforced in the database. Home has a **Communities** section (formerly Worth hearing).
+No likes, follower counts or ranking. Contract: `docs/communities.md`. Implementation:
+`packages/creator-community/src/communities.ts`, `/api/v1/communities`, `/communities/[id]`.
 
 ## Testimonials (owner, 2 Oct 2026)
 

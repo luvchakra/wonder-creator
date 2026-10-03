@@ -23,7 +23,7 @@ test.describe("Home Canvas", () => {
     const hero = page.getByRole("region", { name: title });
     await expect(hero).toContainText(/v1 · Poem · Edited (just now|\d+ min ago)/);
     // Sections only appear with something real in them: nothing happened, no one's waiting, nothing old to rediscover.
-    for (const name of ["While you were away", "A little spark", "Worth hearing", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
+    for (const name of ["While you were away", "A little spark", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Recent Materials" })).toHaveCount(0);
     // Continue lands in the Creative Studio (the boards' default view), not on the Creation page.
     await hero.getByRole("link", { name: /Continue Creating/ }).click();

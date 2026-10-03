@@ -1,3 +1,4 @@
+import type { CommunityPrivacy } from "@wonder/creator-community/shared";
 import { listApprovals } from "@wonder/creator-brain";
 import { signedUrlsFor } from "@wonder/creator-library";
 import {
@@ -116,7 +117,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           rightsNote: p.rights_note,
           budget: { enabled: p.budget_enabled, amount: p.budget_amount, currency: p.budget_currency, note: p.budget_note },
           updatedAt: p.updated_at,
-          community: flagOn("communities_enabled") ? { discoverable: p.visibility === "discoverable" } : null,
+          community: flagOn("communities_enabled") ? { privacy: (p.community_privacy as CommunityPrivacy | null) ?? null } : null,
         }}
         items={items.map((i) => ({
           id: i.id,

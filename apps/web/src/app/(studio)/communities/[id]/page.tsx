@@ -1,13 +1,13 @@
-import { communityHuddles, communityMembers, communityTopics, getCommunity, INTENT_LABEL, type CommunityMember } from "@wonder/creator-community";
+import { communityHuddles, communityMembers, communityTopics, getCommunity, INTENT_LABEL, PRIVACY_LABEL, type CommunityMember } from "@wonder/creator-community";
 import { listSharedItems } from "@wonder/creator-projects";
 import { Avatar, AvatarStack, EmptyState, KIT, KitArt, cn } from "@wonder/ui";
-import { AudioLines, ChevronRight, FileText, Lock } from "lucide-react";
+import { AudioLines, ChevronRight, FileText, Globe, Link2, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RelativeTime } from "@/components/client-time";
 import { CommunityArt, CommunityAvatar } from "@/components/community/community-art";
 import { CommunityAvatarButton } from "@/components/community/community-avatar-button";
-import { JoinCommunityButton, RemoveTopicButton, StartTopicButton } from "@/components/community/community-actions";
+import { CommunityPrivacyButton, JoinCommunityButton, RemoveTopicButton, StartTopicButton } from "@/components/community/community-actions";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { communityAvatars, communityCovers } from "@/lib/communities";
@@ -22,9 +22,10 @@ const VIEW_LABEL: Record<View, string> = { forum: "Forum", creations: "Creations
 const ROLE: Record<CommunityMember["access"], string> = { owner: "Owner", admin: "Moderator", member: "Member" };
 
 /**
- * One community (docs/communities.md): a discoverable Creative Room seen as Orkut saw a community — its Forum of topics,
- * the Creations members share, the Huddles started from its topics, and its Members. Anyone signed in may look and join;
- * members start topics. Ordered by latest activity; no counts of likes or followers, no ranking.
+ * One community (docs/communities.md): a Creative Room seen as Orkut saw a community — its Forum of topics, the Creations
+ * members share, the Huddles started from its topics, and its Members. Public and Unlisted ones anyone signed in may see
+ * and join (Unlisted only from its link); a Private one only its members and invitees see. Only members add anything.
+ * Ordered by latest activity; no counts of likes or followers, no ranking.
  */
 export default async function CommunityPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ view?: string }> }) {
   if (!flagOn("communities_enabled")) notFound();
@@ -50,6 +51,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
   const coverUrl = community.coverMaterialId ? (covers[community.coverMaterialId] ?? null) : null;
   const viewerIsOwner = creator.id === community.owner.id;
   const moderators = hosts.filter((h) => h.access === "admin");
+  const PrivacyIcon = { public: Globe, unlisted: Link2, private: Lock }[community.privacy];
 
   return (
     <>
@@ -68,7 +70,9 @@ export default async function CommunityPage({ params, searchParams }: { params: 
               {community.isHost ? <CommunityAvatarButton communityId={id} className="absolute -bottom-2 -right-2" /> : null}
             </span>
             <div className="min-w-0 space-y-1">
-              <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-white/80">Open community</p>
+              <p className="flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.14em] text-white/80">
+                <PrivacyIcon className="size-3.5" aria-hidden /> {PRIVACY_LABEL[community.privacy].label} community
+              </p>
               <h1 className="break-words font-display text-[28px] leading-[1.1] [text-wrap:balance] sm:text-[38px]">{community.title}</h1>
             </div>
           </div>
@@ -89,8 +93,10 @@ export default async function CommunityPage({ params, searchParams }: { params: 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {community.isMember ? <StartTopicButton communityId={id} title={community.title} /> : <JoinCommunityButton id={id} joined={false} />}
+            {community.isMember ? <StartTopicButton communityId={id} title={community.title} /> : <JoinCommunityButton id={id} joined={false} invited={community.invited} />}
+            {community.isOwner ? <CommunityPrivacyButton id={id} privacy={community.privacy} /> : null}
           </div>
+          {!community.isMember ? <p className="text-[12.5px] text-ink-subtle">{community.invited ? "You're invited. Join to read along and post." : "Join to start topics and post."}</p> : null}
         </section>
 
         <nav aria-label="Community" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
@@ -124,7 +130,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
             <EmptyState
               art={KIT.painted.lavenderSprig}
               title="No topics yet"
-              body={community.isMember ? "Start the first one: a question, a thought, something to read together." : "Join to start the first topic."}
+              body={community.isMember ? "Start the first one: a question, a thought, something to read together." : "Members start topics. Join to start the first one."}
               action={community.isMember ? <StartTopicButton communityId={id} title={community.title} /> : undefined}
             />
           )
@@ -239,7 +245,7 @@ export default async function CommunityPage({ params, searchParams }: { params: 
             })}
             {community.isHost && community.crewId ? (
               <Link href={`/crews/${community.crewId}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
-                Manage moderators and members
+                {community.privacy === "private" ? "Invite people and manage members" : "Manage moderators and members"}
               </Link>
             ) : null}
           </div>

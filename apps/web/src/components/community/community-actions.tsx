@@ -1,7 +1,7 @@
 "use client";
-import { CONVERSATION_INTENTS, INTENT_HINT, INTENT_LABEL, type ConversationIntent } from "@wonder/creator-community/shared";
+import { COMMUNITY_PRIVACY, CONVERSATION_INTENTS, INTENT_HINT, INTENT_LABEL, PRIVACY_LABEL, type CommunityPrivacy, type ConversationIntent } from "@wonder/creator-community/shared";
 import { Button, ConfirmDialog, Dialog, DialogContent, Input, KIT, Menu, MenuContent, MenuItem, MenuTrigger, Textarea, cn } from "@wonder/ui";
-import { Camera, MoreHorizontal, Plus } from "lucide-react";
+import { Camera, Globe, Link2, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
@@ -21,7 +21,7 @@ export function StartCommunityButton() {
         </span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Start a community" description="A lasting place for people who share an interest. Anyone can find it and join." art={KIT.painted.lavenderSprig}>
+        <DialogContent title="Start a community" description="A lasting place for people who share an interest." art={KIT.painted.lavenderSprig}>
           {open ? <StartCommunityBody /> : null}
         </DialogContent>
       </Dialog>
@@ -33,6 +33,7 @@ function StartCommunityBody() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
+  const [privacy, setPrivacy] = useState<CommunityPrivacy>("public");
   const [picture, setPicture] = useState<File | null>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +46,7 @@ function StartCommunityBody() {
         setBusy(true);
         setError(null);
         try {
-          const r = await api<{ id: string }>("/api/v1/communities", { method: "POST", json: { title, about } });
+          const r = await api<{ id: string }>("/api/v1/communities", { method: "POST", json: { title, about, privacy } });
           if (picture) {
             // The community exists either way; a picture that fails can be added from its page.
             const body = new FormData();
@@ -106,7 +107,8 @@ function StartCommunityBody() {
           }}
         />
       </div>
-      <p className="text-[12.5px] text-ink-subtle">Communities are always public. You&rsquo;ll be its owner, and it&rsquo;s also a Creative Room of yours, so members can make things together there.</p>
+      <PrivacyChoice value={privacy} onChange={setPrivacy} />
+      <p className="text-[12.5px] text-ink-subtle">Only members can start topics and post. You&rsquo;ll be its owner, and it&rsquo;s also a Creative Room of yours, so members can make things together there.</p>
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
@@ -119,8 +121,96 @@ function StartCommunityBody() {
   );
 }
 
-/** Join (one tap, open to anyone) or, once in, Leave — leaving asks first and can be undone by joining again. */
-export function JoinCommunityButton({ id, joined, owner, compact }: { id: string; joined: boolean; owner?: boolean; compact?: boolean }) {
+export const PRIVACY_ICON = { public: Globe, unlisted: Link2, private: Lock } as const;
+
+/** Public · Unlisted · Private, as three compact rows (one choice, each with its one-line meaning). */
+export function PrivacyChoice({ value, onChange }: { value: CommunityPrivacy; onChange: (p: CommunityPrivacy) => void }) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-[13px] font-medium text-ink">Who can find it</legend>
+      <div className="divide-y divide-border-soft overflow-hidden rounded-xl border border-border-soft">
+        {COMMUNITY_PRIVACY.map((p) => {
+          const Icon = PRIVACY_ICON[p];
+          return (
+            <label key={p} className={cn("flex min-h-12 cursor-pointer items-center gap-2.5 px-3 py-1.5", value === p ? "bg-accent-soft/60" : "hover:bg-surface-muted")}>
+              <input type="radio" name="community-privacy" value={p} checked={value === p} onChange={() => onChange(p)} className="size-4 accent-[var(--color-accent)]" />
+              <Icon className={cn("size-4 shrink-0", value === p ? "text-accent-ink" : "text-ink-subtle")} aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-medium text-ink">{PRIVACY_LABEL[p].label}</span>
+                <span className="block text-[12px] leading-snug text-ink-subtle">{PRIVACY_LABEL[p].hint}</span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+/** The owner changes who can find the community (from its page). Members and topics stay either way. */
+export function CommunityPrivacyDialog({ id, privacy, open, onOpenChange, opening, onDone }: { id: string; privacy: CommunityPrivacy; open: boolean; onOpenChange: (o: boolean) => void; opening?: boolean; onDone?: () => void }) {
+  const router = useRouter();
+  const [value, setValue] = useState(privacy);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        title={opening ? "Open this room as a community" : "Who can find this community"}
+        description={opening ? "Members join its crew and start topics. Its budget, rights notes and goals stay private to the crew. Only members can post." : "Members and topics stay whichever you choose. Only members can post."}
+        art={KIT.iconChip.message}
+      >
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError(null);
+            try {
+              await api(`/api/v1/communities/${id}`, { method: "PATCH", json: { privacy: value } });
+              onOpenChange(false);
+              onDone?.();
+              router.refresh();
+            } catch (err) {
+              setError(errorMessage(err));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <PrivacyChoice value={value} onChange={setValue} />
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+          <Button type="submit" className="w-full" loading={busy} disabled={!opening && value === privacy}>
+            {opening ? "Open as a community" : "Save"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The owner's quiet control on the community page: the current privacy, which opens the choice. */
+export function CommunityPrivacyButton({ id, privacy }: { id: string; privacy: CommunityPrivacy }) {
+  const [open, setOpen] = useState(false);
+  const Icon = PRIVACY_ICON[privacy];
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Who can find this community: ${PRIVACY_LABEL[privacy].label}. Change`} className="inline-flex min-h-11 items-center">
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface px-3 text-[13px] text-ink-muted hover:bg-surface-muted hover:text-ink">
+          <Icon className="size-3.5" aria-hidden /> {PRIVACY_LABEL[privacy].label}
+        </span>
+      </button>
+      {open ? <CommunityPrivacyDialog id={id} privacy={privacy} open={open} onOpenChange={setOpen} /> : null}
+    </>
+  );
+}
+
+/** Join (one tap; a Private community takes only people its hosts invited) or, once in, Leave — leaving asks first and can be undone by joining again. */
+export function JoinCommunityButton({ id, joined, owner, compact, invited }: { id: string; joined: boolean; owner?: boolean; compact?: boolean; invited?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +233,7 @@ export function JoinCommunityButton({ id, joined, owner, compact }: { id: string
     return (
       <span className="inline-flex flex-col">
         <Button size={compact ? "sm" : "md"} variant={compact ? "soft" : "primary"} loading={busy} onClick={() => void act("join")}>
-          {compact ? "Join" : "Join community"}
+          {compact ? "Join" : invited ? "Accept and join" : "Join community"}
         </Button>
         {error ? (
           <span role="alert" className="mt-1 text-[12.5px] text-danger">
@@ -194,7 +284,7 @@ export function StartTopicButton({ communityId, title }: { communityId: string; 
         <Plus className="size-4" aria-hidden /> Start a topic
       </Button>
       <Dialog open={open} onOpenChange={close}>
-        <DialogContent title="Start a topic" description={`In ${title}. Topics are public: anyone can read them and post.`} art={KIT.iconChip.message}>
+        <DialogContent title="Start a topic" description={`In ${title}. Whoever can see the community can read it; members post.`} art={KIT.iconChip.message}>
           {open ? <TopicBody communityId={communityId} /> : null}
         </DialogContent>
       </Dialog>

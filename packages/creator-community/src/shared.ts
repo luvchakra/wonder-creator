@@ -114,3 +114,16 @@ export function weekLine(input: { types: string[]; intents: ConversationIntent[]
   const line = parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
   return line.charAt(0).toUpperCase() + line.slice(1) + ".";
 }
+
+/**
+ * Who can find and join a community (owner, 3 Oct 2026). Public: listed and searchable, anyone joins. Unlisted: anyone
+ * with the link sees and joins it, but it's never listed. Private: members only; people join when its hosts invite them.
+ * Whatever the privacy, only members add anything (topics, posts, shared Creations, Huddles) — enforced in the database.
+ */
+export const COMMUNITY_PRIVACY = ["public", "unlisted", "private"] as const;
+export type CommunityPrivacy = (typeof COMMUNITY_PRIVACY)[number];
+export const PRIVACY_LABEL: Record<CommunityPrivacy, { label: string; hint: string }> = {
+  public: { label: "Public", hint: "Anyone can find it and join" },
+  unlisted: { label: "Unlisted", hint: "Only people with the link can find it and join" },
+  private: { label: "Private", hint: "Only members see it. People join when invited" },
+};

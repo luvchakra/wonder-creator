@@ -1,9 +1,9 @@
 import { DomainError } from "@wonder/core";
-import { communityMembers, communityTopics, getCommunity, openAsCommunity } from "@wonder/creator-community";
+import { communityMembers, communityPrivacySchema, communityTopics, getCommunity, setCommunityPrivacy } from "@wonder/creator-community";
 import { z } from "zod";
 import { readJson, requireUuid, withApi } from "@/lib/api";
 
-/** GET /api/v1/communities/:id — the community, its topics and members, as anyone signed in may see them. */
+/** GET /api/v1/communities/:id — the community, its topics and members, as the viewer may see them. */
 export const GET = withApi<{ id: string }>(
   async ({ db }, { id }) => {
     const pid = requireUuid(id, "community");
@@ -15,16 +15,18 @@ export const GET = withApi<{ id: string }>(
   { feature: "communities_enabled" },
 );
 
-// Communities are always public (owner, 2 Oct 2026): a room can be opened as one, never made private again.
-const schema = z.object({ discoverable: z.literal(true, { message: "A community is always public." }) });
+const schema = z.object({ privacy: communityPrivacySchema });
 
-/** PATCH /api/v1/communities/:id `{discoverable: true}` — the owner opens their Creative Room as a community. */
+/**
+ * PATCH /api/v1/communities/:id `{privacy}` — the owner opens their Creative Room as a community (Public, Unlisted or
+ * Private) or changes who can find it. A community stays one; it can go Private.
+ */
 export const PATCH = withApi<{ id: string }>(
   async ({ db, req }, { id }) => {
     const pid = requireUuid(id, "community");
-    const { discoverable } = schema.parse(await readJson(req));
-    await openAsCommunity(db, pid);
-    return { ok: true, discoverable };
+    const { privacy } = schema.parse(await readJson(req));
+    await setCommunityPrivacy(db, pid, privacy);
+    return { ok: true, privacy };
   },
   { feature: "communities_enabled", rateLimit: 20 },
 );

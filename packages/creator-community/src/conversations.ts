@@ -195,7 +195,10 @@ export async function replyToConversation(db: Db, creatorId: string, conversatio
   if (error) {
     if (error.code === "42501") {
       const { data: c } = await db.from("open_conversations").select("closed_at").eq("id", conversationId).maybeSingle();
-      throw new DomainError("forbidden", c?.closed_at ? "This conversation is closed to new replies." : "You can't reply here.");
+      if (c?.closed_at) throw new DomainError("forbidden", "This conversation is closed to new replies.");
+      // A topic in a community takes posts from its members only (docs/communities.md).
+      const { count } = await db.from("open_conversation_links").select("id", { count: "exact", head: true }).eq("conversation_id", conversationId).eq("kind", "project");
+      throw new DomainError("forbidden", count ? "Join the community to reply." : "You can't reply here.");
     }
     throw fromDbError(error);
   }

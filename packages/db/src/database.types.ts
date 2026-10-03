@@ -3025,13 +3025,13 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "avatar_object_id": string | null,"brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string,"visibility": string
+                    "avatar_object_id": string | null,"brief": string,"budget_amount": number | null,"budget_currency": string | null,"budget_enabled": boolean,"budget_note": string | null,"community_privacy": string | null,"cover_material_id": string | null,"created_at": string,"creator_id": string,"goals": (string)[],"id": string,"rights_note": string | null,"status": string,"status_changed_at": string,"title": string,"updated_at": string,"visibility": string
                   }
                   Insert: {
-                    "avatar_object_id"?: string | null,"brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string,"visibility"?: string
+                    "avatar_object_id"?: string | null,"brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"community_privacy"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title": string,"updated_at"?: string,"visibility"?: string
                   }
                   Update: {
-                    "avatar_object_id"?: string | null,"brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visibility"?: string
+                    "avatar_object_id"?: string | null,"brief"?: string,"budget_amount"?: number | null,"budget_currency"?: string | null,"budget_enabled"?: boolean,"budget_note"?: string | null,"community_privacy"?: string | null,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"goals"?: (string)[],"id"?: string,"rights_note"?: string | null,"status"?: string,"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visibility"?: string
                   }
                   Relationships: [
                     {
@@ -4169,7 +4169,7 @@ isOneToOne: false
                            },
 "community_card":
 { Args: { "p_project": string }; Returns: {
-              "avatar_object_id": string,"brief": string,"cover_material_id": string,"crew_id": string,"id": string,"is_host": boolean,"is_member": boolean,"member_count": number,"owner_id": string,"owner_name": string,"status": string,"title": string
+              "avatar_object_id": string,"brief": string,"cover_material_id": string,"crew_id": string,"id": string,"invited": boolean,"is_host": boolean,"is_member": boolean,"is_owner": boolean,"member_count": number,"owner_id": string,"owner_name": string,"privacy": string,"status": string,"title": string
             }[]
                            },
 "community_join":
@@ -4177,7 +4177,7 @@ isOneToOne: false
                            },
 "community_list":
 { Args: { "p_limit"?: number,"p_query"?: string }; Returns: {
-              "avatar_object_id": string,"brief": string,"cover_material_id": string,"id": string,"is_member": boolean,"last_activity_at": string,"member_count": number,"owner_id": string,"owner_name": string,"title": string,"topic_count": number
+              "avatar_object_id": string,"brief": string,"cover_material_id": string,"id": string,"is_member": boolean,"last_activity_at": string,"member_count": number,"owner_id": string,"owner_name": string,"privacy": string,"title": string,"topic_count": number
             }[]
                            },
 "community_members":
@@ -4185,11 +4185,19 @@ isOneToOne: false
               "access": string,"avatar_object_id": string,"creator_id": string,"display_name": string,"handle": string,"joined_at": string,"role_title": string
             }[]
                            },
+"community_mine":
+{ Args: { "p_limit"?: number }; Returns: {
+              "avatar_object_id": string,"cover_material_id": string,"id": string,"is_host": boolean,"last_activity_at": string,"privacy": string,"title": string
+            }[]
+                           },
 "community_remove_topic":
 { Args: { "p_conversation": string,"p_project": string,"p_reason"?: string }; Returns: undefined
                            },
 "community_set_avatar":
 { Args: { "p_object": string,"p_project": string }; Returns: undefined
+                           },
+"community_set_privacy":
+{ Args: { "p_privacy": string,"p_project": string }; Returns: undefined
                            },
 "complete_project":
 { Args: { "p_acknowledge_open"?: boolean,"p_confirm_title": string,"p_dissolve_crew": boolean,"p_note"?: string,"p_outcome": string,"p_project": string }; Returns: string
@@ -4397,6 +4405,9 @@ isOneToOne: false
               "account": string,"credit_minor": number,"currency": string,"debit_minor": number,"description": string,"journal_id": string,"memo": string,"order_id": string,"posted_at": string,"provider": string,"provider_payment_ref": string,"refund_id": string
             }[]
                            },
+"open_conversation_can_add":
+{ Args: { "p_conversation": string }; Returns: boolean
+                           },
 "open_conversation_link":
 { Args: { "p_conversation": string,"p_kind": string,"p_target": string }; Returns: string
                            },
@@ -4405,6 +4416,9 @@ isOneToOne: false
                            },
 "open_conversation_remove_reply":
 { Args: { "p_reason"?: string,"p_reply": string }; Returns: undefined
+                           },
+"open_conversations_unlisted_for_me":
+{ Args: { "p_ids": (string)[] }; Returns: string[]
                            },
 "open_creator_share":
 { Args: { "p_share": string }; Returns: Json

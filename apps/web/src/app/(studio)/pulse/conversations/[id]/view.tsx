@@ -22,7 +22,7 @@ type Props = {
   dejavus: { momentId: string | null; dejavus: DejaVu[] };
   summary?: ConversationSummaryView | null;
   /** Communities this topic is in that the viewer can see (docs/communities.md). */
-  communities?: Array<{ id: string; title: string; isHost: boolean; picture?: string | null }>;
+  communities?: Array<{ id: string; title: string; isHost: boolean; isMember?: boolean; picture?: string | null }>;
 };
 
 /**
@@ -69,6 +69,8 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
   const home = communities[0] ?? null;
   // Owners and moderators of a community the topic is in may remove posts there (the database decides).
   const canRemoveReplies = detail.isOwner || detail.isModerator || communities.some((x) => x.isHost);
+  // Only members add to a community's topic (owner, 3 Oct 2026; the database enforces it): others are offered Join.
+  const joinFirst = communities.length > 0 && !communities.some((x) => x.isMember) ? home : null;
   const links = detail.links.filter((l) => !(l.kind === "project" && communities.some((x) => x.id === l.id)));
 
   return (
@@ -123,7 +125,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
                 <PenTool className="size-4" aria-hidden /> Bring to Studio
               </MenuItem>
             ) : null}
-            {!c.removedAt ? (
+            {!c.removedAt && !joinFirst ? (
               <MenuItem
                 onSelect={() =>
                   void act("huddle", async () => {
@@ -393,7 +395,25 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
         <p className="flex items-center gap-1.5 text-[13.5px] text-ink-muted">
           <Lock className="size-4" aria-hidden /> Closed to new replies.
         </p>
-      ) : c.removedAt ? null : (
+      ) : c.removedAt ? null : joinFirst ? (
+        <div id="reply" className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-soft bg-surface/90 px-3 py-2">
+          <p className="min-w-0 flex-1 text-[13.5px] text-ink-muted">
+            Join <span className="font-medium text-ink">{joinFirst.title}</span> to reply.
+          </p>
+          <Button
+            size="sm"
+            loading={busy === "join"}
+            onClick={() =>
+              void act("join", async () => {
+                await api(`/api/v1/communities/${joinFirst.id}/join`, { method: "POST" });
+                router.refresh();
+              })
+            }
+          >
+            Join community
+          </Button>
+        </div>
+      ) : (
         <form
           id="reply"
           className="space-y-2"

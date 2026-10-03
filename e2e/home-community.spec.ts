@@ -28,7 +28,7 @@ test.describe("Home: from Pulse", () => {
       await page.setViewportSize(size);
       await page.goto("/");
       const glance = page.getByRole("region", { name: "From Pulse" });
-      // Maya's live Huddle shows once on Home: "Worth hearing" already carries it (she's followed), so the glance doesn't repeat it.
+      // Maya's live Huddle shows once on Home: "the Communities row already carries it (she's followed), so the glance doesn't repeat it.
       await expect(page.getByText(`Light and shadow ${tag}`)).toHaveCount(1);
       const work = glance.getByRole("list", { name: "New work from Pulse" });
       await expect(work).toContainText(`Platform 3 at dawn ${tag}`);
@@ -78,7 +78,7 @@ test.describe("Home: from Pulse", () => {
     const glance = page.getByRole("region", { name: "From Pulse" });
     await expect(glance).toContainText("short films");
     await expect(glance.getByText(/This week in Pulse/)).toBeAttached();
-    // One joined conversation is "Worth hearing"; the other is the catch-up line — each shown once.
+    // One joined conversation is the Communities row; the other is the catch-up line — each shown once.
     const moved = glance.getByRole("link", { name: /A conversation you joined has moved on/ });
     await expect(moved).toContainText("1 new reply");
     await expect(page.getByText(`On slowness ${tag}`)).toHaveCount(1);

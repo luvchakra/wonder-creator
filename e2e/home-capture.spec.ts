@@ -122,7 +122,7 @@ test.describe("Home orchestration", () => {
     const cont = page.getByRole("region", { name: title });
     await expect(cont).toContainText("Where you left it.");
     await expect(cont.getByRole("link", { name: "Continue Creating" })).toBeVisible();
-    for (const name of ["While you were away", "Your world is connecting", "A DejaVu surfaced", "A little spark", "Worth hearing", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
+    for (const name of ["While you were away", "Your world is connecting", "A DejaVu surfaced", "A little spark", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
     // One large action only.
     await expect(page.locator("[data-primary-action]")).toHaveCount(1);
   });

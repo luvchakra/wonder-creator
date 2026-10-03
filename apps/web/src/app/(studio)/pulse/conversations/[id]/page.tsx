@@ -36,7 +36,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/creations/${a.id}` };
   const rawCommunities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
   const pictures = await communityAvatars(rawCommunities.map((c) => c.avatarObjectId));
-  const communities = rawCommunities.map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null }));
+  const communities = rawCommunities.map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null }));
   const dejavus = await entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] }));
   // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
   const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;

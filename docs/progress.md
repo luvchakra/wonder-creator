@@ -185,3 +185,12 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 | Item | Status | Notes |
 |---|---|---|
 | About and Contact pages | Done | `/about` and `/contact` on the public site, linked from the shared footer and the legal pages. Contact shows only configured inboxes (new `WONDERCREATOR_CONTACT_EMAIL`) and in-product routes. Fixed the privacy notice's `mailto:mailto:` link. `/communities` now opens the Communities list |
+
+## Community privacy, members-only posting, Communities on Home (owner, 3 Oct 2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Public · Unlisted · Private | Done | Migration 081 replaces "always public": Public is listed and open to join; Unlisted only from its link (its topics never listed to non-members); Private only for members and invitees, joined by invitation, topics members-only. Owner chooses when starting or opening a room, and changes it from the community page |
+| Members only | Done | Topics, posts, shared Creations and Huddles from a community topic need membership, enforced in the database; topics offer Join instead of a reply box |
+| Home: Communities | Done | "Worth hearing" is now **Communities**: what's new in one of your communities first, your communities as a row of faces, Discover; an invitation when you have none |
+

@@ -60,7 +60,7 @@ test.describe("Huddles", () => {
     // Home shows a live Huddle that's relevant to you — here, one with someone B follows.
     expect((await b.request.post(`/api/v1/creators/${await creatorIdOf(creatorA.id)}/follow`, { data: { on: true } })).ok()).toBe(true);
     await b.goto("/");
-    const worth = b.getByRole("region", { name: "Worth hearing" });
+    const worth = b.getByRole("region", { name: "Communities" });
     await expect(worth).toContainText("Live Huddle");
     await expect(worth.getByRole("link", { name: new RegExp(topic) })).toHaveAttribute("href", `/huddles/${huddleId}`);
     await b.goto("/huddles");
