@@ -24,7 +24,7 @@ dominant action, **Start Creating** (`/sign-up`), plus a quiet "Explore Wonder C
    carousel).
 6. **Final call** — "Your next Creation is *waiting*." with Start Creating.
 7. **Footer** — Wonder Creator links; Trust: Privacy notice, Security, Terms, Data & subprocessors (the real pages);
-   copyright. There is no About or Contact page yet, so the footer doesn't invent one.
+   About and Contact; copyright.
 
 ## Rules
 
@@ -41,3 +41,15 @@ dominant action, **Start Creating** (`/sign-up`), plus a quiet "Explore Wonder C
 
 `apps/web/src/app/welcome/page.tsx` (page), `apps/web/src/components/landing/scenes.tsx` (product scenes), the
 `drift` keyframe in `globals.css`. E2E: `e2e/landing.spec.ts`.
+
+## About and Contact (owner, 3 Oct 2026)
+
+* `/about` — what Wonder Creator is and four things it holds to, each describing how the product works today
+  (privacy and no AI training on your material, CreativeMind only on what you bring and never deciding rights, money or
+  deletion, no likes or ranking, ordinary days as material). No founding story, team, numbers or quotes.
+* `/contact` — only channels that exist: a general inbox when `WONDERCREATOR_CONTACT_EMAIL` is set, privacy requests
+  in Settings (plus `WONDERCREATOR_PRIVACY_CONTACT` and the Grievance Officer when set), security reports
+  (`WONDERCREATOR_SECURITY_CONTACT` when set, and the Security page), and reporting, muting and blocking inside the
+  product. Contacts may be `mailto:`, `https:` or a plain address (`contactLink`).
+* Both share the public header and footer (`components/public/site-chrome.tsx`) with the landing page; the legal pages'
+  navigation links to Contact. E2E: `e2e/about-contact.spec.ts`.

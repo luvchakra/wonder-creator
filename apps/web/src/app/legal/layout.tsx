@@ -7,6 +7,7 @@ const LINKS = [
   ["/legal/terms", "Terms"],
   ["/legal/subprocessors", "Subprocessors"],
   ["/legal/security", "Security"],
+  ["/contact", "Contact"],
 ] as const;
 
 /** Public legal pages: readable editorial layout, no sign-in needed. */
