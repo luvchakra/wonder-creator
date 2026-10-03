@@ -1,4 +1,5 @@
 "use client";
+import type { CommunityPrivacy } from "@wonder/creator-community/shared";
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
 import { AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn, chipBase } from "@wonder/ui";
 import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
@@ -12,6 +13,7 @@ import { useEffect, useState } from "react";
 import { ArtifactCard, MaterialCard, type ArtifactCardData, type MaterialCardData } from "@/components/cards";
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { CommunityPrivacyDialog } from "@/components/community/community-actions";
 
 interface Project {
   id: string;
@@ -25,7 +27,8 @@ interface Project {
   budget: { enabled: boolean; amount: number | null; currency: string | null; note: string | null };
   updatedAt: string;
   /** Communities (docs/communities.md): null when communities are off; otherwise whether anyone can find and join it. */
-  community: { discoverable: boolean } | null;
+  /** Communities on (flag): the room's community privacy, or null while it's an ordinary room. */
+  community: { privacy: CommunityPrivacy | null } | null;
 }
 
 interface Item {
@@ -200,7 +203,7 @@ export function ProjectView({
                 {canEdit ? null : <>{ownerName}&rsquo;s Creative Room · You&rsquo;re in the crew · </>}
                 Updated <RelativeTime iso={project.updatedAt} />
               </p>
-              {project.community?.discoverable ? (
+              {project.community?.privacy ? (
                 <Link href={`/communities/${project.id}`} className="mt-0.5 inline-flex min-h-11 items-center gap-1.5 text-[13.5px] font-medium text-accent-ink hover:underline">
                   <Users className="size-4" aria-hidden /> This room is a community · View community
                 </Link>
@@ -230,7 +233,7 @@ export function ProjectView({
                 <MenuContent>
                   <MenuItem onSelect={() => setEditing(true)}>Edit details</MenuItem>
                   <MenuItem onSelect={() => router.push(`/people?project=${project.id}`)}>Find collaborators</MenuItem>
-                  {project.community && !project.community.discoverable ? <MenuItem onSelect={() => setOpening(true)}>Open as a community…</MenuItem> : null}
+                  {project.community && !project.community.privacy ? <MenuItem onSelect={() => setOpening(true)}>Open as a community…</MenuItem> : null}
                   <MenuItem onSelect={() => router.push("/publishing")}>Publishing</MenuItem>
                   <MenuItem onSelect={() => router.push(`/rooms/${project.id}/complete`)}>{closed ? "Reopen or review completion" : crew ? "Complete, archive or dissolve crew…" : "Complete or archive…"}</MenuItem>
                   <MenuItem destructive onSelect={() => setDeleting(true)}>
@@ -509,29 +512,8 @@ export function ProjectView({
       {adding ? <AddDialog projectId={project.id} initialKind={adding} onOpenChange={(o) => !o && setAdding(null)} onAdded={(n, kind) => (setMsg(n ? `Added ${n} ${(n === 1 ? PROJECT_ITEM_LABEL[kind].one : PROJECT_ITEM_LABEL[kind].many).toLowerCase()} to the Creative Room.` : "Those were already here."), router.refresh())} /> : null}
       {editing ? <EditDialog project={project} onOpenChange={setEditing} onSaved={() => (setEditing(false), setMsg("Creative Room saved."), router.refresh())} /> : null}
       {noteFor ? <NoteDialog projectId={project.id} item={noteFor} onOpenChange={(o) => !o && setNoteFor(null)} onSaved={() => (setNoteFor(null), router.refresh())} /> : null}
-      {project.community && !project.community.discoverable ? (
-        <ConfirmDialog
-          open={opening}
-          onOpenChange={setOpening}
-          title="Open this room as a community?"
-          body="Communities are always public: anyone signed in can find it, see its name, what it's about and its members, and join. This can't be undone. Members become its crew and start public topics. Its budget, rights notes and goals stay private to the crew."
-          confirmLabel="Open as a community"
-          busy={busy}
-          onConfirm={async () => {
-            setBusy(true);
-            try {
-              await api(`/api/v1/communities/${project.id}`, { method: "PATCH", json: { discoverable: true } });
-              setOpening(false);
-              setMsg("This room is now a community.");
-              router.refresh();
-            } catch (e) {
-              setError(errorMessage(e));
-              setOpening(false);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        />
+      {project.community && !project.community.privacy && opening ? (
+        <CommunityPrivacyDialog id={project.id} privacy="public" opening open={opening} onOpenChange={setOpening} onDone={() => setMsg("This room is now a community.")} />
       ) : null}
       <ConfirmDialog
         open={deleting}

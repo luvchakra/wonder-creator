@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { adminClient, cleanupTestCreators, createTestCreator, expectDenied, expectNoRowsAffected, expectOk, fakeSha, loose, type TestCreator } from "./helpers";
+import { adminClient, cleanupTestCreators, createTestCreator, expectDenied, expectOk, fakeSha, loose, type TestCreator } from "./helpers";
 
 /**
- * Communities (docs/communities.md): a discoverable Creative Room. Anyone signed in may find and join it; the room's
- * private details stay private; members link their own topics; hosts moderate; private rooms are unchanged.
+ * Communities (docs/communities.md): a Creative Room opened as a community — Public, Unlisted or Private. Public ones
+ * anyone signed in may find and join; the room's private details stay private; only members add anything; hosts
+ * moderate; ordinary rooms are unchanged.
  */
 const admin = adminClient();
 let owner: TestCreator; // Priya, the community's owner
@@ -113,16 +114,28 @@ describe("Communities — topics and posts", () => {
     expectDenied(await maya.client.rpc("open_conversation_link", { p_conversation: theirs, p_kind: "project", p_target: community }), "42501");
     // The private room still only takes its owner's links.
     expectDenied(await maya.client.rpc("open_conversation_link", { p_conversation: mayaTopic, p_kind: "project", p_target: privateRoom }), "42501");
-    // Non-members read community topics (community visibility) and can post in them.
+    // Non-members read a public community's topics, but only members post (owner, 3 Oct 2026).
     expect(expectOk(await stranger.client.from("open_conversations").select("id").eq("id", mayaTopic))).toHaveLength(1);
-    expectOk(await stranger.client.from("open_conversation_replies").insert({ conversation_id: mayaTopic, creator_id: stranger.creatorId, body: "I trust the page." }));
+    expectDenied(await stranger.client.from("open_conversation_replies").insert({ conversation_id: mayaTopic, creator_id: stranger.creatorId, body: "I trust the page." }));
+    expect(expectOk(await stranger.client.rpc("open_conversation_can_add", { p_conversation: mayaTopic }))).toBe(false);
+    expect(expectOk(await maya.client.rpc("open_conversation_can_add", { p_conversation: mayaTopic }))).toBe(true);
+    expectOk(await maya.client.from("open_conversation_replies").insert({ conversation_id: mayaTopic, creator_id: maya.creatorId, body: "I trust the page." }).select("id"));
+  });
+
+  it("only members start a Huddle from a community topic", async () => {
+    const ownHuddle = async (c: TestCreator) =>
+      expectOk(await admin.from("huddles").insert({ started_by_creator_id: c.creatorId, topic: "Reading aloud", status: "live", discoverability: "public" }).select("id").single()).id as string;
+    expectDenied(await stranger.client.rpc("open_conversation_link", { p_conversation: mayaTopic, p_kind: "huddle", p_target: await ownHuddle(stranger) }), "42501");
+    expectOk(await maya.client.rpc("open_conversation_link", { p_conversation: mayaTopic, p_kind: "huddle", p_target: await ownHuddle(maya) }));
   });
 
   it("the owner and moderators remove posts and topics in their community; members can't", async () => {
     const crew = expectOk(await owner.client.rpc("community_card", { p_project: community }))[0]!.crew_id!;
-    const reply = expectOk(await stranger.client.from("open_conversation_replies").insert({ conversation_id: mayaTopic, creator_id: stranger.creatorId, body: "Buy followers here" }).select("id").single()).id;
     const kunalBack = await createTestCreator("cMember2");
     expectOk(await kunalBack.client.rpc("community_join", { p_project: community }));
+    const spammer = await createTestCreator("cSpammer");
+    expectOk(await spammer.client.rpc("community_join", { p_project: community }));
+    const reply = expectOk(await spammer.client.from("open_conversation_replies").insert({ conversation_id: mayaTopic, creator_id: spammer.creatorId, body: "Buy followers here" }).select("id").single()).id;
     expectDenied(await kunalBack.client.rpc("open_conversation_remove_reply", { p_reply: reply }), "42501");
     expectDenied(await kunalBack.client.rpc("community_remove_topic", { p_project: community, p_conversation: mayaTopic }), "42501");
     // Maya is the topic's author, so she could already remove posts in it; promote someone else to moderator to test hosts.
@@ -144,30 +157,82 @@ describe("Communities — topics and posts", () => {
   });
 });
 
-describe("Communities — always public; private rooms unchanged", () => {
-  it("rooms default to private and keep owner+crew-only reads; only the owner opens one as a community", async () => {
-    expect(expectOk(await owner.client.from("projects").select("visibility").eq("id", privateRoom).single()).visibility).toBe("private");
+describe("Communities — Public, Unlisted and Private; ordinary rooms unchanged", () => {
+  it("rooms aren't communities until the owner opens one; only the owner chooses its privacy", async () => {
+    expect(expectOk(await owner.client.from("projects").select("community_privacy, visibility").eq("id", privateRoom).single())).toEqual({ community_privacy: null, visibility: "private" });
     expect(expectOk(await stranger.client.from("projects").select("id").eq("id", privateRoom))).toEqual([]);
-    expectDenied(await owner.client.from("projects").update({ visibility: "everyone" }).eq("id", privateRoom));
+    expectDenied(await owner.client.from("projects").update({ community_privacy: "everyone" }).eq("id", privateRoom));
     const later = await room(stranger, "Night Trains");
-    expectNoRowsAffected(await maya.client.from("projects").update({ visibility: "discoverable" }).eq("id", later).select("id"));
-    expectOk(await stranger.client.from("projects").update({ visibility: "discoverable" }).eq("id", later));
+    expectDenied(await maya.client.rpc("community_set_privacy", { p_project: later, p_privacy: "public" }), "42501");
+    expectDenied(await stranger.client.rpc("community_set_privacy", { p_project: later, p_privacy: "secret" }), "22023");
+    expectOk(await stranger.client.rpc("community_set_privacy", { p_project: later, p_privacy: "public" }));
     expect(expectOk(await maya.client.rpc("community_list", { p_limit: 60 })).map((r) => r.id)).toContain(later);
+    // The legacy column mirrors it, and an older client's "discoverable" opens a public one.
+    expect(expectOk(await stranger.client.from("projects").select("visibility").eq("id", later).single()).visibility).toBe("discoverable");
+    const legacy = await room(stranger, "Old Client Room", "discoverable");
+    expect(expectOk(await stranger.client.from("projects").select("community_privacy").eq("id", legacy).single()).community_privacy).toBe("public");
+    // A community stays a community.
+    expectDenied(await stranger.client.from("projects").update({ community_privacy: null }).eq("id", later), "42501");
+    const audit = expectOk(await admin.from("audit_logs").select("action").eq("object_id", later).eq("action", "community.opened"));
+    expect(audit).toHaveLength(1);
   });
 
-  it("a community can never be made private again", async () => {
-    expectDenied(await owner.client.from("projects").update({ visibility: "private" }).eq("id", community), "42501");
-    expect(expectOk(await stranger.client.rpc("community_list", { p_limit: 60 })).map((r) => r.id)).toContain(community);
+  it("an unlisted community is never listed or searched, but anyone with the link sees and joins it", async () => {
+    const hidden = await room(owner, "Unlisted Workshop");
+    expectOk(await owner.client.rpc("community_set_privacy", { p_project: hidden, p_privacy: "unlisted" }));
+    expect(expectOk(await stranger.client.rpc("community_list", { p_limit: 60 })).map((r) => r.id)).not.toContain(hidden);
+    expect(expectOk(await stranger.client.rpc("community_list", { p_query: "Unlisted Workshop", p_limit: 60 })).map((r) => r.id)).not.toContain(hidden);
+    expect(expectOk(await stranger.client.rpc("community_card", { p_project: hidden }))[0]).toMatchObject({ privacy: "unlisted", is_member: false });
+    expectOk(await owner.client.rpc("community_join", { p_project: hidden }));
+    const t = await topic(owner, "Workshop notes");
+    expectOk(await owner.client.rpc("open_conversation_link", { p_conversation: t, p_kind: "project", p_target: hidden }));
+    // Its topics open from a link but aren't listed to non-members.
+    expect(expectOk(await stranger.client.from("open_conversations").select("id").eq("id", t))).toHaveLength(1);
+    expect(expectOk(await stranger.client.rpc("open_conversations_unlisted_for_me", { p_ids: [t] }))).toEqual([t]);
+    expectOk(await stranger.client.rpc("community_join", { p_project: hidden }));
+    expect(expectOk(await stranger.client.rpc("open_conversations_unlisted_for_me", { p_ids: [t] }))).toEqual([]);
+    expect(expectOk(await stranger.client.rpc("community_mine", { p_limit: 50 })).map((r) => r.id)).toContain(hidden);
   });
 
-  it("community topics stay public: a limited topic can't join, and a joined topic can't be narrowed", async () => {
+  it("a private community is invisible to non-members, joined only by invitation, and its topics are members-only", async () => {
+    const circle = await room(owner, "Night Writers Circle");
+    expectOk(await owner.client.rpc("community_set_privacy", { p_project: circle, p_privacy: "private" }));
+    const crew = expectOk(await owner.client.rpc("community_join", { p_project: circle }));
+    const t = await topic(owner, "Tonight's prompt");
+    expectOk(await owner.client.rpc("open_conversation_link", { p_conversation: t, p_kind: "project", p_target: circle }));
+
+    const outsider = await createTestCreator("cOutsider");
+    expect(expectOk(await outsider.client.rpc("community_list", { p_query: "Night Writers", p_limit: 60 }))).toEqual([]);
+    expect(expectOk(await outsider.client.rpc("community_card", { p_project: circle }))).toEqual([]);
+    expect(expectOk(await outsider.client.rpc("community_members", { p_project: circle }))).toEqual([]);
+    expectDenied(await outsider.client.rpc("community_join", { p_project: circle }), "P0002");
+    expect(expectOk(await outsider.client.from("open_conversations").select("id").eq("id", t))).toEqual([]);
+    expect(expectOk(await outsider.client.from("open_conversation_links").select("id").eq("conversation_id", t))).toEqual([]);
+    expectDenied(await outsider.client.from("open_conversation_replies").insert({ conversation_id: t, creator_id: outsider.creatorId, body: "Let me in" }));
+
+    // Invited: they see the card (invited), join to accept, then read and post.
+    expectOk(await owner.client.rpc("crew_invite", { p_crew: crew, p_creator: outsider.creatorId }));
+    expect(expectOk(await outsider.client.rpc("community_card", { p_project: circle }))[0]).toMatchObject({ privacy: "private", invited: true, is_member: false });
+    expect(expectOk(await outsider.client.from("open_conversations").select("id").eq("id", t))).toEqual([]);
+    expectOk(await outsider.client.rpc("community_join", { p_project: circle }));
+    expect(expectOk(await outsider.client.from("open_conversations").select("id").eq("id", t))).toHaveLength(1);
+    expectOk(await outsider.client.from("open_conversation_replies").insert({ conversation_id: t, creator_id: outsider.creatorId, body: "Here's mine." }).select("id"));
+
+    // Making a public community private keeps members and hides it from everyone else.
+    expectOk(await owner.client.rpc("community_set_privacy", { p_project: community, p_privacy: "private" }));
+    expect(expectOk(await stranger.client.rpc("community_list", { p_limit: 60 })).map((r) => r.id)).not.toContain(community);
+    expect(expectOk(await maya.client.rpc("community_card", { p_project: community }))[0]).toMatchObject({ privacy: "private", is_member: true });
+    expectOk(await owner.client.rpc("community_set_privacy", { p_project: community, p_privacy: "public" }));
+  });
+
+  it("community topics stay open to their community: a limited topic can't join, and a joined topic can't be narrowed", async () => {
     const limited = await topic(maya, "Only for a few", "limited");
     expectDenied(await maya.client.rpc("open_conversation_link", { p_conversation: limited, p_kind: "project", p_target: community }), "22023");
     const open = await topic(maya, "Open to everyone");
     expectOk(await maya.client.rpc("open_conversation_link", { p_conversation: open, p_kind: "project", p_target: community }));
     expectDenied(await maya.client.from("open_conversations").update({ visibility: "limited" }).eq("id", open), "42501");
     expectOk(await maya.client.from("open_conversations").update({ visibility: "public" }).eq("id", open));
-    // A private room's owner still links limited topics as before.
+    // An ordinary room's owner still links limited topics as before.
     const own = await topic(owner, "Room notes", "limited");
     expectOk(await owner.client.rpc("open_conversation_link", { p_conversation: own, p_kind: "project", p_target: privateRoom }));
     expectOk(await owner.client.from("open_conversations").update({ visibility: "community" }).eq("id", own));

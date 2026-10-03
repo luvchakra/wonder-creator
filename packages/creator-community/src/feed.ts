@@ -3,7 +3,7 @@ import { findCollaborators } from "@wonder/creator-identity";
 import { liveCards, type LiveCard } from "@wonder/creator-huddle";
 import { listPosts } from "@wonder/creator-library";
 import type { Db } from "@wonder/db";
-import { getCommunity } from "./communities";
+import { getCommunity, unlistedForViewer } from "./communities";
 import { knownCollaborators, peopleById, toConversation, type OpenConversation } from "./conversations";
 import { hiddenCreators, openToOf } from "./moderation";
 import { HELP_INTENTS, INTENT_FITS, OPEN_TO_LABEL, weekLine, type CommunityFilter, type ConversationIntent, type OpenTo, type Person } from "./shared";
@@ -59,9 +59,10 @@ export async function listConversations(
   if (opts.before && !Number.isNaN(Date.parse(opts.before))) q = q.lt("created_at", opts.before);
   const { data, error } = await q;
   if (error) throw fromDbError(error);
-  const hidden = await hiddenCreators(db, viewerId);
   const rows = (data ?? []).slice(0, limit);
-  const visible = rows.filter((r) => !hidden.has(r.creator_id));
+  // Topics of an Unlisted (or Private) community the viewer isn't in are never listed — they open only from its link.
+  const [hidden, unlisted] = await Promise.all([hiddenCreators(db, viewerId), unlistedForViewer(db, rows.map((r) => r.id))]);
+  const visible = rows.filter((r) => !hidden.has(r.creator_id) && !unlisted.has(r.id));
   const cards = await withReasons(db, viewerId, visible.map(toConversation));
   return { cards, nextBefore: (data ?? []).length > limit ? rows.at(-1)!.created_at : null };
 }
@@ -206,7 +207,7 @@ export interface HomeCommunitySignals {
   question: { id: string; title: string; newReplies: number; newParticipants: number; since: string | null } | null;
   /** Someone the viewer could help, with why. */
   help: Array<{ id: string; title: string; name: string; authorId: string; headlineIntent: OpenConversation["intent"]; reason: string | null }>;
-  /** A conversation worth hearing, with why (never "popular"). */
+  /** A conversation worth hearing — a community topic first — with why (never "popular"). */
   hearing: { id: string; title: string; replyCount: number; participantCount: number; reason: string } | null;
 }
 
@@ -247,18 +248,17 @@ export async function homeCommunitySignals(db: Db, viewerId: string): Promise<Ho
   const { cards } = await listConversations(db, viewerId, { help: true, limit: 12 });
   const fresh = cards.filter((c) => c.conversation.creatorId !== viewerId && c.reason && c.reason !== "You're in this conversation" && Date.parse(c.conversation.createdAt) > Date.now() - 14 * 86_400_000);
   const help = fresh.slice(0, 2).map((c) => ({ id: c.conversation.id, title: c.conversation.title, name: c.author.name, authorId: c.author.id, headlineIntent: c.conversation.intent, reason: c.reason }));
-  // Worth hearing: a conversation you joined with new replies, else one from someone you've worked with.
-  const recent = (await listConversations(db, viewerId, { limit: 20 })).cards.filter((c) => c.conversation.creatorId !== viewerId && !help.some((h) => h.id === c.conversation.id));
-  const pick =
-    recent.find((c) => c.reason === "You're in this conversation" && c.conversation.lastReplyAt && Date.parse(c.conversation.lastReplyAt) > Date.now() - 3 * 86_400_000) ??
-    recent.find((c) => c.reason?.startsWith("You worked with"));
-  let hearing: HomeCommunitySignals["hearing"] = pick
-    ? { id: pick.conversation.id, title: pick.conversation.title, replyCount: pick.conversation.replyCount, participantCount: pick.conversation.participantCount, reason: pick.reason === "You're in this conversation" ? "New replies in a conversation you joined" : pick.reason! }
-    : null;
-  // …else a lively topic in a community you're in (docs/communities.md: Home stays Home, and names the community).
+  // Communities on Home (owner, 3 Oct 2026: "Worth hearing" became "Communities"): a lively topic in a community you're
+  // in comes first; else a conversation you joined with new replies, else one from someone you've worked with.
+  let hearing: HomeCommunitySignals["hearing"] = await recentCommunityTopic(db, viewerId, hidden, help.map((h) => h.id)).catch(() => null);
   if (!hearing) {
-    const topic = await recentCommunityTopic(db, viewerId, hidden, help.map((h) => h.id)).catch(() => null);
-    if (topic) hearing = topic;
+    const recent = (await listConversations(db, viewerId, { limit: 20 })).cards.filter((c) => c.conversation.creatorId !== viewerId && !help.some((h) => h.id === c.conversation.id));
+    const pick =
+      recent.find((c) => c.reason === "You're in this conversation" && c.conversation.lastReplyAt && Date.parse(c.conversation.lastReplyAt) > Date.now() - 3 * 86_400_000) ??
+      recent.find((c) => c.reason?.startsWith("You worked with"));
+    hearing = pick
+      ? { id: pick.conversation.id, title: pick.conversation.title, replyCount: pick.conversation.replyCount, participantCount: pick.conversation.participantCount, reason: pick.reason === "You're in this conversation" ? "New replies in a conversation you joined" : pick.reason! }
+      : null;
   }
   // Name the community a topic lives in, when the viewer can see it.
   const named = await communityNamesFor(db, [...(hearing ? [hearing.id] : []), ...help.map((h) => h.id)]).catch(() => new Map<string, string>());

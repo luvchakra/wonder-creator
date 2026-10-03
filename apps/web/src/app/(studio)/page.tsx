@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
 import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
+import { HomeCommunities } from "@/components/home/home-communities";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
@@ -38,7 +39,7 @@ export default async function HomePage() {
 
   const [home, world] = await Promise.all([buildHomePayload(db, creator.id), flagOn("personal_sources_enabled") && sourcesHomeOn() ? homeWorld(db) : null]);
   scheduleDiscovery(db, creator.id);
-  const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms].filter(Boolean).length;
+  const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms, home.communities].filter(Boolean).length;
   after(() => {
     track(db, "home_opened", creator.id);
     track(db, "home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
@@ -93,7 +94,7 @@ export default async function HomePage() {
         {world ? <FromYourWorld {...world} /> : null}
 
         {/* The rest, as compact rows (owner board, 29 Sep 2026): what it is, one line of why, nothing more. */}
-        {home.whileAway || home.yourQuestion || home.worldConnecting || home.dejavu || home.spark || home.worthHearing || home.couldHelp ? (
+        {home.whileAway || home.yourQuestion || home.worldConnecting || home.dejavu || home.spark || home.couldHelp ? (
           <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
             {home.whileAway ? (
               <Expandable id="while-away" label="While you were away" summary={home.whileAway.lines.map((l) => l.text).join(" · ")} count={home.whileAway.total} icon={<Sun className="size-5 text-orange" aria-hidden />}>
@@ -174,8 +175,6 @@ export default async function HomePage() {
               </section>
             ) : null}
 
-            {home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null}
-
             {home.couldHelp ? (
               <Expandable
                 id="help"
@@ -204,6 +203,11 @@ export default async function HomePage() {
               </Expandable>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Communities (owner, 3 Oct 2026): what's new in one, your communities, and Discover — easy to find from Home. */}
+        {home.communities || home.worthHearing ? (
+          <HomeCommunities mine={home.communities?.mine ?? null} hearing={home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null} />
         ) : null}
 
         {home.rooms ? <RoomsGlance items={home.rooms} avatars={home.avatars} /> : null}
@@ -331,38 +335,30 @@ function Module({ id, label, children }: { id: string; label: string; children: 
   );
 }
 
+/** What's new in a community (or, failing that, a conversation, live Huddle or thought worth hearing): one row. */
 function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing"]>; avatars: Record<string, string> }) {
   if (w.kind === "conversation")
     return (
-      <section id="hearing" aria-label="Worth hearing">
-        <Link href={`/pulse/conversations/${w.conversationId}`} className="block px-3 py-2 hover:bg-surface-muted">
-          <RowBody
-            icon={<MessageCircle className="size-5 text-accent" aria-hidden />}
-            title="Worth hearing"
-            summary={`${w.title} · ${w.replyCount} ${w.replyCount === 1 ? "reply" : "replies"} · ${w.reason}`}
-            chevron
-          />
-        </Link>
-      </section>
+      <Link href={`/pulse/conversations/${w.conversationId}`} className="block px-3 pb-1.5 hover:bg-surface-muted">
+        <RowBody icon={<MessageCircle className="size-5 text-accent" aria-hidden />} title={w.title} summary={`${w.reason} · ${w.replyCount} ${w.replyCount === 1 ? "reply" : "replies"}`} chevron />
+      </Link>
     );
   const person = w.kind === "huddle" ? { name: w.participantName, id: w.participantId } : { name: w.authorName, id: w.authorId };
   return (
-    <section id="hearing" aria-label="Worth hearing">
-      <Link href={w.kind === "huddle" ? `/huddles/${w.huddleId}` : `/scrapbook/${w.postId}`} className="block px-3 py-2 hover:bg-surface-muted">
-        <RowBody
-          icon={
-            w.kind === "post" && w.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
-            ) : (
-              <Avatar name={person.name} src={person.id ? avatars[person.id] : null} size={40} />
-            )
-          }
-          title="Worth hearing"
-          summary={w.kind === "huddle" ? `Live Huddle · ${w.topic} · ${w.participantCount} here` : `${w.authorName}: ${w.body}`}
-          chevron
-        />
-      </Link>
-    </section>
+    <Link href={w.kind === "huddle" ? `/huddles/${w.huddleId}` : `/scrapbook/${w.postId}`} className="block px-3 pb-1.5 hover:bg-surface-muted">
+      <RowBody
+        icon={
+          w.kind === "post" && w.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
+          ) : (
+            <Avatar name={person.name} src={person.id ? avatars[person.id] : null} size={40} />
+          )
+        }
+        title={w.kind === "huddle" ? `Live Huddle · ${w.topic}` : w.authorName}
+        summary={w.kind === "huddle" ? `${w.participantCount} here` : w.body}
+        chevron
+      />
+    </Link>
   );
 }

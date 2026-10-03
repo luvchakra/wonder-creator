@@ -1,6 +1,6 @@
 import "server-only";
 import { log } from "@wonder/core";
-import { helpHeadline, homeCommunityGlance, homeCommunitySignals, knownCollaborators, type HomeCommunityGlance } from "@wonder/creator-community";
+import { helpHeadline, homeCommunityGlance, homeCommunitySignals, knownCollaborators, myCommunities, type CommunityPrivacy, type HomeCommunityGlance } from "@wonder/creator-community";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
@@ -8,6 +8,7 @@ import { artifactType } from "@wonder/creator-studio/types";
 import type { Db } from "@wonder/db";
 import { listProjects, listSharedItems } from "@wonder/creator-projects";
 import { avatarUrls } from "../avatars";
+import { communityAvatars } from "../communities";
 import { coverUrls } from "../covers";
 import { flags } from "../features";
 import { agoPhrase, pickSpark, splitHomeItems, SPARK_MIN_AGE_DAYS, type HomeItem } from "../home-sections";
@@ -99,6 +100,8 @@ export interface HomePayload {
   yourQuestion?: HomeQuestionCard;
   /** From the community: a small fixed glance (never a feed), with signed covers for its Creations. */
   community?: HomeCommunityGlance & { covers: Record<string, string> };
+  /** Communities on Home (owner, 3 Oct 2026): the ones the creator belongs to, latest activity first, with pictures. */
+  communities?: { mine: Array<{ id: string; title: string; picture: string | null; privacy: CommunityPrivacy; isHost: boolean }> };
   /** New in the creator's Creative Rooms: work their room-mates shared lately (newest first, at most three). */
   rooms?: Array<{ projectId: string; projectTitle: string; itemId: string; title: string; kind: string; by: { id: string; name: string }; at: string }>;
   /** Fallback only: a few recent Creations to get back to. */
@@ -379,6 +382,13 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
         .sort((a, b) => b.at.localeCompare(a.at))
         .slice(0, 3);
     })) ?? [];
+  const communities = f.communities_enabled
+    ? await safe("communities", async () => {
+        const mine = await myCommunities(db, 12);
+        const pictures = await communityAvatars(mine.map((c) => c.avatarObjectId));
+        return { mine: mine.map((c) => ({ id: c.id, title: c.title, privacy: c.privacy, isHost: c.isHost, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null })) };
+      })
+    : null;
   const glanceCovers = hasGlance && glance!.creations.length ? ((await safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId }))))) ?? {}) : {};
 
   const avatars =
@@ -421,6 +431,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     yourQuestion: slots.has("yourQuestion") ? yourQuestion : undefined,
     community: hasGlance ? { ...glance!, covers: glanceCovers } : undefined,
     rooms: rooms.length ? rooms : undefined,
+    communities: communities ?? undefined,
     avatars,
     generatedAt: new Date(now).toISOString(),
   };

@@ -291,7 +291,7 @@ export function CommunityScene() {
         ))}
       </ul>
       <p className="flex items-center justify-between px-3 py-2 text-[11.5px]">
-        <span className="text-ink-subtle">Open community</span>
+        <span className="text-ink-subtle">Public community</span>
         <span className="rounded-full bg-accent px-2.5 py-0.5 font-medium text-white">Join</span>
       </p>
     </div>

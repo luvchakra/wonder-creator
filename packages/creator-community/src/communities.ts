@@ -3,16 +3,18 @@ import { liveCards } from "@wonder/creator-huddle";
 import type { Db } from "@wonder/db";
 import { z } from "zod";
 import { createConversation, peopleById, type OpenConversation } from "./conversations";
-import type { ConversationIntent } from "./shared";
+import type { CommunityPrivacy, ConversationIntent } from "./shared";
 
 /**
  * Communities (docs/communities.md, owner 2 Oct 2026): Orkut-style communities built from what exists. A Community is
- * a Creative Room its owner makes discoverable; its Members are the room's crew (owner and moderators = crew owner and
+ * a Creative Room its owner opens as a community — Public, Unlisted or Private (owner, 3 Oct 2026); its Members are the room's crew (owner and moderators = crew owner and
  * admins); its Topics are Open Conversations linked to the room; Posts are their replies; its Huddles are the Huddles
  * started from its topics. No counts of likes or followers and no ranking: order is by latest activity.
  */
 
 export type CommunityAccess = "owner" | "admin" | "member";
+
+export const communityPrivacySchema = z.enum(["public", "unlisted", "private"]);
 
 export interface CommunityListItem {
   id: string;
@@ -22,6 +24,7 @@ export interface CommunityListItem {
   coverMaterialId: string | null;
   /** The community's profile picture (a storage object), when its hosts set one. */
   avatarObjectId: string | null;
+  privacy: CommunityPrivacy;
   memberCount: number;
   topicCount: number;
   lastActivityAt: string;
@@ -55,13 +58,27 @@ export interface Community {
   owner: { id: string; name: string };
   coverMaterialId: string | null;
   avatarObjectId: string | null;
+  privacy: CommunityPrivacy;
   crewId: string | null;
   memberCount: number;
   isMember: boolean;
   isHost: boolean;
+  isOwner: boolean;
+  /** The hosts invited the viewer (a Private community's way in); joining accepts. */
+  invited: boolean;
 }
 
-/** Communities the viewer can find (discoverable rooms), latest activity first; `query` matches title and brief. */
+export interface MyCommunity {
+  id: string;
+  title: string;
+  avatarObjectId: string | null;
+  coverMaterialId: string | null;
+  privacy: CommunityPrivacy;
+  isHost: boolean;
+  lastActivityAt: string;
+}
+
+/** Public communities the viewer can find, latest activity first; `query` matches title and brief. */
 export async function listCommunities(db: Db, opts: { query?: string; limit?: number } = {}): Promise<CommunityListItem[]> {
   const { data, error } = await db.rpc("community_list", { p_query: opts.query?.trim() || undefined, p_limit: opts.limit ?? 30 });
   if (error) throw fromDbError(error);
@@ -72,6 +89,7 @@ export async function listCommunities(db: Db, opts: { query?: string; limit?: nu
     owner: { id: r.owner_id, name: r.owner_name || "Creator" },
     coverMaterialId: r.cover_material_id,
     avatarObjectId: r.avatar_object_id,
+    privacy: r.privacy as CommunityPrivacy,
     memberCount: r.member_count,
     topicCount: r.topic_count,
     lastActivityAt: r.last_activity_at,
@@ -79,7 +97,7 @@ export async function listCommunities(db: Db, opts: { query?: string; limit?: nu
   }));
 }
 
-/** One community as anyone signed in may see it; null when it isn't a community (or the owner blocked the viewer). */
+/** One community as the viewer may see it; null when it isn't one, it's Private and they aren't in it, or a block. */
 export async function getCommunity(db: Db, projectId: string): Promise<Community | null> {
   const { data, error } = await db.rpc("community_card", { p_project: projectId });
   if (error) throw fromDbError(error);
@@ -92,11 +110,29 @@ export async function getCommunity(db: Db, projectId: string): Promise<Community
     owner: { id: r.owner_id, name: r.owner_name || "Creator" },
     coverMaterialId: r.cover_material_id,
     avatarObjectId: r.avatar_object_id,
+    privacy: r.privacy as CommunityPrivacy,
     crewId: r.crew_id,
     memberCount: r.member_count,
     isMember: r.is_member,
     isHost: r.is_host,
+    isOwner: r.is_owner,
+    invited: r.invited,
   };
+}
+
+/** The communities the viewer belongs to (any privacy), latest activity first. */
+export async function myCommunities(db: Db, limit = 12): Promise<MyCommunity[]> {
+  const { data, error } = await db.rpc("community_mine", { p_limit: limit });
+  if (error) throw fromDbError(error);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    avatarObjectId: r.avatar_object_id,
+    coverMaterialId: r.cover_material_id,
+    privacy: r.privacy as CommunityPrivacy,
+    isHost: r.is_host,
+    lastActivityAt: r.last_activity_at,
+  }));
 }
 
 export async function communityMembers(db: Db, projectId: string): Promise<CommunityMember[]> {
@@ -157,7 +193,7 @@ export async function communityHuddles(db: Db, projectId: string): Promise<Array
   });
 }
 
-/** Join (open to anyone signed in). Returns the crew id. */
+/** Join: open for Public and Unlisted; a Private community only takes people its hosts invited. Returns the crew id. */
 export async function joinCommunity(db: Db, projectId: string): Promise<string> {
   const { data, error } = await db.rpc("community_join", { p_project: projectId });
   if (error) {
@@ -174,11 +210,30 @@ export async function leaveCommunity(db: Db, projectId: string): Promise<void> {
   if (error) throw error.code === "42501" ? new DomainError("forbidden", "The owner can't leave their own community. Make it private instead.") : fromDbError(error);
 }
 
-/** The owner opens their room as a community. Communities are always public: there's no way back to private. */
-export async function openAsCommunity(db: Db, projectId: string): Promise<void> {
-  const { data, error } = await db.from("projects").update({ visibility: "discoverable" }).eq("id", projectId).select("id").maybeSingle();
+/** The owner opens their room as a community, or changes its privacy. A community stays one (it can go Private). */
+export async function setCommunityPrivacy(db: Db, projectId: string, privacy: CommunityPrivacy): Promise<void> {
+  const { error } = await db.rpc("community_set_privacy", { p_project: projectId, p_privacy: communityPrivacySchema.parse(privacy) });
+  if (error) {
+    if (error.code === "42501") throw new DomainError("forbidden", "Only the owner can change who can find this community.");
+    if (error.code === "P0002") throw new DomainError("not_found", "We couldn't find that room.");
+    if (error.code === "22023") throw new DomainError("validation", error.message);
+    throw fromDbError(error);
+  }
+}
+
+/** Whether the viewer may add to a conversation (a topic in a community needs membership). */
+export async function canAddToConversation(db: Db, conversationId: string): Promise<boolean> {
+  const { data, error } = await db.rpc("open_conversation_can_add", { p_conversation: conversationId });
   if (error) throw fromDbError(error);
-  if (!data) throw new DomainError("forbidden", "Only the owner can open this room as a community.");
+  return !!data;
+}
+
+/** Of these conversations, the ones that belong to an Unlisted or Private community the viewer isn't in: never listed. */
+export async function unlistedForViewer(db: Db, conversationIds: string[]): Promise<Set<string>> {
+  if (!conversationIds.length) return new Set();
+  const { data, error } = await db.rpc("open_conversations_unlisted_for_me", { p_ids: conversationIds.slice(0, 200) });
+  if (error) throw fromDbError(error);
+  return new Set((data ?? []) as string[]);
 }
 
 export const topicSchema = z.object({
@@ -187,13 +242,13 @@ export const topicSchema = z.object({
   intent: z.enum(["discuss", "ask", "critique", "share_knowledge", "looking_for", "explore_together"]).default("discuss"),
 });
 
-/** Start a topic in a community: a public Open Conversation linked to the room. Members only. */
+/** Start a topic in a community: an Open Conversation linked to the room, open to its community. Members only. */
 export async function startTopic(db: Db, creatorId: string, projectId: string, raw: unknown): Promise<OpenConversation> {
   const input = topicSchema.parse(raw);
   const c = await getCommunity(db, projectId);
   if (!c) throw new DomainError("not_found", "We couldn't find that community.");
   if (!c.isMember) throw new DomainError("forbidden", "Join the community to start a topic.");
-  // Communities are always public, and so are their topics.
+  // The topic's audience is the community's: who can see it follows the community's privacy (enforced in the database).
   const conv = await createConversation(db, creatorId, { ...input, visibility: "public" });
   const { error } = await db.rpc("open_conversation_link", { p_conversation: conv.id, p_kind: "project", p_target: projectId });
   if (error) {
@@ -211,13 +266,13 @@ export async function removeTopic(db: Db, projectId: string, conversationId: str
 }
 
 /** Communities a topic belongs to that the viewer can see (for the topic page's "In …" line). */
-export async function topicCommunities(db: Db, conversationId: string): Promise<Array<{ id: string; title: string; isHost: boolean; avatarObjectId: string | null }>> {
+export async function topicCommunities(db: Db, conversationId: string): Promise<Array<{ id: string; title: string; isHost: boolean; isMember: boolean; privacy: CommunityPrivacy; avatarObjectId: string | null }>> {
   const { data } = await db.from("open_conversation_links").select("project_id").eq("conversation_id", conversationId).eq("kind", "project");
-  const out: Array<{ id: string; title: string; isHost: boolean; avatarObjectId: string | null }> = [];
+  const out: Array<{ id: string; title: string; isHost: boolean; isMember: boolean; privacy: CommunityPrivacy; avatarObjectId: string | null }> = [];
   for (const l of data ?? []) {
     if (!l.project_id) continue;
     const c = await getCommunity(db, l.project_id).catch(() => null);
-    if (c) out.push({ id: c.id, title: c.title, isHost: c.isHost, avatarObjectId: c.avatarObjectId });
+    if (c) out.push({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, privacy: c.privacy, avatarObjectId: c.avatarObjectId });
   }
   return out;
 }

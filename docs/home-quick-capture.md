@@ -44,7 +44,7 @@ these rules rather than changing the page.
   * A pending suggestion for something just captured is offered with Add and Not now.
 * **A little spark**: an anniversary first ("A year ago today you recorded this voice note."), then a photograph never
   used in a Creation, then a gentle reminder. The pick holds through the day, and there is no call to action.
-* **Worth hearing / You could help**: live Huddles, Scrapbook posts from people followed, and requests waiting on the
+* **Communities (formerly Worth hearing) / You could help**: a lively topic in one of your communities first, live Huddles, Scrapbook posts from people followed, and requests waiting on the
   creator. These are the plug points for Phase 03 Community.
 
 **Context Line** (`homeContextLine` and the `homeLine` strip fact).
@@ -74,12 +74,12 @@ Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/
 * **This week** (owner, 2 Oct 2026): one line in words — kinds of new public work, the open asks — never numbers
   (`weekLine`).
 * **A conversation you joined has moved on**: conversations the creator replied to (not their own) with others'
-  replies since they last read or replied; the one already in Worth hearing is left out.
+  replies since they last read or replied; the one already in the Communities row is left out.
 * **New in your Creative Rooms** (its own card, above): work room-mates shared in the last two weeks, newest three,
   read through the room's own sharing functions.
 * **Explore** opens Community. Each part appears only when it's real; the section disappears when there's nothing.
 * Same rules as Community: the viewer's own access, muted/blocked creators never appear, ordered by closeness then time —
-  never by replies, likes or popularity. Nothing repeats a row above (Worth hearing, You could help).
+  never by replies, likes or popularity. Nothing repeats a row above (Communities, You could help).
 
 ## Quick Capture
 
