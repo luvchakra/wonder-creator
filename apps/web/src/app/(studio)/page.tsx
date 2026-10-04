@@ -69,6 +69,9 @@ export default async function HomePage() {
           <p className="mt-0.5 text-[13px] text-ink-muted">{quiet ? "Nothing needs your attention." : home.contextLine}</p>
         </header>
 
+        {/* Capture first (owner, 4 Oct 2026: "move the quick note, voice note above scrapbook"): note, voice, picture, video. */}
+        <QuickCapture />
+
         {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
         <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
 
@@ -89,7 +92,6 @@ export default async function HomePage() {
           <HomeBegin hasMaterials={home.beginning?.hasMaterials ?? false} />
         )}
 
-        {home.quickCapture.textEnabled || home.quickCapture.voiceEnabled ? <QuickCapture /> : null}
 
         {/* Personal Sources (owner spec, 2 Oct 2026): one thing worth exploring from the creator's world, with a quiet Sync. */}
         {world ? <FromYourWorld {...world} /> : null}

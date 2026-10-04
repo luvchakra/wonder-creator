@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { adminPatch, creatorIdOf, expect, test, uid, type Page } from "./fixtures";
 
 // Phase 02 — Home orchestration + Quick Capture (docs/phases/02-home-quick-capture.md §18).
@@ -23,6 +24,21 @@ async function fakeMicrophone(page: Page, allowed: boolean) {
 
 test.describe("Quick Capture", () => {
   test.beforeEach(({ creator }) => void creator);
+
+  test("sits above My Scrapbook with four ways in; a Quick Pic saves as a Material in one tap", async ({ page }) => {
+    await page.goto("/");
+    const quick = page.getByRole("region", { name: "Quick Capture" });
+    await expect(quick.locator("button")).toHaveText(["Quick note", "Voice note", "Quick Pic", "Video Note"]);
+    // Capture comes first, above the Scrapbook.
+    const [q, s] = await Promise.all([quick.boundingBox(), page.getByRole("region", { name: "My Scrapbook" }).boundingBox()]);
+    expect(q!.y).toBeLessThan(s!.y);
+    // The camera hands back a picture; it lands as a Material without another step.
+    const jpg = await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 230, g: 150, b: 90 } } }).jpeg().toBuffer();
+    await page.getByLabel("Take a picture").setInputFiles({ name: "harbour.jpg", mimeType: "image/jpeg", buffer: jpg });
+    await expect(quick.getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
+    await quick.getByRole("link", { name: "Open" }).click();
+    await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
+  });
 
   test("a quick note saves in seconds, once, as a Material with its Moment — and suggests a DejaVu it mentions", async ({ page }) => {
     const tag = uid();
