@@ -210,6 +210,10 @@ export function MaterialDetail({
     return () => window.removeEventListener("hashchange", open);
   }, []);
   const kind = KIND[m.type] ?? "Material";
+  // Where it came from, when that matters for credit (someone else's words, CreativeMind, the web); plain uploads and
+  // typed notes say nothing.
+  const origin = m.provenance?.origin ?? "";
+  const notableOrigin = ["huddle", "conversation", "ai_generated", "url", "youtube", "derived", "import"].includes(origin) ? ORIGIN[origin] : null;
   const textDirty = editableText && text !== (m.text ?? "");
 
   return (
@@ -222,7 +226,8 @@ export function MaterialDetail({
       <header className="space-y-0.5 px-1">
         <h1 className="font-display text-[24px] leading-tight text-ink [overflow-wrap:anywhere]">{m.title?.trim() || `Untitled ${kind.toLowerCase()}`}</h1>
         <p className="text-[13px] text-ink-muted">
-          {kind} · <RelativeTime iso={m.createdAt} />
+          {kind}
+          {notableOrigin ? ` · ${notableOrigin}` : ""} · <RelativeTime iso={m.createdAt} />
           {usedIn.length ? ` · in ${usedIn.length} Creation${usedIn.length === 1 ? "" : "s"}` : ""}
           {m.status === "archived" ? " · Archived" : ""}
         </p>
