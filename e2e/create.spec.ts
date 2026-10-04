@@ -101,15 +101,10 @@ test.describe("creating with CreativeMind", () => {
   test("search finds a created piece and a note", async ({ page }) => {
     const word = `zephyr${uid()}`;
     await saveNote(page, `${word} in the rigging`);
-    // A blank piece created from Space, with the same word in its title.
-    await page.goto("/materials");
-    await page.getByRole("button", { name: "New", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
-    await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
-    await dialog.getByLabel("Title").fill(`Song of ${word}`);
-    await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
-    const artifactUrl = page.url().replace(/\/(?:studio|write)$/, "");
+    // A blank piece with the same word in its title. (The Space's own New dialog is gone; Create lives in the Palette.)
+    const made = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Song of ${word}` } })).json()).artifact as { id: string };
+    await page.goto(`/creations/${made.id}/write`);
+    const artifactUrl = new URL(`/creations/${made.id}`, page.url()).toString();
 
     await page.getByRole("button", { name: "Search your creativity" }).click();
     const search = page.getByRole("search", { name: "Search" });

@@ -64,7 +64,7 @@ test.describe("share, download and export", () => {
     await page.getByRole("button", { name: "Share", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: `Shared with @${creatorB.handle}` })).toBeVisible();
 
-    await b.goto("/materials");
+    await b.goto("/materials?tab=shared");
     await b.getByRole("link", { name: "Shared with you" }).click();
     await b.getByRole("link", { name: new RegExp(title) }).click();
     await expect(b.getByText("Low water at six.")).toBeVisible();

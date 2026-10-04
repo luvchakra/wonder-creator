@@ -7,7 +7,7 @@ import { ArtifactCard, MaterialCard, MaterialWallCard } from "@/components/cards
 import { coverUrls } from "@/lib/covers";
 import { requireSession } from "@/lib/session";
 import { NewCollectionButton } from "./collections/new-collection";
-import { NewPieceButton, SpaceSearch } from "./space-controls";
+import { SpaceSearch } from "./space-controls";
 import { PaletteScope } from "@/components/creative-palette";
 import { HoldToDelete } from "@/components/hold-to-delete";
 
@@ -19,7 +19,6 @@ const TABS = [
   { key: "progress", label: "In Progress" },
   { key: "created", label: "Created" },
   { key: "shared", label: "Shared" },
-  { key: "inspirations", label: "Inspirations" },
   { key: "collections", label: "Collections" },
 ] as const;
 
@@ -44,23 +43,20 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   const mFilter = ((MATERIAL_FILTERS as readonly string[]).includes(sp.type ?? "") ? sp.type : "all") as MaterialFilter;
 
   const wantMaterials = tab === "all" || tab === "ideas";
-  const wantArtifacts = tab !== "ideas" && tab !== "inspirations" && tab !== "collections";
+  const wantArtifacts = tab !== "ideas" && tab !== "collections";
   const showArchived = sp.archived === "1";
-  const [materials, counts, artifacts, refs] = await Promise.all([
+  const [materials, counts, artifacts] = await Promise.all([
     wantMaterials ? listMaterials(db, { filter: tab === "ideas" ? mFilter : "all", q, limit: tab === "all" ? 24 : 120 }) : Promise.resolve([]),
     tab === "ideas" ? materialCounts(db) : Promise.resolve(null),
     wantArtifacts
       ? listArtifacts(db, { creatorId: creator.id, q, status: tab === "progress" ? ["draft", "in_review"] : tab === "created" ? ["final", "published"] : ["draft", "in_review", "final", "published"], limit: 60 })
       : Promise.resolve([]),
-    tab === "inspirations" ? db.from("reference_items").select("material_id").limit(200) : Promise.resolve({ data: [] as Array<{ material_id: string }> }),
   ]);
   const allCollections = tab === "collections" ? await collectionCards(db, { includeArchived: showArchived }) : [];
   const collections = q ? allCollections.filter((c) => `${c.name} ${c.description ?? ""}`.toLowerCase().includes(q.toLowerCase())) : allCollections;
   const collectionCovers = await signedUrlsFor(db, collections.map((c) => c.coverObjectId));
   const shownArtifacts = tab === "shared" ? artifacts.filter((a) => a.privacy !== "creator_private") : artifacts;
-  const inspirations = tab === "inspirations" ? await listMaterials(db, { ids: (refs.data ?? []).map((r) => r.material_id), q, limit: 120 }) : [];
-  const allMaterials = [...materials, ...inspirations];
-  const [previews, covers] = await Promise.all([signedUrlsFor(db, allMaterials.map((m) => m.storage_object_id)), coverUrls(db, shownArtifacts)]);
+  const [previews, covers] = await Promise.all([signedUrlsFor(db, materials.map((m) => m.storage_object_id)), coverUrls(db, shownArtifacts)]);
 
   const items = [
     // Press and hold a card to delete it (owner, 4 Oct 2026); a tap still opens it.
@@ -73,7 +69,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
         </HoldToDelete>
       ),
     })),
-    ...allMaterials.map((m) => ({
+    ...materials.map((m) => ({
       key: `m${m.id}`,
       at: m.created_at,
       node: (
@@ -111,14 +107,14 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
             ))}
           </nav>
         ) : null}
-        {allMaterials.length ? (
+        {materials.length ? (
           <ul aria-label="Materials" className="columns-2 gap-3 sm:columns-3 lg:columns-4 [&>li]:mb-4 [&>li]:break-inside-avoid">
             <li>
               <Link href="/send" className="flex h-24 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-surface/60 text-[13px] text-ink-muted hover:border-accent hover:text-accent-ink">
                 <Plus className="size-5" aria-hidden /> Bring Material
               </Link>
             </li>
-            {allMaterials.map((m) => (
+            {materials.map((m) => (
               <li key={m.id}>
                 <HoldToDelete kind="material" id={m.id} title={m.title ?? ""}>
                   <MaterialWallCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} />
@@ -150,14 +146,6 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
           art={KIT.painted.flowerBranch}
           title="My Creative Space"
           subtitle="Ideas, materials and creations — all in one place."
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
-                Shared with you
-              </Link>
-              <NewPieceButton />
-            </div>
-          }
         />
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <nav aria-label="Filter" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
@@ -174,6 +162,12 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
           </nav>
           <SpaceSearch initial={q} />
         </div>
+        {tab === "shared" ? (
+          // What others shared with you has its own page; its title is the link (Fewer buttons, owner 4 Oct 2026).
+          <Link href="/shared" className="mb-4 inline-flex min-h-11 items-center gap-1 font-display text-[17px] text-ink hover:underline">
+            Shared with you <span aria-hidden>›</span>
+          </Link>
+        ) : null}
         {tab === "collections" ? (
           <section aria-label="Collections">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -221,21 +215,18 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
             {items.map((i) => (
               <li key={i.key}>{i.node}</li>
             ))}
-            <li>
-              <Link href="/send" className="flex h-24 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-surface/60 text-[13px] text-ink-muted hover:border-accent hover:text-accent-ink">
-                <Plus className="size-6" aria-hidden /> Add new material
-              </Link>
-            </li>
           </ul>
         ) : (
           <EmptyState
             image={BACKGROUNDS.studioDesk}
-            title={q ? `Nothing matches “${q}”` : "Nothing here yet"}
-            body={q ? "Try another word, or clear the search." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
+            title={q ? `Nothing matches “${q}”` : tab === "shared" ? "Nothing shared yet" : "Nothing here yet"}
+            body={q ? "Try another word, or clear the search." : tab === "shared" ? "Share a Creation with someone and it will show here." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
             action={
-              <Link href="/send" className={buttonClasses({})}>
-                Bring something
-              </Link>
+              tab === "shared" ? undefined : (
+                <Link href="/send" className={buttonClasses({})}>
+                  Bring something
+                </Link>
+              )
             }
           />
         )}
