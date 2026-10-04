@@ -67,26 +67,35 @@ the same on the canvas, the Read page and the published page (`components/writin
 
 ## Images (step 2)
 
-- **Canvas.** The picture is the work, on paper, with its caption beneath; a strip of thumbnails when there are several
-  (a photo essay). Empty: "Begin with a picture" — **Take a picture** (the phone's own camera), **Your pictures** (picture
-  Materials, Quick Pics included), **Make one** (contextual image generation; "Use this picture" keeps it as a Material).
+- **Canvas** (owner, 4 Oct 2026: "image should capture full canvas; pan, pinch and zoom; simple text editing on the
+  picture"). The picture fills the canvas, as large as it fits. **Pinch, drag and double-tap** look closer (the view
+  only — the crop lives in Edit; a wheel zooms on desktop; **Fit** returns). A strip of thumbnails when there are several
+  (a photo essay); the caption beneath. Empty: "Begin with a picture" — **Take a picture** (the phone's own camera),
+  **Your pictures** (picture Materials, Quick Pics included), **Make one** (contextual image generation; "Use this
+  picture" keeps it as a Material).
 - **Primary: Edit** (Add a picture until there is one). Six tools on a live preview: **Crop** (Free · 1:1 · 4:5 · 16:9 ·
   9:16 and zoom), **Focus** (tap the picture or a nine-spot grid), **Filter** (Original · Warm · Cool · Film · Mono ·
   Fade), **Light** (brightness, contrast), **Blur** behind the words, **Frame** (none, paper edge, fine border).
-- **Secondary: Words** (real text on the picture — the Carousel slide's overlay model: place, align, face, size, colour,
-  shade/band/clear, shadow) and **Download** (PNG · JPEG · WebP, drawn in the browser at up to 2400 px; filters are
-  applied to the pixels so every browser gets the same picture).
+- **Secondary: Text** — adds a **text box** on the picture and starts typing in it. Boxes are real text: **drag** to
+  move, **pinch** to size (or − / + in the toolbar), tap to select, tap again to type; any number of boxes. A selected
+  box's toolbar (one scrolling row above the pictures): Edit words · face (Editorial · Serif · Modern · Handwritten) ·
+  size · align · colour · behind it (clear, shade, band) · shadow · delete · Done. Keyboard: arrows nudge, Enter edits,
+  Delete removes. Text changes **autosave** as a version after a pause; an emptied box goes. **Download** (PNG · JPEG ·
+  WebP, drawn in the browser at up to 2400 px; filters applied to the pixels and every box drawn, so every browser gets
+  the same picture).
 - **More:** Add a picture · Arrange & captions (order with move up/down, a caption each, take out) · Publish as link ·
   Make a carousel · Share privately · Versions · What's influencing this? · Rights.
 - **Non-destructive.** The pictures stay Materials, untouched. What was done to them lives in the Creation's version
-  (`structured_content`: `{ kind: "images", items: [{ materialId, caption, edits, words }] }`); **every Keep is a new
-  version**, so any earlier look can be restored. A picture new to the Creation must be the creator's own and gains a
+  (`structured_content`: `{ kind: "images", items: [{ materialId, caption, edits, texts: [{ id, text, x, y, width,
+  font, size, align, color, shadow, background }] }] }`; the older single `words` overlay is still read, as one box);
+  **every Keep is a new version**, so any earlier look can be restored. A picture new to the Creation must be the creator's own and gains a
   `contains_material` lineage edge. `POST /api/v1/artifacts/[id]/images`.
 - **Published** (`snapshot.pictures`): the View experience shows each picture as shaped, with its caption. A photo essay
   shaped here is viewed, pictures first; one that is words with pictures stays a Journey.
 - Implementation: `packages/creator-studio/src/image-options.ts` (model, filters → CSS and pixel ops),
   `creation-images.ts` (save), `apps/web/src/components/images/edited-image.tsx` (preview + canvas export),
-  `…/studio/images-canvas.tsx`, `…/creations/[id]/image`. Tests: `image-options.test.ts`, `e2e/images-page.spec.ts`.
+  `image-stage.tsx` (the canvas: view gestures, text boxes), `…/studio/images-canvas.tsx`, `…/creations/[id]/image`.
+  Tests: `image-options.test.ts`, `e2e/images-page.spec.ts`.
 
 ### Preview, and what's next (owner, 4 Oct 2026)
 

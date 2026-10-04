@@ -473,7 +473,7 @@ export function Studio({
   // The Writing page (creation-pages.md): verse centred in Playfair with room between lines; scripts in their mono layout.
   const writing = page === "writing";
   const [linkCopied, setLinkCopied] = useState(false);
-  // The Images page: Edit is the primary action, Words and Download the two secondaries (creation-pages.md, step 2).
+  // The Images page: Edit is the primary action, Text and Download the two secondaries (creation-pages.md, step 2).
   const imagesPage = page === "images";
   const hasPictures = !!images?.set.items.length;
   const [imgReq, setImgReq] = useState<ImagesRequest>(null);
@@ -679,10 +679,10 @@ export function Studio({
           </div>
         ) : imagesPage ? (
           <div className="ml-auto flex items-center gap-1.5">
-            <button type="button" onClick={() => askImages("words")} aria-haspopup="dialog" disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
+            <button type="button" onClick={() => askImages("text")} disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
               <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
                 <Type className="size-4 text-ink-muted" aria-hidden />
-                Words
+                Text
               </span>
             </button>
             <button type="button" onClick={() => askImages("download")} aria-haspopup="dialog" disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
@@ -1073,7 +1073,8 @@ export function Studio({
 
       {/* In-use visuals (owner board "Fan + Preview Bubble"): a compact strip of the pictures on the table, above the
           Sources pill, in the cover view only. Tapping a picture opens the Working Set on what's In use; + brings more in. */}
-      {mode === "view" && !isCarousel && !proposal && !showNudge && thumbs.length ? (
+      {/* Not on the Images page: its text toolbar sits there, and the Working Table bar already names the sources. */}
+      {mode === "view" && !isCarousel && !imagesPage && !proposal && !showNudge && thumbs.length ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-20 mx-auto flex max-w-3xl">
           <ul className="pointer-events-auto flex items-center gap-1 rounded-xl border border-border-soft bg-surface/85 p-1 shadow-[var(--shadow-card)] backdrop-blur" aria-label="Pictures in use">
             {thumbs.map((t) => (

@@ -1,6 +1,6 @@
 import { artifactType } from "./artifact-types";
 import type { SlideOverlay, ImageTransform } from "./carousel";
-import type { ImageEdits } from "./image-options";
+import type { ImageEdits, TextBox } from "./image-options";
 
 /**
  * CreatorPublish (docs/creator-publish.md): the shared words for publishing a Creation to the creator's own public
@@ -99,7 +99,8 @@ export interface PublishedSnapshot {
   slides?: Array<{ objectId: string | null; text: string; overlay: SlideOverlay; transform: ImageTransform }>;
   images?: Array<{ objectId: string; alt: string }>;
   /** The Images page: each picture as shaped (crop, filter, light, words, frame) and its caption, in order. */
-  pictures?: Array<{ objectId: string; caption: string; edits: ImageEdits; words: SlideOverlay }>;
+  /** As shaped on the Images page: `texts` (boxes), or `words` in snapshots published before 4 Oct 2026. */
+  pictures?: Array<{ objectId: string; caption: string; edits: ImageEdits; texts?: TextBox[]; words?: SlideOverlay }>;
   media?: { kind: "audio" | "video"; objectId: string; title: string; durationSeconds?: number | null; posterObjectId?: string | null; vertical?: boolean };
   /** A creator's reading of a poem: offered, never the page's centre. */
   voice?: { objectId: string; durationSeconds?: number | null } | null;

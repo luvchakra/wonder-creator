@@ -43,7 +43,7 @@ export async function saveImageSet(db: Db, creatorId: string, artifactId: string
   const added = set.items.length - before.items.length;
   return createVersion(db, artifactId, {
     // The words that travel with the pictures (captions and words on them), for search, export and reading.
-    content: set.items.map((i) => [i.caption.trim(), i.words.enabled ? (i.words.text ?? "").trim() : ""].filter(Boolean).join("\n")).filter(Boolean).join("\n\n"),
+    content: set.items.map((i) => [i.caption.trim(), ...i.texts.map((t) => t.text.trim())].filter(Boolean).join("\n")).filter(Boolean).join("\n\n"),
     label: input.label || (added > 0 ? "Added a picture" : "Edited"),
     authorKind: "creator",
     changeSummary: added > 0 ? `${added === 1 ? "A picture" : `${added} pictures`} added on the Images page.` : "Kept on the Images page; the original pictures are unchanged.",

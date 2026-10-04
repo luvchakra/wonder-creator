@@ -1,13 +1,12 @@
 "use client";
 import { cropRect } from "@wonder/creator-studio/carousel";
-import { applyPixelOps, aspectRatioOf, cssFilter, pixelOps, type ImageEdits } from "@wonder/creator-studio/images";
-import type { SlideOverlay } from "@wonder/creator-studio/carousel";
+import { applyPixelOps, aspectRatioOf, cssFilter, overlayOf, pixelOps, type ImageEdits, type TextBox } from "@wonder/creator-studio/images";
 import { cn } from "@wonder/ui";
 import { CroppedImage, OverlayText, Shade, drawWords } from "@/components/carousel/slide-render";
 
 /**
  * A picture as the creator shaped it on the Images page (creation-pages.md, step 2), drawn two ways from the same numbers:
- * - `EditedImage` — the live preview: crop and focus, filter and light, words on it (real text), blur behind the words,
+ * - `EditedImage` — the live preview: crop and focus, filter and light, text boxes on it (real text), blur behind each,
  *   a frame. The original is never touched.
  * - `composeEdited` — the canvas render for Download, matching the preview pixel by pixel where it matters (filters are
  *   applied to the pixels, so every browser downloads the same picture).
@@ -19,7 +18,7 @@ export function EditedImage({
   src,
   natural,
   edits,
-  words,
+  texts,
   className,
   label,
   children,
@@ -27,14 +26,13 @@ export function EditedImage({
   src: string | null;
   natural?: { width: number; height: number } | null;
   edits: ImageEdits;
-  words: SlideOverlay;
+  texts: TextBox[];
   className?: string;
   label?: string;
   children?: React.ReactNode;
 }) {
   const ratio = aspectRatioOf(edits.aspect, natural);
-  const text = (words.text ?? "").trim();
-  const showWords = words.enabled && !!text;
+  const shown = texts.filter((t) => t.text.trim());
   const frame = edits.frame;
   return (
     <div
@@ -44,22 +42,30 @@ export function EditedImage({
       <div className="relative w-full overflow-hidden bg-surface-muted [container-type:inline-size]" style={{ aspectRatio: String(ratio) }} role={label ? "img" : undefined} aria-label={label}>
         {/* The filter and light as CSS on the picture; the canvas export applies the same numbers to the pixels. */}
         {src ? <CroppedImage src={src} transform={{ zoom: edits.zoom, focalX: edits.focalX, focalY: edits.focalY }} style={filterStyle(edits)} className="transition-[filter] duration-150 motion-reduce:transition-none" /> : null}
-        {showWords && edits.blurBehind ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 backdrop-blur-md"
-            style={{ top: `${Math.max(0, words.y - 0.14) * 100}%`, height: "28%", maskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)" }}
-          />
-        ) : null}
-        {showWords ? (
-          <>
-            <Shade overlay={words} />
-            <OverlayText overlay={words} text={text} aria-hidden={label ? true : undefined} />
-          </>
-        ) : null}
+        {edits.blurBehind ? shown.map((t) => <BlurBand key={`b${t.id}`} y={t.y} />) : null}
+        {shown.map((t) => {
+          const o = overlayOf(t);
+          return (
+            <span key={t.id} className="contents">
+              <Shade overlay={o} />
+              <OverlayText overlay={o} text={t.text.trim()} aria-hidden={label ? true : undefined} />
+            </span>
+          );
+        })}
         {children}
       </div>
     </div>
+  );
+}
+
+/** A soft blur of the picture behind a box, so the words read on a busy image. */
+export function BlurBand({ y }: { y: number }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 backdrop-blur-md"
+      style={{ top: `${Math.max(0, y - 0.14) * 100}%`, height: "28%", maskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)" }}
+    />
   );
 }
 
@@ -67,7 +73,7 @@ export function EditedImage({
 export const filterStyle = (e: ImageEdits): React.CSSProperties => ({ filter: cssFilter(e) });
 
 /** Canvas render of a picture as shaped, at up to 2400 px wide (never larger than the original's crop). */
-export async function composeEdited(canvas: HTMLCanvasElement, img: HTMLImageElement, s: { edits: ImageEdits; words: SlideOverlay }) {
+export async function composeEdited(canvas: HTMLCanvasElement, img: HTMLImageElement, s: { edits: ImageEdits; texts: TextBox[] }) {
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
   const e = s.edits;
@@ -91,35 +97,11 @@ export async function composeEdited(canvas: HTMLCanvasElement, img: HTMLImageEle
     applyPixelOps(px.data, ops);
     ctx.putImageData(px, 0, 0);
   }
-  const text = (s.words.text ?? "").trim();
-  if (s.words.enabled && text) {
-    if (e.blurBehind) {
-      // A soft blur behind the words: the band scaled down and back up, then feathered at its edges.
-      const by = Math.max(0, Math.round((s.words.y - 0.14) * h));
-      const bh = Math.min(h - by, Math.round(0.28 * h));
-      if (bh > 4) {
-        const small = document.createElement("canvas");
-        small.width = Math.max(1, Math.round(w / 24));
-        small.height = Math.max(1, Math.round(bh / 24));
-        small.getContext("2d")!.drawImage(inner, 0, by, w, bh, 0, 0, small.width, small.height);
-        const band = document.createElement("canvas");
-        band.width = w;
-        band.height = bh;
-        const bctx = band.getContext("2d")!;
-        bctx.imageSmoothingQuality = "high";
-        bctx.drawImage(small, 0, 0, w, bh);
-        bctx.globalCompositeOperation = "destination-in";
-        const g = bctx.createLinearGradient(0, 0, 0, bh);
-        g.addColorStop(0, "rgba(0,0,0,0)");
-        g.addColorStop(0.3, "rgba(0,0,0,1)");
-        g.addColorStop(0.7, "rgba(0,0,0,1)");
-        g.addColorStop(1, "rgba(0,0,0,0)");
-        bctx.fillStyle = g;
-        bctx.fillRect(0, 0, w, bh);
-        ctx.drawImage(band, 0, by);
-      }
-    }
-    await drawWords(ctx, w, h, s.words, text);
+  for (const t of s.texts) {
+    const text = t.text.trim();
+    if (!text) continue;
+    if (e.blurBehind) blurBand(ctx, inner, w, h, t.y);
+    await drawWords(ctx, w, h, overlayOf(t), text);
   }
   const m = e.frame === "paper" ? Math.round(w * 0.045) : e.frame === "border" ? Math.round(w * 0.015) : 0;
   canvas.width = w + 2 * m;
@@ -130,4 +112,30 @@ export async function composeEdited(canvas: HTMLCanvasElement, img: HTMLImageEle
     out.fillRect(0, 0, canvas.width, canvas.height);
   }
   out.drawImage(inner, m, m);
+}
+
+/** A soft blur behind a box: the band scaled down and back up, then feathered at its edges. */
+function blurBand(ctx: CanvasRenderingContext2D, inner: HTMLCanvasElement, w: number, h: number, y: number) {
+  const by = Math.max(0, Math.round((y - 0.14) * h));
+  const bh = Math.min(h - by, Math.round(0.28 * h));
+  if (bh <= 4) return;
+  const small = document.createElement("canvas");
+  small.width = Math.max(1, Math.round(w / 24));
+  small.height = Math.max(1, Math.round(bh / 24));
+  small.getContext("2d")!.drawImage(inner, 0, by, w, bh, 0, 0, small.width, small.height);
+  const band = document.createElement("canvas");
+  band.width = w;
+  band.height = bh;
+  const bctx = band.getContext("2d")!;
+  bctx.imageSmoothingQuality = "high";
+  bctx.drawImage(small, 0, 0, w, bh);
+  bctx.globalCompositeOperation = "destination-in";
+  const g = bctx.createLinearGradient(0, 0, 0, bh);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(0.3, "rgba(0,0,0,1)");
+  g.addColorStop(0.7, "rgba(0,0,0,1)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  bctx.fillStyle = g;
+  bctx.fillRect(0, 0, w, bh);
+  ctx.drawImage(band, 0, by);
 }
