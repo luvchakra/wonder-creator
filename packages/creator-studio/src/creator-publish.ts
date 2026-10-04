@@ -3,6 +3,8 @@ import type { Db } from "@wonder/db";
 import { licenseRights } from "@wonder/creator-library/source-rights";
 import { z } from "zod";
 import { artifactType } from "./artifact-types";
+import { lookOf } from "./creation-pages";
+import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
 import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
 import {
@@ -68,7 +70,7 @@ const vertical = (m: Mat) => {
  * Materials it was made from (pictures, a recording, a film). Only clean storage objects; nothing the creator can't read.
  */
 export async function buildSnapshot(db: Db, artifactId: string, settings: PublishSettings = {}): Promise<{ snapshot: PublishedSnapshot; versionId: string | null; aspectRatio?: string; coverCandidates: string[] }> {
-  const a = must(await db.from("artifacts").select("id, title, description, artifact_type, current_version_id, cover_material_id").eq("id", artifactId).maybeSingle(), "That Creation isn't available.");
+  const a = must(await db.from("artifacts").select("id, title, description, artifact_type, current_version_id, cover_material_id, presentation").eq("id", artifactId).maybeSingle(), "That Creation isn't available.");
   const [{ data: v }, { data: edges }, { data: slides }, { data: carousel }] = await Promise.all([
     a.current_version_id ? db.from("artifact_versions").select("id, version_number, content").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("lineage_edges").select("source_id, created_at").eq("target_type", "artifact").eq("target_id", artifactId).eq("source_type", "material").order("created_at").limit(40),
@@ -103,6 +105,8 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
     content,
     coverObjectId,
   };
+  // Written work keeps the look it has on its page: over the cover, over it blurred, or on paper (creation-pages.md).
+  if (outputModeOf(type) === "writing") snapshot.look = lookOf(a.presentation, !!coverObjectId);
   if (slides?.length)
     snapshot.slides = slides.map((s) => ({
       objectId: obj(assetObject.get(s.asset_id ?? "")),

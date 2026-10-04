@@ -109,16 +109,18 @@ test.describe("CreativeStudio Working Set", () => {
     await expect(page.getByRole("button", { name: /^Working Table: 3 sources · 3 in use/ })).toBeVisible();
 
     // Change format: a new Creation from the same ingredients; its Studio has the same table plus this one.
-    await page.getByRole("button", { name: /Writing/ }).click();
+    // On the Writing page, Change format lives in More (creation-pages.md).
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /Change format/ }).click();
     const format = page.getByRole("dialog", { name: "Make a new Creation" });
     await format.getByRole("radio", { name: /Carousel/ }).click();
     await format.getByRole("button", { name: "Create a new carousel" }).click();
-    await page.waitForURL((u) => /\/creations\/[0-9a-f-]{36}\/studio$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
+    await page.waitForURL((u) => /\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/.test(u.pathname) && !u.pathname.includes(art.id), { timeout: 60_000 });
     await expect(page.getByRole("button", { name: /^Working Table: 4 sources · 4 in use/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Carousel/ }).first()).toBeVisible();
     // A separate Creation: it says so and links back; the original is still the poem it was.
     await page.getByRole("status").filter({ hasText: "is unchanged" }).getByRole("link", { name: "open it" }).click();
-    await page.waitForURL(new RegExp(`/creations/${art.id}/studio$`));
+    await page.waitForURL(new RegExp(`/creations/${art.id}/(?:studio|write)$`));
     const original = (await (await page.request.get(`/api/v1/artifacts/${art.id}`)).json()) as { artifact: { artifact_type: string } };
     expect(original.artifact.artifact_type).toBe("poem");
   });
@@ -368,7 +370,7 @@ test.describe("CreativeStudio Working Set", () => {
     await panel.getByRole("link", { name: "See more" }).click();
     await expect(page).toHaveURL(new RegExp(`/materials/${photo}\\?from=studio:${art.id}$`));
     await page.getByRole("link", { name: `Back to ${title}` }).click();
-    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/(?:studio|write)$`));
   });
 
   test("External: royalty-free pictures are searched on the table, with honest states for services that aren't connected", async ({ page }) => {

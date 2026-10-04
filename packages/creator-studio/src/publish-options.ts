@@ -91,6 +91,8 @@ export interface PublishedSnapshot {
   versionNumber: number | null;
   content: string;
   coverObjectId?: string | null;
+  /** Written work: how the words are set — over the cover, over it blurred, or on paper. */
+  look?: "cover" | "blur" | "paper";
   slides?: Array<{ objectId: string | null; text: string; overlay: SlideOverlay; transform: ImageTransform }>;
   images?: Array<{ objectId: string; alt: string }>;
   media?: { kind: "audio" | "video"; objectId: string; title: string; durationSeconds?: number | null; posterObjectId?: string | null; vertical?: boolean };

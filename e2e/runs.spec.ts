@@ -19,7 +19,7 @@ test.describe("Creation run progress", () => {
     await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
     await page.getByRole("link", { name: /Open “.*” in the Creative Studio/ }).click();
-    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
   });
 
   test("an unknown or someone else's run is not found", async ({ page }) => {

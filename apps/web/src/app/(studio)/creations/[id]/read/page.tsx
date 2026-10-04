@@ -1,4 +1,4 @@
-import { artifactType } from "@wonder/creator-studio";
+import { artifactType, creationPath } from "@wonder/creator-studio";
 import { KIT } from "@wonder/ui";
 import { X } from "lucide-react";
 import Link from "next/link";
@@ -28,7 +28,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
   const text = (draftNewer ? session!.draft : version?.content) ?? "";
   const def = artifactType(a.artifact_type);
   const verse = def.format === "verse";
-  const back = mine ? `/creations/${id}/studio` : `/creations/${id}`;
+  const back = mine ? creationPath(id, a.artifact_type) : `/creations/${id}`;
 
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-background" style={{ backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" }}>

@@ -2,7 +2,9 @@ import { createProvenance, type ProvenanceInput } from "@wonder/creator-library"
 import { audit, DomainError, fromDbError, must, publishEvent } from "@wonder/core";
 import type { Db, Enums, Json, Tables, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
-import { artifactType } from "./artifact-types";
+import { artifactType, isKnownArtifactType } from "./artifact-types";
+import { LOOKS } from "./creation-pages";
+import { outputModeOf } from "./working-set-options";
 
 export type Artifact = Tables<"artifacts">;
 export type ArtifactVersion = Tables<"artifact_versions">;
@@ -190,6 +192,12 @@ export const updateArtifactSchema = z.object({
   status: z.enum(["draft", "in_review", "final", "archived"]).optional(),
   privacy: z.enum(["public", "creator_private", "shared"]).optional(),
   featuredOnProfile: z.boolean().optional(),
+  /** A picture Material of the creator's as the cover, or none. */
+  coverMaterialId: z.string().uuid().nullable().optional(),
+  /** How the work is set on its page (creation-pages.md). */
+  presentation: z.object({ look: z.enum(LOOKS) }).partial().strict().optional(),
+  /** Another kind within the same format (a passage becomes a poem); the words stay as they are. */
+  artifactType: z.string().max(40).optional(),
 });
 
 export async function updateArtifact(db: Db, id: string, raw: unknown): Promise<Artifact> {
@@ -200,6 +208,23 @@ export async function updateArtifact(db: Db, id: string, raw: unknown): Promise<
   if (input.status !== undefined) patch.status = input.status;
   if (input.privacy !== undefined) patch.privacy = input.privacy;
   if (input.featuredOnProfile !== undefined) patch.featured_on_profile = input.featuredOnProfile;
+  if (input.coverMaterialId !== undefined || input.presentation || input.artifactType) {
+    const cur = must(await db.from("artifacts").select("artifact_type, presentation").eq("id", id).maybeSingle(), "We couldn't find that Creation.");
+    if (input.coverMaterialId) {
+      // RLS already insists the Material is the creator's own; a cover must also be a picture.
+      const { data: m } = await db.from("creative_materials").select("type, storage_object_id").eq("id", input.coverMaterialId).maybeSingle();
+      if (!m || !(m.type === "image" || m.type === "sketch") || !m.storage_object_id) throw new DomainError("validation", "Only a picture can be the cover.");
+    }
+    if (input.coverMaterialId !== undefined) patch.cover_material_id = input.coverMaterialId;
+    if (input.presentation) patch.presentation = { ...((cur.presentation as Record<string, Json> | null) ?? {}), ...input.presentation };
+    if (input.artifactType && input.artifactType !== cur.artifact_type) {
+      const def = artifactType(input.artifactType);
+      if (!isKnownArtifactType(def.type) || outputModeOf(def.type) !== outputModeOf(cur.artifact_type) || outputModeOf(def.type) !== "writing")
+        throw new DomainError("validation", "That kind can't be changed here — use Change format.");
+      patch.artifact_type = def.type;
+      patch.category = def.category;
+    }
+  }
   const res = await db.from("artifacts").update(patch).eq("id", id).select("*");
   if (res.error) throw fromDbError(res.error);
   if (!res.data?.length) throw new DomainError("not_found", "We couldn't find that Creation.");

@@ -380,3 +380,27 @@ describe("artifact visibility", () => {
     expect(row.current_version_id).not.toBe(bVersion.id);
   });
 });
+
+describe("artifact presentation (creation-pages.md)", () => {
+  let artifactId: string;
+  beforeAll(async () => {
+    artifactId = await createArtifact(a, { title: "Set on paper" });
+  });
+
+  it("lets the creator choose how the work is set", async () => {
+    expectOk(await a.client.from("artifacts").update({ presentation: { look: "blur" } }).eq("id", artifactId).select("id"));
+    const { data } = await admin.from("artifacts").select("presentation").eq("id", artifactId).single();
+    expect(data?.presentation).toEqual({ look: "blur" });
+  });
+
+  it("keeps everyone else from changing it", async () => {
+    expectNoRowsAffected(await b.client.from("artifacts").update({ presentation: { look: "paper" } }).eq("id", artifactId).select("id"));
+    const { data } = await admin.from("artifacts").select("presentation").eq("id", artifactId).single();
+    expect(data?.presentation).toEqual({ look: "blur" });
+  });
+
+  it("holds only a small object", async () => {
+    expectDenied(await a.client.from("artifacts").update({ presentation: ["cover"] }).eq("id", artifactId).select("id"));
+    expectDenied(await a.client.from("artifacts").update({ presentation: { look: "x".repeat(4000) } }).eq("id", artifactId).select("id"));
+  });
+});

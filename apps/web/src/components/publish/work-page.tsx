@@ -1,5 +1,5 @@
 import { EXPERIENCE_LABEL, clock } from "@wonder/creator-studio/publish";
-import { cn } from "@wonder/ui";
+import { KIT, cn } from "@wonder/ui";
 import { ArrowLeft, Lock, MessagesSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
@@ -25,9 +25,25 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
   const media = (id: string | null | undefined) => (id ? (work.media[id] ?? null) : null);
   const byline = `${m.poem ? "A poem" : `A ${s.typeLabel.toLowerCase()}`} by ${work.creator.name}`;
   const immersive = m.experience === "watch" || m.experience === "swipe" || m.experience === "view" || m.experience === "listen";
+  // Written work keeps the look it had on its page (creation-pages.md): over the cover, the cover blurred behind, or paper.
+  const reading = m.experience === "read";
+  const cover = media(s.coverObjectId);
+  const blurred = reading && s.look === "blur" && !!cover;
+  const paper = reading && (s.look === "paper" || blurred);
+  const showCover = !!cover && m.treatment !== "minimal" && (s.look ? s.look === "cover" : !m.poem);
 
   return (
-    <div className={cn("min-h-dvh", THEME[m.theme] ?? THEME.light)}>
+    <div
+      className={cn("relative isolate min-h-dvh", THEME[m.theme] ?? THEME.light)}
+      style={paper && !blurred ? { backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" } : undefined}
+    >
+      {blurred ? (
+        <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cover!} alt="" className="size-full scale-110 object-cover blur-2xl" />
+          <span className="absolute inset-0 bg-[#f7f2ea]/20" />
+        </div>
+      ) : null}
       <ViewBeacon workId={work.workId} preview={work.preview} />
       <header className="mx-auto flex max-w-6xl items-center gap-1 px-4 py-2 transition-opacity motion-reduce:transition-none [[data-immersed]_&]:opacity-0">
         {work.creator.pagePublished ? (
@@ -111,20 +127,26 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
             </div>
           </article>
         ) : (
-          <article className={cn("mx-auto", m.poem && m.treatment === "centered" ? "max-w-[34rem] text-center" : "max-w-[36rem]")}>
+          <article
+            className={cn(
+              "mx-auto",
+              m.poem && m.treatment === "centered" ? "max-w-[34rem] text-center" : "max-w-[36rem]",
+              blurred && "mt-6 max-w-[40rem] rounded-[28px] bg-[#f7f2ea]/85 px-5 py-9 shadow-[0_24px_60px_-28px_rgba(40,30,20,0.55)] backdrop-blur-md sm:px-12 sm:py-12",
+            )}
+          >
             <Title title={s.title} byline={byline} align={m.poem && m.treatment === "centered" ? "center" : "left"} />
             {m.poem && s.voice && media(s.voice.objectId) ? (
               <div className={cn("-mt-2 mb-4", m.treatment === "centered" && "flex justify-center")}>
                 <VoiceChip src={media(s.voice.objectId)!} durationSeconds={s.voice.durationSeconds} />
               </div>
             ) : null}
-            {s.coverObjectId && media(s.coverObjectId) && !m.poem && m.treatment !== "minimal" ? (
+            {showCover ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={media(s.coverObjectId)!} alt="" className="mb-8 max-h-[60dvh] w-full rounded-xl object-cover" />
+              <img src={cover!} alt="" className="mb-8 max-h-[60dvh] w-full rounded-xl object-cover" />
             ) : null}
             {m.poem ? (
               // Line breaks, stanza spacing and indentation exactly as written (§7).
-              <div className="whitespace-pre-wrap font-display text-[19px] leading-[1.9]">{s.content}</div>
+              <div className="whitespace-pre-wrap font-display text-[17px] leading-[1.9] sm:text-[19px]">{s.content}</div>
             ) : (
               <div className="space-y-5 font-display text-[18.5px] leading-[1.8]">
                 {s.content

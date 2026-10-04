@@ -51,7 +51,7 @@ test.describe("Creative Palette", () => {
     await expect(sheet.getByRole("button", { name: /Let CreativeMind decide/ })).toBeVisible();
     await expect(palette).toHaveCount(0);
     await sheet.getByRole("button", { name: /Carousel/ }).click();
-    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
     await expect(page.getByRole("link", { name: "Add words" })).toBeVisible();
     // The X closes the Palette, and it stays closed.
     await page.getByRole("button", { name: "Open Creative Palette" }).click();

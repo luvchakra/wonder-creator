@@ -3,8 +3,8 @@ import { expect, poemFromNote, test, type Page } from "./fixtures";
 async function openStudio(page: Page, artifactId: string) {
   await page.goto(`/creations/${artifactId}/studio`);
   await expect(page.getByRole("region", { name: "Editor" })).toBeVisible();
-  // The Studio opens reading over the cover; the pen opens the text.
-  const pen = page.getByRole("button", { name: "Edit the text" }).first();
+  // It opens reading over the cover; Write (the Writing page) or the pen (the Studio) opens the text.
+  const pen = page.getByRole("button", { name: /^(Edit the text|Write)$/ }).first();
   if (await pen.isVisible()) await pen.click();
 }
 
@@ -146,21 +146,23 @@ test.describe("Studio, versions and lineage", () => {
 
   test("the canvas is the writing: no panels below it, the full text scrolls over the cover, and it opens on its own page", async ({ page }) => {
     const { artifactId } = await poemFromNote(page);
+    // A poem is writing: the Studio address forwards to its Writing page.
     await page.goto(`/creations/${artifactId}/studio`);
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/write$`));
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor).toBeVisible();
     // Nothing competes with the canvas on the page.
     await expect(page.getByRole("region", { name: "Quality" })).toHaveCount(0);
     await expect(page.getByPlaceholder("Describe what to change…")).toHaveCount(0);
     // The palette's Refine still reaches it (#creativemind opens the sheet).
-    await page.goto(`/creations/${artifactId}/studio#creativemind`);
+    await page.goto(`/creations/${artifactId}/write#creativemind`);
     await expect(page.getByRole("dialog", { name: "Refine with CreativeMind" })).toBeVisible();
     await page.keyboard.press("Escape");
     // Reading on its own page: just the words, and one way back.
-    await page.getByRole("link", { name: "Open it on its own page" }).click();
+    await page.getByRole("link", { name: "Read", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/read$`));
     await expect(page.getByRole("article").getByRole("heading", { level: 1 })).toBeVisible();
     await page.getByRole("link", { name: "Close reading" }).click();
-    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/studio$`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/(?:studio|write)$`));
   });
 });

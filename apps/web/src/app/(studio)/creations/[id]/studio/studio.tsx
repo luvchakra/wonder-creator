@@ -2,8 +2,9 @@
 import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
+import { WRITING_KINDS, creationPath, type CreationLook } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, ChevronDown, ChevronUp, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommu
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 import { WorkingTable, type ExternalAdded } from "./working-table";
+import { CoverSheet, ExportSheet, PublishLinkSheet } from "./writing-sheets";
 
 /**
  * The Creative Studio canvas (creative-studio-working-set.md §5–7, §44–47, §64–68): the Creation is the screen. One
@@ -26,6 +28,7 @@ import { WorkingTable, type ExternalAdded } from "./working-table";
  * chooses ("Save as new version"). CreativeMind shows at most one quiet bubble at a time.
  */
 export function Studio({
+  page = "studio",
   artifact,
   version,
   actions,
@@ -38,7 +41,9 @@ export function Studio({
   pendingProposal,
   offline,
 }: {
-  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null };
+  /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
+  page?: "writing" | "studio";
+  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook };
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
   initialAction: string | null;
@@ -68,7 +73,7 @@ export function Studio({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -80,7 +85,7 @@ export function Studio({
           // Community things arrive Available (Phase 04 §7): someone else's words wait until the creator chooses a use.
           const community = type === "conversation" || type === "conversation_reply" || type === "scrapbook_entry";
           r = await api<{ workingSet: WorkingSetView }>(`/api/v1/studio-sessions/${r.workingSet.sessionId}/sources`, { method: "POST", json: { items: [{ type, id }], state: community ? "available" : "in_use" } });
-          router.replace(`/creations/${artifact.id}/studio`);
+          router.replace(creationPath(artifact.id, artifact.type));
         }
         if (!live) return;
         setSet(r.workingSet);
@@ -444,7 +449,55 @@ export function Studio({
   const showNudge = nudge && nudgeKey && !dismissed.has(nudgeKey);
 
   const modeLabel = OUTPUT_MODES.find((m) => m.key === outputModeOf(artifact.type))?.label ?? "Writing";
-  const editorFont = artifact.format === "screenplay" ? "font-mono text-[14px] leading-7" : artifact.format === "verse" ? "font-display text-[19px] leading-8" : "font-display text-[18px] leading-8";
+  // The Writing page (creation-pages.md): verse centred in Playfair with room between lines; scripts in their mono layout.
+  const writing = page === "writing";
+  const verse = artifact.format === "verse";
+  const editorFont =
+    artifact.format === "screenplay"
+      ? "font-mono text-[14px] leading-7"
+      : verse
+        ? writing
+          ? "text-center font-display text-[17px] leading-[1.95] sm:text-[20px]"
+          : "font-display text-[19px] leading-8"
+        : "font-display text-[18px] leading-8";
+  const readFont = artifact.format === "screenplay" ? "font-mono text-[13.5px] leading-7" : verse ? "font-display text-[17px] leading-[1.95] sm:text-[20px]" : "font-display text-[17.5px] leading-[1.8]";
+  // How the words are set — over the cover, over it blurred, or on paper — chosen in Cover and kept with the Creation.
+  const [look, setLook] = useState<CreationLook>(artifact.look);
+  const [lookFrom, setLookFrom] = useState(artifact.look);
+  if (artifact.look !== lookFrom) {
+    setLookFrom(artifact.look);
+    setLook(artifact.look);
+  }
+  async function chooseLook(l: CreationLook) {
+    setLook(l);
+    try {
+      await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { presentation: { look: l } } });
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+  // A new cover shows: off paper, onto the picture. No cover sets the words on paper.
+  async function chooseCover(materialId: string | null) {
+    await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { coverMaterialId: materialId, ...(materialId && look === "paper" ? { presentation: { look: "cover" } } : {}) } });
+    setSheet(null);
+    setMode("view");
+    router.refresh();
+  }
+  // While the page is empty, the kind of writing can still change (a passage, a poem, a screenplay); the words stay.
+  const [kindBusy, setKindBusy] = useState<string | null>(null);
+  async function chooseKind(type: string) {
+    if (type === artifact.type) return;
+    setKindBusy(type);
+    try {
+      await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { artifactType: type } });
+      router.refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setKindBusy(null);
+    }
+  }
+  const showKinds = writing && !content.trim() && !base?.content?.trim() && !proposal;
   const isCarousel = artifact.type === "carousel" && carousel;
   // "Arrange slides" (More sheet) asks the carousel canvas to open Arrange; each ask is a new number.
   const [arrangeReq, setArrangeReq] = useState(0);
@@ -537,16 +590,34 @@ export function Studio({
         <p className="text-[12px] text-ink-subtle sm:hidden" aria-hidden>
           {saveLabel}
         </p>
-        <button
-          type="button"
-          onClick={() => setSheet("format")}
-          className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface"
-          aria-haspopup="dialog"
-        >
-          <KitArt art={KIT.iconChip[MODE_ICON[outputModeOf(artifact.type)] ?? "type"]} sizes="1.25rem" className="size-5" />
-          {modeLabel}
-          <ChevronDown className="size-3.5 text-ink-subtle" aria-hidden />
-        </button>
+        {writing ? (
+          // The Writing page's two secondary actions: its cover (and how the words are set), and reading it on its own.
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={() => setSheet("cover")} aria-haspopup="dialog" className="inline-flex min-h-11 items-center">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <ImageIcon className="size-4 text-ink-muted" aria-hidden />
+                Cover
+              </span>
+            </button>
+            <Link href={`/creations/${artifact.id}/read`} className="inline-flex min-h-11 items-center">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <BookOpen className="size-4 text-ink-muted" aria-hidden />
+                Read
+              </span>
+            </Link>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSheet("format")}
+            className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface"
+            aria-haspopup="dialog"
+          >
+            <KitArt art={KIT.iconChip[MODE_ICON[outputModeOf(artifact.type)] ?? "type"]} sizes="1.25rem" className="size-5" />
+            {modeLabel}
+            <ChevronDown className="size-3.5 text-ink-subtle" aria-hidden />
+          </button>
+        )}
       </div>
 
       {offline ? (
@@ -657,6 +728,56 @@ export function Studio({
                 </article>
               )}
             </div>
+          ) : mode === "view" && writing ? (
+            // The Writing page (creation-pages.md): the words set over the cover, over it blurred, or on paper. They scroll.
+            <div
+              className="relative h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] bg-[#f7f2ea]"
+              style={look === "paper" ? { backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" } : undefined}
+            >
+              {look !== "paper" && artifact.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={artifact.coverUrl} alt="" className={cn("absolute inset-0 size-full object-cover", look === "blur" && "scale-110 blur-2xl")} />
+              ) : null}
+              {look === "cover" ? (
+                <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.6)_40%,rgba(20,18,40,0.88)_100%)]" />
+              ) : look === "blur" ? (
+                <span aria-hidden className="absolute inset-0 bg-[#f7f2ea]/15" />
+              ) : null}
+              <div
+                tabIndex={0}
+                aria-label={`${title || "Untitled"}, read`}
+                className={cn(
+                  "absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-10 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent sm:px-8",
+                  look === "cover" ? "pt-[18vh] text-white" : "pt-8 text-ink sm:pt-12",
+                )}
+              >
+                <div
+                  className={cn(
+                    look === "blur" && "mx-auto max-w-[36rem] rounded-[26px] bg-[#f7f2ea]/80 px-4 py-7 shadow-[0_24px_60px_-28px_rgba(40,30,20,0.55)] backdrop-blur-md sm:px-10 sm:py-10",
+                    look === "paper" && "mx-auto max-w-[36rem] px-1",
+                    verse && "text-center",
+                  )}
+                >
+                  {look !== "cover" ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-subtle">{artifact.typeLabel}</p> : null}
+                  <h2 className={cn("font-display leading-[1.08] [text-wrap:balance]", look === "cover" ? "text-[34px] [text-shadow:0_1px_14px_rgba(0,0,0,0.45)] sm:text-[44px]" : "mt-1.5 text-[30px] sm:text-[38px]")}>{title || "Untitled"}</h2>
+                  {look !== "cover" ? <div aria-hidden className={cn("mt-4 h-px w-14 bg-ink/15", verse && "mx-auto")} /> : null}
+                  <p className={cn("mt-5 whitespace-pre-wrap", readFont, look === "cover" && "text-white/95 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]")}>
+                    {!content ? (
+                      <span className={look === "cover" ? "text-white/75" : "text-ink-subtle"}>Nothing written yet. Tap Write to start.</span>
+                    ) : verse ? (
+                      // A line that has to wrap on a phone wraps evenly, not with one word left over.
+                      content.split("\n").map((line, k) => (
+                        <span key={k} className="block min-h-[1lh] [text-wrap:balance]">
+                          {line}
+                        </span>
+                      ))
+                    ) : (
+                      content
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : mode === "view" ? (
             // Immersive reading (board §1; owner, 3 Oct 2026: "capture the full canvas… the text should scroll so one can
             // read the full text"): the Creation over its cover, filling the screen; the words scroll over the picture.
@@ -686,6 +807,24 @@ export function Studio({
             </div>
           ) : (
             <>
+              {showKinds ? (
+                <div role="group" aria-label="Kind of writing" className="flex items-center gap-1 px-4 pt-3 sm:px-9 sm:pt-5">
+                  {WRITING_KINDS.map((k) => (
+                    <button
+                      key={k.type}
+                      type="button"
+                      aria-pressed={artifact.type === k.type}
+                      disabled={!!kindBusy}
+                      onClick={() => void chooseKind(k.type)}
+                      className="inline-flex min-h-11 items-center"
+                    >
+                      <span className={cn("inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium", artifact.type === k.type ? "bg-accent-soft text-accent-ink" : "text-ink-muted hover:bg-black/5")}>
+                        {kindBusy === k.type ? "…" : k.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <label htmlFor="editor" className="sr-only">
                 {artifact.typeLabel} text
               </label>
@@ -697,8 +836,13 @@ export function Studio({
                 onBlur={() => setTimeout(() => setSelection(""), 200)}
                 autoFocus={!!version?.content}
                 spellCheck
-                className={cn("block h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10", editorFont)}
-                placeholder="Start with anything…"
+                className={cn(
+                  "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10",
+                  showKinds ? "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-12.75rem)] pt-3 sm:pt-4" : "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
+                  editorFont,
+                )}
+                style={writing ? { backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" } : undefined}
+                placeholder={writing ? (verse ? "The first line…" : artifact.format === "screenplay" ? "INT. A ROOM — NIGHT" : "Begin anywhere…") : "Start with anything…"}
               />
             </>
           )}
@@ -839,7 +983,15 @@ export function Studio({
 
       {/* Bottom bar (§7, §64): pen · the Working Table bar (Sources N · M in use ^) */}
       <div className="pointer-events-none fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-3xl items-center gap-2">
-        {!isCarousel && !proposal ? (
+        {writing && !proposal ? (
+          // Write: the page's one primary action. While writing, Done sets the words back on their cover or paper.
+          <button type="button" onClick={() => setMode((m) => (m === "view" ? "edit" : "view"))} aria-pressed={mode === "edit"} className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
+            <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
+              {mode === "view" ? <PenLine className="size-4" aria-hidden /> : <Check className="size-4" aria-hidden />}
+              {mode === "view" ? "Write" : "Done"}
+            </span>
+          </button>
+        ) : !isCarousel && !proposal ? (
           <button
             type="button"
             onClick={() => setMode((m) => (m === "view" ? "edit" : "view"))}
@@ -964,7 +1116,20 @@ export function Studio({
       <Dialog open={sheet === "more"} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent title="Save, version and publish" description="Keep experimenting; save when ready." art={KIT.mark.starGold}>
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
-            {[
+            {(writing
+              ? [
+                  { label: "Publish as link", hint: "Its own page — the cover, the paper, your name", act: () => setSheet("publish") },
+                  { label: "Refine with CreativeMind", hint: "Improve, shorten, or a quality review", act: () => setSheet("refine") },
+                  { label: "Export", hint: artifact.format === "screenplay" ? "Fountain, text, Markdown or a web page" : "Markdown, text or a web page", act: () => setSheet("export") },
+                  { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+                  { label: "Save version", hint: `v${(base?.number ?? 0) + 1} – ${artifact.typeLabel} (${title || "Untitled"})`, act: () => setSheet("save") },
+                  { label: "Versions", hint: `v${base?.number ?? 1} is current`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
+                  { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+                  ...(askFragment && askOn ? [{ label: "Ask Pulse", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
+                  { label: "Change format", hint: "Make a carousel, video, etc. from it", act: () => setSheet("format") },
+                  { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                ]
+              : [
               ...(!isCarousel
                 ? [
                     { label: "Read it on its own", hint: "Just the words, full screen", act: () => router.push(`/creations/${artifact.id}/read`) },
@@ -991,7 +1156,7 @@ export function Studio({
               { label: "Share (private link)", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
               { label: "Publish", hint: "To profile, social, webhook", act: () => router.push(`/creations/${artifact.id}/publish`) },
               { label: "Rights & license", hint: "Set commercial rights", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
-            ].map((row) => (
+            ]).map((row) => (
               <li key={row.label}>
                 <button type="button" onClick={row.act} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left hover:bg-black/[0.02]">
                   <span className="min-w-0 flex-1">
@@ -1004,6 +1169,13 @@ export function Studio({
           </ul>
         </DialogContent>
       </Dialog>
+      {writing ? (
+        <>
+          <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} onCover={chooseCover} />
+          <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={dirty} onSaveFirst={() => setSheet("save")} />
+          <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={dirty} />
+        </>
+      ) : null}
       <SaveVersionSheet
         open={sheet === "save"}
         onOpenChange={(o) => !o && setSheet(null)}

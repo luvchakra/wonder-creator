@@ -39,7 +39,7 @@ test.describe("Studio integration", () => {
     await page.goto(`/dejavu/${dv.id}`);
     await page.getByRole("button", { name: "Explore in Studio" }).click();
     await page.getByRole("dialog", { name: "Explore in Studio" }).getByRole("button", { name: /In the Studio you were last in/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio`));
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/(?:studio|write)`));
     const again = await openTable(page);
     await expect(again.getByRole("button", { name: new RegExp(`Railways ${tag} · 2 Moments available`) })).toBeVisible();
     await page.keyboard.press("Escape");

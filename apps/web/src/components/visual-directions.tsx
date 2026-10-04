@@ -22,6 +22,8 @@ export function VisualDirections({
   title = "Visual directions",
   className,
   slideTexts,
+  useLabel,
+  onUse,
 }: {
   creationId?: string;
   materialIds?: string[];
@@ -30,6 +32,9 @@ export function VisualDirections({
   className?: string;
   /** A Carousel's words per slide, in order: the text editor starts each image with its slide's line. */
   slideTexts?: string[];
+  /** A use of the chosen image beyond the Creation's references (e.g. "Use as cover"): it's kept as a Material first. */
+  useLabel?: string;
+  onUse?: (materialId: string) => void | Promise<void>;
 }) {
   const [textAt, setTextAt] = useState<number | null>(null);
   const [reply, setReply] = useState<Reply | null>(null);
@@ -95,6 +100,7 @@ export function VisualDirections({
       const r = await api<{ materialId: string }>(`/api/v1/image-generations/${gen.id}/save`, { method: "POST", json: { assetId: a.id, useInCreation } });
       setReply((prev) => (prev?.generation ? { ...prev, generation: { ...prev.generation, assets: prev.generation.assets.map((x) => (x.id === a.id ? { ...x, savedMaterialId: r.materialId, selected: true } : x)) } } : prev));
       setSavedTo(useInCreation ? "creation" : "material");
+      if (useInCreation && onUse) await onUse(r.materialId);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -290,9 +296,9 @@ export function VisualDirections({
                   <Button size="sm" variant="secondary" onClick={() => setTextAt(at)} className={isCarousel ? "order-first" : "order-last"}>
                     <Type className="size-4" aria-hidden /> Add text
                   </Button>
-                  {creationId && savedTo !== "creation" ? (
-                    <Button size="sm" onClick={() => save(chosen, true)} loading={saving}>
-                      Use in this Creation
+                  {creationId && (savedTo !== "creation" || onUse) ? (
+                    <Button size="sm" onClick={() => (onUse && chosen.savedMaterialId ? onUse(chosen.savedMaterialId) : save(chosen, true))} loading={saving}>
+                      {useLabel ?? "Use in this Creation"}
                     </Button>
                   ) : null}
                   {!creationId && !chosen.savedMaterialId ? (

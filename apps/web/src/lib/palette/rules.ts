@@ -388,10 +388,11 @@ export function rulesFor(ctx: PaletteContext): Rules {
 /** §7 / §9.12–9.15: what a Creation offers depends on where it is in its life, and on who's looking. */
 function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
   const id = ctx.ids?.artifactId;
+  const work = ctx.facts?.workPath ?? `${a}/studio`;
   const it = {
-    continue: { id: "continue", label: "Continue Creating", icon: "pen", class: "create", target: route(`${a}/studio`), score: 100, requires: "edit" },
+    continue: { id: "continue", label: "Continue Creating", icon: "pen", class: "create", target: route(work), score: 100, requires: "edit" },
     bring: { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route(`/create?artifact=${id}`), score: 90, requires: "edit" },
-    refine: { id: "refine", label: "Refine", hint: "CreativeMind suggestions", icon: "spark", class: "transform", target: route(`${a}/studio#creativemind`), score: 85, requires: "edit" },
+    refine: { id: "refine", label: "Refine", hint: "CreativeMind suggestions", icon: "spark", class: "transform", target: route(`${work}#creativemind`), score: 85, requires: "edit" },
     people: { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`${a}/collaborate`), score: 70, requires: "collaborate" },
     references: { id: "references", label: "References", class: "context", target: route(`${a}/context?tab=references`), score: 45 },
     transform: { id: "transform", label: "Transform", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 44, requires: "edit" },
@@ -427,7 +428,7 @@ function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
       ];
     case "review":
       return [
-        { id: "review", label: "Review", hint: "Quality review", icon: "spark", class: "transform", target: route(`${a}/studio#creativemind`), score: 100, requires: "edit" },
+        { id: "review", label: "Review", hint: "Quality review", icon: "spark", class: "transform", target: route(`${work}#creativemind`), score: 100, requires: "edit" },
         bump(it.refine, 95),
         { id: "compare", label: "Compare Versions", class: "context", target: route(`${a}/compare`), score: 90 },
         bump(it.people, 85),

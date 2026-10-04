@@ -13,3 +13,4 @@ export * from "./business";
 export * from "./working-set";
 export * from "./studio-community";
 export * from "./creator-publish";
+export * from "./creation-pages";

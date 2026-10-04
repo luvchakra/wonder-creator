@@ -114,8 +114,8 @@ test.describe("creating with CreativeMind", () => {
     await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
     await dialog.getByLabel("Title").fill(`Song of ${word}`);
     await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
-    const artifactUrl = page.url().replace(/\/studio$/, "");
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
+    const artifactUrl = page.url().replace(/\/(?:studio|write)$/, "");
 
     await page.getByRole("button", { name: "Search your creativity" }).click();
     const search = page.getByRole("search", { name: "Search" });
