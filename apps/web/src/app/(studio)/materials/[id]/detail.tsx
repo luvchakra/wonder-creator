@@ -1,7 +1,7 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
 import { Badge, Button, ConfirmDialog, CreativeMindInsight, ErrorState, Field, Input, Select, Tab, TabList, TabPanel, Tabs, TagInput, Textarea, buttonClasses } from "@wonder/ui";
-import { Archive, BookmarkPlus, Download, ExternalLink, FolderPlus, Lock, MessageCircle, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { Archive, Download, ExternalLink, FolderPlus, Lock, MessageCircle, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -49,7 +49,6 @@ export function MaterialDetail({
   url,
   file,
   intake,
-  shelves,
   usedIn,
   collections,
   inCollections,
@@ -94,7 +93,6 @@ export function MaterialDetail({
     sha256: string;
   } | null;
   intake: { id: string; state: string; error_message: string | null } | null;
-  shelves: Array<{ id: string; name: string }>;
   /** DejaVu chips (docs/moments-dejavu.md §10). */
   dejavu?: React.ReactNode;
   usedIn: Array<{ id: string; title: string; artifact_type: string }>;
@@ -114,7 +112,6 @@ export function MaterialDetail({
   const [sourceNote, setSourceNote] = useState(m.sourceNote ?? "");
   const [collection, setCollection] = useState(collections.find((c) => !inCollections.includes(c.id))?.id ?? "");
   const [tags, setTags] = useState(m.tags);
-  const [shelf, setShelf] = useState(shelves[0]?.id ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -481,39 +478,6 @@ export function MaterialDetail({
                   Create a collection
                 </Link>
               )}
-            </section>
-
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">Reference Shelf</h2>
-              <div className="mt-3 flex gap-2">
-                <label htmlFor="shelf" className="sr-only">
-                  Shelf
-                </label>
-                <Select id="shelf" value={shelf} onChange={(e) => setShelf(e.target.value)}>
-                  {shelves.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-                <Button
-                  variant="secondary"
-                  loading={busy === "ref"}
-                  onClick={() =>
-                    run(
-                      "ref",
-                      () =>
-                        api("/api/v1/references/items", {
-                          method: "POST",
-                          json: { materialId: m.id, shelfId: shelf || null },
-                        }),
-                      "Added to your Reference Shelf.",
-                    )
-                  }
-                >
-                  <BookmarkPlus className="size-4" aria-hidden /> Add<span className="sr-only"> to shelf</span>
-                </Button>
-              </div>
             </section>
 
             <section className="rounded-2xl border border-border-soft bg-surface p-5">

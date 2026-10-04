@@ -211,6 +211,7 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | 3 · Audio page | Done | `/creations/[id]/audio`: Record (again) is the primary action; the take plays above the words; Listen and Download the secondaries. Every kept take is a version naming its voice Material; earlier takes stay. The transcript can become the words |
 | Writing page Palette | Done | Owner: "less about AI, more about supporting the writing type". Lines & stanzas / Headline & lede / Scenes & runtime / Length & reading time, Hear it read, Publish as link. Removed from the first level: Preview (on the page), Transform (More › Change format), Visual directions |
 | Make a new Creation | Done | Writing · Carousel · Images · Audio (Video and Presentation removed, owner); "Collaborate with others" (a new Creative Room) replaces "Let CreativeMind decide" |
+| My Creative Space: no Reference Shelf; hold to delete | Done | Owner: "remove reference shelf" / "long press the items here to delete them". The header's Reference Shelf button and the Material page's shelf section are gone (data and the Inspirations tab stay). Press and hold a card — or right-click / the context-menu key — to delete it after one confirmation; a tap still opens it (`components/hold-to-delete.tsx`) |
 | 4 · Presentation · 5 · Video | Not started | |
 
 ## Owner requests, 4 Oct 2026 (afternoon)

@@ -1,4 +1,4 @@
-import { getMaterial, listCollections, listShelves, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
+import { getMaterial, listCollections, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { entityDejaVus } from "@wonder/creator-moments";
 import { notFound } from "next/navigation";
 import { ContextBack } from "@/components/context-back";
@@ -34,9 +34,8 @@ export default async function MaterialPage({ params, searchParams }: { params: P
   const { db, creator } = await requireSession();
   const m = await getMaterial(db, id).catch(() => null);
   if (!m) notFound();
-  const [url, shelves, intake, usedIn, collections, memberships, similar] = await Promise.all([
+  const [url, intake, usedIn, collections, memberships, similar] = await Promise.all([
     m.storage_object_id ? signedUrlFor(db, m.storage_object_id, 900) : Promise.resolve(null),
-    listShelves(db),
     db.from("intake_items").select("id, state, error_message").eq("material_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("lineage_edges").select("target_id, relationship").eq("source_type", "material").eq("source_id", id).eq("target_type", "artifact"),
     listCollections(db).catch(() => []),
@@ -118,7 +117,6 @@ export default async function MaterialPage({ params, searchParams }: { params: P
         url={url}
         file={obj}
         intake={intake.data}
-        shelves={shelves.map((s) => ({ id: s.id, name: s.name }))}
         usedIn={arts ?? []}
         collections={collections.map((c) => ({ id: c.id, name: c.name }))}
         inCollections={(memberships.data ?? []).map((r) => r.collection_id)}
