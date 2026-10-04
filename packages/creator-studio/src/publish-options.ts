@@ -130,19 +130,20 @@ export interface PublishSettings {
 }
 
 const WRITING_POEM = new Set(["poem", "lyrics", "spoken_word"]);
-const VIEW_TYPES = new Set(["visual_concept", "poster", "album_art", "visual_post", "thumbnail_concept", "moodboard", "art_series", "photo_essay"]);
-const JOURNEY_TYPES = new Set(["documentary", "film_treatment"]);
+const VIEW_TYPES = new Set(["visual_concept", "poster", "album_art", "visual_post", "thumbnail_concept", "moodboard", "art_series"]);
+const JOURNEY_TYPES = new Set(["photo_essay", "documentary", "film_treatment"]);
 const WATCH_TYPES = new Set(["short_film", "trailer", "reel_concept"]);
 const LISTEN_TYPES = new Set(["podcast_concept", "song_concept", "sound_design", "spoken_word", "narration"]);
 
 export const isPoem = (type: string) => WRITING_POEM.has(type);
 
 /** The experiences a snapshot can honestly support; the first is the one inferred from its type (§27: change only when several fit). */
-export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks">): PublicationExperience[] {
+export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks" | "pictures">): PublicationExperience[] {
   const hasText = !!s.content.trim();
   const out: PublicationExperience[] = [];
   const add = (e: PublicationExperience, ok: boolean) => ok && !out.includes(e) && out.push(e);
-  // The type decides first…
+  // Pictures shaped on the Images page (creation-pages.md, step 2) are viewed, pictures first; then the type decides…
+  add("view", !!s.pictures?.length);
   if (type === "carousel" || type === "social_series") add("swipe", !!s.slides?.length);
   if (WATCH_TYPES.has(type)) add("watch", s.media?.kind === "video");
   if (LISTEN_TYPES.has(type)) add("listen", s.media?.kind === "audio");

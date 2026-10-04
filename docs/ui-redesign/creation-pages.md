@@ -82,8 +82,8 @@ the same on the canvas, the Read page and the published page (`components/writin
   (`structured_content`: `{ kind: "images", items: [{ materialId, caption, edits, words }] }`); **every Keep is a new
   version**, so any earlier look can be restored. A picture new to the Creation must be the creator's own and gains a
   `contains_material` lineage edge. `POST /api/v1/artifacts/[id]/images`.
-- **Published** (`snapshot.pictures`): the View experience shows each picture as shaped, with its caption; a photo essay
-  is viewed, pictures first (it was a Journey before).
+- **Published** (`snapshot.pictures`): the View experience shows each picture as shaped, with its caption. A photo essay
+  shaped here is viewed, pictures first; one that is words with pictures stays a Journey.
 - Implementation: `packages/creator-studio/src/image-options.ts` (model, filters → CSS and pixel ops),
   `creation-images.ts` (save), `apps/web/src/components/images/edited-image.tsx` (preview + canvas export),
   `…/studio/images-canvas.tsx`, `…/creations/[id]/image`. Tests: `image-options.test.ts`, `e2e/images-page.spec.ts`.
