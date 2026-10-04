@@ -16,23 +16,25 @@ const MODE_CHIP: Record<OutputMode, keyof typeof KIT.iconChip> = {
   presentation: "file",
 };
 
+/** The formats offered here (owner, 4 Oct 2026: Video and Presentation removed until their pages exist). */
+const OFFERED = new Set<OutputMode>(["writing", "carousel", "image", "audio"]);
+
 /**
- * Palette › Create (owner, 2 Oct 2026: "on click of create, show all the creation type options"): every format at once,
- * the same tiles as the Studio's "Make a new Creation". A tap makes the Creation and opens the page built for its format
- * (creation-pages.md: Writing has its own; the rest open the Studio until theirs arrive); "Let CreativeMind
- * decide" hands over to meTalk. Bringing in and capturing stay one quiet line below.
+ * Palette › Create (owner, 2 Oct 2026: "on click of create, show all the creation type options"): the formats at once.
+ * A tap makes the Creation and opens the page built for its format (creation-pages.md). Below them, making together:
+ * Collaborate with others opens a new Creative Room (owner, 4 Oct 2026). Bringing in and capturing stay one quiet line.
  */
-export function NewCreationSheet({ open, onOpenChange, onMeTalk }: { open: boolean; onOpenChange: (o: boolean) => void; onMeTalk: () => void }) {
+export function NewCreationSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Make a new Creation" description="Choose a format to start with. You can change it later." art={KIT.mark.sun}>
-        {open ? <Body onDone={() => onOpenChange(false)} onMeTalk={onMeTalk} /> : null}
+        {open ? <Body onDone={() => onOpenChange(false)} /> : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function Body({ onDone, onMeTalk }: { onDone: () => void; onMeTalk: () => void }) {
+function Body({ onDone }: { onDone: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState<OutputMode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ function Body({ onDone, onMeTalk }: { onDone: () => void; onMeTalk: () => void }
   return (
     <div className="space-y-3">
       <ul className="grid grid-cols-2 gap-2" aria-label="Formats">
-        {OUTPUT_MODES.map((m) => (
+        {OUTPUT_MODES.filter((m) => OFFERED.has(m.key)).map((m) => (
           <li key={m.key}>
             <button
               type="button"
@@ -69,21 +71,18 @@ function Body({ onDone, onMeTalk }: { onDone: () => void; onMeTalk: () => void }
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        disabled={busy !== null}
-        onClick={() => {
-          onDone();
-          onMeTalk();
-        }}
-        className="flex min-h-12 w-full items-center gap-2.5 rounded-2xl border border-border-soft bg-surface p-2.5 text-left hover:border-accent/50 hover:bg-accent-softer disabled:opacity-60"
+      {/* Making together (owner, 4 Oct 2026: "in place of CreativeMind, mention collaborate with others"): a Creative Room. */}
+      <Link
+        href="/rooms?new=1"
+        onClick={onDone}
+        className="flex min-h-12 w-full items-center gap-2.5 rounded-2xl border border-border-soft bg-surface p-2.5 text-left hover:border-accent/50 hover:bg-accent-softer"
       >
-        <KitArt art={KIT.iconChip.sparkles} sizes="2.25rem" className="size-9 shrink-0" />
+        <KitArt art={KIT.iconChip.users} sizes="2.25rem" className="size-9 shrink-0" />
         <span>
-          <span className="block text-[13.5px] font-medium text-ink">Let CreativeMind decide</span>
-          <span className="block text-[11.5px] text-ink-subtle">Say what you have in mind with meTalk</span>
+          <span className="block text-[13.5px] font-medium text-ink">Collaborate with others</span>
+          <span className="block text-[11.5px] text-ink-subtle">Start a Creative Room and invite people to make it with you</span>
         </span>
-      </button>
+      </Link>
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}

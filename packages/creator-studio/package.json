@@ -14,6 +14,8 @@
     "./working-set": "./src/working-set-options.ts",
     "./pages": "./src/creation-pages.ts",
     "./images": "./src/image-options.ts",
+    "./audio": "./src/audio-options.ts",
+    "./craft": "./src/writing-craft.ts",
     "./publish": "./src/publish-options.ts",
     "./creator-page": "./src/creator-page-templates.ts"
   }

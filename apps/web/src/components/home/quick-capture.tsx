@@ -9,6 +9,7 @@ import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
 import { api, errorMessage } from "@/lib/client";
 import { PRIORITY } from "@/lib/context-strip/types";
 import { sendToCreator } from "@/lib/send";
+import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { trackClient } from "@/lib/track";
 
 /**
@@ -433,109 +434,16 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
 /* ------------------------------------------------------------------------------------------------- Voice note */
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const MAX_SECONDS = 20 * 60;
-
-type VoiceState =
-  | { phase: "starting" }
-  | { phase: "recording" }
-  | { phase: "recorded"; blob: Blob; url: string; seconds: number }
-  | { phase: "blocked"; message: string };
+const MAX_SECONDS = MAX_RECORD_SECONDS;
 
 function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: string | null; seconds: number; url: string }) => void; onWriteInstead: () => void }) {
-  const [state, setState] = useState<VoiceState>({ phase: "starting" });
-  const [seconds, setSeconds] = useState(0);
+  // Recording starts as soon as the sheet opens (§6.2); the recorder is shared with the Audio page.
+  const { state, seconds, levelRef: level, stop } = useAudioRecorder({ maxSeconds: MAX_SECONDS });
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
-  const rec = useRef<MediaRecorder | null>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const level = useRef<HTMLSpanElement>(null);
   const player = useRef<HTMLAudioElement | null>(null);
   const clientId = useRef<string>(crypto.randomUUID());
-  const startedAt = useRef(0);
-
-  const release = useCallback(() => {
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-  }, []);
-
-  // Recording starts as soon as the sheet opens (§6.2).
-  useEffect(() => {
-    let cancelled = false;
-    let raf = 0;
-    let tick: ReturnType<typeof setInterval> | undefined;
-    let ctx: AudioContext | null = null;
-    (async () => {
-      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-        setState({ phase: "blocked", message: "This browser can't record audio. Try another browser, or write a quick note instead." });
-        return;
-      }
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (cancelled) return s.getTracks().forEach((t) => t.stop());
-        stream.current = s;
-        const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported?.(t));
-        const r = new MediaRecorder(s, type ? { mimeType: type } : undefined);
-        const chunks: Blob[] = [];
-        r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-        r.onstop = () => {
-          const blob = new Blob(chunks, { type: r.mimeType || type || "audio/webm" });
-          const secs = Math.max(1, Math.round((Date.now() - startedAt.current) / 1000));
-          release();
-          setState({ phase: "recorded", blob, url: URL.createObjectURL(blob), seconds: secs });
-        };
-        rec.current = r;
-        startedAt.current = Date.now();
-        r.start(250);
-        setState({ phase: "recording" });
-        tick = setInterval(() => {
-          const secs = Math.floor((Date.now() - startedAt.current) / 1000);
-          setSeconds(secs);
-          if (secs >= MAX_SECONDS && r.state === "recording") r.stop();
-        }, 250);
-        // A live level, drawn straight onto the bar (no re-render per frame).
-        try {
-          ctx = new AudioContext();
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 256;
-          ctx.createMediaStreamSource(s).connect(analyser);
-          const data = new Uint8Array(analyser.frequencyBinCount);
-          const draw = () => {
-            analyser.getByteTimeDomainData(data);
-            let peak = 0;
-            for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
-            if (level.current) level.current.style.transform = `scaleX(${Math.min(1, 0.06 + peak / 70).toFixed(3)})`;
-            raf = requestAnimationFrame(draw);
-          };
-          draw();
-        } catch {
-          /* no meter; recording still works */
-        }
-      } catch (e) {
-        const name = e instanceof DOMException ? e.name : "";
-        setState({
-          phase: "blocked",
-          message:
-            name === "NotAllowedError" || name === "SecurityError"
-              ? "Microphone access is off. Allow it for this site in your browser, or write a quick note instead."
-              : name === "NotFoundError"
-                ? "No microphone was found. Connect one, or write a quick note instead."
-                : "The microphone couldn't start. Try again, or write a quick note instead.",
-        });
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (tick) clearInterval(tick);
-      cancelAnimationFrame(raf);
-      void ctx?.close().catch(() => undefined);
-      if (rec.current?.state === "recording") {
-        rec.current.onstop = null;
-        rec.current.stop();
-      }
-      release();
-    };
-  }, [release]);
 
   const recorded = state.phase === "recorded" ? state : null;
   // The recording's address is handed to the saved panel for playback; otherwise it's released.
@@ -552,32 +460,12 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
     if (!recorded) return;
     setError(null);
     setProgress(0);
-    const form = new FormData();
-    form.set("clientId", clientId.current);
-    form.set("seconds", String(recorded.seconds));
-    form.set("file", new File([recorded.blob], "voice-note", { type: recorded.blob.type }));
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/v1/capture");
-    xhr.upload.onprogress = (e) => e.lengthComputable && setProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => {
-      setProgress(null);
-      let body: { materialId?: string | null; error?: { message?: string } } = {};
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        /* handled below */
-      }
-      if (xhr.status >= 200 && xhr.status < 300) {
+    uploadRecording(recorded, clientId.current, setProgress)
+      .then((r) => {
         kept.current = true;
-        onSaved({ materialId: body.materialId ?? null, seconds: recorded.seconds, url: recorded.url });
-      } else
-        setError(`${body.error?.message ?? "We couldn't save it."} Your recording is still here — try again.`);
-    };
-    xhr.onerror = () => {
-      setProgress(null);
-      setError(navigator.onLine ? "The connection dropped. Your recording is still here — try again." : "You're offline. Your recording is still here — save it when you're back online.");
-    };
-    xhr.send(form);
+        onSaved({ materialId: r.materialId, seconds: recorded.seconds, url: recorded.url });
+      })
+      .catch((e) => setError(errorMessage(e)));
   }
 
   if (state.phase === "blocked")
@@ -628,9 +516,7 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
         type="button"
         className={cn("w-full")}
         disabled={state.phase !== "recording"}
-        onClick={() => {
-          if (rec.current?.state === "recording") rec.current.stop();
-        }}
+        onClick={stop}
       >
         <Square className="size-4 fill-current" aria-hidden /> Stop
       </Button>

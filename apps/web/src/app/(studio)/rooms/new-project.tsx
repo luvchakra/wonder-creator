@@ -6,9 +6,10 @@ import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 
 /** Start a project with a name and (optionally) a brief, then open it to add work. */
-export function NewProjectButton() {
+export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  // Opened straight from Make a new Creation › Collaborate with others (owner, 4 Oct 2026).
+  const [open, setOpen] = useState(initialOpen);
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
   const [started, setStarted] = useState(false);

@@ -497,3 +497,20 @@ export async function seedNotes(userId: string, notes: Array<{ title: string; te
     if (!m.ok) throw new Error(`seedNotes: ${m.status} ${await m.text()}`);
   }
 }
+
+/** A fake microphone (an oscillator), or one the browser refuses. Set before the page loads. */
+export async function fakeMicrophone(page: Page, allowed: boolean) {
+  await page.addInitScript((ok) => {
+    const md = navigator.mediaDevices ?? ({} as MediaDevices);
+    Object.defineProperty(navigator, "mediaDevices", { value: md, configurable: true });
+    md.getUserMedia = async () => {
+      if (!ok) throw new DOMException("Permission denied", "NotAllowedError");
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const dest = ctx.createMediaStreamDestination();
+      osc.connect(dest);
+      osc.start();
+      return dest.stream;
+    };
+  }, allowed);
+}

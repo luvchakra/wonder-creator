@@ -11,7 +11,7 @@ export const metadata = { title: "Creative Rooms" };
 
 const FILTERS = [{ key: "open", label: "All" }, ...PROJECT_STATUSES.map((s) => ({ key: s, label: PROJECT_STATUS_LABEL[s] }))] as const;
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; new?: string }> }) {
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const status = (FILTERS.find((f) => f.key === sp.status)?.key ?? "open") as ProjectStatus | "open";
@@ -20,7 +20,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageTitle art={KIT.painted.flowerBranch} title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton />} />
+      <PageTitle art={KIT.painted.flowerBranch} title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton initialOpen={sp.new === "1"} />} />
       {invites.length ? (
         <section aria-label="Crew invitations" className="mb-6 space-y-2">
           {invites.map((i) => (

@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, ImagePlus, SlidersHorizontal, Type } from "lucide-react";
+import { ArrowLeft, Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, ImagePlus, Mic, SlidersHorizontal, Type } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,6 +22,8 @@ import { WorkingTable, type ExternalAdded } from "./working-table";
 import { WrittenPiece } from "@/components/writing/written-piece";
 import type { ImageSet } from "@wonder/creator-studio/images";
 import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas";
+import { AloudSheet, CraftSheet } from "./writing-tools";
+import { AudioPanel, type AudioRequest, type AudioTakeView } from "./audio-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
 
 /**
@@ -33,6 +35,7 @@ import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-
 export function Studio({
   page = "studio",
   images,
+  audio,
   published = null,
   artifact,
   version,
@@ -47,11 +50,13 @@ export function Studio({
   offline,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
-  page?: "writing" | "images" | "studio";
+  page?: "writing" | "images" | "audio" | "studio";
   /** Published and reachable: the live link, and whether newer saved words exist here. */
   published?: { url: string; newer: boolean } | null;
   /** The Images page's pictures and what was done to them (creation-pages.md, step 2). */
   images?: { set: ImageSet; pictures: Record<string, Picture> } | null;
+  /** The Audio page's kept take (creation-pages.md, step 3). */
+  audio?: { take: AudioTakeView | null } | null;
   artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string; ornament?: OrnamentKey };
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
@@ -78,11 +83,12 @@ export function Studio({
   const [content, setContent] = useState(version?.content ?? "");
   const [base, setBase] = useState(version);
   const [title, setTitle] = useState(artifact.title);
-  const [mode, setMode] = useState<"view" | "edit">(version?.content ? "view" : "edit");
+  // The Audio page has no reading view: the recording sits above the words, which are always editable.
+  const [mode, setMode] = useState<"view" | "edit">(version?.content && page !== "audio" ? "view" : "edit");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export" | "kind">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export" | "kind" | "craft" | "aloud">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -204,13 +210,19 @@ export function Studio({
   const writingCanvas = artifact.type !== "carousel" && page !== "images";
   useEffect(() => {
     if (!writingCanvas) return;
+    // The Writing page's own tools arrive the same way from the Palette: #craft (that kind's counts) and #aloud. The hash
+    // is cleared once read, so the same leaf opens it again next time.
     const open = () => {
-      if (window.location.hash === "#creativemind") setSheet("refine");
+      const h = window.location.hash;
+      const to = h === "#creativemind" ? "refine" : h === "#craft" && page === "writing" ? "craft" : h === "#aloud" && page === "writing" ? "aloud" : null;
+      if (!to) return;
+      setSheet(to);
+      if (to !== "refine") history.replaceState(history.state, "", window.location.pathname + window.location.search);
     };
     open();
     window.addEventListener("hashchange", open);
     return () => window.removeEventListener("hashchange", open);
-  }, [writingCanvas]);
+  }, [writingCanvas, page]);
   if (proposal && sheet === "refine") setSheet(null);
   const [view, setView] = useState<"changes" | "original" | "proposed">("changes");
   const [q, setQ] = useState(quality);
@@ -469,6 +481,14 @@ export function Studio({
     setSheet(null);
     setImgReq((r) => ({ kind, n: (r?.n ?? 0) + 1 }));
   };
+  // The Audio page: Record is the primary action, Listen (the page readers would hear) and Download the two secondaries.
+  const audioPage = page === "audio";
+  const take = audio?.take ?? null;
+  const [audioReq, setAudioReq] = useState<AudioRequest>(null);
+  const record = () => {
+    setSheet(null);
+    setAudioReq((r) => ({ kind: "record", n: (r?.n ?? 0) + 1 }));
+  };
   const verse = artifact.format === "verse";
   // Each kind of writing is set after the publications that set it best (creation-pages.md §Writing kinds).
   const style = writingStyleOf(artifact.type);
@@ -638,7 +658,26 @@ export function Studio({
         <p className="text-[12px] text-ink-subtle sm:hidden" aria-hidden>
           {saveLabel}
         </p>
-        {imagesPage ? (
+        {audioPage ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            {take ? (
+              <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                  <Eye className="size-4 text-ink-muted" aria-hidden />
+                  Listen
+                </span>
+              </Link>
+            ) : null}
+            {take?.url ? (
+              <a href={take.url} download className="inline-flex min-h-11 items-center">
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                  <Download className="size-4 text-ink-muted" aria-hidden />
+                  Download
+                </span>
+              </a>
+            ) : null}
+          </div>
+        ) : imagesPage ? (
           <div className="ml-auto flex items-center gap-1.5">
             <button type="button" onClick={() => askImages("words")} aria-haspopup="dialog" disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
               <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
@@ -817,7 +856,7 @@ export function Studio({
                 </article>
               )}
             </div>
-          ) : mode === "view" && writing ? (
+          ) : mode === "view" && writing && !audioPage ? (
             // The Writing page (creation-pages.md): the words set over the cover, over it blurred, or on paper. They scroll.
             <div
               className="relative h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] bg-[#f7f2ea]"
@@ -861,7 +900,7 @@ export function Studio({
                 </div>
               </div>
             </div>
-          ) : mode === "view" ? (
+          ) : mode === "view" && !audioPage ? (
             // Immersive reading (board §1; owner, 3 Oct 2026: "capture the full canvas… the text should scroll so one can
             // read the full text"): the Creation over its cover, filling the screen; the words scroll over the picture.
             // The pen (below) edits; the corner button opens it on a page of its own.
@@ -890,6 +929,20 @@ export function Studio({
             </div>
           ) : (
             <>
+              {audioPage ? (
+                <AudioPanel
+                  artifactId={artifact.id}
+                  take={take}
+                  baseVersionId={base?.id ?? null}
+                  words={content}
+                  request={audioReq}
+                  onKept={(v) => {
+                    setBase({ id: v.id, number: v.version_number, content: v.content });
+                    setSavedVersion(v.version_number);
+                  }}
+                  onUseTranscript={(text) => onType(text)}
+                />
+              ) : null}
               {writing ? (
                 // The kind, above the words while writing too: a poem, an essay, news… changes how the page is set.
                 <div className="absolute left-5 top-4 z-10 text-[11px] font-semibold tracking-[0.16em] text-ink-subtle sm:left-10 sm:top-6">{kindButton(false)}</div>
@@ -907,12 +960,12 @@ export function Studio({
                 spellCheck
                 className={cn(
                   "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10",
-                  "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
+                  audioPage ? "min-h-[16rem] h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-16rem)]" : "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
                   writing && "pt-14 sm:pt-16",
                   editorFont,
                 )}
                 style={writing ? { backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" } : undefined}
-                placeholder={writing ? (verse ? "The first line…" : artifact.format === "screenplay" ? "INT. A ROOM — NIGHT" : "Begin anywhere…") : "Start with anything…"}
+                placeholder={audioPage ? "The words — a script, lyrics, or notes for listeners…" : writing ? (verse ? "The first line…" : artifact.format === "screenplay" ? "INT. A ROOM — NIGHT" : "Begin anywhere…") : "Start with anything…"}
               />
             </>
           )}
@@ -1053,7 +1106,15 @@ export function Studio({
 
       {/* Bottom bar (§7, §64): pen · the Working Table bar (Sources N · M in use ^) */}
       <div className="pointer-events-none fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-3xl items-center gap-2">
-        {imagesPage ? (
+        {audioPage && !proposal ? (
+          // Record: the Audio page's one primary action (Record again once there's a take; the earlier one is kept).
+          <button type="button" onClick={record} aria-haspopup="dialog" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
+            <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
+              <Mic className="size-4" aria-hidden />
+              {take ? "Record again" : "Record"}
+            </span>
+          </button>
+        ) : imagesPage ? (
           // Edit: the Images page's one primary action (Add a picture until there is one).
           <button type="button" onClick={() => askImages(hasPictures ? "edit" : "add")} aria-haspopup="dialog" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
             <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
@@ -1194,7 +1255,18 @@ export function Studio({
       <Dialog open={sheet === "more"} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent title="Save, version and publish" description="Keep experimenting; save when ready." art={KIT.mark.starGold}>
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
-            {(imagesPage
+            {(audioPage
+              ? [
+                  ...(take ? [{ label: "Publish as link", hint: "Its own page — the recording, the words, your name", act: () => setSheet("publish") }] : []),
+                  { label: "Save version", hint: `v${(base?.number ?? 0) + 1} – ${artifact.typeLabel} (${title || "Untitled"})`, act: () => setSheet("save") },
+                  { label: "Export", hint: "The words as Markdown, text or a web page", act: () => setSheet("export") },
+                  { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+                  { label: "Versions", hint: `v${base?.number ?? 1} is current — every take is a version`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
+                  { label: "Make a carousel", hint: "Turn the words into slides — the recording stays here", act: () => setSheet("format") },
+                  { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+                  { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                ]
+              : imagesPage
               ? [
                   { label: "Add a picture", hint: "Take one, choose one of yours, or let CreativeMind make one", act: () => askImages("add") },
                   ...(hasPictures ? [{ label: "Arrange & captions", hint: "The order, and a line under each — a photo essay", act: () => askImages("arrange") }] : []),
@@ -1264,6 +1336,8 @@ export function Studio({
         <>
           <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} ornament={ornament ?? "keystone"} onOrnament={(o) => void chooseOrnament(o)} onCover={chooseCover} />
           <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={dirty} onSaveFirst={() => setSheet("save")} />
+          <CraftSheet open={sheet === "craft"} onOpenChange={(o) => !o && setSheet(null)} style={style} title={title} text={content} />
+          <AloudSheet open={sheet === "aloud"} onOpenChange={(o) => !o && setSheet(null)} title={title} text={content} verse={verse} />
           <KindSheet open={sheet === "kind"} onOpenChange={(o) => !o && setSheet(null)} current={artifact.type} busy={kindBusy} onChoose={(t) => void chooseKind(t)} />
           <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={dirty} />
         </>
