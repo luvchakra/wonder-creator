@@ -219,12 +219,14 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
         ) : (
           <EmptyState
             image={BACKGROUNDS.studioDesk}
-            title={q ? `Nothing matches “${q}”` : "Nothing here yet"}
-            body={q ? "Try another word, or clear the search." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
+            title={q ? `Nothing matches “${q}”` : tab === "shared" ? "Nothing shared yet" : "Nothing here yet"}
+            body={q ? "Try another word, or clear the search." : tab === "shared" ? "Share a Creation with someone and it will show here." : "Bring an idea, photograph, note or voice memo. Everything you bring and make will live here."}
             action={
-              <Link href="/send" className={buttonClasses({})}>
-                Bring something
-              </Link>
+              tab === "shared" ? undefined : (
+                <Link href="/send" className={buttonClasses({})}>
+                  Bring something
+                </Link>
+              )
             }
           />
         )}
