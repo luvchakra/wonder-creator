@@ -19,6 +19,8 @@ export const TELEMETRY_EVENTS = [
   "voice_note_started",
   "voice_note_saved",
   "voice_note_transcribed",
+  "quick_pic_saved",
+  "video_note_saved",
   "home_connection_opened",
   "home_dejavu_opened",
   "home_spark_opened",

@@ -1,13 +1,14 @@
 "use client";
 import { Button, Dialog, DialogContent, KIT, Textarea, cn } from "@wonder/ui";
 import type { DejaVu } from "@wonder/creator-moments/shared";
-import { ArrowRight, Check, Mic, PenLine, Play, Pause, Plus, Square, X } from "lucide-react";
+import { ArrowRight, Camera, Check, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
 import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
 import { api, errorMessage } from "@/lib/client";
 import { PRIORITY } from "@/lib/context-strip/types";
+import { sendToCreator } from "@/lib/send";
 import { trackClient } from "@/lib/track";
 
 /**
@@ -41,7 +42,7 @@ const writeQueue = (q: Pending[]) => {
 /** A fetch that never reached the server (offline, dropped connection), as opposed to a refusal. */
 const unreachable = (e: unknown) => e instanceof TypeError || !navigator.onLine;
 
-type Saved = { kind: "note" | "voice"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null };
+type Saved = { kind: "note" | "voice" | "photo" | "video"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null };
 
 /** Follows a saved capture quietly until it has settled (transcribed or not) and any suggestions are in. */
 function useCaptureStatus(materialId: string | null) {
@@ -133,10 +134,43 @@ export function QuickCapture() {
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
   };
 
+  // Quick Pic and Video Note (owner, 4 Oct 2026): the device's own camera, straight to a Material (through CreatorSend, which
+  // checks the bytes and sends big files browser → storage directly). One tap to capture; no sheet in between.
+  const picRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [media, setMedia] = useState<{ kind: "photo" | "video"; error?: string } | null>(null);
+  function start(key: "text" | "voice" | "photo" | "video") {
+    if (key === "text" || key === "voice") begin(key);
+    else (key === "photo" ? picRef : videoRef).current?.click();
+  }
+  async function captureMedia(kind: "photo" | "video", file: File | undefined) {
+    if (!file) return;
+    if (file.size > (kind === "video" ? 100 : 20) * 1024 * 1024) {
+      setMedia({ kind, error: kind === "video" ? "That video is too long to save here — keep it under about two minutes." : "That picture is too large to save." });
+      return;
+    }
+    setSaved(null);
+    setMedia({ kind });
+    try {
+      const r = await sendToCreator({ files: [file], kind: "camera" });
+      const materialId = r.accepted[0]?.materialId ?? null;
+      if (!r.accepted.length) throw new Error(r.rejected[0]?.message ?? "We couldn't save it.");
+      trackClient(kind === "photo" ? "quick_pic_saved" : "video_note_saved");
+      setMedia(null);
+      setSaved({ kind, materialId });
+    } catch (e) {
+      setMedia({ kind, error: `${errorMessage(e)} Try again.` });
+    }
+  }
+
   const savedLine = saved
     ? saved.offline
       ? "Note saved on this device. It'll sync when you're back online."
-      : saved.kind === "voice" && status?.transcription === "unavailable"
+      : saved.kind === "photo"
+        ? "Picture saved"
+        : saved.kind === "video"
+          ? "Video saved"
+          : saved.kind === "voice" && status?.transcription === "unavailable"
         ? "Voice note saved · Transcription unavailable"
         : saved.kind === "voice"
           ? "Voice note saved"
@@ -147,16 +181,34 @@ export function QuickCapture() {
 
   return (
     <section aria-label="Quick Capture" className="space-y-1">
-      <div className="grid grid-cols-2 gap-2">
-        {(["text", "voice"] as const).map((k) => (
-          <button key={k} type="button" onClick={() => begin(k)} aria-haspopup="dialog" className="group inline-flex min-h-11 items-center">
-            <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border-soft bg-surface/90 text-[14px] font-medium text-ink shadow-[var(--shadow-card)] group-hover:bg-surface">
-              {k === "text" ? <PenLine className="size-4 text-accent" aria-hidden /> : <Mic className="size-4 text-accent" aria-hidden />}
-              {k === "text" ? "Quick note" : "Voice note"}
-            </span>
-          </button>
-        ))}
+      {/* Four ways to catch something, one tap each: words, voice, a picture, a short video. */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {(
+          [
+            { key: "text", label: "Quick note", Icon: PenLine },
+            { key: "voice", label: "Voice note", Icon: Mic },
+            { key: "photo", label: "Quick Pic", Icon: Camera },
+            { key: "video", label: "Video Note", Icon: Video },
+          ] as const
+        ).map(({ key, label, Icon }) => {
+          const busy = media?.kind === key && !media.error;
+          return (
+            <button key={key} type="button" onClick={() => start(key)} disabled={busy} aria-haspopup={key === "text" || key === "voice" ? "dialog" : undefined} className="group min-h-11">
+              <span className="flex h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-surface/90 text-[12.5px] font-medium text-ink shadow-[var(--shadow-card)] transition-transform duration-150 group-hover:bg-surface group-active:scale-95 group-disabled:opacity-60 motion-reduce:transition-none">
+                <Icon className={cn("size-[18px] text-accent", busy && "animate-pulse motion-reduce:animate-none")} aria-hidden />
+                {label}
+              </span>
+            </button>
+          );
+        })}
       </div>
+      <input ref={picRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files?.[0]), (e.target.value = ""))} />
+      <input ref={videoRef} type="file" accept="video/*" capture="user" className="sr-only" tabIndex={-1} aria-label="Record a video note" onChange={(e) => (void captureMedia("video", e.target.files?.[0]), (e.target.value = ""))} />
+      {media ? (
+        <p role={media.error ? "alert" : "status"} className={cn("px-1 text-[13px]", media.error ? "text-danger" : "text-ink-muted")}>
+          {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}
+        </p>
+      ) : null}
       {/* After the sheet closes, a quiet line says it's safe. */}
       <p role="status" className="px-1 text-[13px] text-ink-muted">
         {!open && savedLine ? (
