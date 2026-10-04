@@ -140,7 +140,19 @@ create trigger project_parts_created after insert on public.project_parts
 revoke execute on function app.part_created() from public, anon, authenticated;
 
 -- A part's Creation is read by everyone making the joint work: the Room's owner and crew, and whoever is on any of
--- its parts. Everything else about who reads a Creation is unchanged.
+-- its parts. One indexed lookup per Creation, and the Room checks only when it is a part's — this runs for every row
+-- of every artifacts query, so it must cost nothing when there is no part.
+create or replace function app.reads_part_artifact(p_artifact uuid)
+returns boolean language plpgsql stable security definer set search_path = ''
+as $$
+declare v_project uuid;
+begin
+  select project_id into v_project from public.project_parts where artifact_id = p_artifact;
+  if v_project is null then return false; end if;
+  return app.can_read_project(v_project) or app.on_a_part_of(v_project, true);
+end $$;
+
+-- Everything else about who reads a Creation is unchanged.
 create or replace function app.can_read_artifact(p_artifact uuid)
 returns boolean language sql stable security definer set search_path = ''
 as $$
@@ -150,7 +162,7 @@ as $$
       a.creator_id = app.current_creator_id()
       or exists (select 1 from public.artifact_contributors ac where ac.artifact_id = a.id and ac.contributor_creator_id = app.current_creator_id())
       or (a.privacy = 'public' and a.status in ('final', 'published') and app.can_view_creator(a.creator_id))
-      or exists (select 1 from public.project_parts pp where pp.artifact_id = a.id and (app.can_read_project(pp.project_id) or app.on_a_part_of(pp.project_id, true)))
+      or app.reads_part_artifact(a.id)
     )
   )
 $$;
