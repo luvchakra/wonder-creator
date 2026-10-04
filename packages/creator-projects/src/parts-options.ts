@@ -50,6 +50,38 @@ export interface PartView {
   /** The viewer is invited to this part and hasn't answered. */
   invitedMe: boolean;
   finalAt: string | null;
+  /** What the part's latest version was made with (step 2): the other parts' versions at that moment; null before any. */
+  madeWith: MadeWith[] | null;
+}
+/** One other part as it stood when a version was saved. versionNumber is null when it hadn't been started. */
+export interface MadeWith {
+  partId: string;
+  title: string;
+  artifactId: string | null;
+  versionId: string | null;
+  versionNumber: number | null;
+}
+/** A part's Creation on its own page: what it was made with and what moved on since (creative-room-parts.md, step 2). */
+export interface PartContext {
+  part: { id: string; title: string; kind: PartKind };
+  project: { id: string; title: string };
+  /** This part's latest version — the one the comparison starts from; null before any version. */
+  since: { versionId: string; number: number } | null;
+  others: Array<{
+    partId: string;
+    title: string;
+    kind: PartKind;
+    artifactId: string | null;
+    artifactType: string | null;
+    /** Where that part is now. */
+    current: { versionId: string; number: number } | null;
+    /** The version this part's latest version was made with. */
+    madeWith: { versionId: string; number: number } | null;
+    /** It has a newer version than the one this part was made with. */
+    movedOn: boolean;
+    /** Words someone else is writing: a suggestion can be sent (a proposal its people decide on). */
+    canSuggest: boolean;
+  }>;
 }
 export interface PartEventView {
   id: string;

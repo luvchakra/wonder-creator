@@ -2936,6 +2936,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_part_version_context": {
+                  Row: {
+                    "created_at": string,"made_with": NonNullable<Json>,"part_id": string,"project_id": string,"version_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"made_with"?: NonNullable<Json>,"part_id": string,"project_id": string,"version_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"made_with"?: NonNullable<Json>,"part_id"?: string,"project_id"?: string,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_part_version_context_part_id_fkey"
+      columns: ["part_id"]
+isOneToOne: false
+      referencedRelation: "project_parts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_version_context_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_version_context_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: true
+      referencedRelation: "artifact_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_parts": {
                   Row: {
                     "artifact_id": string | null,"artifact_type": string,"created_at": string,"created_by": string,"final_at": string | null,"final_by": string | null,"id": string,"kind": string,"position": number,"project_id": string,"status": string,"title": string,"updated_at": string
@@ -4554,6 +4585,9 @@ isOneToOne: false
                            },
 "part_set_final":
 { Args: { "p_final": boolean,"p_part": string }; Returns: undefined
+                           },
+"part_suggest":
+{ Args: { "p_content": string,"p_part": string,"p_summary": string }; Returns: string
                            },
 "payment_apply_event":
 { Args: { "p_amount"?: number,"p_body_sha256": string,"p_currency"?: string,"p_event_id": string,"p_event_type": string,"p_kind": string,"p_payment"?: string,"p_provider": string,"p_ref"?: string,"p_refund_ref"?: string }; Returns: string

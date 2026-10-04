@@ -68,5 +68,32 @@ test.describe("Creative Room parts", () => {
     await expect(rows.first()).toContainText("Final");
     await expect(work.getByRole("list", { name: "What happened" }).getByRole("listitem").first()).toContainText("You marked Lyrics final");
     await expect(rows.nth(2)).toContainText(/Mira .* \(this part only\)/);
+
+    // Made with (step 2): Mira keeps a take — it records Lyrics v2. The lyrics move on; her page says so and shows the lines.
+    const voiceId = b.url().match(/creations\/([0-9a-f-]{36})/)![1];
+    const voiceArt = (await (await b.request.get(`/api/v1/artifacts/${voiceId}`)).json()).artifact as { current_version_id: string };
+    expect((await b.request.post(`/api/v1/artifacts/${voiceId}/versions`, { data: { content: "A first take.", baseVersionId: voiceArt.current_version_id, label: "First take" } })).ok()).toBe(true);
+    const lyricsNow = (await (await page.request.get(`/api/v1/artifacts/${artifactId}`)).json()).artifact as { current_version_id: string };
+    await page.request.post(`/api/v1/artifacts/${artifactId}/versions`, { data: { content: "Every Sunday my father waited\nat Platform 3, his coat folded.", baseVersionId: lyricsNow.current_version_id, label: "Second pass" } });
+    await b.reload();
+    const notice = b.getByRole("status").filter({ hasText: "Lyrics moved on" });
+    await expect(notice).toContainText("v2 → v3");
+    await notice.getByRole("button", { name: "what changed" }).click();
+    const changes = b.getByRole("dialog", { name: "Lyrics: what changed" });
+    await expect(changes.getByLabel("Lyrics changes")).toContainText("his coat folded");
+    await changes.getByRole("button", { name: "Close" }).click();
+
+    // Suggest to the lyricist, from the Audio page: a proposal; the Room's timeline tells it, nothing changed yet.
+    await b.getByRole("button", { name: "More" }).click();
+    await b.getByRole("button", { name: /Suggest to Lyrics/ }).click();
+    const suggest = b.getByRole("dialog", { name: "Suggest to Lyrics" });
+    await expect(suggest.getByLabel("Lyrics words")).toHaveValue(/his coat folded/);
+    await suggest.getByLabel("Lyrics words").fill("Every Sunday my father waited\nat Platform 3, coat on his arm.");
+    await suggest.getByLabel("What you'd change, in a line").fill("Easier to sing on the long note");
+    await suggest.getByRole("button", { name: "Send suggestion" }).click();
+    await expect(suggest.getByRole("status")).toContainText("Sent");
+    await page.goto(`/rooms/${projectId}`);
+    await expect(work.getByRole("list", { name: "What happened" }).getByRole("listitem").first()).toContainText(`${mira.name} suggested a change to Lyrics`);
+    await expect(rows.nth(2)).toContainText("Lyrics moved on");
   });
 });

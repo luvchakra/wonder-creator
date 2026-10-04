@@ -108,11 +108,14 @@ export function rulesFor(ctx: PaletteContext): Rules {
       // The Writing page (owner, 4 Oct 2026: "less about AI, more about supporting the writing type"): that kind's own
       // tools lead — lines and stanzas for a poem, headline and lede for news, scenes and runtime for a script — then
       // hearing it read, then publishing. Preview and Cover are on the page itself, so they aren't repeated here.
+      // A part of a Room's joint work (creative-room-parts.md, step 2): new words for another part, from here.
+      const suggest = f.suggestTo && f.workPath ? [{ id: "suggest", label: `Suggest to ${f.suggestTo}`, hint: "New words for their part — the people on it decide", icon: "people" as const, class: "collaboration" as const, target: route(`${f.workPath}#suggest`), score: 118 }] : [];
       if (f.writingStyle && f.workPath) {
         const craft = CRAFT_LABEL[f.writingStyle];
         return {
           title: "This Creation",
           items: [
+            ...suggest,
             { id: "craft", label: craft.label, hint: craft.hint, icon: "pen", class: "context", target: route(`${f.workPath}#craft`), score: 125 },
             { id: "aloud", label: "Hear it read", hint: f.writingStyle === "verse" ? "Read aloud — listen for the rhythm and the breaks" : "Read aloud by your device, to catch what the eye skips", icon: "mic", class: "context", target: route(`${f.workPath}#aloud`), score: 115 },
             ...(f.hasWords
@@ -132,6 +135,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "This Creation",
         items: [
+          ...suggest,
           ...(f.hasWords
             ? [
                 { id: "preview", label: f.published ? "Preview & link" : "Preview", hint: f.published ? "Your page as readers see it, with the link" : "See it as readers would, then publish", icon: "images" as const, class: "share" as const, target: route(`${a}/preview`), score: 120, requires: "publish" as const },
