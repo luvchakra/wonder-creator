@@ -4,6 +4,7 @@ import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { paymentsConfigFromEnv, paymentsReadiness } from "@wonder/creator-payments";
 import { PageTitle } from "@wonder/ui";
 import { avatarUrls } from "@/lib/avatars";
+import { ornamentPreference } from "@/lib/ornament";
 import { requireSession } from "@/lib/session";
 import { SettingsView } from "./settings-view";
 import { PaletteScope } from "@/components/creative-palette";
@@ -30,6 +31,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div>
         <PageTitle title="Settings" />
         <SettingsView
+          ornament={await ornamentPreference()}
           section={sp.section ?? "profile"}
           email={user.user?.email ?? ""}
           avatarUrl={avatars[creator.id] ?? null}

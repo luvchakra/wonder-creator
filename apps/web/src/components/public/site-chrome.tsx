@@ -1,4 +1,4 @@
-import { Logo } from "@wonder/ui";
+import { Logo, Ornament } from "@wonder/ui";
 import Link from "next/link";
 
 /**
@@ -15,6 +15,9 @@ export function SiteHeader() {
         <Link href="/sign-in" className="inline-flex min-h-11 items-center rounded-full px-3 text-[14px] font-medium text-ink hover:bg-white/60">
           Sign in
         </Link>
+      </div>
+      <div className="mx-auto mt-2 max-w-6xl px-4 sm:px-6">
+        <Ornament />
       </div>
     </header>
   );
@@ -45,7 +48,8 @@ const COLUMNS: Array<{ label: string; title: string; links: Array<[string, strin
 
 export function SiteFooter() {
   return (
-    <footer className="relative z-10 border-t border-border-soft/80 bg-cream">
+    <footer className="relative z-10 bg-cream">
+      <Ornament />
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
         <div>
           <Logo height={28} />
