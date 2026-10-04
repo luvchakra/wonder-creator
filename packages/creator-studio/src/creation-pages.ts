@@ -67,7 +67,7 @@ export const WRITING_KINDS = [
  * - verse — a poetry journal: centred lines, generous leading, stanzas kept;
  * - essay — a literary review: a drop cap, book paragraphs (indented, no gaps);
  * - feature — a magazine feature: the first paragraph as a standfirst, a byline, airy paragraphs;
- * - news — a newspaper: a bold headline, byline and date between rules, the lead paragraph strong, a plain reading face;
+ * - news — a newspaper: a bold headline, a dateline, the lead paragraph strong, a plain reading face;
  * - fiction — a fiction page: the opening words in capitals, indented paragraphs, ⁂ between scenes;
  * - letter — a letter: the date at the right, the greeting and sign-off set apart;
  * - script — a screenplay's mono page.

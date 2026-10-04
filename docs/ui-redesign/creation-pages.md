@@ -60,7 +60,7 @@ the same on the canvas, the Read page and the published page (`components/writin
 | verse | poem, lyrics, spoken word | a poetry journal | centred, generous leading, stanzas kept, wrapped lines balanced |
 | essay | essay, review, statement, biography | a literary review | drop cap, book paragraphs (indented, no gaps), byline in small capitals |
 | feature | article, blog post, newsletter… | a magazine feature | large headline, first paragraph as an italic standfirst, byline, airy paragraphs |
-| news | news | a newspaper | bold headline, byline and date between rules, a strong lead paragraph (no invented dateline), plain reading face |
+| news | news | a newspaper | bold headline, byline and date between rules, dateline "4 OCT —" on a strong lead, plain reading face |
 | fiction | story, prose, narration, treatment | a fiction page | italic centred title, opening line in capitals, indented paragraphs, ⁂ between scenes |
 | letter | letter | a letter | the date at the right, the greeting in italics, the sign-off set to the right |
 | script | screenplay, script, dialogue | a screenplay | mono, title underlined in capitals |
