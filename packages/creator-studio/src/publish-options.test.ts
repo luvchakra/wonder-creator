@@ -9,8 +9,9 @@ describe("CreatorPublish experiences (§4–5)", () => {
     expect(experiencesFor("poem", snap({ content: "line" }))).toEqual(["read"]);
     const slides = [{ objectId: null, text: "a", overlay: DEFAULT_OVERLAY, transform: DEFAULT_TRANSFORM }];
     expect(experiencesFor("carousel", snap({ content: "a", slides }))[0]).toBe("swipe");
-    // A photo essay is a Journey, never a carousel by default.
-    expect(experiencesFor("photo_essay", snap({ content: "p", blocks: [{ kind: "image", objectId: "o", alt: "" }, { kind: "text", text: "p" }], images: [{ objectId: "o", alt: "" }] }))[0]).toBe("journey");
+    // A photo essay is made on the Images page now (creation-pages.md, step 2): it is viewed, pictures first.
+    expect(experiencesFor("photo_essay", snap({ content: "p", blocks: [{ kind: "image", objectId: "o", alt: "" }, { kind: "text", text: "p" }], images: [{ objectId: "o", alt: "" }] }))[0]).toBe("view");
+    expect(experiencesFor("documentary", snap({ content: "p", blocks: [{ kind: "image", objectId: "o", alt: "" }, { kind: "text", text: "p" }] }))[0]).toBe("journey");
     expect(experiencesFor("short_film", snap({ media: { kind: "video", objectId: "v", title: "t", durationSeconds: 272 } }))[0]).toBe("watch");
     // A short film with no film yet is read as its words.
     expect(experiencesFor("short_film", snap({ content: "treatment" }))).toEqual(["read"]);

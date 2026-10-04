@@ -27,7 +27,7 @@ const ASPECT_CLASS: Record<string, string> = { "1:1": "aspect-square", "4:5": "a
 export const aspectClass = (a: string) => ASPECT_CLASS[a] ?? "aspect-[4/5]";
 
 /** The image, cropped by zoom + focal point, as CSS. */
-export function CroppedImage({ src, transform, alt = "", className }: { src: string; transform: ImageTransform; alt?: string; className?: string }) {
+export function CroppedImage({ src, transform, alt = "", className, style }: { src: string; transform: ImageTransform; alt?: string; className?: string; style?: React.CSSProperties }) {
   const z = Math.min(4, Math.max(1, transform.zoom || 1));
   const r = cropRect(1, 1, transform);
   return (
@@ -37,7 +37,7 @@ export function CroppedImage({ src, transform, alt = "", className }: { src: str
       alt={alt}
       draggable={false}
       className={cn("absolute max-w-none select-none object-cover", className)}
-      style={{ width: `${z * 100}%`, height: `${z * 100}%`, left: `${-r.sx * z * 100}%`, top: `${-r.sy * z * 100}%` }}
+      style={{ width: `${z * 100}%`, height: `${z * 100}%`, left: `${-r.sx * z * 100}%`, top: `${-r.sy * z * 100}%`, ...style }}
     />
   );
 }
@@ -70,7 +70,7 @@ export function OverlayText({ overlay, text, selected, className, ...rest }: { o
 }
 
 /** A soft shade behind the words so they read on any image (colour is never the only cue: shadow + shade). */
-function Shade({ overlay }: { overlay: SlideOverlay }) {
+export function Shade({ overlay }: { overlay: SlideOverlay }) {
   if (overlay.background !== "shade") return null;
   const top = overlay.y < 0.4;
   const mid = overlay.y >= 0.4 && overlay.y <= 0.6;
@@ -141,8 +141,12 @@ export async function composeSlide(canvas: HTMLCanvasElement, img: HTMLImageElem
   const base = { sx: (iw - cw) / 2, sy: (ih - ch) / 2 };
   const r = cropRect(cw, ch, s.transform);
   ctx.drawImage(img, base.sx + r.sx, base.sy + r.sy, r.sw, r.sh, 0, 0, w, h);
+  await drawWords(ctx, w, h, s.overlay, s.text);
+}
 
-  const o = s.overlay;
+/** The words of an overlay onto a canvas of w × h, matching `OverlayText` + `Shade` (Carousel slides, the Images page). */
+export async function drawWords(ctx: CanvasRenderingContext2D, w: number, h: number, o: SlideOverlay, text: string) {
+  const s = { text };
   if (!o.enabled || !s.text.trim()) return;
   const f = FONT_STACK[o.font];
   const px = Math.round(o.size * w);

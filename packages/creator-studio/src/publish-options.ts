@@ -1,5 +1,6 @@
 import { artifactType } from "./artifact-types";
 import type { SlideOverlay, ImageTransform } from "./carousel";
+import type { ImageEdits } from "./image-options";
 
 /**
  * CreatorPublish (docs/creator-publish.md): the shared words for publishing a Creation to the creator's own public
@@ -97,6 +98,8 @@ export interface PublishedSnapshot {
   ornament?: "line" | "dentil" | "arcade" | "eggdart" | "meander" | "keystone" | "laurel";
   slides?: Array<{ objectId: string | null; text: string; overlay: SlideOverlay; transform: ImageTransform }>;
   images?: Array<{ objectId: string; alt: string }>;
+  /** The Images page: each picture as shaped (crop, filter, light, words, frame) and its caption, in order. */
+  pictures?: Array<{ objectId: string; caption: string; edits: ImageEdits; words: SlideOverlay }>;
   media?: { kind: "audio" | "video"; objectId: string; title: string; durationSeconds?: number | null; posterObjectId?: string | null; vertical?: boolean };
   /** A creator's reading of a poem: offered, never the page's centre. */
   voice?: { objectId: string; durationSeconds?: number | null } | null;
@@ -127,8 +130,8 @@ export interface PublishSettings {
 }
 
 const WRITING_POEM = new Set(["poem", "lyrics", "spoken_word"]);
-const VIEW_TYPES = new Set(["visual_concept", "poster", "album_art", "visual_post", "thumbnail_concept", "moodboard", "art_series"]);
-const JOURNEY_TYPES = new Set(["photo_essay", "documentary", "film_treatment"]);
+const VIEW_TYPES = new Set(["visual_concept", "poster", "album_art", "visual_post", "thumbnail_concept", "moodboard", "art_series", "photo_essay"]);
+const JOURNEY_TYPES = new Set(["documentary", "film_treatment"]);
 const WATCH_TYPES = new Set(["short_film", "trailer", "reel_concept"]);
 const LISTEN_TYPES = new Set(["podcast_concept", "song_concept", "sound_design", "spoken_word", "narration"]);
 

@@ -207,7 +207,7 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | Item | Status | Notes |
 |---|---|---|
 | 1 · Writing page + routing | Done | Make a new Creation › Writing opens `/creations/[id]/write` (the Studio forwards writing there). Words over the cover, the cover blurred behind, or paper (migration 082 `artifacts.presentation`); verse centred, screenplay mono; Passage · Poem · Screenplay while empty. Write is the one primary action; Cover (your pictures or one CreativeMind makes) and Read are the two secondaries; More holds Publish as link (CreatorPublish, link-only by default, Creator Page opt-in), Refine, Export, Share, Versions, Rights |
-| 2 · Images page | Not started | Next |
+| 2 · Images page | Done | `/creations/[id]/image`: the picture on paper with its caption; Edit (Crop · Focus · Filter · Light · Blur · Frame) is the primary action, Words and Download the secondaries; Add, Arrange & captions, Publish as link, Make a carousel in More. Every Keep is a version; originals untouched. Downloads drawn in the browser (PNG/JPEG/WebP). Published photo essays show the pictures as shaped |
 | 3 · Audio · 4 · Presentation · 5 · Video | Not started | |
 
 ## Owner requests, 4 Oct 2026 (afternoon)

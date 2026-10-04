@@ -4,6 +4,7 @@ import { licenseRights } from "@wonder/creator-library/source-rights";
 import { z } from "zod";
 import { artifactType } from "./artifact-types";
 import { lookOf, ornamentOf } from "./creation-pages";
+import { imageSetOf } from "./image-options";
 import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
 import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
@@ -72,7 +73,7 @@ const vertical = (m: Mat) => {
 export async function buildSnapshot(db: Db, artifactId: string, settings: PublishSettings = {}): Promise<{ snapshot: PublishedSnapshot; versionId: string | null; aspectRatio?: string; coverCandidates: string[] }> {
   const a = must(await db.from("artifacts").select("id, title, description, artifact_type, current_version_id, cover_material_id, presentation").eq("id", artifactId).maybeSingle(), "That Creation isn't available.");
   const [{ data: v }, { data: edges }, { data: slides }, { data: carousel }] = await Promise.all([
-    a.current_version_id ? db.from("artifact_versions").select("id, version_number, content").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
+    a.current_version_id ? db.from("artifact_versions").select("id, version_number, content, structured_content").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("lineage_edges").select("source_id, created_at").eq("target_type", "artifact").eq("target_id", artifactId).eq("source_type", "material").order("created_at").limit(40),
     db.from("carousel_slides").select("id, order_index, asset_id, display_text, source_text, overlay, image_transform").eq("artifact_id", artifactId).order("order_index").limit(60),
     db.from("carousels").select("aspect_ratio").eq("artifact_id", artifactId).maybeSingle(),
@@ -118,6 +119,12 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
       transform: { ...DEFAULT_TRANSFORM, ...((s.image_transform as Partial<ImageTransform>) ?? {}) },
     }));
   if (pictures.length) snapshot.images = pictures.slice(0, 24).map((p) => ({ objectId: p.storage_object_id!, alt: p.title?.trim() || "" }));
+  // The Images page (creation-pages.md, step 2): the pictures in the creator's order, as shaped — only clean, linked ones.
+  const shaped = imageSetOf(v?.structured_content).items.map((i) => ({ item: i, m: byId.get(i.materialId) })).filter((x) => x.m && obj(x.m.storage_object_id));
+  if (shaped.length) {
+    snapshot.pictures = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, caption: item.caption, edits: item.edits, words: item.words }));
+    snapshot.images = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, alt: item.caption || m!.title?.trim() || "" }));
+  }
   else if (cover && obj(cover.storage_object_id) && (cover.type === "image" || cover.type === "sketch")) snapshot.images = [{ objectId: cover.storage_object_id!, alt: cover.title?.trim() || "" }];
   if (video) snapshot.media = { kind: "video", objectId: video.storage_object_id!, title: video.title?.trim() || a.title, durationSeconds: durationOf(video), posterObjectId: coverObjectId, vertical: vertical(video) };
   else if (audio && !isPoem(type)) snapshot.media = { kind: "audio", objectId: audio.storage_object_id!, title: audio.title?.trim() || a.title, durationSeconds: durationOf(audio) };

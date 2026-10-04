@@ -14,3 +14,4 @@ export * from "./working-set";
 export * from "./studio-community";
 export * from "./creator-publish";
 export * from "./creation-pages";
+export * from "./creation-images";

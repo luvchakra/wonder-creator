@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, ImagePlus, SlidersHorizontal, Type } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,6 +20,8 @@ import { QualityPanel, type QualityProposal, type QualityReportView } from "./qu
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 import { WorkingTable, type ExternalAdded } from "./working-table";
 import { WrittenPiece } from "@/components/writing/written-piece";
+import type { ImageSet } from "@wonder/creator-studio/images";
+import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
 
 /**
@@ -30,6 +32,7 @@ import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-
  */
 export function Studio({
   page = "studio",
+  images,
   artifact,
   version,
   actions,
@@ -43,7 +46,9 @@ export function Studio({
   offline,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
-  page?: "writing" | "studio";
+  page?: "writing" | "images" | "studio";
+  /** The Images page's pictures and what was done to them (creation-pages.md, step 2). */
+  images?: { set: ImageSet; pictures: Record<string, Picture> } | null;
   artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string; ornament?: OrnamentKey };
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
@@ -193,7 +198,7 @@ export function Studio({
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
   // Refine lives in a sheet: the Palette's Refine (and old links) arrive as #creativemind; a revision on the canvas closes it.
-  const writingCanvas = artifact.type !== "carousel";
+  const writingCanvas = artifact.type !== "carousel" && page !== "images";
   useEffect(() => {
     if (!writingCanvas) return;
     const open = () => {
@@ -452,6 +457,14 @@ export function Studio({
   const modeLabel = OUTPUT_MODES.find((m) => m.key === outputModeOf(artifact.type))?.label ?? "Writing";
   // The Writing page (creation-pages.md): verse centred in Playfair with room between lines; scripts in their mono layout.
   const writing = page === "writing";
+  // The Images page: Edit is the primary action, Words and Download the two secondaries (creation-pages.md, step 2).
+  const imagesPage = page === "images";
+  const hasPictures = !!images?.set.items.length;
+  const [imgReq, setImgReq] = useState<ImagesRequest>(null);
+  const askImages = (kind: NonNullable<ImagesRequest>["kind"]) => {
+    setSheet(null);
+    setImgReq((r) => ({ kind, n: (r?.n ?? 0) + 1 }));
+  };
   const verse = artifact.format === "verse";
   // Each kind of writing is set after the publications that set it best (creation-pages.md §Writing kinds).
   const style = writingStyleOf(artifact.type);
@@ -621,7 +634,22 @@ export function Studio({
         <p className="text-[12px] text-ink-subtle sm:hidden" aria-hidden>
           {saveLabel}
         </p>
-        {writing ? (
+        {imagesPage ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={() => askImages("words")} aria-haspopup="dialog" disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Type className="size-4 text-ink-muted" aria-hidden />
+                Words
+              </span>
+            </button>
+            <button type="button" onClick={() => askImages("download")} aria-haspopup="dialog" disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Download className="size-4 text-ink-muted" aria-hidden />
+                Download
+              </span>
+            </button>
+          </div>
+        ) : writing ? (
           // The Writing page's two secondary actions: its cover (and how the words are set), and reading it on its own.
           <div className="ml-auto flex items-center gap-1.5">
             <button type="button" onClick={() => setSheet("cover")} aria-haspopup="dialog" className="inline-flex min-h-11 items-center">
@@ -699,7 +727,21 @@ export function Studio({
         </section>
       ) : (
         <section aria-label="Editor" className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-          {proposal ? (
+          {imagesPage && images ? (
+            <ImagesCanvas
+              artifactId={artifact.id}
+              title={title || artifact.title}
+              set={images.set}
+              pictures={images.pictures}
+              baseVersionId={base?.id ?? null}
+              request={imgReq}
+              onKept={(v) => {
+                setBase({ id: v.id, number: v.version_number, content: v.content });
+                setContent(v.content);
+                setSavedVersion(v.version_number);
+              }}
+            />
+          ) : proposal ? (
             <div className="p-3 sm:p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-accent-softer px-4 py-3">
                 <div className="min-w-0 text-[15px] text-ink">
@@ -995,7 +1037,15 @@ export function Studio({
 
       {/* Bottom bar (§7, §64): pen · the Working Table bar (Sources N · M in use ^) */}
       <div className="pointer-events-none fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-3xl items-center gap-2">
-        {writing && !proposal ? (
+        {imagesPage ? (
+          // Edit: the Images page's one primary action (Add a picture until there is one).
+          <button type="button" onClick={() => askImages(hasPictures ? "edit" : "add")} aria-haspopup="dialog" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
+            <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
+              {hasPictures ? <SlidersHorizontal className="size-4" aria-hidden /> : <ImagePlus className="size-4" aria-hidden />}
+              {hasPictures ? "Edit" : "Add a picture"}
+            </span>
+          </button>
+        ) : writing && !proposal ? (
           // Write: the page's one primary action. While writing, Done sets the words back on their cover or paper.
           <button type="button" onClick={() => setMode((m) => (m === "view" ? "edit" : "view"))} aria-pressed={mode === "edit"} className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
             <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
@@ -1128,7 +1178,18 @@ export function Studio({
       <Dialog open={sheet === "more"} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent title="Save, version and publish" description="Keep experimenting; save when ready." art={KIT.mark.starGold}>
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
-            {(writing
+            {(imagesPage
+              ? [
+                  { label: "Add a picture", hint: "Take one, choose one of yours, or let CreativeMind make one", act: () => askImages("add") },
+                  ...(hasPictures ? [{ label: "Arrange & captions", hint: "The order, and a line under each — a photo essay", act: () => askImages("arrange") }] : []),
+                  ...(hasPictures ? [{ label: "Publish as link", hint: "Its own page — the pictures as you've shaped them, your name", act: () => setSheet("publish") }] : []),
+                  { label: "Make a carousel", hint: "Turn these into slides — the pictures stay here too", act: () => setSheet("format") },
+                  { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+                  { label: "Versions", hint: `v${base?.number ?? 1} is current — every Keep is a version`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
+                  { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+                  { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                ]
+              : writing
               ? [
                   { label: "Publish as link", hint: "Its own page — the cover, the paper, your name", act: () => setSheet("publish") },
                   { label: "Refine with CreativeMind", hint: "Improve, shorten, or a quality review", act: () => setSheet("refine") },
@@ -1181,6 +1242,7 @@ export function Studio({
           </ul>
         </DialogContent>
       </Dialog>
+      {imagesPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
       {writing ? (
         <>
           <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} ornament={ornament ?? "keystone"} onOrnament={(o) => void chooseOrnament(o)} onCover={chooseCover} />
