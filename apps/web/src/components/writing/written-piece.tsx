@@ -46,7 +46,6 @@ export function WrittenPiece({
     .filter((p) => p.trim());
   const when = date ? new Date(date) : null;
   const longDate = when ? when.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : null;
-  const shortDate = when ? when.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).toUpperCase() : null;
   const Kicker = kicker ? <div className={cn("text-[11px] font-semibold uppercase tracking-[0.16em]", light ? "text-white/80" : style === "news" || style === "feature" ? "text-accent-ink" : "text-ink-subtle")}>{kicker}</div> : null;
   const Empty = <p className={cn("mt-5 font-display text-[17px] italic", muted)}>{empty}</p>;
   // Header and footer ornaments (owner, 4 Oct 2026): written Creations only.
@@ -109,8 +108,9 @@ export function WrittenPiece({
               isSceneBreak(p) ? (
                 <SceneBreak key={k} light={light} />
               ) : k === 0 ? (
+                // The lead paragraph, strong. No dateline before it: the date the piece was edited isn't where the story
+                // happened (owner, 4 Oct 2026), and it already sits in the byline row above.
                 <p key={k} className="whitespace-pre-line text-[17px] font-medium leading-[1.6]">
-                  {shortDate ? <span className="mr-1 text-[12.5px] font-bold uppercase tracking-[0.1em]">{shortDate} —</span> : null}
                   {p}
                 </p>
               ) : (

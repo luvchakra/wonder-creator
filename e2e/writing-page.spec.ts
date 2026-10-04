@@ -44,14 +44,15 @@ test.describe("Writing page", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("each kind is set after the publications that set it best: an essay's drop cap, news with its dateline", async ({ page, creator }) => {
+  test("each kind is set after the publications that set it best: an essay's drop cap, news with its byline and date", async ({ page, creator }) => {
     void creator;
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "news", title: "Harbour reopens", content: "The harbour reopened on Saturday.\n\nCrews returned before dawn." } })).json()).artifact as { id: string };
     await page.goto(`/creations/${art.id}/write`);
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByRole("heading", { name: "Harbour reopens" })).toBeVisible();
     await expect(editor.getByText(/^By /)).toBeVisible();
-    await expect(editor.getByText(/^\d{1,2} [A-Z]{3} —$/)).toBeVisible();
+    // The date sits in the byline row, never as a made-up dateline before the first line.
+    await expect(editor.getByText(/\d{1,2} [A-Z]{3} —/)).toHaveCount(0);
     // The same words as an essay, read on their own page.
     await page.getByRole("button", { name: "Kind of writing: News" }).click();
     await page.getByRole("dialog", { name: "Kind of writing" }).getByRole("button", { name: /^Essay/ }).click();
