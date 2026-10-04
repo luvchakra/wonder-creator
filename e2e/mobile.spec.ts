@@ -21,13 +21,12 @@ test.describe("mobile layout @mobile", () => {
   test.beforeEach(({ creator }) => void creator);
 
   test("core screens fit a 360px viewport and keep the Creative Palette in reach", async ({ page }) => {
-    // Something to open in the Studio.
+    // Something to open in the Studio, made the way a phone does it: the Palette's Create sheet.
     await page.goto("/materials");
-    await page.getByRole("button", { name: "New", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
-    await dialog.getByLabel("Title").fill("Pocket poem");
-    await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
+    await page.getByRole("button", { name: "Open Creative Palette" }).click();
+    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Create", exact: true }).click();
+    await page.getByRole("dialog", { name: "Make a new Creation" }).getByRole("button", { name: /Writing/ }).click();
+    await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/write$/);
     const studio = new URL(page.url()).pathname;
     const material = `/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
 

@@ -70,9 +70,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         title: "Materials",
         items: [
           { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 100 },
-          { id: "capture", label: "Capture", hint: "Photo, voice or a note", icon: "camera", class: "create", target: route("/send"), score: 95 },
           { id: "collections", label: "Collections", icon: "images", class: "context", target: route("/materials?tab=collections"), score: 80 },
-          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/explore"), score: 70 },
         ],
       };
 
@@ -389,12 +387,14 @@ export function rulesFor(ctx: PaletteContext): Rules {
       };
 
     case "spaces":
+      // My Creative Space (Fewer buttons, owner 4 Oct 2026): the page's own New button is gone, so Create (the sheet)
+      // and Bring Material live here. Explore is a global destination already.
       return {
         title: "My Creations",
         items: [
-          { id: "new", label: "New Creation", icon: "spark", class: "create", target: route("/create"), score: 90 },
+          { id: "new", label: "Create", hint: "Writing, Carousel, Images or Audio — or make it with others", icon: "spark", class: "create", target: cmd("create-menu"), score: 90 },
           ...(f.activeCreationId ? [{ id: "continue", label: "Continue", icon: "pen" as const, class: "create" as const, target: route(`/creations/${f.activeCreationId}`), score: 85 }] : []),
-          { id: "explore", label: "Explore", icon: "compass", class: "navigation", target: route("/explore"), score: 70 },
+          { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 80 },
         ],
       };
 
