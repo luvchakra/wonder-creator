@@ -273,7 +273,7 @@ export function ProjectView({
               Add a brief and goals — CreativeMind keeps them in mind when you create here.
             </button>
           ) : null}
-          {canEdit ? (
+          {canEdit && !parts ? (
           <div className="flex flex-wrap gap-2">
             <Link href={`/create?project=${project.id}`} className={buttonClasses()}>
               <Sparkles className="size-4" aria-hidden /> Create in this Creative Room
@@ -339,7 +339,7 @@ export function ProjectView({
         </p>
       ) : null}
 
-      {showOverview ? (
+      {showOverview && !parts ? (
         <RoomNow projectId={project.id} canEdit={canEdit} items={items} nextSteps={nextSteps} onCreate={() => router.push(`/create?project=${project.id}`)} />
       ) : null}
 

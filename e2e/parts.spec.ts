@@ -21,7 +21,7 @@ test.describe("Creative Room parts", () => {
     await expect(rows).toContainText([/Lyrics.*no one yet/, /Tune/, /Voice/]);
     await work.getByRole("button", { name: "Claim a part" }).click();
     await page.getByRole("dialog", { name: "Claim a part" }).getByRole("button", { name: /Lyrics/ }).click();
-    await expect(rows.first()).toContainText("Lyrics you");
+    await expect(rows.first()).toContainText(/Lyrics\s*you/);
 
     // Start it: a Creation of the part's kind, on its own page (lyrics → the Writing page).
     await work.getByRole("button", { name: "Start Lyrics" }).click();
@@ -55,7 +55,7 @@ test.describe("Creative Room parts", () => {
     await expect(b.getByRole("navigation", { name: "Creative Room sections" })).toHaveCount(0);
     const bWork = b.getByRole("region", { name: "The work" });
     await b.getByRole("button", { name: "Accept" }).click();
-    await expect(bWork.getByRole("list", { name: "Where it stands" }).getByRole("listitem").nth(2)).toContainText("Voice you (this part only)");
+    await expect(bWork.getByRole("list", { name: "Where it stands" }).getByRole("listitem").nth(2)).toContainText(/Voice\s*you \(this part only\)/);
     await bWork.getByRole("button", { name: "Start Voice" }).click();
     await expect(b).toHaveURL(/\/creations\/[0-9a-f-]{36}\/audio$/);
     // A part's Creation is read by everyone making the work: Mira reads the lyrics.
