@@ -36,7 +36,7 @@ test.describe("mobile layout @mobile", () => {
       ["/materials", (p) => expect(p.getByRole("heading", { name: "My Creative Space" })).toBeVisible()],
       ["/explore?q=pocket", (p) => expect(p.getByRole("navigation", { name: "Search in" })).toBeVisible()],
       ["/materials?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
-      [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
+      [material, (p) => expect(p.getByRole("button", { name: "Details" })).toBeVisible()],
       [studio, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],
       ["/huddles", (p) => expect(p.getByRole("heading", { name: "Live Huddles" })).toBeVisible()],
       ["/approvals", (p) => expect(p.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible()],
@@ -96,7 +96,7 @@ test.describe("mobile layout @mobile", () => {
     const routes: Array<[string, (p: Page) => Promise<unknown>]> = [
       ["/", (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible()],
       [`/create?c=${conversation}`, (p) => expect(p.getByRole("region", { name: "meTalk" })).toBeVisible()],
-      [material, (p) => expect(p.getByRole("tab", { name: "Links" })).toBeVisible()],
+      [material, (p) => expect(p.getByRole("button", { name: "Details" })).toBeVisible()],
       ["/materials?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
       [`/creations/${art.id}`, (p) => expect(p.getByRole("button", { name: "Download" })).toBeVisible()],
       [`/creations/${art.id}/context?tab=people`, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],

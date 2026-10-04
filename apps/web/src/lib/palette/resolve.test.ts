@@ -41,9 +41,10 @@ describe("context-aware Palette", () => {
 
   it("follows the Material's medium (§9.5–9.8)", () => {
     const m = (entityType: PaletteContext["entityType"]) => labels({ page: "material", entityType, permissions: OWNER, ids: { materialId: "m1" }, facts: { related: "tide" } });
-    expect(m("photo")).toEqual(["Create with this", "Find related", "Add to Collection"]);
-    expect(m("audio")).toEqual(["Create with this", "Use the words", "Find related"]);
-    expect(m("note")).toEqual(["Create with this", "Extract ideas", "Find related"]);
+    // The page itself shows Use in creation and Details (owner, 4 Oct 2026: fewer buttons), so the Palette doesn't repeat them.
+    expect(m("photo")).toEqual(["Find related", "Add to Collection", "Explore possibilities"]);
+    expect(m("audio")).toEqual(["Use the words", "Find related", "Add to Collection"]);
+    expect(m("note")).toEqual(["Extract ideas", "Find related", "Add to Collection"]);
   });
 
   it("respects permissions (§11, §31): a viewer never sees edit, publish or rights changes", () => {

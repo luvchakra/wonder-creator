@@ -1,5 +1,5 @@
 import { strToU8, zipSync } from "fflate";
-import { expect, pngBytes, saveNote, sendItem, test, uid, uploadViaInbox, wavBytes } from "./fixtures";
+import { expect, pngBytes, saveNote, sendItem, test, uid, uploadViaInbox, wavBytes, type Page } from "./fixtures";
 
 const HTML_MEDIA_HAVE_METADATA = 1;
 
@@ -27,12 +27,12 @@ test.describe("CreatorSend & material", () => {
     await expect(page.getByRole("navigation", { name: "Material type" }).getByRole("link", { name: /Photos/ })).toContainText("1");
     await card.click();
 
-    // Material page: the image, status & provenance.
+    // Material page: the image and its name; status & provenance under Details › About the file.
     await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
-    await expect(page.getByLabel("Title")).toHaveValue(name);
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(page.locator("main img").first()).toBeVisible();
     await expect.poll(() => page.locator("main img").first().evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
-    const facts = page.locator("dl").first();
+    const facts = await aboutTheFile(page);
     await expect(facts).toContainText("Ready");
     await expect(facts).toContainText("Uploaded");
     await expect(facts).toContainText(`${name}.png`);
@@ -57,11 +57,10 @@ test.describe("CreatorSend & material", () => {
     // The signed URL really serves playable audio.
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => (a.error ? -1 : a.readyState))).toBeGreaterThanOrEqual(HTML_MEDIA_HAVE_METADATA);
     await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.duration)).toBeCloseTo(0.25, 1);
-    const facts = page.locator("dl").first();
+    const facts = await aboutTheFile(page);
     await expect(facts).toContainText("audio/wav");
     await expect(facts).toContainText("Ready");
-    await page.getByRole("tab", { name: "Insights" }).click();
-    await expect(page.getByText("Transcription isn't available with the current AI setup. The original is saved and playable.")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Details" }).getByText("Transcription isn't available with the current AI setup. The original is saved and playable.")).toBeVisible();
   });
 
   test("a Word document's text is extracted onto its material page", async ({ page }) => {
@@ -124,6 +123,7 @@ test.describe("CreatorSend & material", () => {
     await page.goto(`/materials/${id}`);
     await expect(page.getByLabel("Text")).toHaveValue(text);
 
+    await page.getByRole("button", { name: "Details" }).click();
     await page.getByRole("button", { name: "Delete" }).click();
     const dialog = page.getByRole("dialog", { name: "Delete this material permanently?" });
     await expect(dialog).toBeVisible();
@@ -133,6 +133,7 @@ test.describe("CreatorSend & material", () => {
     await page.reload();
     await expect(page.getByLabel("Text")).toHaveValue(text);
 
+    await page.getByRole("button", { name: "Details" }).click();
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("dialog", { name: "Delete this material permanently?" }).getByRole("button", { name: "Delete permanently" }).click();
     await expect(page).toHaveURL(/\/materials\?tab=ideas$/);
@@ -146,15 +147,23 @@ test.describe("CreatorSend & material", () => {
     const text = `Harbour lights ${uid()}`;
     const id = await saveNote(page, text);
     await page.goto(`/materials/${id}`);
-    await page.getByLabel("Title").fill("Harbour notebook");
+    // The words are the page; Save appears only once they change (and Use in creation steps aside meanwhile).
     await page.getByLabel("Text").fill(`${text}\nThe ferry horn at dusk.`);
-    await page.getByLabel("Tags").fill("sea");
-    await page.getByLabel("Tags").press("Enter");
-    await page.getByRole("button", { name: "Save changes" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Use in creation" })).toBeVisible();
+    // The title and tags are under Details.
+    await page.getByRole("button", { name: "Details" }).click();
+    const details = page.getByRole("dialog", { name: "Details" });
+    await details.getByLabel("Title").fill("Harbour notebook");
+    await details.getByLabel("Tags").fill("sea");
+    await details.getByLabel("Tags").press("Enter");
+    await details.getByRole("button", { name: "Save changes" }).click();
+    await expect(details.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
     await page.reload();
-    await expect(page.getByLabel("Title")).toHaveValue("Harbour notebook");
+    await expect(page.getByRole("heading", { level: 1, name: "Harbour notebook" })).toBeVisible();
     await expect(page.getByLabel("Text")).toHaveValue(`${text}\nThe ferry horn at dusk.`);
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByRole("button", { name: "Remove sea" })).toBeVisible();
   });
 
@@ -168,8 +177,9 @@ test.describe("CreatorSend & material", () => {
     await page.getByRole("link").filter({ hasText: name }).click();
     await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
 
-    // Details tab is the default: owner, privacy and provenance.
-    const facts = page.locator("dl").first();
+    // The page is just the picture, its name and one action; Details holds the rest (owner, 4 Oct 2026).
+    await expect(page.getByLabel("Description")).toHaveCount(0);
+    const facts = await aboutTheFile(page);
     await expect(facts).toContainText("Private to you");
     await expect(facts).toContainText("Owner");
 
@@ -178,16 +188,15 @@ test.describe("CreatorSend & material", () => {
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
 
-    await page.getByRole("tab", { name: "Links" }).click();
     await expect(page.getByText("Not in a collection yet.")).toBeVisible();
-    await page.getByLabel("Collection").selectOption({ label: collection });
+    await page.getByLabel("Collection", { exact: true }).selectOption({ label: collection });
     await page.getByRole("button", { name: "Add to collection" }).click();
     await expect(page.getByRole("status").filter({ hasText: `Added to ${collection}.` })).toBeVisible();
 
     await page.reload();
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByLabel("Description")).toHaveValue("Low tide colours for the album cover.");
     await expect(page.getByLabel("Source & rights note")).toHaveValue("My own photo.");
-    await page.getByRole("tab", { name: "Links" }).click();
     await expect(page.getByRole("list", { name: "In collections" })).toContainText(collection);
     await page.getByRole("button", { name: `Remove from ${collection}` }).click();
     await expect(page.getByText("Not in a collection yet.")).toBeVisible();
@@ -198,3 +207,11 @@ test.describe("CreatorSend & material", () => {
     expect((await download).suggestedFilename()).toBe(`${name}.png`);
   });
 });
+
+/** Open Details and its "About the file" fold; returns the facts list. */
+async function aboutTheFile(page: Page) {
+  await page.getByRole("button", { name: "Details" }).click();
+  const details = page.getByRole("dialog", { name: "Details" });
+  await details.getByText("About the file").click();
+  return details.locator("dl").first();
+}

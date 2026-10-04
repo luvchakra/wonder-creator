@@ -12,7 +12,8 @@ test.describe("DejaVu", () => {
 
     // Material: + DejaVu → Create "…" → the chip is there.
     await page.goto(`/materials/${note}`);
-    const chips = page.getByRole("group", { name: "DejaVus" });
+    await page.getByRole("button", { name: "Details" }).click();
+    const chips = page.getByRole("dialog", { name: "Details" }).getByRole("group", { name: "DejaVus" });
     await chips.getByRole("button", { name: "Add a DejaVu" }).click();
     const sheet = page.getByRole("dialog", { name: "Add a DejaVu" });
     await sheet.getByLabel("Search or type a DejaVu").fill(thread);
