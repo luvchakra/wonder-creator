@@ -14,8 +14,11 @@ import {
   contributionSummary,
   listContributions,
   getProjectRights,
+  listParts,
+  partsTimeline,
   type ProjectStatus,
 } from "@wonder/creator-projects";
+import { creationPath } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
@@ -51,6 +54,9 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     items.find((i) => i.material && (i.material.type === "image" || i.material.type === "sketch") && i.material.storage_object_id)?.material?.storage_object_id ??
     null;
   const canEdit = p.creator_id === creator.id;
+  // Parts (docs/creative-room-parts.md): what the work is made of, who's on each, and what happened.
+  const parts = await listParts(db, id, creator.id);
+  const timeline = parts.length ? await partsTimeline(db, id, parts) : [];
   const crewRow = await crewForProject(db, id);
   const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
   const inCrew = !!crew && crew.me?.status === "active";
@@ -90,21 +96,30 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           ];
         })()
       : [];
-  const [avatars, owner] = await Promise.all([
-    avatarUrls(
-      db,
-      (crew?.active ?? []).map((m) => m.creatorId),
-    ),
+  const [avatars, owner, manages, excerpt] = await Promise.all([
+    avatarUrls(db, [...new Set([...(crew?.active ?? []).map((m) => m.creatorId), ...parts.flatMap((x) => x.people.map((y) => y.id)), ...timeline.map((e) => e.actor?.id).filter((x): x is string => !!x)])]),
     canEdit ? Promise.resolve({ data: { display_name: creator.display_name } }) : db.from("creators").select("display_name").eq("id", p.creator_id).maybeSingle(),
+    canEdit ? Promise.resolve(true) : parts.length ? db.rpc("project_role_of", { p_project: id }).then((r) => r.data === "admin") : Promise.resolve(false),
+    partExcerpt(db, parts),
   ]);
   const coverUrl = coverObject ? (previews[coverObject] ?? (await signedUrlsFor(db, [coverObject]))[coverObject] ?? null) : null;
 
   // The room's current Creation: the most recently touched one you can open (palette-spec §9.30–9.31).
   const activeCreationId = items.filter((i) => i.artifact && i.available).sort((a, b) => b.artifact!.updated_at.localeCompare(a.artifact!.updated_at))[0]?.itemId ?? null;
   const activeCreationTitle = items.find((i) => i.itemId === activeCreationId)?.artifact?.title ?? null;
+  const myPart = parts.find((x) => x.mine && x.artifact) ?? null;
   return (
     <>
-      <PaletteScope context={{ page: "room", entityType: "room", permissions: canEdit ? ["edit", "invite"] : [], ids: { projectId: id, crewId: crew?.crew.id }, facts: { activeCreationId, hasCrew: !!crew }, strip: { label: activeCreationTitle ? `${activeCreationTitle} · Active` : "No active Creation" } }} />
+      <PaletteScope
+        context={{
+          page: "room",
+          entityType: "room",
+          permissions: canEdit ? ["edit", "invite"] : [],
+          ids: { projectId: id, crewId: crew?.crew.id },
+          facts: { activeCreationId, hasCrew: !!crew, hasParts: parts.length > 0, myPartHref: myPart?.artifact ? creationPath(myPart.artifact.id, myPart.artifact.type) : null },
+          strip: { label: parts.length ? `${parts.filter((x) => x.status === "final").length} of ${parts.length} parts final` : activeCreationTitle ? `${activeCreationTitle} · Active` : "No active Creation" },
+        }}
+      />
       <ProjectView
         project={{
           id: p.id,
@@ -156,6 +171,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         }
         contributions={ledger ? { manages: role === "owner" || role === "admin", entries: ledger, summary: contributionSummary(ledger), people } : null}
         rights={rights}
+        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt } : null}
+        avatars={avatars}
         canEdit={canEdit}
         ownerName={owner.data?.display_name ?? "A creator"}
         crew={
@@ -174,4 +191,15 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
       />
     </>
   );
+}
+
+/** The first lines of a writing part the viewer may read: the hero's glimpse of the work. */
+async function partExcerpt(db: Parameters<typeof listParts>[0], parts: Awaited<ReturnType<typeof listParts>>): Promise<{ partTitle: string; lines: string[] } | null> {
+  const part = parts.find((x) => x.kind === "writing" && x.artifact);
+  if (!part?.artifact) return null;
+  const { data: a } = await db.from("artifacts").select("current_version_id").eq("id", part.artifact.id).maybeSingle();
+  if (!a?.current_version_id) return null;
+  const { data: v } = await db.from("artifact_versions").select("content").eq("id", a.current_version_id).maybeSingle();
+  const lines = (v?.content ?? "").split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 4);
+  return lines.length ? { partTitle: part.title, lines } : null;
 }

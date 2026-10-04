@@ -157,6 +157,17 @@ posts, shared Creations, Huddles), enforced in the database. Home has a **Commun
 No likes, follower counts or ranking. Contract: `docs/communities.md`. Implementation:
 `packages/creator-community/src/communities.ts`, `/api/v1/communities`, `/communities/[id]`.
 
+## Creative Room parts (owner brief, 4 Oct 2026)
+
+Making one thing together — three creators, one song: a Room says what the work is **made of** (parts: Lyrics · Tune ·
+Voice), each part a Creation of its own by whoever is on it, made on that format's page. Parts are peers (no pipeline;
+lyrics and tune work on each other), two or more people may share one, anyone may be invited to a single part without
+joining the Room, and final is said by the people on it. Shares are equal per person. Every version will record which
+versions of the other parts it was made with (step 2), so drift is a comparison, never a guess; no AI melodies, lyrics
+or arrangements. Layout: the work first, parts as rows, the timeline beneath (owner's choice, 4 Oct 2026). Contract:
+`docs/creative-room-parts.md`. Implementation: `packages/creator-projects/src/parts.ts`, `/api/v1/projects/[id]/parts`,
+`rooms/[id]/parts-panel.tsx`.
+
 ## Testimonials (owner, 2 Oct 2026)
 
 As Orkut had them: someone else writes a short note about you; it shows on your Profile only after you show it, and you

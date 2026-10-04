@@ -7,6 +7,7 @@ import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
 import { RightsPanel } from "./rights-panel";
 import { TasksPanel } from "./tasks-panel";
+import { PartsPanel, type PartsData } from "./parts-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -93,8 +94,13 @@ export function ProjectView({
   tasks,
   contributions,
   rights,
+  parts,
+  avatars,
 }: {
   project: Project;
+  /** The Room's parts (docs/creative-room-parts.md), when it has any. */
+  parts: PartsData | null;
+  avatars: Record<string, string | null>;
   items: Item[];
   approvals: Array<{ id: string; actionLabel: string; understood: string; urgent: boolean }>;
   nextSteps: Array<{ id: string; title: string; status: string; dueOn: string | null }>;
@@ -267,7 +273,7 @@ export function ProjectView({
               Add a brief and goals — CreativeMind keeps them in mind when you create here.
             </button>
           ) : null}
-          {canEdit ? (
+          {canEdit && !parts ? (
           <div className="flex flex-wrap gap-2">
             <Link href={`/create?project=${project.id}`} className={buttonClasses()}>
               <Sparkles className="size-4" aria-hidden /> Create in this Creative Room
@@ -284,6 +290,8 @@ export function ProjectView({
           ) : null}
         </div>
       </section>
+
+      {showOverview && parts ? <PartsPanel projectId={project.id} viewerId={viewerId} avatars={avatars} {...parts} /> : null}
 
       {crew || canEdit ? (
         <nav aria-label="Creative Room sections" className="-mx-4 overflow-x-auto px-4">
@@ -331,7 +339,7 @@ export function ProjectView({
         </p>
       ) : null}
 
-      {showOverview ? (
+      {showOverview && !parts ? (
         <RoomNow projectId={project.id} canEdit={canEdit} items={items} nextSteps={nextSteps} onCreate={() => router.push(`/create?project=${project.id}`)} />
       ) : null}
 

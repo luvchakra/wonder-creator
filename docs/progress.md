@@ -215,6 +215,15 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | My Creative Space: fewer buttons | Done | Removed: the header's "+ New" (its own Start-a-new-Creation dialog — the Palette's Create sheet does this) and "Shared with you" (now the Shared tab's title link), the "Add new material" tile (Bring Material is in the Palette) and the Inspirations tab (the Reference Shelf by another name; its data stays). The page's Palette: Create · Continue · Bring Material (Explore is global); the Materials Palette drops Capture (same as Bring) and Explore |
 | 4 · Presentation · 5 · Video | Not started | |
 
+## Creative Room parts (owner brief, 4 Oct 2026)
+
+Making one thing together — a song by three people (`docs/creative-room-parts.md`), one PR per step.
+
+| Item | Status | Notes |
+|---|---|---|
+| 1 · Parts | Done | A Room says what the work is made of: parts, each a Creation of its own by whoever is on it. Crew claim parts (two or more may share one); anyone may be invited to a single part without joining the Room; final is said by the people on it. Templates: Song · Podcast episode · Illustrated story. The Room leads with the work (option B) and tells what happened (C's timeline). RLS: part-only invitees see the Room's name and parts, read the parts' Creations, nothing else |
+| 2 · Made with · 3 · Play-along · 4 · The Song page · 5 · Completion | Not started | |
+
 ## Owner requests, 4 Oct 2026 (afternoon)
 
 | Item | Status | Notes |

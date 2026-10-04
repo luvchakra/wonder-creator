@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./options": "./src/options.ts",
+    "./parts-options": "./src/parts-options.ts",
     "./campaign-labels": "./src/campaign-labels.ts"
   }
 }
