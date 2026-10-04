@@ -207,7 +207,7 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | Item | Status | Notes |
 |---|---|---|
 | 1 · Writing page + routing | Done | Make a new Creation › Writing opens `/creations/[id]/write` (the Studio forwards writing there). Words over the cover, the cover blurred behind, or paper (migration 082 `artifacts.presentation`); verse centred, screenplay mono; Passage · Poem · Screenplay while empty. Write is the one primary action; Cover (your pictures or one CreativeMind makes) and Read are the two secondaries; More holds Publish as link (CreatorPublish, link-only by default, Creator Page opt-in), Refine, Export, Share, Versions, Rights |
-| 2 · Images page | Not started | Next |
+| 2 · Images page | Done | `/creations/[id]/image`: the picture on paper with its caption; Edit (Crop · Focus · Filter · Light · Blur · Frame) is the primary action, Words and Download the secondaries; Add, Arrange & captions, Publish as link, Make a carousel in More. Every Keep is a version; originals untouched. Downloads drawn in the browser (PNG/JPEG/WebP). Published photo essays show the pictures as shaped |
 | 3 · Audio · 4 · Presentation · 5 · Video | Not started | |
 
 ## Owner requests, 4 Oct 2026 (afternoon)
@@ -219,3 +219,4 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | Quick Pic / Video Note use the phone's camera defaults | Done | `capture` without a lens hint (also Send and the composer): the camera app opens with its own last lens, mode and settings |
 | Roman ornaments: header and footer of written Creations | Done | Owner: "for writing creations only". `Ornament` in packages/ui: Hairline · Dentil · Arcade · Egg & dart · Meander · Keystone (default) · Laurel. Chosen per Creation in the Writing page's Cover sheet (`artifacts.presentation.ornament`); heads (under the title) and closes the piece on the canvas, the Read page and the published page. The app bar and public site keep their plain lines |
 | Home-screen icon: no white rim, sharp and larger | Done | Full-bleed maskable icons (512/192) and a full-bleed Apple touch icon (180), rendered from the kit's vector by `scripts/prepare-app-icons.mjs`; Android shapes them itself instead of shrinking the icon onto a white plate. Existing installs pick it up when the browser refreshes the installed app (or after reinstalling) |
+| Preview and what's next on the Writing page | Done | Preview (the public renderer on the current draft, Publish beneath) replaces Read as the second button; the published link shows under the title with Copy; the Palette's first three follow the stage (Preview · Publish as link · Share) |

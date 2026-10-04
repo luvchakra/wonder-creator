@@ -1,5 +1,6 @@
 import { artifactType } from "./artifact-types";
 import type { SlideOverlay, ImageTransform } from "./carousel";
+import type { ImageEdits } from "./image-options";
 
 /**
  * CreatorPublish (docs/creator-publish.md): the shared words for publishing a Creation to the creator's own public
@@ -97,6 +98,8 @@ export interface PublishedSnapshot {
   ornament?: "line" | "dentil" | "arcade" | "eggdart" | "meander" | "keystone" | "laurel";
   slides?: Array<{ objectId: string | null; text: string; overlay: SlideOverlay; transform: ImageTransform }>;
   images?: Array<{ objectId: string; alt: string }>;
+  /** The Images page: each picture as shaped (crop, filter, light, words, frame) and its caption, in order. */
+  pictures?: Array<{ objectId: string; caption: string; edits: ImageEdits; words: SlideOverlay }>;
   media?: { kind: "audio" | "video"; objectId: string; title: string; durationSeconds?: number | null; posterObjectId?: string | null; vertical?: boolean };
   /** A creator's reading of a poem: offered, never the page's centre. */
   voice?: { objectId: string; durationSeconds?: number | null } | null;
@@ -135,11 +138,12 @@ const LISTEN_TYPES = new Set(["podcast_concept", "song_concept", "sound_design",
 export const isPoem = (type: string) => WRITING_POEM.has(type);
 
 /** The experiences a snapshot can honestly support; the first is the one inferred from its type (§27: change only when several fit). */
-export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks">): PublicationExperience[] {
+export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks" | "pictures">): PublicationExperience[] {
   const hasText = !!s.content.trim();
   const out: PublicationExperience[] = [];
   const add = (e: PublicationExperience, ok: boolean) => ok && !out.includes(e) && out.push(e);
-  // The type decides first…
+  // Pictures shaped on the Images page (creation-pages.md, step 2) are viewed, pictures first; then the type decides…
+  add("view", !!s.pictures?.length);
   if (type === "carousel" || type === "social_series") add("swipe", !!s.slides?.length);
   if (WATCH_TYPES.has(type)) add("watch", s.media?.kind === "video");
   if (LISTEN_TYPES.has(type)) add("listen", s.media?.kind === "audio");

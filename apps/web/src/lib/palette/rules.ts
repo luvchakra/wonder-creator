@@ -109,9 +109,17 @@ export function rulesFor(ctx: PaletteContext): Rules {
     case "studio":
       // §9.16–9.19: the canvas stays dominant; editor controls stay in the editor. Materials, References and Context
       // live in the Studio's Working Set now (creative-studio-working-set.md §66), and Refine is on the page itself.
+      // Once there are saved words, what's next leads (owner, 4 Oct 2026): Preview, Publish, Share; after publishing,
+      // the link and the Creator Page.
       return {
         title: "This Creation",
         items: [
+          ...(f.hasWords
+            ? [
+                { id: "preview", label: f.published ? "Preview & link" : "Preview", hint: f.published ? "Your page as readers see it, with the link" : "See it as readers would, then publish", icon: "images" as const, class: "share" as const, target: route(`${a}/preview`), score: 120, requires: "publish" as const },
+                { id: "publish-link", label: f.published ? "On my Creator Page" : "Publish as link", hint: f.published ? "Show it on your public page, or not" : "A page of its own — only people with the link", icon: "spark" as const, class: "share" as const, target: route(`${a}/publish`), score: 110, requires: "publish" as const },
+              ]
+            : []),
           {
             id: "transform",
             label: "Transform",
@@ -134,7 +142,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
           },
           { id: "versions", label: "Versions", hint: "Every saved version — compare or restore one", class: "context", target: route(`${a}?tab=versions`), score: 90 },
           { id: "visuals", label: "Visual directions", hint: "Images made from this Creation", icon: "images", class: "create", target: route(`${a}#visual-directions`), score: 60, requires: "edit" },
-          { id: "share", label: "Share", hint: "A private link for people you choose", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
+          { id: "share", label: "Share", hint: "A private link for people you choose", class: "share", target: route(`${a}/share`), score: f.hasWords ? 105 : 40, requires: "publish" },
         ],
       };
 

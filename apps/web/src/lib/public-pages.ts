@@ -1,6 +1,7 @@
 import "server-only";
 import { mediaLink } from "@wonder/core/server";
 import { normalizeSections, resolveTemplateId, type CreatorPageTemplateId } from "@wonder/creator-studio/creator-page";
+import { previewPublication } from "@wonder/creator-studio";
 import type { PublicRights, PublicationManifest, PublicationVisibility, PublishSettings, PublishedSnapshot } from "@wonder/creator-studio/publish";
 import { headers } from "next/headers";
 import { createClient } from "./supabase/server";
@@ -46,6 +47,8 @@ export interface PublicWorkView {
   media: Record<string, string>;
   /** Only the creator is looking (a private work, or a preview). */
   preview: boolean;
+  /** A preview of a published, unchanged work: what readers see now, so no notice. */
+  livePreview?: boolean;
 }
 
 type RawCard = Omit<PublicCard, "coverUrl" | "href"> & { coverObjectId: string | null };
@@ -74,6 +77,35 @@ function toView(raw: RawWork, preview: boolean): PublicWorkView {
     media,
     preview,
   };
+}
+
+/**
+ * The creator's own Creation as its public page would show it right now — before (or after) publishing. Built as the
+ * creator under RLS; nothing is written. Media links are minted like the public page's.
+ */
+export async function loadWorkPreview(db: Parameters<typeof previewPublication>[0], creator: { id: string; handle: string | null; name: string; avatarObjectId: string | null }, artifactId: string) {
+  const p = await previewPublication(db, creator.id, artifactId);
+  const { data: page } = await db.from("creator_pages").select("is_published").eq("creator_id", creator.id).maybeSingle();
+  const view = toView(
+    {
+      workId: artifactId,
+      slug: p.slug,
+      visibility: p.visibility,
+      settings: p.settings,
+      revision: { number: p.provenance.revisionNumber, publishedAt: new Date().toISOString() },
+      manifest: p.manifest,
+      snapshot: p.snapshot,
+      rights: p.rights,
+      provenance: p.provenance,
+      creator: { handle: creator.handle ?? "", name: creator.name, avatarObjectId: creator.avatarObjectId, pagePublished: !!page?.is_published },
+      more: [],
+      conversation: null,
+    },
+    true,
+  );
+  // Published and unchanged: readers see exactly this, so no "only you can see this" notice (views still aren't counted).
+  if (p.published && !p.changedSincePublished) view.livePreview = true;
+  return { view, published: p.published, changedSincePublished: p.changedSincePublished, empty: p.empty };
 }
 
 /**

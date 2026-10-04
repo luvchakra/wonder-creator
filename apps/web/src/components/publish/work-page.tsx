@@ -7,6 +7,7 @@ import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
 import { ShareButton, ViewBeacon } from "./beacons";
 import { ListenRenderer, ViewRenderer, VoiceChip, WatchRenderer } from "./media";
 import { SwipeRenderer } from "./swipe";
+import { EditedImage } from "../images/edited-image";
 import { WrittenPiece } from "../writing/written-piece";
 
 /**
@@ -58,7 +59,7 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
         <span className="flex-1" />
         {work.rights.allowSharing && work.visibility !== "private" ? <ShareButton workId={work.workId} title={s.title} url={url} tone={dark ? "dark" : "light"} /> : null}
       </header>
-      {work.preview ? (
+      {work.preview && !work.livePreview ? (
         <p role="status" className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-full bg-accent-softer px-4 py-1.5 text-[13px] text-accent-ink">
           <Lock className="size-4" aria-hidden /> {work.visibility === "private" ? "Private — only you can see this." : "Not published right now — only you can see this."}
         </p>
@@ -69,6 +70,22 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
           <>
             <Title title={s.title} byline={byline} small />
             <SwipeRenderer workId={work.workId} slides={s.slides} aspect={m.aspectRatio ?? "4:5"} media={work.media} fullscreen={m.treatment === "fullscreen"} title={s.title} />
+          </>
+        ) : m.experience === "view" && s.pictures?.length ? (
+          // The Images page's pictures, as shaped (creation-pages.md, step 2): one large, the rest below with captions.
+          <>
+            <div className="mx-auto max-w-3xl space-y-8">
+              {s.pictures.map((p, k) => (
+                <figure key={`${p.objectId}-${k}`} className="mx-auto">
+                  <EditedImage src={media(p.objectId)} edits={p.edits} words={p.words} label={p.caption || s.title} className="w-full" />
+                  {p.caption ? <figcaption className="mt-2 text-center font-display text-[15px] italic opacity-75">{p.caption}</figcaption> : null}
+                </figure>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+              <h1 className="font-display text-[26px] leading-tight">{s.title}</h1>
+              <p className="mt-1 text-[14px] opacity-75">{byline}</p>
+            </div>
           </>
         ) : m.experience === "view" && s.images?.length ? (
           <>

@@ -4,6 +4,7 @@ import { licenseRights } from "@wonder/creator-library/source-rights";
 import { z } from "zod";
 import { artifactType } from "./artifact-types";
 import { lookOf, ornamentOf } from "./creation-pages";
+import { imageSetOf } from "./image-options";
 import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
 import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
@@ -72,7 +73,7 @@ const vertical = (m: Mat) => {
 export async function buildSnapshot(db: Db, artifactId: string, settings: PublishSettings = {}): Promise<{ snapshot: PublishedSnapshot; versionId: string | null; aspectRatio?: string; coverCandidates: string[] }> {
   const a = must(await db.from("artifacts").select("id, title, description, artifact_type, current_version_id, cover_material_id, presentation").eq("id", artifactId).maybeSingle(), "That Creation isn't available.");
   const [{ data: v }, { data: edges }, { data: slides }, { data: carousel }] = await Promise.all([
-    a.current_version_id ? db.from("artifact_versions").select("id, version_number, content").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
+    a.current_version_id ? db.from("artifact_versions").select("id, version_number, content, structured_content").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("lineage_edges").select("source_id, created_at").eq("target_type", "artifact").eq("target_id", artifactId).eq("source_type", "material").order("created_at").limit(40),
     db.from("carousel_slides").select("id, order_index, asset_id, display_text, source_text, overlay, image_transform").eq("artifact_id", artifactId).order("order_index").limit(60),
     db.from("carousels").select("aspect_ratio").eq("artifact_id", artifactId).maybeSingle(),
@@ -118,6 +119,12 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
       transform: { ...DEFAULT_TRANSFORM, ...((s.image_transform as Partial<ImageTransform>) ?? {}) },
     }));
   if (pictures.length) snapshot.images = pictures.slice(0, 24).map((p) => ({ objectId: p.storage_object_id!, alt: p.title?.trim() || "" }));
+  // The Images page (creation-pages.md, step 2): the pictures in the creator's order, as shaped — only clean, linked ones.
+  const shaped = imageSetOf(v?.structured_content).items.map((i) => ({ item: i, m: byId.get(i.materialId) })).filter((x) => x.m && obj(x.m.storage_object_id));
+  if (shaped.length) {
+    snapshot.pictures = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, caption: item.caption, edits: item.edits, words: item.words }));
+    snapshot.images = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, alt: item.caption || m!.title?.trim() || "" }));
+  }
   else if (cover && obj(cover.storage_object_id) && (cover.type === "image" || cover.type === "sketch")) snapshot.images = [{ objectId: cover.storage_object_id!, alt: cover.title?.trim() || "" }];
   if (video) snapshot.media = { kind: "video", objectId: video.storage_object_id!, title: video.title?.trim() || a.title, durationSeconds: durationOf(video), posterObjectId: coverObjectId, vertical: vertical(video) };
   else if (audio && !isPoem(type)) snapshot.media = { kind: "audio", objectId: audio.storage_object_id!, title: audio.title?.trim() || a.title, durationSeconds: durationOf(audio) };
@@ -322,6 +329,37 @@ export async function publishCreation(db: Db, creatorId: string, artifactId: str
     .select("id");
   if (up.error) throw up.error.code === "23505" ? new DomainError("conflict", "That address is taken. Choose another.") : fromDbError(up.error);
   return (await publicationFor(db, artifactId)).publication!;
+}
+
+/**
+ * Preview (owner, 4 Oct 2026: "show the same to user as a prominent preview option so they understand what can happen
+ * next"): the Creation as it is now, exactly as its public page would show it — the same snapshot, manifest, rights and
+ * provenance a publish would freeze, built as the creator under RLS. Nothing is written.
+ */
+export async function previewPublication(db: Db, creatorId: string, artifactId: string) {
+  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id").eq("id", artifactId).maybeSingle();
+  if (!a || a.creator_id !== creatorId) throw new DomainError("not_found", "That Creation isn't available.");
+  const { data: w } = await db.from("published_works").select("slug, visibility, settings, unpublished_at, current_revision_id").eq("artifact_id", artifactId).maybeSingle();
+  const settings = (w?.settings as PublishSettings | null) ?? {};
+  const built = await buildSnapshot(db, artifactId, settings);
+  const manifest = manifestFor(a.artifact_type, built.snapshot, settings, built.aspectRatio);
+  const { data: last } = w ? await db.from("published_revisions").select("revision_number, version_id").eq("artifact_id", artifactId).order("revision_number", { ascending: false }).limit(1).maybeSingle() : { data: null };
+  const nextRevision = (last?.revision_number ?? 0) + 1;
+  const [rights, provenance] = await Promise.all([rightsFor(db, artifactId, built.versionId, settings), provenanceFor(db, built.versionId, built.snapshot.versionNumber, nextRevision)]);
+  const live = !!w && !w.unpublished_at && w.visibility !== "private";
+  return {
+    slug: w?.slug ?? slugify(a.title),
+    visibility: (w?.visibility as PublicationVisibility | undefined) ?? "unlisted",
+    settings,
+    manifest,
+    snapshot: built.snapshot,
+    rights,
+    provenance,
+    /** Published and reachable; and whether what's shown here differs from what readers see now. */
+    published: live,
+    changedSincePublished: live && !!last && last.version_id !== built.versionId,
+    empty: !built.snapshot.content.trim() && !built.snapshot.slides?.length && !built.snapshot.images?.length && !built.snapshot.media,
+  };
 }
 
 /** Presentation and placement only (visibility, featured, address, context and rights toggles) — no new revision. */

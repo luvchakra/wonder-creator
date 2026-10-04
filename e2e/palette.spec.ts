@@ -74,21 +74,22 @@ test.describe("Creative Palette", () => {
     const box = (await trigger.boundingBox())!;
     expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest("[data-palette-trigger]"), [box.x + box.width / 2, box.y + box.height / 2])).toBe(true);
 
-    // Leaves are labels only; what each does is its description and, when previewed, one bubble.
+    // Leaves are labels only; what each does is its description and, when previewed, one bubble. With saved words,
+    // what's next leads (owner, 4 Oct 2026): Preview · Publish as link · Share.
     await trigger.click();
-    const transform = palette.getByRole("button", { name: "Transform" });
-    await expect(transform).toHaveText("Transform");
-    await expect(transform).toHaveAccessibleDescription(/another format/);
+    const preview = palette.getByRole("button", { name: "Preview", exact: true });
+    await expect(preview).toHaveText("Preview");
+    await expect(preview).toHaveAccessibleDescription(/as readers would/);
     await expect(bubble).toHaveCount(0);
-    await transform.hover();
+    await preview.hover();
     await expect(bubble).toHaveCount(1);
-    await expect(bubble).toContainText("Turn this Creation into another format");
+    await expect(bubble).toContainText("See it as readers would");
 
     // Keyboard focus previews the focused leaf instead: still one bubble.
     await page.keyboard.press("Tab");
-    await expect(palette.getByRole("button", { name: "People" })).toBeFocused();
+    await expect(palette.getByRole("button", { name: "Publish as link" })).toBeFocused();
     await expect(bubble).toHaveCount(1);
-    await expect(bubble).toContainText("Who's working on it");
+    await expect(bubble).toContainText("A page of its own");
 
     await page.keyboard.press("Escape");
     await expect(palette).toHaveCount(0);

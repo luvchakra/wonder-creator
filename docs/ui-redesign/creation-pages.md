@@ -19,7 +19,7 @@ minimal buttons and the best way to handle it. Plan approved the same day ("appr
 | Step | Page | Status |
 | --- | --- | --- |
 | 1 | **Writing** `/creations/[id]/write` + routing from the sheet | Done |
-| 2 | **Images**: the picture is the canvas. Primary **Edit** (Crop free/1:1/4:5/16:9/9:16, Focus, Filter — Warm, Cool, Film, Mono, Fade, none — Light, Blur behind words, Frame). Secondary **Words** (text on image, the slide editor's controls lifted into `packages/ui`) and **Download** (PNG/JPEG/WebP). More: Variations, Make a carousel, Publish as link, Share, Versions, Rights. Non-destructive: each keep is a new version; the original stays. Photo essay = sequence with captions, reusing Arrange | Next |
+| 2 | **Images** `/creations/[id]/image` | Done |
 | 3 | **Audio**: recorder (the voice-note recorder) above the words; Record / Write / Listen; Transcribe when the provider is live; export audio + text; a simple player page as the public link | Not started |
 | 4 | **Presentation**: current slide large + strip; Edit slide / Add slide / Present; themes from the named palettes (Editorial Paper, Cinematic Dark, Soft Gradient); speaker notes; export via web-page print | Not started |
 | 5 | **Video**: storyboard + script (shots with frame, line, duration); Write / Add shot / Play through (animatic); exports; Render only when a video provider is connected (honest "not connected" otherwise) | Not started |
@@ -64,6 +64,44 @@ the same on the canvas, the Read page and the published page (`components/writin
 | fiction | story, prose, narration, treatment | a fiction page | italic centred title, opening line in capitals, indented paragraphs, ⁂ between scenes |
 | letter | letter | a letter | the date at the right, the greeting in italics, the sign-off set to the right |
 | script | screenplay, script, dialogue | a screenplay | mono, title underlined in capitals |
+
+## Images (step 2)
+
+- **Canvas.** The picture is the work, on paper, with its caption beneath; a strip of thumbnails when there are several
+  (a photo essay). Empty: "Begin with a picture" — **Take a picture** (the phone's own camera), **Your pictures** (picture
+  Materials, Quick Pics included), **Make one** (contextual image generation; "Use this picture" keeps it as a Material).
+- **Primary: Edit** (Add a picture until there is one). Six tools on a live preview: **Crop** (Free · 1:1 · 4:5 · 16:9 ·
+  9:16 and zoom), **Focus** (tap the picture or a nine-spot grid), **Filter** (Original · Warm · Cool · Film · Mono ·
+  Fade), **Light** (brightness, contrast), **Blur** behind the words, **Frame** (none, paper edge, fine border).
+- **Secondary: Words** (real text on the picture — the Carousel slide's overlay model: place, align, face, size, colour,
+  shade/band/clear, shadow) and **Download** (PNG · JPEG · WebP, drawn in the browser at up to 2400 px; filters are
+  applied to the pixels so every browser gets the same picture).
+- **More:** Add a picture · Arrange & captions (order with move up/down, a caption each, take out) · Publish as link ·
+  Make a carousel · Share privately · Versions · What's influencing this? · Rights.
+- **Non-destructive.** The pictures stay Materials, untouched. What was done to them lives in the Creation's version
+  (`structured_content`: `{ kind: "images", items: [{ materialId, caption, edits, words }] }`); **every Keep is a new
+  version**, so any earlier look can be restored. A picture new to the Creation must be the creator's own and gains a
+  `contains_material` lineage edge. `POST /api/v1/artifacts/[id]/images`.
+- **Published** (`snapshot.pictures`): the View experience shows each picture as shaped, with its caption. A photo essay
+  shaped here is viewed, pictures first; one that is words with pictures stays a Journey.
+- Implementation: `packages/creator-studio/src/image-options.ts` (model, filters → CSS and pixel ops),
+  `creation-images.ts` (save), `apps/web/src/components/images/edited-image.tsx` (preview + canvas export),
+  `…/studio/images-canvas.tsx`, `…/creations/[id]/image`. Tests: `image-options.test.ts`, `e2e/images-page.spec.ts`.
+
+### Preview, and what's next (owner, 4 Oct 2026)
+
+"After writing… there are no options on the screen where I can go next" and "when I publish this as a link, it looks
+good… show the same to user as a prominent preview option so they understand what can happen next."
+
+- **Preview** is the Writing page's second secondary (Read moved to More). `/creations/[id]/preview` renders the
+  Creation through the public page's own renderer — the same snapshot, manifest, rights and provenance a publish would
+  freeze (`previewPublication`, built as the creator under RLS; nothing written) — with one bar beneath: **Publish as
+  link** (anyone with the link; the Creator Page stays opt-in), or, once published, the live link with **Copy link** and
+  **Open**, and **Publish the latest version** when the words moved on. Views aren't counted on a preview.
+- **The link stays in sight:** a published Creation shows "Published · its address · Copy" under the title on the
+  Writing page, with "newer words here — Preview to publish them" when they differ.
+- **The Palette follows the stage:** with saved words, Preview · Publish as link · Share lead; after publishing, Preview
+  & link · On my Creator Page · Share.
 
 ### Ornaments (owner, 4 Oct 2026)
 
