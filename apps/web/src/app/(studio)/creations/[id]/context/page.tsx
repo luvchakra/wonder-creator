@@ -95,7 +95,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
           </section>
         ) : section === "references" ? (
           <section aria-label="References">
-            <MaterialGrid items={references} empty="No references yet. Attach them from your Reference Shelf in meTalk." />
+            <MaterialGrid items={references} empty="No references yet." />
           </section>
         ) : section === "people" ? (
           <section aria-label="People">

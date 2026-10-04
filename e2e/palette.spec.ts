@@ -47,8 +47,9 @@ test.describe("Creative Palette", () => {
     await palette.getByRole("button", { name: "Create" }).click();
     // Create shows every format at once (owner, 2 Oct 2026); a tap makes the Creation and opens its Studio.
     const sheet = page.getByRole("dialog", { name: "Make a new Creation" });
-    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveText([/Writing/, /Carousel/, /Images/, /Video/, /Audio/, /Presentation/]);
-    await expect(sheet.getByRole("button", { name: /Let CreativeMind decide/ })).toBeVisible();
+    // Owner, 4 Oct 2026: Video and Presentation aren't offered here; making with others is.
+    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveText([/Writing/, /Carousel/, /Images/, /Audio/]);
+    await expect(sheet.getByRole("link", { name: /Collaborate with others/ })).toHaveAttribute("href", "/rooms?new=1");
     await expect(palette).toHaveCount(0);
     await sheet.getByRole("button", { name: /Carousel/ }).click();
     await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
@@ -74,25 +75,39 @@ test.describe("Creative Palette", () => {
     const box = (await trigger.boundingBox())!;
     expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest("[data-palette-trigger]"), [box.x + box.width / 2, box.y + box.height / 2])).toBe(true);
 
-    // Leaves are labels only; what each does is its description and, when previewed, one bubble. With saved words,
-    // what's next leads (owner, 4 Oct 2026): Preview · Publish as link · Share.
+    // Leaves are labels only; what each does is its description and, when previewed, one bubble. On the Writing page
+    // that kind's own tools lead (owner, 4 Oct 2026: "less about AI, more about supporting the writing type"): for a
+    // poem, Lines & stanzas · Hear it read · Publish as link. Preview and Cover are on the page, so not repeated here.
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/write$`));
     await trigger.click();
-    const preview = palette.getByRole("button", { name: "Preview", exact: true });
-    await expect(preview).toHaveText("Preview");
-    await expect(preview).toHaveAccessibleDescription(/as readers would/);
+    const creation = palette.getByRole("navigation", { name: "This Creation" });
+    await expect(creation.getByRole("button")).toHaveText(["Lines & stanzas", "Hear it read", "Publish as link"]);
+    const craft = palette.getByRole("button", { name: "Lines & stanzas", exact: true });
+    await expect(craft).toHaveAccessibleDescription(/syllables, stanzas/);
     await expect(bubble).toHaveCount(0);
-    await preview.hover();
+    await craft.hover();
     await expect(bubble).toHaveCount(1);
-    await expect(bubble).toContainText("See it as readers would");
+    await expect(bubble).toContainText("Line by line");
 
     // Keyboard focus previews the focused leaf instead: still one bubble.
     await page.keyboard.press("Tab");
-    await expect(palette.getByRole("button", { name: "Publish as link" })).toBeFocused();
+    await expect(palette.getByRole("button", { name: "Hear it read" })).toBeFocused();
     await expect(bubble).toHaveCount(1);
-    await expect(bubble).toContainText("A page of its own");
+    await expect(bubble).toContainText("rhythm");
 
     await page.keyboard.press("Escape");
     await expect(palette).toHaveCount(0);
     await expect(bubble).toHaveCount(0);
+
+    // The tool opens on the page itself — counted here, nothing sent — and opens again from the same leaf.
+    for (let i = 0; i < 2; i++) {
+      await trigger.click();
+      await palette.getByRole("button", { name: "Lines & stanzas", exact: true }).click();
+      const sheet = page.getByRole("dialog", { name: "Lines & stanzas" });
+      await expect(sheet.getByRole("list", { name: "Lines" }).getByRole("listitem")).toHaveCount(1);
+      await expect(sheet.getByText("Lines", { exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(sheet).toHaveCount(0);
+    }
   });
 });

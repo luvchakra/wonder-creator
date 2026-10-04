@@ -1,26 +1,10 @@
 import sharp from "sharp";
-import { adminPatch, creatorIdOf, expect, test, uid, type Page } from "./fixtures";
+import { adminPatch, creatorIdOf, fakeMicrophone, expect, test, uid, type Page } from "./fixtures";
 
 // Phase 02 — Home orchestration + Quick Capture (docs/phases/02-home-quick-capture.md §18).
 
 const capture = (page: Page) => page.getByRole("dialog", { name: "Quick Capture" });
 
-/** A microphone that works (a quiet tone) or one the creator has refused. */
-async function fakeMicrophone(page: Page, allowed: boolean) {
-  await page.addInitScript((ok) => {
-    const md = navigator.mediaDevices ?? ({} as MediaDevices);
-    Object.defineProperty(navigator, "mediaDevices", { value: md, configurable: true });
-    md.getUserMedia = async () => {
-      if (!ok) throw new DOMException("Permission denied", "NotAllowedError");
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const dest = ctx.createMediaStreamDestination();
-      osc.connect(dest);
-      osc.start();
-      return dest.stream;
-    };
-  }, allowed);
-}
 
 test.describe("Quick Capture", () => {
   test.beforeEach(({ creator }) => void creator);

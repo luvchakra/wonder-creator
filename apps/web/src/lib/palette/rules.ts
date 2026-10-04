@@ -1,3 +1,4 @@
+import { CRAFT_LABEL } from "@wonder/creator-studio/craft";
 import type { PaletteContext, PaletteItem } from "./types";
 
 /**
@@ -14,7 +15,7 @@ export const GLOBAL_ITEMS = (pathname = ""): PaletteItem[] => [
   {
     id: "create",
     label: "Create",
-    hint: "Writing, Carousel, Images, Video, Audio or Presentation",
+    hint: "Writing, Carousel, Images or Audio — or make it with others",
     icon: "spark",
     class: "create",
     target: cmd("create-menu"),
@@ -107,6 +108,26 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return { title: "This Creation", items: creationItems(ctx, a) };
 
     case "studio":
+      // The Writing page (owner, 4 Oct 2026: "less about AI, more about supporting the writing type"): that kind's own
+      // tools lead — lines and stanzas for a poem, headline and lede for news, scenes and runtime for a script — then
+      // hearing it read, then publishing. Preview and Cover are on the page itself, so they aren't repeated here.
+      if (f.writingStyle && f.workPath) {
+        const craft = CRAFT_LABEL[f.writingStyle];
+        return {
+          title: "This Creation",
+          items: [
+            { id: "craft", label: craft.label, hint: craft.hint, icon: "pen", class: "context", target: route(`${f.workPath}#craft`), score: 125 },
+            { id: "aloud", label: "Hear it read", hint: f.writingStyle === "verse" ? "Read aloud — listen for the rhythm and the breaks" : "Read aloud by your device, to catch what the eye skips", icon: "mic", class: "context", target: route(`${f.workPath}#aloud`), score: 115 },
+            ...(f.hasWords
+              ? [{ id: "publish-link", label: f.published ? "On my Creator Page" : "Publish as link", hint: f.published ? "Show it on your public page, or not" : "A page of its own — only people with the link", icon: "spark" as const, class: "share" as const, target: route(`${a}/publish`), score: 110, requires: "publish" as const }]
+              : []),
+            { id: "share", label: "Share", hint: "A private link for people you choose", class: "share", target: route(`${a}/share`), score: 90, requires: "publish" },
+            { id: "versions", label: "Versions", hint: "Every saved version — compare or restore one", class: "context", target: route(`${a}?tab=versions`), score: 85 },
+            { id: "people", label: "People", hint: "Who's working on it and what each person may do", icon: "people", class: "collaboration", target: route(`${a}/collaborate`), score: 80, requires: "collaborate" },
+            { id: "transform", label: "Change format", hint: "Make a carousel, audio or a post from it", icon: "pen", class: "transform", target: route(`${a}/transform`), score: 70, requires: "edit" },
+          ],
+        };
+      }
       // §9.16–9.19: the canvas stays dominant; editor controls stay in the editor. Materials, References and Context
       // live in the Studio's Working Set now (creative-studio-working-set.md §66), and Refine is on the page itself.
       // Once there are saved words, what's next leads (owner, 4 Oct 2026): Preview, Publish, Share; after publishing,

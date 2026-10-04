@@ -162,7 +162,7 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
       <CanvasAtmosphere mood={moodFor(context?.page)} />
       <StripCtx.Provider value={strip}>{children}</StripCtx.Provider>
       <CreativePalette context={context} onMeTalk={() => setTalk(true)} onCreate={() => setCreating(true)} />
-      <NewCreationSheet open={creating} onOpenChange={setCreating} onMeTalk={() => setTalk(true)} />
+      <NewCreationSheet open={creating} onOpenChange={setCreating} />
       <MeTalkSheet open={talk} onOpenChange={setTalk} />
     </Ctx.Provider>
   );
@@ -205,7 +205,15 @@ function CreativePalette({ context, onMeTalk, onCreate }: { context: PaletteCont
       keepOpen: sub,
       icon: Icon ? <Icon className="size-5" /> : undefined,
       onSelect: () => {
-        if (x.target.kind === "route") return router.push(x.target.href);
+        if (x.target.kind === "route") {
+          // A tool on this very page (#craft, #aloud, #creativemind): set the hash so the page hears it and opens it.
+          const [path, hash] = x.target.href.split("#");
+          if (hash && path === pathname) {
+            window.location.hash = hash;
+            return;
+          }
+          return router.push(x.target.href);
+        }
         if (x.target.command === "metalk") return onMeTalk();
         // Create shows every format at once in its own sheet (owner, 2 Oct 2026).
         if (x.target.command === "create-menu") return onCreate();

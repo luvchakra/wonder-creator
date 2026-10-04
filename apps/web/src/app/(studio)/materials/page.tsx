@@ -9,6 +9,7 @@ import { requireSession } from "@/lib/session";
 import { NewCollectionButton } from "./collections/new-collection";
 import { NewPieceButton, SpaceSearch } from "./space-controls";
 import { PaletteScope } from "@/components/creative-palette";
+import { HoldToDelete } from "@/components/hold-to-delete";
 
 export const metadata = { title: "Creative Space" };
 
@@ -62,8 +63,25 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
   const [previews, covers] = await Promise.all([signedUrlsFor(db, allMaterials.map((m) => m.storage_object_id)), coverUrls(db, shownArtifacts)]);
 
   const items = [
-    ...shownArtifacts.map((a) => ({ key: `a${a.id}`, at: a.updated_at, node: <ArtifactCard a={{ ...a, coverUrl: covers[a.id] ?? null }} /> })),
-    ...allMaterials.map((m) => ({ key: `m${m.id}`, at: m.created_at, node: <MaterialCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} /> })),
+    // Press and hold a card to delete it (owner, 4 Oct 2026); a tap still opens it.
+    ...shownArtifacts.map((a) => ({
+      key: `a${a.id}`,
+      at: a.updated_at,
+      node: (
+        <HoldToDelete kind="creation" id={a.id} title={a.title}>
+          <ArtifactCard a={{ ...a, coverUrl: covers[a.id] ?? null }} />
+        </HoldToDelete>
+      ),
+    })),
+    ...allMaterials.map((m) => ({
+      key: `m${m.id}`,
+      at: m.created_at,
+      node: (
+        <HoldToDelete kind="material" id={m.id} title={m.title ?? ""}>
+          <MaterialCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} />
+        </HoldToDelete>
+      ),
+    })),
   ].sort((x, y) => y.at.localeCompare(x.at));
 
   const href = (patch: Record<string, string | undefined>) => {
@@ -102,7 +120,9 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
             </li>
             {allMaterials.map((m) => (
               <li key={m.id}>
-                <MaterialWallCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} />
+                <HoldToDelete kind="material" id={m.id} title={m.title ?? ""}>
+                  <MaterialWallCard m={{ ...m, previewUrl: m.storage_object_id ? previews[m.storage_object_id] : null }} />
+                </HoldToDelete>
               </li>
             ))}
           </ul>
@@ -134,9 +154,6 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
             <div className="flex flex-wrap gap-2">
               <Link href="/shared" className={buttonClasses({ variant: "ghost" })}>
                 Shared with you
-              </Link>
-              <Link href="/materials/references" className={buttonClasses({ variant: "secondary" })}>
-                Reference Shelf
               </Link>
               <NewPieceButton />
             </div>

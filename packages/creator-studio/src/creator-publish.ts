@@ -5,6 +5,7 @@ import { z } from "zod";
 import { artifactType } from "./artifact-types";
 import { lookOf, ornamentOf } from "./creation-pages";
 import { imageSetOf } from "./image-options";
+import { audioSetOf } from "./audio-options";
 import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
 import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
@@ -92,7 +93,10 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
   const content = (v?.content ?? "").replace(/\r\n/g, "\n");
   const pictures = linked.filter((m) => (m.type === "image" || m.type === "sketch") && obj(m.storage_object_id));
   const video = linked.find((m) => m.type === "video" && obj(m.storage_object_id));
-  const audio = linked.find((m) => (m.type === "audio" || m.type === "voice") && obj(m.storage_object_id));
+  // The Audio page's kept take plays first (creation-pages.md, step 3); otherwise the first linked recording.
+  const takeId = audioSetOf(v?.structured_content).take?.materialId;
+  const kept = takeId ? linked.find((m) => m.id === takeId && obj(m.storage_object_id)) : undefined;
+  const audio = kept ?? linked.find((m) => (m.type === "audio" || m.type === "voice") && obj(m.storage_object_id));
   const cover = a.cover_material_id ? byId.get(a.cover_material_id) : undefined;
   const coverCandidates = [...new Set([obj(cover?.storage_object_id), ...pictures.map((p) => p.storage_object_id), ...(slides ?? []).map((s) => obj(assetObject.get(s.asset_id ?? "")))].filter((x): x is string => !!x))].slice(0, 12);
   const coverObjectId = settings.coverObjectId && coverCandidates.includes(settings.coverObjectId) ? settings.coverObjectId : (coverCandidates[0] ?? null);

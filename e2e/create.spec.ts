@@ -3,16 +3,10 @@ import { artifactCard, expect, pngBytes, poemFromNote, saveNote, test, uid } fro
 test.describe("creating with CreativeMind", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("universal composer on Home: text + attachment lands in meTalk with a draft", async ({ page }) => {
-    // meTalk is a transient sheet from the Palette, not a chat screen.
-    await page.goto("/");
-    await page.getByRole("button", { name: "Open Creative Palette" }).click();
-    await page.getByRole("dialog", { name: "Creative Palette" }).getByRole("button", { name: "Create" }).click();
-    await page
-      .getByRole("dialog", { name: "Make a new Creation" })
-      .getByRole("button", { name: /Let CreativeMind decide/ })
-      .click();
-    const sheet = page.getByRole("dialog", { name: "meTalk" });
+  test("meTalk composer: text + attachment lands in meTalk with a draft", async ({ page }) => {
+    // The Create sheet no longer opens meTalk (it offers Collaborate with others); meTalk's own page still does.
+    await page.goto("/create");
+    const sheet = page.getByRole("region", { name: "meTalk" });
     const composer = sheet.getByLabel("What are you thinking about?");
     await expect(sheet.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
     await composer.fill("Write a poem about the lighthouse at dawn.");
