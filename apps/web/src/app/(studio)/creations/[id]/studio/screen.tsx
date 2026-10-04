@@ -1,6 +1,7 @@
 import { carouselView, findingsOf, providerReadiness } from "@wonder/creator-brain";
 import { actionsFor, artifactType, audioSetOf, creationPath, imageSetOf, lookOf, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
 import { signedUrlsFor } from "@wonder/creator-library";
+import { partContextFor } from "@wonder/creator-projects";
 import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
@@ -31,13 +32,15 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
     const q = new URLSearchParams(Object.entries(search).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
     return <ForwardTo href={q ? `${own}?${q}` : own} />;
   }
-  const [{ data: version }, { data: quality }, { data: pending }, { data: contributors }, covers, carousel] = await Promise.all([
+  const [{ data: version }, { data: quality }, { data: pending }, { data: contributors }, covers, carousel, part] = await Promise.all([
     a.current_version_id ? db.from("artifact_versions").select("*").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("quality_reports").select("*").eq("artifact_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("ai_proposals").select("id, payload, created_at").eq("status", "pending").eq("action", "apply_revision").order("created_at", { ascending: false }).limit(10),
     db.from("artifact_contributors").select("contributor_creator_id, creators!artifact_contributors_contributor_creator_id_fkey(display_name)").eq("artifact_id", id).limit(6),
     coverUrls(db, [a]),
     a.artifact_type === "carousel" ? carouselView({ db, service: serviceClient(), creatorId: creator.id }, id) : Promise.resolve(null),
+    // A part of a Room's joint work (creative-room-parts.md, step 2): what it was made with, what moved on since.
+    partContextFor(db, id, creator.id),
   ]);
   // The Images page (creation-pages.md, step 2): the pictures and what was done to them, from the current version.
   const imageSet = at === "image" ? imageSetOf(version?.structured_content) : null;
@@ -87,7 +90,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   return (
     <>
       {/* The Creation Palette during active work (palette-spec §9.16). */}
-      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own, hasWords: !!version?.content?.trim(), published: !!published, ...(at === "write" ? { writingStyle: writingStyleOf(a.artifact_type) } : {}) }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
+      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own, hasWords: !!version?.content?.trim(), published: !!published, suggestTo: part?.others.find((o) => o.canSuggest)?.title ?? null, ...(at === "write" ? { writingStyle: writingStyleOf(a.artifact_type) } : {}) }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         page={at === "write" ? "writing" : at === "image" ? "images" : at === "audio" ? "audio" : "studio"}
         audio={at === "audio" ? { take: audioTake } : null}
@@ -113,6 +116,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
             : null
         }
         offline={!providerReadiness().live}
+        part={part}
       />
     </>
   );

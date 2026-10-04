@@ -8,7 +8,7 @@ import { RelativeTime } from "@/components/client-time";
 import { CreatorPicker, type PickedCreator } from "@/components/creator-picker";
 import { SignoffDialog } from "@/components/signoff-dialog";
 import { api, errorMessage } from "@/lib/client";
-import { diffLines } from "@/lib/diff";
+import { TextDiff } from "@/components/text-diff";
 
 type Access = "comment" | "propose" | "edit";
 const ACCESS_LABEL: Record<Access, string> = { comment: "Can comment", propose: "Can propose changes", edit: "Can edit" };
@@ -366,21 +366,6 @@ function Comments({ artifactId, versionId, comments, owner, onChanged, onError }
   );
 }
 
-function Diff({ from, to }: { from: string; to: string }) {
-  const lines = diffLines(from, to);
-  return (
-    <pre aria-label="Changes" className="max-h-[45dvh] overflow-auto whitespace-pre-wrap rounded-xl border border-border-soft bg-cream p-3 text-sm leading-relaxed">
-      {lines.map((l, i) => (
-        <div key={i} className={cn(l.kind === "added" && "bg-[#e7f6ec] text-ink", l.kind === "removed" && "bg-[#fdecec] text-ink-muted line-through")}>
-          <span aria-hidden className="mr-2 inline-block w-3 select-none text-ink-subtle">{l.kind === "added" ? "+" : l.kind === "removed" ? "−" : " "}</span>
-          <span className="sr-only">{l.kind === "added" ? "Added: " : l.kind === "removed" ? "Removed: " : ""}</span>
-          {l.text || " "}
-        </div>
-      ))}
-    </pre>
-  );
-}
-
 function ReviewDialog({ proposal, current, owner, onOpenChange, onDone }: { proposal: Props["proposals"][number]; current: { id: string; number: number; content: string }; owner: boolean; onOpenChange: (o: boolean) => void; onDone: (m: string) => void }) {
   const [note, setNote] = useState("");
   const [confirmStale, setConfirmStale] = useState(false);
@@ -405,7 +390,7 @@ function ReviewDialog({ proposal, current, owner, onOpenChange, onDone }: { prop
             The Creation has changed since this was proposed (it&rsquo;s now v{current.number}). Below is the difference from the <strong>current</strong> version — accepting replaces the newer changes with this text.
           </p>
         ) : null}
-        <Diff from={current.content} to={proposal.content} />
+        <TextDiff from={current.content} to={proposal.content} />
         {owner ? (
           <div className="mt-4 space-y-3">
             {proposal.stale ? (

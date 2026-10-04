@@ -41,6 +41,26 @@ starts (lyrics, song_concept, narration, podcast_concept, sound_design, story, p
 The Palette on a Room with parts leads with *Open my part* / *Claim a part*; the Context Line says "1 of 3 parts
 final".
 
+## Made with (step 2)
+
+* **Every version of a part's Creation records what it was made with**: the current version of each other part at
+  that moment (`project_part_version_context`, written by a trigger on `artifact_versions`, immutable, readable by
+  whoever can open the Room). Takes, picture sets, restores and Writing-page saves all count, because they are all
+  versions.
+* **A part's own page says where it stands**, in one quiet line under the title: *"Lyrics moved on since this take
+  (v2 → v3) — what changed"*, or *"made with Lyrics v2 and Tune v1"*, or the parts as they are before the first
+  version. *What changed* opens the lines that changed since (the same comparison the collaborators' Compare uses).
+  Nothing is inferred; it is two version numbers and a diff.
+* **The Room says it too**: each row adds "· with Lyrics v2" or "· Lyrics moved on"; the timeline's version entries
+  end "…, with Lyrics v2 · Tune v1".
+* **Suggest to another part** (*More › Suggest to Lyrics*, and the Palette): anyone making the work — on a part or in
+  the crew — proposes new words for a writing part's current version (`part_suggest`). It is an ordinary
+  change proposal: the part's owner accepts or declines it on *People* (with the line-by-line review), and nothing
+  changes until then. The timeline says "Mira suggested a change to Lyrics — “…”". Your own words aren't suggested to;
+  you write them.
+* The people making the work read each part's versions (`versions_read` admits `app.reads_part_artifact`), and a
+  proposer reads their own proposal even without access to the Creation.
+
 ## Rules
 
 * A part's Creation is the member's **own** (they own it; others on the part edit it). Starting is `part_attach`: the
@@ -62,12 +82,12 @@ final".
 | Step | What | Status |
 | --- | --- | --- |
 | 1 | Parts: peers, many people per part, part-only invites, templates; the Room's hero, Where it stands, timeline; Palette | Done |
-| 2 | *Made with*: versions and takes record the other parts' versions; "changed since this take" with the changed lines; Suggest to the lyricist (a proposal from the Audio page) | Not started |
+| 2 | *Made with*: versions and takes record the other parts' versions; "changed since this take" with the changed lines; Suggest to the lyricist (a proposal from the Audio page) | Done |
 | 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Not started |
 | 4 | The Song page: the mix (tracks, offsets, levels), Where it stands, browser-rendered download, publishing; comments on a moment | Not started |
 | 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, publish together | Not started |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql`, `packages/creator-projects/src/parts.ts`
-(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`.
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`), `packages/creator-projects/src/parts.ts`
+(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`.
 Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `e2e/parts.spec.ts`. Mockups: the owner's canvas
 (4 Oct 2026).

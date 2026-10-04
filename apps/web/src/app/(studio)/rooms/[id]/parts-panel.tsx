@@ -133,8 +133,25 @@ export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, mana
         {parts.map((p) => {
           const people = p.people.filter((x) => x.status === "active");
           const names = people.length ? people.map((x) => (x.id === viewerId ? "you" : x.name) + (x.outside ? " (this part only)" : "")).join(", ") : "no one yet";
+          // Made with (step 2): the other parts' versions this part's latest version was made with, and which moved on since.
+          const made = (p.madeWith ?? []).filter((m) => m.versionNumber);
+          const moved = made.filter((m) => {
+            const other = parts.find((x) => x.id === m.partId);
+            return other?.artifact && other.artifact.versionNumber !== m.versionNumber;
+          });
           const line =
-            p.status === "final" ? "Final" : p.artifact ? <>v{p.artifact.versionNumber} · <RelativeTime iso={p.artifact.updatedAt} /></> : p.status === "in_rounds" ? "Not started yet" : "Open";
+            p.status === "final" ? (
+              "Final"
+            ) : p.artifact ? (
+              <>
+                v{p.artifact.versionNumber} · <RelativeTime iso={p.artifact.updatedAt} />
+                {moved.length ? <> · {moved.map((m) => `${m.title} moved on`).join(", ")}</> : made.length ? <> · with {made.map((m) => `${m.title} v${m.versionNumber}`).join(" · ")}</> : null}
+              </>
+            ) : p.status === "in_rounds" ? (
+              "Not started yet"
+            ) : (
+              "Open"
+            );
           const inner = (
             <>
               <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", DOT[p.status])} />
@@ -372,8 +389,11 @@ function describe(e: PartEventView, viewerId: string): string {
     case "version": {
       const n = e.detail.versionNumber as number | undefined;
       const label = typeof e.detail.label === "string" && e.detail.label !== "Draft" ? ` — ${e.detail.label}` : "";
-      return `${who} saved ${e.partTitle}${n ? ` v${n}` : ""}${label}.`;
+      const madeWith = Array.isArray(e.detail.madeWith) ? (e.detail.madeWith as string[]) : [];
+      return `${who} saved ${e.partTitle}${n ? ` v${n}` : ""}${label}${madeWith.length ? `, with ${madeWith.join(" · ")}` : ""}.`;
     }
+    case "suggested":
+      return `${who} suggested a change to ${e.partTitle}${typeof e.detail.summary === "string" ? ` — “${e.detail.summary}”` : ""}.`;
     default:
       return `${who}: ${e.kind.replace(/_/g, " ")} — ${e.partTitle}.`;
   }

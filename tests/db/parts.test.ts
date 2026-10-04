@@ -11,15 +11,18 @@ import {
   leavePart,
   listParts,
   myPartInvites,
+  partContextFor,
+  partWords,
   partsTimeline,
   respondToCrew,
   respondToPart,
   setPartFinal,
   startCrew,
+  suggestToPart,
   updatePart,
 } from "@wonder/creator-projects";
 import type { Db as AppDb } from "@wonder/db";
-import { cleanupTestCreators, createArtifact, createTestCreator, expectDenied, expectOk, type TestCreator } from "./helpers";
+import { cleanupTestCreators, createArtifact, createTestCreator, createVersion, expectDenied, expectOk, type TestCreator } from "./helpers";
 
 // Parts (docs/creative-room-parts.md): peers, with one or more people each; someone invited to a part alone sees the
 // Room's name and its parts, not its items, tasks or chat. Membership moves only through the functions.
@@ -146,5 +149,55 @@ describe("parts: who sees and does what", () => {
     expect(kinds).toContain("added");
     // Events are the Room's: an outsider reads none.
     expect(expectOk(await cy.client.from("project_part_events").select("id").eq("project_id", p.id))).toEqual([]);
+  });
+
+  it("made with: each version records the other parts' versions; what moved on is a comparison; a suggestion is a proposal", async () => {
+    const { p, lyrics, voice } = await songRoom();
+    await claimPart(db(ana), lyrics.id);
+    await inviteToPart(db(owner), voice.id, { creatorId: dee.creatorId });
+    await respondToPart(db(dee), voice.id, true);
+    const words = await createArtifact(ana, { title: "Platform 3 · Lyrics", artifact_type: "lyrics", category: "writing" });
+    await attachPartArtifact(db(ana), lyrics.id, words);
+    const w1 = await createVersion(ana, words, "Every Sunday my father waited");
+    const take = await createArtifact(dee, { title: "Platform 3 · Voice", artifact_type: "song_concept", category: "audio" });
+    await attachPartArtifact(db(dee), voice.id, take);
+    await createVersion(dee, take, "first take");
+    // Dee's take was made with Lyrics v1; Tune wasn't started.
+    let ctx = (await partContextFor(db(dee), take, dee.creatorId))!;
+    expect(ctx.part.title).toBe("Voice");
+    expect(ctx.others.map((o) => [o.title, o.madeWith?.number ?? null, o.current?.number ?? null, o.movedOn])).toEqual([
+      ["Lyrics", 1, 1, false],
+      ["Tune", null, null, false],
+    ]);
+    expect(ctx.others[0]!.canSuggest).toBe(true);
+    // The lyrics move on: the take's page says so, and Dee reads what changed (she's on a part, not the crew).
+    await createVersion(ana, words, "Every Sunday my father waited\nat Platform 3");
+    ctx = (await partContextFor(db(dee), take, dee.creatorId))!;
+    expect(ctx.others[0]).toMatchObject({ movedOn: true, madeWith: { number: 1 }, current: { number: 2 } });
+    const read = await partWords(db(dee), lyrics.id, w1.id);
+    expect([read.from?.content, read.current.content]).toEqual(["Every Sunday my father waited", "Every Sunday my father waited\nat Platform 3"]);
+    // An outsider reads neither the versions nor the context.
+    await expect(partWords(db(cy), lyrics.id)).rejects.toThrow();
+    expect(expectOk(await cy.client.from("project_part_version_context").select("version_id").eq("project_id", p.id))).toEqual([]);
+    // The Room's row says what the take was made with; the timeline too.
+    const rows = await listParts(db(owner), p.id, owner.creatorId);
+    expect(rows[2]!.madeWith?.find((m) => m.title === "Lyrics")?.versionNumber).toBe(1);
+    // Dee suggests to the lyricist: a proposal on the current version; nothing changes until Ana decides.
+    const proposalId = await suggestToPart(db(dee), lyrics.id, { content: "Every Sunday my father waited\nat Platform 3, coat folded", summary: "One more beat in line two" });
+    expect(expectOk(await ana.client.from("artifact_change_proposals").select("id, status, creator_id").eq("artifact_id", words))).toEqual([{ id: proposalId, status: "open", creator_id: dee.creatorId }]);
+    expect(expectOk(await dee.client.from("artifact_change_proposals").select("id").eq("id", proposalId))).toHaveLength(1);
+    // A second take, made with the new lyrics: the timeline says what each version was made with.
+    await createVersion(dee, take, "second take");
+    expect((await partContextFor(db(dee), take, dee.creatorId))!.others[0]).toMatchObject({ movedOn: false, madeWith: { number: 2 } });
+    const timeline = await partsTimeline(db(owner), p.id, rows);
+    expect(timeline.find((e) => e.kind === "suggested")).toMatchObject({ partTitle: "Lyrics", detail: { summary: "One more beat in line two" } });
+    expect(timeline.find((e) => e.kind === "version" && e.partTitle === "Voice")?.detail.madeWith).toEqual(["Lyrics v2"]);
+    // Refused: an outsider; your own words (just write); a part with nothing yet.
+    await expect(suggestToPart(db(cy), lyrics.id, { content: "x", summary: "x" })).rejects.toThrow(/making this work/);
+    await expect(suggestToPart(db(ana), lyrics.id, { content: "x", summary: "x" })).rejects.toThrow(/your own/);
+    const tune = rows[1]!;
+    await expect(suggestToPart(db(dee), tune.id, { content: "x", summary: "x" })).rejects.toThrow(/no words yet/);
+    // Version context is history: it can't be written by clients.
+    expectDenied(await dee.client.from("project_part_version_context").insert({ version_id: w1.id, part_id: lyrics.id, project_id: p.id }));
   });
 });

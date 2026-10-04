@@ -25,6 +25,8 @@ import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas"
 import { AloudSheet, CraftSheet } from "./writing-tools";
 import { AudioPanel, type AudioRequest, type AudioTakeView } from "./audio-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
+import type { PartContext } from "@wonder/creator-projects/parts-options";
+import { PartChangesSheet, PartNotice, SuggestSheet, type PartOther } from "./part-context";
 
 /**
  * The Creative Studio canvas (creative-studio-working-set.md §5–7, §44–47, §64–68): the Creation is the screen. One
@@ -48,6 +50,7 @@ export function Studio({
   quality,
   pendingProposal,
   offline,
+  part = null,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
   page?: "writing" | "images" | "audio" | "studio";
@@ -70,6 +73,8 @@ export function Studio({
   quality: QualityReportView | null;
   pendingProposal: QualityProposal | null;
   offline: boolean;
+  /** A part of a Creative Room's joint work (creative-room-parts.md, step 2): what it was made with, what moved on. */
+  part?: PartContext | null;
 }) {
   // Immersive: the mini player stays a slim tab (music keeps playing; mini-player.md §33).
   useMiniPlayerConstraint({ forceCollapsed: true });
@@ -90,6 +95,10 @@ export function Studio({
   // A transform chip on the way in (?action=) opens Change format straight away.
   const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export" | "kind" | "craft" | "aloud">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
+  // A part's page (step 2): what changed in another part, or new words suggested to it.
+  const [partSheet, setPartSheet] = useState<{ kind: "changes" | "suggest"; other: PartOther } | null>(null);
+  const suggestable = part?.others.filter((o) => o.canSuggest) ?? [];
+  const suggestRows = suggestable.map((o) => ({ label: `Suggest to ${o.title}`, hint: `New words for ${o.title} — the people on it decide`, act: () => setPartSheet({ kind: "suggest", other: o }) }));
   useEffect(() => {
     let live = true;
     (async () => {
@@ -209,11 +218,18 @@ export function Studio({
   // Refine lives in a sheet: the Palette's Refine (and old links) arrive as #creativemind; a revision on the canvas closes it.
   const writingCanvas = artifact.type !== "carousel" && page !== "images";
   useEffect(() => {
-    if (!writingCanvas) return;
+    if (!writingCanvas && !part) return;
     // The Writing page's own tools arrive the same way from the Palette: #craft (that kind's counts) and #aloud. The hash
-    // is cleared once read, so the same leaf opens it again next time.
+    // is cleared once read, so the same leaf opens it again next time. #suggest (a part's page, step 2) works on every page.
     const open = () => {
       const h = window.location.hash;
+      const first = part?.others.find((o) => o.canSuggest);
+      if (h === "#suggest" && first) {
+        setPartSheet({ kind: "suggest", other: first });
+        history.replaceState(history.state, "", window.location.pathname + window.location.search);
+        return;
+      }
+      if (!writingCanvas) return;
       const to = h === "#creativemind" ? "refine" : h === "#craft" && page === "writing" ? "craft" : h === "#aloud" && page === "writing" ? "aloud" : null;
       if (!to) return;
       setSheet(to);
@@ -222,7 +238,7 @@ export function Studio({
     open();
     window.addEventListener("hashchange", open);
     return () => window.removeEventListener("hashchange", open);
-  }, [writingCanvas, page]);
+  }, [writingCanvas, page, part]);
   if (proposal && sheet === "refine") setSheet(null);
   const [view, setView] = useState<"changes" | "original" | "proposed">("changes");
   const [q, setQ] = useState(quality);
@@ -764,6 +780,7 @@ export function Studio({
           </button>
         </p>
       ) : null}
+      {part ? <PartNotice part={part} onChanges={(other) => setPartSheet({ kind: "changes", other })} /> : null}
 
       {usedNote ? (
         <p role="status" className="mb-2 flex items-start gap-2 rounded-2xl bg-accent-softer px-3 py-2 text-[13px] text-ink">
@@ -1266,6 +1283,7 @@ export function Studio({
                   { label: "Make a carousel", hint: "Turn the words into slides — the recording stays here", act: () => setSheet("format") },
                   { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
                   { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                  ...suggestRows,
                 ]
               : imagesPage
               ? [
@@ -1277,6 +1295,7 @@ export function Studio({
                   { label: "Versions", hint: `v${base?.number ?? 1} is current — every Keep is a version`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
                   { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
                   { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                  ...suggestRows,
                 ]
               : writing
               ? [
@@ -1291,6 +1310,7 @@ export function Studio({
                   ...(askFragment && askOn ? [{ label: "Ask Pulse", hint: `About ${askFragment.label.toLowerCase()} — only that part is shared`, act: () => setSheet("ask") }] : []),
                   { label: "Change format", hint: "Make a carousel, video, etc. from it", act: () => setSheet("format") },
                   { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                  ...suggestRows,
                 ]
               : [
               ...(!isCarousel
@@ -1333,6 +1353,12 @@ export function Studio({
         </DialogContent>
       </Dialog>
       {imagesPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
+      {part ? (
+        <>
+          {partSheet?.kind === "changes" ? <PartChangesSheet key={partSheet.other.partId} open projectId={part.project.id} other={partSheet.other} onOpenChange={(o) => !o && setPartSheet(null)} /> : null}
+          {partSheet?.kind === "suggest" ? <SuggestSheet key={partSheet.other.partId} open projectId={part.project.id} other={partSheet.other} onOpenChange={(o) => !o && setPartSheet(null)} /> : null}
+        </>
+      ) : null}
       {writing ? (
         <>
           <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} ornament={ornament ?? "keystone"} onOrnament={(o) => void chooseOrnament(o)} onCover={chooseCover} />

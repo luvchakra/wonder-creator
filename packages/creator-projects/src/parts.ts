@@ -1,7 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
-import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, type MadeWith, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
 
 /**
  * Parts (docs/creative-room-parts.md): what a joint Creation is made of — Lyrics · Tune · Voice — each a Creation of
@@ -52,6 +52,7 @@ export async function listParts(db: Db, projectId: string, viewerId: string): Pr
       for (const v of vs ?? []) versionNumbers.set(v.id, v.version_number);
     }
   }
+  const madeWith = await latestMadeWith(db, rows.map((r) => r.id));
   return rows.map((r) => {
     const members = (r.project_part_members as Array<{ creator_id: string; status: string; creators: CreatorRef }>) ?? [];
     const people = members
@@ -73,8 +74,114 @@ export async function listParts(db: Db, projectId: string, viewerId: string): Pr
       mine: people.some((p) => p.id === viewerId && p.status === "active"),
       invitedMe: people.some((p) => p.id === viewerId && p.status === "invited"),
       finalAt: r.final_at,
+      madeWith: madeWith.get(r.id) ?? null,
     };
   });
+}
+
+/** Each part's latest "made with" (step 2): the other parts' versions when its newest version was saved. */
+async function latestMadeWith(db: Db, partIds: string[]): Promise<Map<string, MadeWith[]>> {
+  const out = new Map<string, MadeWith[]>();
+  if (!partIds.length) return out;
+  const { data } = await db.from("project_part_version_context").select("part_id, made_with, created_at").in("part_id", partIds).order("created_at", { ascending: false }).limit(partIds.length * 8);
+  for (const row of data ?? []) if (!out.has(row.part_id)) out.set(row.part_id, madeWithOf(row.made_with));
+  return out;
+}
+const madeWithOf = (raw: unknown): MadeWith[] =>
+  Array.isArray(raw)
+    ? raw.map((x) => {
+        const o = (x ?? {}) as Record<string, unknown>;
+        return { partId: String(o.partId ?? ""), title: String(o.title ?? "A part"), artifactId: typeof o.artifactId === "string" ? o.artifactId : null, versionId: typeof o.versionId === "string" ? o.versionId : null, versionNumber: typeof o.versionNumber === "number" ? o.versionNumber : null };
+      })
+    : [];
+
+/**
+ * A Creation's place in a Room (step 2), for its own page: which part it is, what its latest version was made with, and
+ * which other parts moved on since. Null when the Creation isn't a part's.
+ */
+export async function partContextFor(db: Db, artifactId: string, viewerId: string): Promise<PartContext | null> {
+  const { data: part } = await db.from("project_parts").select("id, project_id, title, kind, projects(title)").eq("artifact_id", artifactId).maybeSingle();
+  if (!part) return null;
+  const [{ data: others }, { data: ctx }] = await Promise.all([
+    db.from("project_parts").select("id, title, kind, artifact_id, artifact_type").eq("project_id", part.project_id).neq("id", part.id).order("position").order("created_at"),
+    db.from("project_part_version_context").select("version_id, made_with").eq("part_id", part.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const artifactIds = (others ?? []).map((o) => o.artifact_id).filter((x): x is string => !!x);
+  const current = new Map<string, { creator_id: string; current_version_id: string | null }>();
+  const numbers = new Map<string, number>();
+  const versionIds = [...(ctx ? [ctx.version_id] : [])];
+  if (artifactIds.length) {
+    const { data: as } = await db.from("artifacts").select("id, creator_id, current_version_id").in("id", artifactIds);
+    for (const a of as ?? []) current.set(a.id, a);
+    versionIds.push(...(as ?? []).map((a) => a.current_version_id).filter((x): x is string => !!x));
+  }
+  if (versionIds.length) {
+    const { data: vs } = await db.from("artifact_versions").select("id, version_number").in("id", versionIds);
+    for (const v of vs ?? []) numbers.set(v.id, v.version_number);
+  }
+  const made = new Map(madeWithOf(ctx?.made_with).map((m) => [m.partId, m]));
+  const sinceNumber = ctx ? numbers.get(ctx.version_id) : undefined;
+  return {
+    part: { id: part.id, title: part.title, kind: part.kind as PartKind },
+    project: { id: part.project_id, title: (part.projects as { title: string } | null)?.title ?? "A Creative Room" },
+    since: ctx && sinceNumber ? { versionId: ctx.version_id, number: sinceNumber } : null,
+    others: (others ?? []).map((o) => {
+      const a = o.artifact_id ? current.get(o.artifact_id) : undefined;
+      const cur = a?.current_version_id ? { versionId: a.current_version_id, number: numbers.get(a.current_version_id) ?? 1 } : null;
+      const m = made.get(o.id);
+      const mw = m?.versionId ? { versionId: m.versionId, number: m.versionNumber ?? 1 } : null;
+      return {
+        partId: o.id,
+        title: o.title,
+        kind: o.kind as PartKind,
+        artifactId: o.artifact_id,
+        artifactType: o.artifact_id ? o.artifact_type : null,
+        current: cur,
+        madeWith: mw,
+        movedOn: !!ctx && !!cur && cur.versionId !== (mw?.versionId ?? null),
+        canSuggest: o.kind === "writing" && !!cur && !!a && a.creator_id !== viewerId,
+      };
+    }),
+  };
+}
+
+export interface PartWords {
+  artifactId: string;
+  title: string;
+  current: { id: string; number: number; content: string };
+  /** The version asked for (what this part was made with), when it still exists. */
+  from: { id: string; number: number; content: string } | null;
+}
+/** A part's words as they stand, and (optionally) as they stood at an earlier version, for "what changed" and a suggestion. */
+export async function partWords(db: Db, partId: string, fromVersionId?: string | null): Promise<PartWords> {
+  const { data: part } = await db.from("project_parts").select("id, title, artifact_id").eq("id", partId).maybeSingle();
+  if (!part?.artifact_id) throw new DomainError("not_found", "That part hasn't been started.");
+  const { data: a } = await db.from("artifacts").select("id, current_version_id").eq("id", part.artifact_id).maybeSingle();
+  if (!a?.current_version_id) throw new DomainError("not_found", "That part has no words yet.");
+  const ids = [a.current_version_id, ...(fromVersionId && fromVersionId !== a.current_version_id ? [fromVersionId] : [])];
+  const { data: vs, error } = await db.from("artifact_versions").select("id, version_number, content").eq("artifact_id", a.id).in("id", ids);
+  if (error) throw fromDbError(error);
+  const pick = (id: string) => {
+    const v = (vs ?? []).find((x) => x.id === id);
+    return v ? { id: v.id, number: v.version_number, content: v.content } : null;
+  };
+  const current = pick(a.current_version_id);
+  if (!current) throw new DomainError("not_found", "That part's words aren't yours to read.");
+  return { artifactId: a.id, title: part.title, current, from: fromVersionId ? (fromVersionId === current.id ? current : pick(fromVersionId)) : null };
+}
+
+export const suggestSchema = z.object({ content: z.string().max(500_000), summary: z.string().trim().min(1, "Say what you'd change, in a line.").max(500) });
+/** Suggest a change to another part (anyone making the work): a proposal its people accept or decline. Returns the proposal id. */
+export async function suggestToPart(db: Db, partId: string, raw: unknown): Promise<string> {
+  const p = suggestSchema.parse(raw);
+  const { data, error } = await db.rpc("part_suggest", { p_part: partId, p_content: p.content, p_summary: p.summary });
+  if (error) {
+    const e = fromDbError(error);
+    const message = REFUSALS.part_suggest[error.code ?? ""];
+    throw message ? new DomainError(e.code === "internal" ? "conflict" : e.code, message, { cause: error }) : e;
+  }
+  if (typeof data !== "string") throw new DomainError("internal", "The suggestion wasn't sent. Try again.");
+  return data;
 }
 
 /** The Room's owner and active crew: everyone on a part who isn't one of them is "on this part only". */
@@ -121,9 +228,11 @@ export async function partsTimeline(db: Db, projectId: string, parts: PartView[]
       .gt("version_number", 1)
       .order("created_at", { ascending: false })
       .limit(limit);
+    const { data: ctx } = versions?.length ? await db.from("project_part_version_context").select("version_id, made_with").in("version_id", versions.map((v) => v.id)) : { data: [] };
+    const madeWith = new Map((ctx ?? []).map((c) => [c.version_id, madeWithOf(c.made_with).filter((m) => m.versionNumber)]));
     for (const v of versions ?? []) {
       const part = byArtifact.get(v.artifact_id)!;
-      out.push({ id: `v:${v.id}`, partId: part.id, partTitle: part.title, kind: "version", actor: person(v.creators as CreatorRef), subject: null, detail: { versionNumber: v.version_number, label: v.label }, at: v.created_at });
+      out.push({ id: `v:${v.id}`, partId: part.id, partTitle: part.title, kind: "version", actor: person(v.creators as CreatorRef), subject: null, detail: { versionNumber: v.version_number, label: v.label, madeWith: (madeWith.get(v.id) ?? []).map((m) => `${m.title} v${m.versionNumber}`) }, at: v.created_at });
     }
   }
   return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
@@ -170,7 +279,7 @@ export async function deletePart(db: Db, partId: string): Promise<void> {
   if (!data?.length) throw new DomainError("forbidden", "Only the Room's owner or admins can remove a part.");
 }
 
-type PartFn = "part_claim" | "part_invite" | "part_respond" | "part_leave" | "part_remove" | "part_set_final" | "part_attach";
+type PartFn = "part_claim" | "part_invite" | "part_respond" | "part_leave" | "part_remove" | "part_set_final" | "part_attach" | "part_suggest";
 /** What each refusal means, in the creator's words (the database's own messages never reach the client). */
 const REFUSALS: Record<PartFn, Partial<Record<string, string>>> = {
   part_claim: { "42501": "Join the Room's crew first, or ask to be invited to this part.", "55000": "This part is final.", "23505": "You're already on this part." },
@@ -180,6 +289,7 @@ const REFUSALS: Record<PartFn, Partial<Record<string, string>>> = {
   part_remove: { "42501": "Only the Room's owner or admins can take someone off a part.", P0002: "They're not on this part." },
   part_set_final: { "42501": "Only people on this part, or the Room's owner or admins, can mark it final.", "55000": "Start the part's Creation first." },
   part_attach: { "42501": "Only people on this part can start its Creation, and only with their own.", "23505": "This part already has a Creation." },
+  part_suggest: { "42501": "Only people making this work can suggest a change.", "55000": "That part has no words yet.", "22023": "Those words are your own — just write.", P0002: "We couldn't find that part." },
 };
 const rpc = async (db: Db, fn: PartFn, args: Record<string, unknown>) => {
   const { error } = await db.rpc(fn as never, args as never);

@@ -222,7 +222,8 @@ Making one thing together — a song by three people (`docs/creative-room-parts.
 | Item | Status | Notes |
 |---|---|---|
 | 1 · Parts | Done | A Room says what the work is made of: parts, each a Creation of its own by whoever is on it. Crew claim parts (two or more may share one); anyone may be invited to a single part without joining the Room; final is said by the people on it. Templates: Song · Podcast episode · Illustrated story. The Room leads with the work (option B) and tells what happened (C's timeline). RLS: part-only invitees see the Room's name and parts, read the parts' Creations, nothing else |
-| 2 · Made with · 3 · Play-along · 4 · The Song page · 5 · Completion | Not started | |
+| 2 · Made with | Done | Every version of a part records the other parts' versions (migration 085); a part's page says what moved on since and shows the changed lines; the Room's rows and timeline say what each was made with; *Suggest to Lyrics* sends a change proposal the part's owner decides on |
+| 3 · Play-along · 4 · The Song page · 5 · Completion | Not started | |
 
 ## Owner requests, 4 Oct 2026 (afternoon)
 
