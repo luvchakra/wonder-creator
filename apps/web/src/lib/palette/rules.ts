@@ -232,9 +232,12 @@ export function rulesFor(ctx: PaletteContext): Rules {
       return {
         title: "This Creative Room",
         items: [
-          active
-            ? { id: "studio", label: "Open Studio", icon: "pen", class: "create", target: route(`/creations/${active}/studio`), score: 100, requires: "edit" }
-            : { id: "start", label: "Start Creation", icon: "spark", class: "create", target: route(`/create?project=${i.projectId}`), score: 100, requires: "edit" },
+          // A Room with parts (creative-room-parts.md): your part first — open it, or claim one.
+          f.hasParts
+            ? { id: "part", label: f.myPartHref ? "Open my part" : "Claim a part", hint: f.myPartHref ? "Your part of the work" : "Take a part of the work", icon: "pen", class: "create", target: route(f.myPartHref ?? `${room}#parts`), score: 100 }
+            : active
+              ? { id: "studio", label: "Open Studio", icon: "pen", class: "create", target: route(`/creations/${active}/studio`), score: 100, requires: "edit" }
+              : { id: "start", label: "Start Creation", icon: "spark", class: "create", target: route(`/create?project=${i.projectId}`), score: 100, requires: "edit" },
           { id: "bring", label: "Bring Material", icon: "add", class: "create", target: route("/send"), score: 90 },
           f.hasCrew && i.crewId
             ? { id: "people", label: "People", icon: "people", class: "collaboration", target: route(`/crews/${i.crewId}`), score: 80 }

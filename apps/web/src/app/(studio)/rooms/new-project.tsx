@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { PART_TEMPLATES, type PartTemplateKey } from "@wonder/creator-projects/parts-options";
 
 /** Start a project with a name and (optionally) a brief, then open it to add work. */
 export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolean }) {
@@ -13,6 +14,8 @@ export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolea
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
   const [started, setStarted] = useState(false);
+  // A template lays out the parts of the Room (docs/creative-room-parts.md): Lyrics · Tune · Voice for a song.
+  const [template, setTemplate] = useState<PartTemplateKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -22,6 +25,7 @@ export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolea
           setTitle("");
           setBrief("");
           setStarted(false);
+          setTemplate(null);
           setError(null);
           setOpen(true);
         }}
@@ -37,7 +41,7 @@ export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolea
               setBusy(true);
               setError(null);
               try {
-                const r = await api<{ project: { id: string } }>("/api/v1/projects", { method: "POST", json: { title, brief, status: started ? "active" : "idea" } });
+                const r = await api<{ project: { id: string } }>("/api/v1/projects", { method: "POST", json: { title, brief, status: started ? "active" : "idea", ...(template ? { template } : {}) } });
                 router.push(`/rooms/${r.project.id}`);
               } catch (err) {
                 setError(errorMessage(err));
@@ -51,6 +55,20 @@ export function NewProjectButton({ initialOpen = false }: { initialOpen?: boolea
             <Field label="Brief" htmlFor="project-brief" hint="Optional. What is it, and what should it feel like? CreativeMind uses this when you create inside the Creative Room.">
               <Textarea id="project-brief" value={brief} onChange={(e) => setBrief(e.target.value)} maxLength={5000} className="min-h-28" />
             </Field>
+            <fieldset>
+              <legend className="text-sm font-medium text-ink">Making it together?</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[{ key: null, label: "Just a Room", hint: "Add parts later, or none" }, ...(Object.keys(PART_TEMPLATES) as PartTemplateKey[]).map((k) => ({ key: k as PartTemplateKey | null, label: PART_TEMPLATES[k].label as string, hint: PART_TEMPLATES[k].hint as string }))].map((o) => (
+                  <label key={o.label} className="inline-flex min-h-11 cursor-pointer flex-col justify-center rounded-2xl border border-border px-3.5 py-1.5 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+                    <span className="flex items-center gap-2 text-sm text-ink">
+                      <input type="radio" name="project-template" checked={template === o.key} onChange={() => setTemplate(o.key)} className="accent-[var(--color-accent)]" />
+                      {o.label}
+                    </span>
+                    <span className="pl-5 text-[12px] text-ink-muted">{o.hint}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <fieldset>
               <legend className="text-sm font-medium text-ink">Where is it?</legend>
               <div className="mt-2 flex flex-wrap gap-2">

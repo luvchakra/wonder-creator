@@ -2868,6 +2868,111 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_part_events": {
+                  Row: {
+                    "actor_creator_id": string | null,"created_at": string,"detail": NonNullable<Json>,"id": string,"kind": string,"part_id": string,"project_id": string,"subject_creator_id": string | null
+                  }
+                  Insert: {
+                    "actor_creator_id"?: string | null,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: string,"kind": string,"part_id": string,"project_id": string,"subject_creator_id"?: string | null
+                  }
+                  Update: {
+                    "actor_creator_id"?: string | null,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: string,"kind"?: string,"part_id"?: string,"project_id"?: string,"subject_creator_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_part_events_actor_creator_id_fkey"
+      columns: ["actor_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_events_part_id_fkey"
+      columns: ["part_id"]
+isOneToOne: false
+      referencedRelation: "project_parts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_events_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_events_subject_creator_id_fkey"
+      columns: ["subject_creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_part_members": {
+                  Row: {
+                    "creator_id": string,"ended_at": string | null,"invite_note": string | null,"invited_at": string | null,"invited_by": string | null,"joined_at": string | null,"part_id": string,"status": string
+                  }
+                  Insert: {
+                    "creator_id": string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"part_id": string,"status": string
+                  }
+                  Update: {
+                    "creator_id"?: string,"ended_at"?: string | null,"invite_note"?: string | null,"invited_at"?: string | null,"invited_by"?: string | null,"joined_at"?: string | null,"part_id"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_part_members_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_members_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_part_members_part_id_fkey"
+      columns: ["part_id"]
+isOneToOne: false
+      referencedRelation: "project_parts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_parts": {
+                  Row: {
+                    "artifact_id": string | null,"artifact_type": string,"created_at": string,"created_by": string,"final_at": string | null,"final_by": string | null,"id": string,"kind": string,"position": number,"project_id": string,"status": string,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by": string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id": string,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by"?: string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_parts_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: true
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_parts_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_parts_final_by_fkey"
+      columns: ["final_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_parts_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_rights_events": {
                   Row: {
                     "actor_creator_id": string | null,"created_at": string,"details": NonNullable<Json>,"event": string,"id": string,"project_id": string
@@ -4428,6 +4533,27 @@ isOneToOne: false
                            },
 "open_share_link":
 { Args: { "p_token": string }; Returns: Json
+                           },
+"part_attach":
+{ Args: { "p_artifact": string,"p_part": string }; Returns: undefined
+                           },
+"part_claim":
+{ Args: { "p_part": string }; Returns: undefined
+                           },
+"part_invite":
+{ Args: { "p_creator": string,"p_note"?: string,"p_part": string }; Returns: undefined
+                           },
+"part_leave":
+{ Args: { "p_part": string }; Returns: undefined
+                           },
+"part_remove":
+{ Args: { "p_creator": string,"p_part": string }; Returns: undefined
+                           },
+"part_respond":
+{ Args: { "p_accept": boolean,"p_part": string }; Returns: undefined
+                           },
+"part_set_final":
+{ Args: { "p_final": boolean,"p_part": string }; Returns: undefined
                            },
 "payment_apply_event":
 { Args: { "p_amount"?: number,"p_body_sha256": string,"p_currency"?: string,"p_event_id": string,"p_event_type": string,"p_kind": string,"p_payment"?: string,"p_provider": string,"p_ref"?: string,"p_refund_ref"?: string }; Returns: string

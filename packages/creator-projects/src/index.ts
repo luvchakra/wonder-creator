@@ -7,3 +7,4 @@ export * from "./rights";
 export * from "./completion";
 export * from "./messaging";
 export * from "./campaigns";
+export * from "./parts";

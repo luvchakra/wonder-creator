@@ -1,5 +1,5 @@
 import { signedUrlsFor } from "@wonder/creator-library";
-import { listProjects, myCrewInvites, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
+import { listProjects, myCrewInvites, myPartInvites, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects";
 import { BACKGROUNDS, EmptyState, PageTitle, cn, KIT } from "@wonder/ui";
 import Link from "next/link";
 import { LocalTime } from "@/components/client-time";
@@ -15,12 +15,25 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const { db, creator } = await requireSession();
   const sp = await searchParams;
   const status = (FILTERS.find((f) => f.key === sp.status)?.key ?? "open") as ProjectStatus | "open";
-  const [projects, invites] = await Promise.all([listProjects(db, { status, viewerId: creator.id }), myCrewInvites(db, creator.id)]);
+  const [projects, invites, partInvites] = await Promise.all([listProjects(db, { status, viewerId: creator.id }), myCrewInvites(db, creator.id), myPartInvites(db, creator.id)]);
   const covers = await signedUrlsFor(db, projects.map((p) => p.coverObjectId));
 
   return (
     <div>
       <PageTitle art={KIT.painted.flowerBranch} title="My Creative Rooms" subtitle="Bring material, Creations, conversations and Huddles together around one piece of work." action={<NewProjectButton initialOpen={sp.new === "1"} />} />
+      {partInvites.length ? (
+        <section aria-label="Part invitations" className="mb-6 space-y-2">
+          {partInvites.map((i) => (
+            <Link key={i.partId} href={`/rooms/${i.projectId}#parts`} className="flex min-h-11 items-center gap-3 rounded-2xl border border-[#cfd0ff] bg-accent-softer px-4 py-3 text-[15px] text-ink hover:bg-accent-soft">
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{i.invitedBy}</span> invited you to <span className="font-medium">{i.partTitle}</span> <span className="text-ink-muted">· {i.projectTitle} · this part only</span>
+                {i.note ? <span className="block text-sm text-ink-muted">“{i.note}”</span> : null}
+              </span>
+              <span className="shrink-0 text-sm font-medium text-accent-ink">Answer</span>
+            </Link>
+          ))}
+        </section>
+      ) : null}
       {invites.length ? (
         <section aria-label="Crew invitations" className="mb-6 space-y-2">
           {invites.map((i) => (
