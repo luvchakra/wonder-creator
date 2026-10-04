@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_EDITS, applyPixelOps, aspectRatioOf, cssFilter, imageSetOf, pixelOps } from "./image-options";
+import { DEFAULT_EDITS, applyPixelOps, aspectRatioOf, cssFilter, imageSetOf, pixelOps, textsOf } from "./image-options";
 
 describe("Images page model", () => {
   it("reads a version's pictures tolerantly: defaults for what's missing, nothing for what isn't a picture", () => {
     const id = "11111111-1111-4111-8111-111111111111";
     const set = imageSetOf({ kind: "images", items: [{ materialId: id, edits: { filter: "warm", zoom: 9 } }, { materialId: "nope" }, { caption: "x" }] });
     expect(set.items).toHaveLength(1);
-    expect(set.items[0]).toMatchObject({ materialId: id, caption: "", edits: DEFAULT_EDITS, words: { enabled: false } });
+    expect(set.items[0]).toMatchObject({ materialId: id, caption: "", edits: DEFAULT_EDITS, texts: [] });
     expect(imageSetOf(null).items).toEqual([]);
     expect(imageSetOf({ kind: "other" }).items).toEqual([]);
+  });
+
+  it("reads text boxes, and the older single overlay as one box; junk boxes are dropped", () => {
+    const boxes = textsOf({ texts: [{ id: "a", text: "Dawn", x: 0.5, y: 0.2 }, { text: 42 }, { id: "b", text: "Dusk", size: 9 }] });
+    expect(boxes.map((b) => [b.id, b.text, b.y])).toEqual([["a", "Dawn", 0.2]]);
+    expect(textsOf({ words: { enabled: true, text: "The harbour", y: 0.8 } })).toMatchObject([{ text: "The harbour", y: 0.8, font: "serif" }]);
+    expect(textsOf({ words: { enabled: false, text: "Hidden" } })).toEqual([]);
+    expect(textsOf(null)).toEqual([]);
+    expect(imageSetOf({ kind: "images", items: [{ materialId: "11111111-1111-4111-8111-111111111111", words: { enabled: true, text: "Old shape" } }] }).items[0]!.texts).toHaveLength(1);
   });
 
   it("maps filters and light to pixel ops and a matching CSS filter", () => {

@@ -1,9 +1,8 @@
 "use client";
-import { OVERLAY_COLORS, OVERLAY_FONTS, type SlideOverlay } from "@wonder/creator-studio/carousel";
+import { OVERLAY_COLORS, OVERLAY_FONTS } from "@wonder/creator-studio/carousel";
 import {
   ASPECT_LABEL,
   DEFAULT_EDITS,
-  DEFAULT_WORDS,
   FILTER_LABEL,
   FRAME_LABEL,
   IMAGE_ASPECTS,
@@ -15,21 +14,26 @@ import {
   type CreationImage,
   type ImageEdits,
   type ImageSet,
+  type TextBox,
+  MAX_TEXTS,
+  newTextBox,
 } from "@wonder/creator-studio/images";
 import { Button, Dialog, DialogContent, KIT, KitArt, Segmented, Switch, cn } from "@wonder/ui";
-import { ArrowDown, ArrowUp, Camera, Download, ImagePlus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Camera, Download, ImagePlus, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { loadImage } from "@/components/carousel/slide-render";
 import { EditedImage, composeEdited } from "@/components/images/edited-image";
+import { ImageStage } from "@/components/images/image-stage";
 import { VisualDirections } from "@/components/visual-directions";
 import { api, errorMessage } from "@/lib/client";
 import { sendToCreator } from "@/lib/send";
 
 /**
- * The Images page's canvas (creation-pages.md, step 2): the picture is the work. Edit (crop, focus, filter, light, blur
- * behind the words, frame) is the page's primary action; Words and Download are its two secondaries; adding, arranging and
- * captions live in More. Every Keep is a new version; the original pictures are never changed.
+ * The Images page's canvas (creation-pages.md, step 2): the picture is the work and fills the canvas; pinch and drag to
+ * look closer. Edit (crop, focus, filter, light, blur behind the text, frame) is the page's primary action; Text (a box
+ * on the picture, typed in place, moved and sized by hand) and Download are its two secondaries; adding, arranging and
+ * captions live in More. Edits and text autosave as versions; the original pictures are never changed.
  */
 
 export interface Picture {
@@ -38,7 +42,7 @@ export interface Picture {
   height: number | null;
   title: string | null;
 }
-export type ImagesRequest = { kind: "edit" | "words" | "download" | "add" | "arrange"; n: number } | null;
+export type ImagesRequest = { kind: "edit" | "text" | "download" | "add" | "arrange"; n: number } | null;
 
 export function ImagesCanvas({
   artifactId,
@@ -62,35 +66,49 @@ export function ImagesCanvas({
   const [base, setBase] = useState(baseVersionId);
   // A refreshed page (another device, a restore) brings a newer version: show it.
   const [seenBase, setSeenBase] = useState(baseVersionId);
+  // What the current version holds: an autosave that would change nothing is never sent.
+  const [kept, setKept] = useState(initialSet);
   if (baseVersionId !== seenBase) {
     setSeenBase(baseVersionId);
     setBase(baseVersionId);
     setSet(initialSet);
+    setKept(initialSet);
   }
   const [at, setAt] = useState(0);
   const index = Math.min(at, Math.max(0, set.items.length - 1));
   const item = set.items[index] ?? null;
   const pic = item ? pictures[item.materialId] : null;
+  const natural = pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null;
 
-  const [sheet, setSheet] = useState<null | "edit" | "words" | "download" | "add" | "arrange">(null);
+  const [sheet, setSheet] = useState<null | "edit" | "download" | "add" | "arrange">(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [seenReq, setSeenReq] = useState(request?.n ?? 0);
   if (request && request.n !== seenReq) {
     setSeenReq(request.n);
-    setSheet(request.kind === "edit" || request.kind === "words" || request.kind === "download" ? (item ? request.kind : "add") : request.kind);
+    if (request.kind === "text") {
+      if (item && item.texts.length < MAX_TEXTS) {
+        const t = newTextBox({ y: item.texts.length ? Math.min(0.9, 0.5 + 0.12 * item.texts.length) : 0.5 });
+        setSet({ kind: "images", items: set.items.map((x, k) => (k === index ? { ...x, texts: [...x.texts, t] } : x)) });
+        setSelected(t.id);
+        setEditing(t.id);
+      }
+    } else setSheet(request.kind === "edit" || request.kind === "download" ? (item ? request.kind : "add") : request.kind);
   }
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  async function keep(next: ImageSet, label?: string) {
+  async function keep(next: ImageSet, label?: string, quiet = false) {
     setBusy(true);
     setError(null);
     try {
       const r = await api<{ version: { id: string; version_number: number; content: string } }>(`/api/v1/artifacts/${artifactId}/images`, { method: "POST", json: { set: next, baseVersionId: base, label } });
-      setSet(next);
+      if (!quiet) setSet(next);
+      setKept(next);
       setBase(r.version.id);
       setSeenBase(r.version.id);
       onKept(r.version);
-      setSheet(null);
+      if (!quiet) setSheet(null);
       router.refresh();
       return true;
     } catch (e) {
@@ -107,41 +125,77 @@ export function ImagesCanvas({
       setSheet(null);
       return;
     }
-    const next: ImageSet = { kind: "images", items: [...set.items, { materialId, caption: "", edits: DEFAULT_EDITS, words: DEFAULT_WORDS }] };
+    const next: ImageSet = { kind: "images", items: [...set.items, { materialId, caption: "", edits: DEFAULT_EDITS, texts: [] }] };
     if (await keep(next, set.items.length ? "Added a picture" : "First picture")) setAt(next.items.length - 1);
   }
 
+  // Text on the picture autosaves: one version per pause after a gesture ends or typing stops (never one per move).
+  // A queued set waits 900ms, and waits again while a save is in flight.
+  const [queued, setQueued] = useState<ImageSet | null>(null);
+  useEffect(() => {
+    if (!queued) return;
+    const t = setTimeout(() => {
+      if (busy) return;
+      setQueued(null);
+      void keep(queued, "Words on the picture", true);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queued, busy]);
+  function changeTexts(texts: TextBox[], commit: boolean) {
+    // A box emptied of its words goes; nothing is kept for it.
+    const next = replaceAt(index, { texts: commit ? texts.filter((t) => t.text.trim()) : texts });
+    setSet(next);
+    if (commit) setQueued(JSON.stringify(next.items) === JSON.stringify(kept.items) ? null : next);
+  }
+  const selectedBox = item?.texts.find((t) => t.id === selected) ?? null;
+  function endEditing() {
+    setEditing(null);
+    if (item) changeTexts(item.texts, true);
+  }
+
   return (
-    <div className="relative flex h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] flex-col bg-[#f2ece3]" style={{ backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" }}>
+    // The bottom bar (Edit · Working Table) floats over the page's last 4.25rem: the toolbar and thumbnails stay above it.
+    <div className="relative flex h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)] min-h-[22rem] flex-col bg-[#f2ece3] pb-[4.25rem]" style={{ backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" }}>
       {error ? (
-        <p role="alert" className="m-3 rounded-2xl bg-danger-soft px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="absolute inset-x-3 top-3 z-10 rounded-2xl bg-danger-soft px-3 py-2 text-[13px] text-danger">
           {error}
         </p>
       ) : null}
       {item ? (
         <>
-          <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-8">
-            <figure className="flex max-h-full w-full flex-col items-center" style={{ maxWidth: `min(34rem, calc(56dvh * ${aspectRatioOf(item.edits.aspect, pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null).toFixed(3)}))` }}>
-              <EditedImage
-                src={pic?.url ?? null}
-                natural={pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null}
-                edits={item.edits}
-                words={item.words}
-                label={item.caption || pic?.title || title || "Picture"}
-                className="w-full max-w-full rounded-sm shadow-[0_22px_50px_-30px_rgba(40,30,20,0.6)]"
-              />
-              {item.caption ? <figcaption className="mt-3 max-w-[30rem] text-center font-display text-[15px] italic leading-snug text-ink-muted">{item.caption}</figcaption> : null}
-            </figure>
+          <div className="min-h-0 flex-1">
+            <ImageStage
+              src={pic?.url ?? null}
+              natural={natural}
+              edits={item.edits}
+              texts={item.texts}
+              selectedId={selected}
+              editingId={editing}
+              label={item.caption || pic?.title || title || "Picture"}
+              onSelect={setSelected}
+              onEdit={(id) => (id ? setEditing(id) : endEditing())}
+              onTexts={changeTexts}
+            />
           </div>
+          {selectedBox ? (
+            <TextToolbar box={selectedBox} busy={busy} onChange={(p) => changeTexts(item.texts.map((t) => (t.id === selectedBox.id ? { ...t, ...p } : t)), true)} onEdit={() => setEditing(selectedBox.id)} onDelete={() => { changeTexts(item.texts.filter((t) => t.id !== selectedBox.id), true); setSelected(null); }} onDone={() => { if (editing) endEditing(); setSelected(null); }} />
+          ) : item.caption ? (
+            <p className="shrink-0 px-4 py-1.5 text-center font-display text-[13.5px] italic leading-snug text-ink-muted">{item.caption}</p>
+          ) : null}
           {set.items.length > 1 ? (
-            <ul aria-label="Pictures" className="flex shrink-0 justify-center gap-1.5 overflow-x-auto px-3 pb-3 [scrollbar-width:none]">
+            <ul aria-label="Pictures" className="flex shrink-0 justify-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
               {set.items.map((x, k) => (
                 <li key={x.materialId}>
                   <button
                     type="button"
                     aria-current={k === index ? "true" : undefined}
                     aria-label={`Picture ${k + 1} of ${set.items.length}`}
-                    onClick={() => setAt(k)}
+                    onClick={() => {
+                      setAt(k);
+                      setSelected(null);
+                      setEditing(null);
+                    }}
                     className={cn("block size-11 overflow-hidden rounded-lg ring-offset-2 ring-offset-[#f2ece3]", k === index ? "ring-2 ring-accent" : "opacity-75 hover:opacity-100")}
                   >
                     {pictures[x.materialId]?.url ? (
@@ -165,7 +219,6 @@ export function ImagesCanvas({
       )}
 
       <EditSheet open={sheet === "edit" && !!item} onOpenChange={(o) => !o && setSheet(null)} item={item} pic={pic} busy={busy} onKeep={(edits) => void keep(replaceAt(index, { edits }), "Edited")} />
-      <WordsSheet open={sheet === "words" && !!item} onOpenChange={(o) => !o && setSheet(null)} item={item} pic={pic} busy={busy} onKeep={(words) => void keep(replaceAt(index, { words }), words.enabled ? "Words on the picture" : "Words removed")} />
       <DownloadSheet open={sheet === "download" && !!item} onOpenChange={(o) => !o && setSheet(null)} item={item} pic={pic} title={title} index={index} />
       <Dialog open={sheet === "add"} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent title="Add a picture" description="It joins this Creation; the original stays as it is." art={KIT.iconChip.image}>
@@ -173,6 +226,71 @@ export function ImagesCanvas({
         </DialogContent>
       </Dialog>
       <ArrangeSheet open={sheet === "arrange"} onOpenChange={(o) => !o && setSheet(null)} set={set} pictures={pictures} busy={busy} onKeep={(next) => void keep(next, "Arranged")} />
+    </div>
+  );
+}
+
+/**
+ * The selected box's settings, one scrolling row above the pictures: face, size, alignment, colour, what's behind it,
+ * shadow — and Delete. Size has buttons too, so no one needs a precise pinch.
+ */
+function TextToolbar({ box, busy, onChange, onEdit, onDelete, onDone }: { box: TextBox; busy: boolean; onChange: (p: Partial<TextBox>) => void; onEdit: () => void; onDelete: () => void; onDone: () => void }) {
+  const chip = (on: boolean) => cn("inline-flex h-8 items-center rounded-full px-3 text-[12.5px] font-medium", on ? "bg-accent text-white" : "bg-surface text-ink ring-1 ring-border-soft hover:bg-accent-softer");
+  return (
+    <div role="toolbar" aria-label="Text" className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-t border-border-soft bg-surface/95 px-2 py-1.5 backdrop-blur [scrollbar-width:none]">
+      <Button size="sm" variant="secondary" className="shrink-0 whitespace-nowrap" onClick={onEdit}>
+        Edit words
+      </Button>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <div role="radiogroup" aria-label="Face" className="flex gap-1">
+        {OVERLAY_FONTS.map((f) => (
+          <button key={f.value} type="button" role="radio" aria-checked={box.font === f.value} onClick={() => onChange({ font: f.value })} className="inline-flex min-h-11 items-center">
+            <span className={chip(box.font === f.value)}>{f.label}</span>
+          </button>
+        ))}
+      </div>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <button type="button" aria-label="Smaller text" onClick={() => onChange({ size: Math.max(0.02, +(box.size / 1.15).toFixed(4)) })} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-black/[0.04]">
+        <Minus className="size-4" aria-hidden />
+      </button>
+      <span className="text-[12px] tabular-nums text-ink-muted">{Math.round(box.size * 100)}</span>
+      <button type="button" aria-label="Larger text" onClick={() => onChange({ size: Math.min(0.3, +(box.size * 1.15).toFixed(4)) })} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-black/[0.04]">
+        <Plus className="size-4" aria-hidden />
+      </button>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <div role="radiogroup" aria-label="Align" className="flex gap-1">
+        {(["left", "center", "right"] as const).map((a) => (
+          <button key={a} type="button" role="radio" aria-checked={box.align === a} onClick={() => onChange({ align: a })} className="inline-flex min-h-11 items-center">
+            <span className={chip(box.align === a)}>{a === "center" ? "Centre" : a === "left" ? "Left" : "Right"}</span>
+          </button>
+        ))}
+      </div>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <div role="radiogroup" aria-label="Colour" className="flex gap-0.5">
+        {OVERLAY_COLORS.map((c) => (
+          <button key={c} type="button" role="radio" aria-checked={box.color === c} aria-label={`Colour ${c}`} onClick={() => onChange({ color: c })} className="inline-flex size-11 items-center justify-center">
+            <span className={cn("size-6 rounded-full ring-1 ring-ink/15", box.color === c && "ring-2 ring-accent ring-offset-2")} style={{ background: c }} />
+          </button>
+        ))}
+      </div>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <div role="radiogroup" aria-label="Behind the text" className="flex gap-1">
+        {(["none", "shade", "band"] as const).map((b) => (
+          <button key={b} type="button" role="radio" aria-checked={box.background === b} onClick={() => onChange({ background: b })} className="inline-flex min-h-11 items-center">
+            <span className={chip(box.background === b)}>{b === "none" ? "Clear" : b === "shade" ? "Shade" : "Band"}</span>
+          </button>
+        ))}
+      </div>
+      <button type="button" aria-pressed={box.shadow} onClick={() => onChange({ shadow: !box.shadow })} className="inline-flex min-h-11 items-center">
+        <span className={chip(box.shadow)}>Shadow</span>
+      </button>
+      <span className="mx-0.5 h-5 w-px bg-border-soft" aria-hidden />
+      <button type="button" aria-label="Delete this text" onClick={onDelete} className="inline-flex size-11 items-center justify-center rounded-full text-danger hover:bg-danger-soft">
+        <Trash2 className="size-4" aria-hidden />
+      </button>
+      <Button size="sm" loading={busy} onClick={onDone} className="ml-auto">
+        Done
+      </Button>
     </div>
   );
 }
@@ -280,7 +398,7 @@ function EditBody({ item, pic, busy, onKeep, onCancel }: { item: CreationImage; 
   const [tool, setTool] = useState<Tool>("crop");
   const set = (p: Partial<ImageEdits>) => setE((x) => ({ ...x, ...p }));
   const natural = pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null;
-  const hasWords = item.words.enabled && !!(item.words.text ?? "").trim();
+  const hasWords = item.texts.some((t) => t.text.trim());
   const chip = (on: boolean) => cn("inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium", on ? "bg-accent text-white" : "bg-surface-muted text-ink hover:bg-accent-softer");
   return (
     <div className="space-y-3">
@@ -289,7 +407,7 @@ function EditBody({ item, pic, busy, onKeep, onCancel }: { item: CreationImage; 
           src={pic?.url ?? null}
           natural={natural}
           edits={e}
-          words={item.words}
+          texts={item.texts}
           className="w-full"
         >
           {tool === "focus" ? (
@@ -365,10 +483,10 @@ function EditBody({ item, pic, busy, onKeep, onCancel }: { item: CreationImage; 
         ) : tool === "blur" ? (
           <label className="flex min-h-11 items-center justify-between gap-3 text-[14px] text-ink">
             <span>
-              Blur behind the words
+              Blur behind the text
               <span className="block text-[12px] text-ink-subtle">{hasWords ? "Softens the picture just behind them so they read." : "Add Words first; this softens the picture behind them."}</span>
             </span>
-            <Switch checked={e.blurBehind} onCheckedChange={(v) => set({ blurBehind: v })} disabled={!hasWords} label="Blur behind the words" />
+            <Switch checked={e.blurBehind} onCheckedChange={(v) => set({ blurBehind: v })} disabled={!hasWords} label="Blur behind the text" />
           </label>
         ) : (
           <div role="radiogroup" aria-label="Frame" className="flex flex-wrap gap-1.5">
@@ -404,101 +522,13 @@ function Range({ label, min, max, step, value, onChange }: { label: string; min:
   );
 }
 
-const PLACES = [
-  { label: "Top", y: 0.14 },
-  { label: "Middle", y: 0.5 },
-  { label: "Bottom", y: 0.84 },
-] as const;
-
-/** Words on the picture: the text, where it sits, its face, size, colour and what's behind it. Real text, never pixels. */
-function WordsSheet({ open, onOpenChange, item, pic, busy, onKeep }: { open: boolean; onOpenChange: (o: boolean) => void; item: CreationImage | null; pic: Picture | null; busy: boolean; onKeep: (w: SlideOverlay) => void }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Words" description="Words on the picture stay real text; the original stays as it is." art={KIT.iconChip.type} wide>
-        {open && item ? <WordsBody item={item} pic={pic} busy={busy} onKeep={onKeep} /> : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function WordsBody({ item, pic, busy, onKeep }: { item: CreationImage; pic: Picture | null; busy: boolean; onKeep: (w: SlideOverlay) => void }) {
-  const [w, setW] = useState<SlideOverlay>({ ...item.words, enabled: true });
-  const set = (p: Partial<SlideOverlay>) => setW((x) => ({ ...x, ...p }));
-  const chip = (on: boolean) => cn("inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium", on ? "bg-accent text-white" : "bg-surface-muted text-ink hover:bg-accent-softer");
-  return (
-    <div className="space-y-3">
-      <div className="mx-auto w-full" style={{ maxWidth: `min(22rem, calc(32dvh * ${aspectRatioOf(item.edits.aspect, pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null).toFixed(3)}))` }}>
-        <EditedImage src={pic?.url ?? null} natural={pic?.width && pic?.height ? { width: pic.width, height: pic.height } : null} edits={item.edits} words={w} className="w-full" />
-      </div>
-      <label className="block text-[13.5px] font-medium text-ink">
-        Words on the picture
-        <textarea value={w.text ?? ""} onChange={(e) => set({ text: e.target.value.slice(0, 600) })} rows={2} className="mt-1 block w-full resize-none rounded-xl border border-border-soft bg-surface px-3 py-2 font-display text-[16px] text-ink focus:border-accent focus:outline-none" placeholder="A line for this picture…" />
-      </label>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <div role="radiogroup" aria-label="Where" className="flex gap-1">
-          {PLACES.map((p) => (
-            <button key={p.label} type="button" role="radio" aria-checked={Math.abs(w.y - p.y) < 0.05} onClick={() => set({ y: p.y, x: 0.5 })} className="inline-flex min-h-11 items-center">
-              <span className={chip(Math.abs(w.y - p.y) < 0.05)}>{p.label}</span>
-            </button>
-          ))}
-        </div>
-        <div role="radiogroup" aria-label="Align" className="flex gap-1">
-          {(["left", "center", "right"] as const).map((a) => (
-            <button key={a} type="button" role="radio" aria-checked={w.align === a} onClick={() => set({ align: a })} className="inline-flex min-h-11 items-center">
-              <span className={chip(w.align === a)}>{a === "center" ? "Centre" : a === "left" ? "Left" : "Right"}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <div role="radiogroup" aria-label="Face" className="flex flex-wrap gap-1">
-        {OVERLAY_FONTS.map((f) => (
-          <button key={f.value} type="button" role="radio" aria-checked={w.font === f.value} onClick={() => set({ font: f.value })} className="inline-flex min-h-11 items-center">
-            <span className={chip(w.font === f.value)}>{f.label}</span>
-          </button>
-        ))}
-      </div>
-      <Range label="Size" min={0.03} max={0.14} step={0.005} value={w.size} onChange={(v) => set({ size: v })} />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <div role="radiogroup" aria-label="Colour" className="flex gap-1">
-          {OVERLAY_COLORS.map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={w.color === c} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} className="inline-flex size-11 items-center justify-center">
-              <span className={cn("size-7 rounded-full ring-1 ring-ink/15", w.color === c && "ring-2 ring-accent ring-offset-2")} style={{ background: c }} />
-            </button>
-          ))}
-        </div>
-        <div role="radiogroup" aria-label="Behind the words" className="flex gap-1">
-          {(["none", "shade", "band"] as const).map((b) => (
-            <button key={b} type="button" role="radio" aria-checked={w.background === b} onClick={() => set({ background: b })} className="inline-flex min-h-11 items-center">
-              <span className={chip(w.background === b)}>{b === "none" ? "Clear" : b === "shade" ? "Shade" : "Band"}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="flex min-h-11 items-center justify-between gap-3 text-[14px] text-ink">
-        Soft shadow
-        <Switch checked={w.shadow} onCheckedChange={(v) => set({ shadow: v })} label="Soft shadow" />
-      </label>
-      <div className="sticky -bottom-4 -mx-1 flex items-center gap-2 bg-surface/95 px-1 py-2 backdrop-blur">
-        <Button className="flex-1" loading={busy} disabled={!(w.text ?? "").trim()} onClick={() => onKeep(w)}>
-          Keep
-        </Button>
-        {item.words.enabled ? (
-          <Button variant="ghost" disabled={busy} onClick={() => onKeep({ ...w, enabled: false })}>
-            Remove words
-          </Button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 const FORMATS = [
   { type: "image/png", ext: "png", label: "PNG", note: "Best quality, larger file" },
   { type: "image/jpeg", ext: "jpg", label: "JPEG", note: "Smaller, for sharing anywhere" },
   { type: "image/webp", ext: "webp", label: "WebP", note: "Smallest, for the web" },
 ] as const;
 
-/** Download the picture as shaped — crop, filter, light, words, frame — drawn at full quality in the browser. */
+/** Download the picture as shaped — crop, filter, light, text, frame — drawn at full quality in the browser. */
 function DownloadSheet({ open, onOpenChange, item, pic, title, index }: { open: boolean; onOpenChange: (o: boolean) => void; item: CreationImage | null; pic: Picture | null; title: string; index: number }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -509,7 +539,7 @@ function DownloadSheet({ open, onOpenChange, item, pic, title, index }: { open: 
     try {
       const img = await loadImage(pic.url);
       const canvas = document.createElement("canvas");
-      await composeEdited(canvas, img, { edits: item.edits, words: item.words });
+      await composeEdited(canvas, img, { edits: item.edits, texts: item.texts });
       const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, f.type, 0.92));
       if (!blob) throw new Error("This browser couldn't make that file.");
       const a = document.createElement("a");

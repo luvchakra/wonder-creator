@@ -37,14 +37,37 @@ export interface ImageEdits {
 }
 
 export const DEFAULT_EDITS: ImageEdits = { aspect: "original", zoom: 1, focalX: 0.5, focalY: 0.5, filter: "none", brightness: 1, contrast: 1, blurBehind: false, frame: "none" };
-/** Words start off; a picture is first a picture. Same shape as a Carousel slide's overlay. */
-export const DEFAULT_WORDS: SlideOverlay = { ...DEFAULT_OVERLAY, enabled: false, text: "" };
+/**
+ * Text on the picture (owner, 4 Oct 2026): any number of boxes, each real text the creator moves, resizes and sets
+ * directly on the canvas. `x`/`y` is the box's centre and `width` its width as fractions of the picture; `size` is the
+ * type size as a fraction of the picture's width — the same numbers a Carousel slide's overlay uses, so one renderer
+ * draws both on screen and in the download.
+ */
+export interface TextBox {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  font: SlideOverlay["font"];
+  size: number;
+  align: SlideOverlay["align"];
+  color: string;
+  shadow: boolean;
+  background: SlideOverlay["background"];
+}
+export const MAX_TEXTS = 12;
+export const DEFAULT_TEXT: Omit<TextBox, "id" | "text"> = { x: DEFAULT_OVERLAY.x, y: DEFAULT_OVERLAY.y, width: DEFAULT_OVERLAY.width, font: DEFAULT_OVERLAY.font, size: DEFAULT_OVERLAY.size, align: DEFAULT_OVERLAY.align, color: DEFAULT_OVERLAY.color, shadow: DEFAULT_OVERLAY.shadow, background: DEFAULT_OVERLAY.background };
+export const newTextId = () => Math.random().toString(36).slice(2, 10);
+export const newTextBox = (partial: Partial<TextBox> = {}): TextBox => ({ id: newTextId(), text: "", ...DEFAULT_TEXT, ...partial });
+/** A box as the Carousel renderer draws it. */
+export const overlayOf = (t: TextBox): SlideOverlay => ({ enabled: true, text: t.text, x: t.x, y: t.y, width: t.width, font: t.font, size: t.size, align: t.align, color: t.color, shadow: t.shadow, background: t.background });
 
 export interface CreationImage {
   materialId: string;
   caption: string;
   edits: ImageEdits;
-  words: SlideOverlay;
+  texts: TextBox[];
 }
 export interface ImageSet {
   kind: "images";
@@ -63,6 +86,20 @@ const editsSchema = z.object({
   blurBehind: z.boolean(),
   frame: z.enum(IMAGE_FRAMES),
 });
+const textSchema = z.object({
+  id: z.string().min(1).max(40),
+  text: z.string().max(600),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0.2).max(1),
+  font: z.enum(["editorial", "serif", "modern", "handwritten"]),
+  size: z.number().min(0.02).max(0.3),
+  align: z.enum(["left", "center", "right"]),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  shadow: z.boolean(),
+  background: z.enum(["none", "shade", "band"]),
+});
+/** The older shape: one overlay, on or off. Still accepted, read as one box. */
 const wordsSchema = z.object({
   enabled: z.boolean(),
   text: z.string().max(600).nullish(),
@@ -76,16 +113,37 @@ const wordsSchema = z.object({
   shadow: z.boolean(),
   background: z.enum(["none", "shade", "band"]),
 });
+/** The text boxes of a picture from either shape: `texts`, or the older single `words` overlay. Unknown boxes are dropped. */
+export function textsOf(p: { texts?: unknown; words?: unknown } | null | undefined): TextBox[] {
+  if (!p) return [];
+  if (Array.isArray(p.texts)) {
+    const out: TextBox[] = [];
+    for (const t of p.texts.slice(0, MAX_TEXTS)) {
+      const r = textSchema.safeParse({ ...DEFAULT_TEXT, id: newTextId(), text: "", ...((t ?? {}) as object) });
+      if (r.success) out.push(r.data);
+    }
+    return out;
+  }
+  const w = wordsSchema.safeParse({ ...DEFAULT_OVERLAY, enabled: false, text: "", ...((p.words ?? {}) as object) });
+  if (!w.success || !w.data.enabled || !(w.data.text ?? "").trim()) return [];
+  const { enabled: _on, text, ...rest } = w.data;
+  void _on;
+  return [{ id: newTextId(), text: (text ?? "").slice(0, 600), ...rest }];
+}
+
 export const imageSetSchema = z.object({
   kind: z.literal("images"),
   items: z
     .array(
-      z.object({
-        materialId: z.string().uuid(),
-        caption: z.string().max(600),
-        edits: editsSchema,
-        words: wordsSchema,
-      }),
+      z
+        .object({
+          materialId: z.string().uuid(),
+          caption: z.string().max(600),
+          edits: editsSchema,
+          texts: z.array(textSchema).max(MAX_TEXTS).optional(),
+          words: wordsSchema.optional(),
+        })
+        .transform(({ texts, words, ...o }) => ({ ...o, texts: textsOf({ texts, words }) })),
     )
     .max(MAX_IMAGES),
 });
@@ -96,11 +154,10 @@ export function imageSetOf(structured: unknown): ImageSet {
   if (!raw || raw.kind !== "images" || !Array.isArray(raw.items)) return { kind: "images", items: [] };
   const items: CreationImage[] = [];
   for (const it of raw.items.slice(0, MAX_IMAGES)) {
-    const o = (it ?? {}) as Partial<CreationImage>;
+    const o = (it ?? {}) as Partial<CreationImage> & { words?: unknown };
     if (typeof o.materialId !== "string" || !/^[0-9a-f-]{36}$/i.test(o.materialId)) continue;
     const e = editsSchema.safeParse({ ...DEFAULT_EDITS, ...(o.edits ?? {}) });
-    const w = wordsSchema.safeParse({ ...DEFAULT_WORDS, ...(o.words ?? {}) });
-    items.push({ materialId: o.materialId, caption: typeof o.caption === "string" ? o.caption.slice(0, 600) : "", edits: e.success ? e.data : DEFAULT_EDITS, words: w.success ? (w.data as SlideOverlay) : DEFAULT_WORDS });
+    items.push({ materialId: o.materialId, caption: typeof o.caption === "string" ? o.caption.slice(0, 600) : "", edits: e.success ? e.data : DEFAULT_EDITS, texts: textsOf(o as { texts?: unknown; words?: unknown }) });
   }
   return { kind: "images", items };
 }

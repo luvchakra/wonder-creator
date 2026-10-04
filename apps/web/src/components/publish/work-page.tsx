@@ -7,6 +7,7 @@ import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
 import { ShareButton, ViewBeacon } from "./beacons";
 import { ListenRenderer, ViewRenderer, VoiceChip, WatchRenderer } from "./media";
 import { SwipeRenderer } from "./swipe";
+import { textsOf } from "@wonder/creator-studio/images";
 import { EditedImage } from "../images/edited-image";
 import { WrittenPiece } from "../writing/written-piece";
 
@@ -77,7 +78,7 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
             <div className="mx-auto max-w-3xl space-y-8">
               {s.pictures.map((p, k) => (
                 <figure key={`${p.objectId}-${k}`} className="mx-auto">
-                  <EditedImage src={media(p.objectId)} edits={p.edits} words={p.words} label={p.caption || s.title} className="w-full" />
+                  <EditedImage src={media(p.objectId)} edits={p.edits} texts={textsOf(p)} label={p.caption || s.title} className="w-full" />
                   {p.caption ? <figcaption className="mt-2 text-center font-display text-[15px] italic opacity-75">{p.caption}</figcaption> : null}
                 </figure>
               ))}

@@ -19,7 +19,7 @@ test.describe("Images page", () => {
     // Empty: one line, three ways to begin. The page's primary action is Add a picture until there is one.
     const editor = page.getByRole("region", { name: "Editor" });
     await expect(editor.getByText("Begin with a picture")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Words" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Text", exact: true })).toBeDisabled();
     await editor.getByRole("button", { name: "Your pictures" }).click();
     await editor.getByRole("list", { name: "Your pictures" }).getByRole("button").first().click();
     // Adding is a version (v2): the original Material is untouched.
@@ -38,14 +38,18 @@ test.describe("Images page", () => {
     await edit.getByRole("button", { name: "Keep" }).click();
     await expect(page.getByRole("link", { name: "Version 3 — see versions" })).toBeVisible();
 
-    // Words: real text on the picture; Keep makes v4.
-    await page.getByRole("button", { name: "Words" }).click();
-    const words = page.getByRole("dialog", { name: "Words" });
-    await words.getByLabel("Words on the picture").fill("The lights came on one by one");
-    await words.getByRole("radio", { name: "Top" }).click();
-    await words.getByRole("button", { name: "Keep" }).click();
+    // Text: a box on the picture, typed in place; it autosaves as v4. The box is real text, moved and sized by hand.
+    await page.getByRole("button", { name: "Text", exact: true }).click();
+    const box = editor.getByRole("textbox", { name: "Text on the picture" });
+    await box.fill("The lights came on one by one");
+    await editor.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByRole("link", { name: "Version 4 — see versions" })).toBeVisible();
-    await expect(editor.getByText("The lights came on one by one")).toBeVisible();
+    await expect(editor.getByRole("button", { name: /Text: The lights came on one by one/ })).toBeVisible();
+    // Size it with the toolbar (no precision gesture needed) — another version.
+    await editor.getByRole("button", { name: /Text: The lights/ }).click();
+    await editor.getByRole("button", { name: "Larger text" }).click();
+    await editor.getByRole("button", { name: "Done", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Version 5 — see versions" })).toBeVisible();
 
     // Arrange & captions from More: a caption shows under the picture.
     await page.getByRole("button", { name: "More", exact: true }).click();

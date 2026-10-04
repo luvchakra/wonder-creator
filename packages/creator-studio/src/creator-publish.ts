@@ -126,7 +126,7 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
   // The Images page (creation-pages.md, step 2): the pictures in the creator's order, as shaped — only clean, linked ones.
   const shaped = imageSetOf(v?.structured_content).items.map((i) => ({ item: i, m: byId.get(i.materialId) })).filter((x) => x.m && obj(x.m.storage_object_id));
   if (shaped.length) {
-    snapshot.pictures = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, caption: item.caption, edits: item.edits, words: item.words }));
+    snapshot.pictures = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, caption: item.caption, edits: item.edits, texts: item.texts }));
     snapshot.images = shaped.map(({ item, m }) => ({ objectId: m!.storage_object_id!, alt: item.caption || m!.title?.trim() || "" }));
   }
   else if (cover && obj(cover.storage_object_id) && (cover.type === "image" || cover.type === "sketch")) snapshot.images = [{ objectId: cover.storage_object_id!, alt: cover.title?.trim() || "" }];
