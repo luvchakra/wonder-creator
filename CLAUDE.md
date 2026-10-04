@@ -61,8 +61,8 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
   side and opens downward when the trigger sits high on the screen. Shift + arrow keys move it; a drag is never a tap.
 * **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
   `docs/ui-redesign/ai-context-line.md`).
-* Contextual Palette: **3–4 primary actions**, then `More…` and `Go to…`; global Palette max **6** destinations (Home,
-  Create, Materials, Huddles, Explore, Me). Create opens the Make a new Creation sheet with every format (Writing · Carousel · Images · Video · Audio ·
+* Contextual Palette: **3 primary actions**, then `More…` and `Go to…`; global Palette **4** destinations (Create,
+  Materials, Explore, Me — Home too, away from Home; Huddles is a door in Explore) plus the quiet music leaf (owner, 4 Oct 2026). Create opens the Make a new Creation sheet with every format (Writing · Carousel · Images · Video · Audio ·
   Presentation), Let CreativeMind decide (meTalk) and a quiet bring-in/capture link (owner, 2 Oct 2026).
 * Deterministic and context-aware: page → lifecycle / media type → permissions → rank. Dangerous, rights, commerce and
   destructive actions are never first level. It hides what the server would refuse; it is not a security boundary.
@@ -235,7 +235,7 @@ Wonder Creator must minimize UI transitions and visible controls. The detailed c
 * Keep the most frequent action visible, stable and visually strongest. Do not hide the primary action in the Palette.
 * Secondary/rare actions appear only when required through the contextual Palette, `More…`, a bottom sheet, or progressive disclosure.
 * Do not duplicate the same actions both prominently on the page and in the first-level Palette unless there is a strong usability reason.
-* Contextual Palette remains **3–4 primary items**; global Palette max **6**.
+* Contextual Palette shows **3 primary items**; global Palette **4** destinations (see Fewer buttons below).
 * Use at most **one major UI transition per user action**. Normal page/sheet transitions should be restrained, predictable and generally **<=280ms**.
 * Use motion only to clarify spatial continuity, state change or object movement. Remove decorative entrance animations, bounce, parallax, multi-stage choreography and repeated card transitions.
 * Prefer inline state changes, compact sheets and direct actions over extra intermediate pages.
@@ -247,6 +247,26 @@ Wonder Creator must minimize UI transitions and visible controls. The detailed c
 * Empty states: one short message + one primary action. Error states: one clear recovery action.
 * Primary action placement should remain stable between nearby states. Avoid moving the same action around the screen as content updates.
 * Purple/high-emphasis styling should normally identify only one primary action or selected state at a time.
+
+### Fewer buttons (owner's standing instruction, 4 Oct 2026)
+
+> "reduce the number of buttons on main page, if required show in palette, reduce options on palette as well. make this a
+> rule for all other pages"
+
+Applies to **every page**, Home first:
+
+* **Count the tappable things** above the fold and on the whole page; every one must earn its place. If a page needs more
+  than one primary + two secondary actions, the rest go to the Palette's `More…`, a sheet or progressive disclosure.
+* **A section's title is its link.** "My Scrapbook ›", not a title plus an "All scraps" row. No "See all"/"View all"/"All X"
+  rows or buttons.
+* **A card is one link.** No second button or text link inside a card that goes where the card goes; no "Explore ›" next
+  to a title that could itself link.
+* **No promos for setup on content pages.** "Connect sources"-style invitations live where that setting lives (Me,
+  Settings) — Home shows the result once there is one.
+* **Nothing twice.** If the header, the page or the Palette already offers it, the others don't.
+* **Palette:** 3 contextual actions, then `More…`; 4 global destinations (Create · Materials · Explore · Me). Adding a
+  global destination needs the owner.
+* When touching any page, apply these and say what was removed or merged in the PR.
 
 ### Interaction review sequence
 
@@ -283,7 +303,7 @@ The detailed implementation contract is `docs/ui-redesign/compact-density.md`. F
 * Non-immersive mobile hero media on utility/detail pages should usually be about **160–220px** high / roughly 24–30vh. Expressive surfaces (Profile, Creator Page, published works, Home) may use 30–45vh painted or photographic heroes when the board does.
 * Decorative botanical/watercolour assets are absolutely positioned or background decoration: they live in negative space, inside cards and behind heroes, as the boards show, but must **not push primary content below the fold on utility screens** or reduce text contrast.
 * CreativeMind insight defaults to **one compact 2–3 line card + one action**. Do not stack large AI explanation cards or chat transcripts.
-* Contextual Palette shows **3–4 primary actions**; global Palette max **6**. Use `More…` for secondary actions rather than elongating the Palette.
+* Contextual Palette shows **3 primary actions**; global Palette **4** destinations. Use `More…` for secondary actions rather than elongating the Palette.
 * Group metadata instead of creating tiles for every fact. Example: `Short Film · v4 · Private · 2:38`.
 * Use progressive disclosure for secondary metadata, rights history, advanced settings, audit detail and provider/debug information.
 * At a normal ~390×844 viewport, non-immersive pages should normally expose the primary content **and at least one useful next/context element above the fold**.

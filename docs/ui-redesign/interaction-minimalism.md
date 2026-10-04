@@ -1302,3 +1302,16 @@ Not:
 The governing interaction rule is:
 
 > **Keep the most important action visible. Keep everything else quiet until it becomes relevant.**
+
+## Fewer buttons (owner, 4 Oct 2026)
+
+"Reduce the number of buttons on main page, if required show in palette, reduce options on palette as well. Make this a
+rule for all other pages." The rule (CLAUDE.md › Fewer buttons) supersedes the counts above where they differ:
+
+- A section's title is its link ("My Scrapbook ›"); no "All X" / "See all" rows. A card is one link; no second link inside.
+- Setup invitations (e.g. Connect sources) live where the setting lives, not on content pages.
+- Palette: **3** contextual actions then More…; **4** global destinations — Create · Materials · Explore · Me (Huddles is
+  a door in Explore).
+
+Home, first pass: "All scraps", "All my creations" and "All testimonials" rows became their section titles; From Pulse's
+"Explore ›" became its title; "From your world · Connect sources" shows only when a source has found something.

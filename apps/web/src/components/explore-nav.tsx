@@ -3,7 +3,8 @@ import Link from "next/link";
 import { flagOn } from "@/lib/features";
 
 /**
- * Explore's four doors (Phase 03 §2): Ideas · Materials · People · Pulse. Pulse (the open space for conversations, asks
+ * Explore's doors (Phase 03 §2): Ideas · Materials · People · Pulse · Huddles (owner, 4 Oct 2026: fewer Palette options —
+ * Huddles moved here from the global Palette). Pulse (the open space for conversations, asks
  * and people; key "community" in code) lives here rather than as a new permanent destination; the Palette's Explore opens
  * this set. "Community" now names the Orkut-style communities (docs/communities.md).
  */
@@ -12,6 +13,7 @@ const DOORS = [
   { key: "materials", label: "Materials", href: "/explore?type=material" },
   { key: "people", label: "People", href: "/people" },
   { key: "community", label: "Pulse", href: "/pulse" },
+  { key: "huddles", label: "Huddles", href: "/huddles" },
 ] as const;
 
 export function ExploreNav({ current }: { current: (typeof DOORS)[number]["key"] }) {

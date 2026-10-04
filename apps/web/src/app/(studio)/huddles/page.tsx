@@ -3,6 +3,7 @@ import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { BACKGROUNDS, BrandBackground, EmptyState, PageTitle, cn, chipBase } from "@wonder/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { ExploreNav } from "@/components/explore-nav";
 import { LiveHuddleCard } from "@/components/huddle/live-card";
 import { after } from "next/server";
 import { sweepStalePresence } from "@/lib/presence";
@@ -32,6 +33,7 @@ export default async function HuddlesPage({ searchParams }: { searchParams: Prom
     <>
       <PaletteScope context={{ page: "huddles" }} />
       <div className="space-y-8">
+        <ExploreNav current="huddles" />
         <BrandBackground src={BACKGROUNDS.coastalVillage} overlay="cream" position="right center" className="-mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-3xl lg:px-10">
           <div className="py-5 lg:py-10">
             <PageTitle title="Live Huddles" subtitle="Spontaneous, temporary conversations between creators. Join one, or start your own." className="mb-4" />

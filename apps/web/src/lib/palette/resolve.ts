@@ -1,12 +1,12 @@
 import { GLOBAL_ITEMS, rulesFor } from "./rules";
 import type { PaletteContext, PaletteModel } from "./types";
 
-/** First-level contextual actions (palette-spec §4.1: 3–4 recommended, 5 at most). */
-export const MAX_PRIMARY = 4;
+/** First-level contextual actions: three (owner, 4 Oct 2026: "reduce options on palette"); the rest under More…. */
+export const MAX_PRIMARY = 3;
 
 /**
  * resolvePalette (§17): page rules → entity / lifecycle rules (inside the page rules) → permissions → no dangerous
- * actions at the first level → de-duplicate → rank → first four; the rest go under More…. Deterministic, no AI.
+ * actions at the first level → de-duplicate → rank → first three; the rest go under More…. Deterministic, no AI.
  */
 export function resolvePalette(ctx: PaletteContext): PaletteModel {
   const { title, items } = rulesFor(ctx);
@@ -20,7 +20,7 @@ export function resolvePalette(ctx: PaletteContext): PaletteModel {
   return { title, primary: safe.slice(0, MAX_PRIMARY), more: [...safe.slice(MAX_PRIMARY), ...ranked.filter((x) => x.class === "dangerous")], global: false };
 }
 
-/** The six global destinations (§2.1), reached from Home or through "Go to…". */
+/** The global destinations — Create, Materials, Explore, Me (and Home elsewhere) — reached from Home or "Go to…". */
 export function globalPalette(pathname = ""): PaletteModel {
   return { title: null, primary: GLOBAL_ITEMS(pathname), more: [], global: true };
 }

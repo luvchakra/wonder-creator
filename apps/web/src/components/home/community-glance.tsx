@@ -16,14 +16,12 @@ export function CommunityGlance({ g, avatars }: { g: HomeCommunityGlance & { cov
   return (
     <section id="community" aria-labelledby="community-title" className="relative isolate scroll-mt-20 overflow-hidden rounded-3xl border border-border-soft bg-[linear-gradient(180deg,#fbf7f2_0%,#f6f0fa_100%)] p-3 shadow-[var(--shadow-card)]">
       <KitArt art={KIT.painted.leafSprigSage} sizes="6rem" className="pointer-events-none absolute -right-3 -top-4 -z-10 h-24 w-auto rotate-12 opacity-50" />
-      <div className="flex items-baseline justify-between gap-3 pr-10">
-        <h2 id="community-title" className="font-display text-[19px] leading-tight text-ink">
-          From Pulse
-        </h2>
-        <Link href="/pulse" className="relative inline-flex items-center gap-0.5 text-[12.5px] font-medium text-accent-ink before:absolute before:-inset-3 before:content-[''] hover:underline">
-          Explore <ChevronRight className="size-3.5" aria-hidden />
+      <h2 id="community-title" className="font-display text-[19px] leading-tight text-ink">
+        {/* The title is the way into Pulse (fewer buttons on Home). */}
+        <Link href="/pulse" className="-my-2 inline-flex min-h-11 items-center gap-0.5 hover:underline">
+          From Pulse <ChevronRight className="size-4 text-ink-subtle" aria-hidden />
         </Link>
-      </div>
+      </h2>
       {/* This week, in words — no numbers. */}
       {g.week ? (
         <p className="mt-1 pr-6 font-display text-[14px] italic leading-snug text-ink-muted">

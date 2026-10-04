@@ -4,6 +4,7 @@ import { Avatar } from "@wonder/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { avatarUrls } from "@/lib/avatars";
+import { SectionTitle } from "./section-title";
 
 const ROWS = 3;
 
@@ -22,9 +23,9 @@ export async function HomeTestimonials({ db, creator }: { db: Db; creator: { id:
 
   return (
     <section aria-labelledby="home-testimonials-title">
-      <h2 id="home-testimonials-title" className="flex min-h-11 items-center text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+      <SectionTitle id="home-testimonials-title" href={`${profile}?tab=community#testimonials`}>
         My Testimonials
-      </h2>
+      </SectionTitle>
       <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
         {shown.length ? (
           <ul aria-label="Testimonials you show" className="divide-y divide-border-soft">
@@ -49,10 +50,6 @@ export async function HomeTestimonials({ db, creator }: { db: Db; creator: { id:
             <ChevronRight className="size-4 shrink-0 text-accent" aria-hidden />
           </Link>
         ) : null}
-        <Link href={`${profile}?tab=community#testimonials`} className="flex min-h-11 items-center gap-2.5 px-3 py-1.5 text-[13.5px] font-medium text-accent-ink hover:bg-surface-muted">
-          <span className="min-w-0 flex-1">All testimonials</span>
-          <ChevronRight className="size-4 shrink-0" aria-hidden />
-        </Link>
       </div>
     </section>
   );

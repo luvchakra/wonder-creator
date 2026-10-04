@@ -134,7 +134,9 @@ export function QuickCapture() {
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
   };
 
-  // Quick Pic and Video Note (owner, 4 Oct 2026): the device's own camera, straight to a Material (through CreatorSend, which
+  // Quick Pic and Video Note open the phone's own camera with its own defaults (owner, 4 Oct 2026: "use phones default
+  // camera settings by default"): `capture` without a lens, so the camera app keeps its last lens, mode, HDR and
+  // resolution. The file arrives untouched (no re-encoding here) and goes straight to a Material (through CreatorSend, which
   // checks the bytes and sends big files browser → storage directly). One tap to capture; no sheet in between.
   const picRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
@@ -202,8 +204,8 @@ export function QuickCapture() {
           );
         })}
       </div>
-      <input ref={picRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files?.[0]), (e.target.value = ""))} />
-      <input ref={videoRef} type="file" accept="video/*" capture="user" className="sr-only" tabIndex={-1} aria-label="Record a video note" onChange={(e) => (void captureMedia("video", e.target.files?.[0]), (e.target.value = ""))} />
+      <input ref={picRef} type="file" accept="image/*" capture className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files?.[0]), (e.target.value = ""))} />
+      <input ref={videoRef} type="file" accept="video/*" capture className="sr-only" tabIndex={-1} aria-label="Record a video note" onChange={(e) => (void captureMedia("video", e.target.files?.[0]), (e.target.value = ""))} />
       {media ? (
         <p role={media.error ? "alert" : "status"} className={cn("px-1 text-[13px]", media.error ? "text-danger" : "text-ink-muted")}>
           {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}

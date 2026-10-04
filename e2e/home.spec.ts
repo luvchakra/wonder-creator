@@ -15,14 +15,16 @@ test.describe("Home Canvas", () => {
     const begin = page.getByRole("region", { name: "What would you like to begin with?" });
     await expect(begin.getByRole("link")).toHaveText([/New Creation/, /Bring Material/]);
 
-    // Creations in progress show as thin Continue rows (the last three edited), then "All my creations".
+    // Creations in progress show as thin Continue rows (the last three edited); the "Continue ›" title opens them all.
     const title = `Harbour lights ${uid()}`;
     const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title } })).json()).artifact as { id: string };
     await saveNote(page, `Night ferry sounds ${uid()}`);
     await page.goto("/");
     const rows = page.getByRole("list", { name: "Creations in progress" });
     await expect(rows.getByRole("link", { name: new RegExp(title) })).toContainText(/Poem · Edited (just now|\d+ min ago)/);
-    await expect(rows.getByRole("link", { name: "All my creations" })).toHaveAttribute("href", "/creations");
+    await expect(page.getByRole("heading", { name: "Continue" }).getByRole("link")).toHaveAttribute("href", "/creations");
+    // Fewer buttons (owner, 4 Oct 2026): no "All …" rows — a section's title is its link.
+    await expect(page.getByRole("link", { name: /^All (scraps|my creations|testimonials)$/ })).toHaveCount(0);
     // Sections only appear with something real in them: nothing happened, no one's waiting, nothing old to rediscover.
     for (const name of ["While you were away", "A little spark", "You could help"]) await expect(page.getByRole("region", { name })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Recent Materials" })).toHaveCount(0);
@@ -31,7 +33,7 @@ test.describe("Home Canvas", () => {
     await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/(?:studio|write)$`));
   });
 
-  test("Continue shows the last three Creations in progress as thin rows, then All my creations", async ({ page, creator }) => {
+  test("Continue shows the last three Creations in progress as thin rows; its title opens them all", async ({ page, creator }) => {
     void creator;
     const tag = uid();
     const make = async (title: string) => ((await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title } })).json()).artifact as { id: string }).id;
@@ -43,11 +45,11 @@ test.describe("Home Canvas", () => {
     await page.goto("/");
     const rows = page.getByRole("list", { name: "Creations in progress" });
     // Newest first; a finished Creation and the fourth-newest draft don't take a row.
-    await expect(rows.getByRole("link")).toHaveText([new RegExp(`Newest ${tag}`), new RegExp(`Third ${tag}`), new RegExp(`Second ${tag}`), "All my creations"]);
+    await expect(rows.getByRole("link")).toHaveText([new RegExp(`Newest ${tag}`), new RegExp(`Third ${tag}`), new RegExp(`Second ${tag}`)]);
     await expect(page.locator("[data-primary-action]")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
-    // The Scrapbook above ends the same way: its last row opens all scraps.
-    await page.getByRole("region", { name: "My Scrapbook" }).getByRole("link", { name: "All scraps" }).click();
+    // The Scrapbook above works the same way: its title opens all scraps.
+    await page.getByRole("heading", { name: "My Scrapbook" }).getByRole("link").click();
     await expect(page).toHaveURL(/\/scrapbook$/);
   });
 
