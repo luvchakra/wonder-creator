@@ -331,6 +331,37 @@ export async function publishCreation(db: Db, creatorId: string, artifactId: str
   return (await publicationFor(db, artifactId)).publication!;
 }
 
+/**
+ * Preview (owner, 4 Oct 2026: "show the same to user as a prominent preview option so they understand what can happen
+ * next"): the Creation as it is now, exactly as its public page would show it — the same snapshot, manifest, rights and
+ * provenance a publish would freeze, built as the creator under RLS. Nothing is written.
+ */
+export async function previewPublication(db: Db, creatorId: string, artifactId: string) {
+  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id").eq("id", artifactId).maybeSingle();
+  if (!a || a.creator_id !== creatorId) throw new DomainError("not_found", "That Creation isn't available.");
+  const { data: w } = await db.from("published_works").select("slug, visibility, settings, unpublished_at, current_revision_id").eq("artifact_id", artifactId).maybeSingle();
+  const settings = (w?.settings as PublishSettings | null) ?? {};
+  const built = await buildSnapshot(db, artifactId, settings);
+  const manifest = manifestFor(a.artifact_type, built.snapshot, settings, built.aspectRatio);
+  const { data: last } = w ? await db.from("published_revisions").select("revision_number, version_id").eq("artifact_id", artifactId).order("revision_number", { ascending: false }).limit(1).maybeSingle() : { data: null };
+  const nextRevision = (last?.revision_number ?? 0) + 1;
+  const [rights, provenance] = await Promise.all([rightsFor(db, artifactId, built.versionId, settings), provenanceFor(db, built.versionId, built.snapshot.versionNumber, nextRevision)]);
+  const live = !!w && !w.unpublished_at && w.visibility !== "private";
+  return {
+    slug: w?.slug ?? slugify(a.title),
+    visibility: (w?.visibility as PublicationVisibility | undefined) ?? "unlisted",
+    settings,
+    manifest,
+    snapshot: built.snapshot,
+    rights,
+    provenance,
+    /** Published and reachable; and whether what's shown here differs from what readers see now. */
+    published: live,
+    changedSincePublished: live && !!last && last.version_id !== built.versionId,
+    empty: !built.snapshot.content.trim() && !built.snapshot.slides?.length && !built.snapshot.images?.length && !built.snapshot.media,
+  };
+}
+
 /** Presentation and placement only (visibility, featured, address, context and rights toggles) — no new revision. */
 export async function updatePublishedWork(db: Db, artifactId: string, raw: unknown): Promise<PublicationView> {
   const input = publishSchema.partial().parse(raw);

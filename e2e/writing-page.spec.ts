@@ -17,7 +17,7 @@ test.describe("Writing page", () => {
     await kinds.getByRole("button", { name: /^Poem/ }).click();
     await expect(page.getByRole("button", { name: "Kind of writing: Poem" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Cover" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Read", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Preview", exact: true })).toBeVisible();
 
     const words = `The lantern keeps its small promise ${uid()}\nall night, on the jetty.`;
     await page.getByLabel("Poem text").fill(words);
@@ -56,7 +56,8 @@ test.describe("Writing page", () => {
     await page.getByRole("button", { name: "Kind of writing: News" }).click();
     await page.getByRole("dialog", { name: "Kind of writing" }).getByRole("button", { name: /^Essay/ }).click();
     await expect(page.getByRole("button", { name: "Kind of writing: Essay" })).toBeVisible();
-    await page.getByRole("link", { name: "Read", exact: true }).click();
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /Read it on its own/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Harbour reopens" })).toBeVisible();
     await expect(page.getByText("Crews returned before dawn.")).toBeVisible();
   });
@@ -89,5 +90,26 @@ test.describe("Writing page", () => {
     // Take it down: the address stops working for everyone else.
     await sheet.getByRole("button", { name: "Take it down" }).click();
     await expect(sheet.getByRole("button", { name: "Publish as link" })).toBeVisible();
+  });
+});
+
+test.describe("Preview", () => {
+  test("Preview shows the page readers would see, publishes from there, and the Writing page then shows the link", async ({ page, creator }) => {
+    const tag = uid();
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: `Lantern ${tag}`, content: "The lantern keeps its small promise\nall night, on the jetty." } })).json()).artifact as { id: string };
+    await page.goto(`/creations/${art.id}/write`);
+    await page.getByRole("link", { name: "Preview", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/preview$`));
+    // The public renderer, as readers would see it: title, byline, the words — and one next step.
+    await expect(page.getByRole("heading", { level: 1, name: `Lantern ${tag}` })).toBeVisible();
+    await expect(page.getByText("A poem by")).toBeVisible();
+    await expect(page.getByText("all night, on the jetty.")).toBeVisible();
+    await page.getByRole("button", { name: "Publish as link" }).click();
+    await expect(page.getByText(/^Published/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Copy link/ })).toBeVisible();
+    // Back on the Writing page, the link is right there.
+    await page.getByRole("link", { name: "Back to writing" }).click();
+    await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/write$`));
+    await expect(page.getByRole("status").filter({ hasText: "Published" })).toContainText(`/p/${creator.handle}/lantern-${tag.toLowerCase()}`);
   });
 });

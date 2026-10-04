@@ -159,7 +159,8 @@ test.describe("Studio, versions and lineage", () => {
     await expect(page.getByRole("dialog", { name: "Refine with CreativeMind" })).toBeVisible();
     await page.keyboard.press("Escape");
     // Reading on its own page: just the words, and one way back.
-    await page.getByRole("link", { name: "Read", exact: true }).click();
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /Read it on its own/ }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/read$`));
     await expect(page.getByRole("article").getByRole("heading", { level: 1 })).toBeVisible();
     await page.getByRole("link", { name: "Close reading" }).click();

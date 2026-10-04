@@ -59,7 +59,7 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
         <span className="flex-1" />
         {work.rights.allowSharing && work.visibility !== "private" ? <ShareButton workId={work.workId} title={s.title} url={url} tone={dark ? "dark" : "light"} /> : null}
       </header>
-      {work.preview ? (
+      {work.preview && !work.livePreview ? (
         <p role="status" className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-full bg-accent-softer px-4 py-1.5 text-[13px] text-accent-ink">
           <Lock className="size-4" aria-hidden /> {work.visibility === "private" ? "Private — only you can see this." : "Not published right now — only you can see this."}
         </p>

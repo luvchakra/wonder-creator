@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { coverUrls } from "@/lib/covers";
+import { siteOrigin } from "@/lib/public-pages";
 import { requireSession } from "@/lib/session";
 import { serviceClient } from "@/lib/supabase/service";
 import { ForwardTo } from "./forward";
@@ -51,6 +52,13 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       }),
     );
   }
+  // Published and reachable (creation-pages.md): the live link shows under the title; Preview says when newer words exist.
+  const { data: pub } = await db.from("published_works").select("slug, visibility, unpublished_at, current_revision_id").eq("artifact_id", id).maybeSingle();
+  let published: { url: string; newer: boolean } | null = null;
+  if (pub && !pub.unpublished_at && pub.visibility !== "private" && creator.handle) {
+    const { data: rev } = pub.current_revision_id ? await db.from("published_revisions").select("version_id").eq("id", pub.current_revision_id).maybeSingle() : { data: null };
+    published = { url: `${await siteOrigin()}/p/${creator.handle}/${pub.slug}`, newer: !!rev && rev.version_id !== (a.current_version_id ?? null) };
+  }
   const peopleIds = [creator.id, ...(contributors ?? []).map((c) => c.contributor_creator_id)];
   const avatars = await avatarUrls(db, peopleIds);
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
@@ -61,10 +69,11 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   return (
     <>
       {/* The Creation Palette during active work (palette-spec §9.16). */}
-      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
+      <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own, hasWords: !!version?.content?.trim(), published: !!published }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         page={at === "write" ? "writing" : at === "image" ? "images" : "studio"}
         images={imageSet ? { set: imageSet, pictures } : null}
+        published={published}
         artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status, coverUrl: covers[a.id] ?? null, look: lookOf(a.presentation, !!covers[a.id]), updatedAt: a.updated_at, ornament: ornamentOf(a.presentation) }}
         version={version ? { id: version.id, number: version.version_number, content: version.content } : null}
         actions={actionsFor(a.artifact_type)}

@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, ImagePlus, SlidersHorizontal, Type } from "lucide-react";
+import { ArrowLeft, Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, ImagePlus, SlidersHorizontal, Type } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-
 export function Studio({
   page = "studio",
   images,
+  published = null,
   artifact,
   version,
   actions,
@@ -47,6 +48,8 @@ export function Studio({
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
   page?: "writing" | "images" | "studio";
+  /** Published and reachable: the live link, and whether newer saved words exist here. */
+  published?: { url: string; newer: boolean } | null;
   /** The Images page's pictures and what was done to them (creation-pages.md, step 2). */
   images?: { set: ImageSet; pictures: Record<string, Picture> } | null;
   artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string; ornament?: OrnamentKey };
@@ -457,6 +460,7 @@ export function Studio({
   const modeLabel = OUTPUT_MODES.find((m) => m.key === outputModeOf(artifact.type))?.label ?? "Writing";
   // The Writing page (creation-pages.md): verse centred in Playfair with room between lines; scripts in their mono layout.
   const writing = page === "writing";
+  const [linkCopied, setLinkCopied] = useState(false);
   // The Images page: Edit is the primary action, Words and Download the two secondaries (creation-pages.md, step 2).
   const imagesPage = page === "images";
   const hasPictures = !!images?.set.items.length;
@@ -658,10 +662,11 @@ export function Studio({
                 Cover
               </span>
             </button>
-            <Link href={`/creations/${artifact.id}/read`} className="inline-flex min-h-11 items-center">
+            {/* Preview (owner, 4 Oct 2026): the page readers would see, with Publish beneath — the clearest "what's next". */}
+            <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
               <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
-                <BookOpen className="size-4 text-ink-muted" aria-hidden />
-                Read
+                <Eye className="size-4 text-ink-muted" aria-hidden />
+                Preview
               </span>
             </Link>
           </div>
@@ -695,6 +700,17 @@ export function Studio({
         </p>
       ) : null}
 
+      {published && writing ? (
+        <p role="status" className="mb-2 flex items-center gap-2 rounded-2xl bg-success-soft px-3 py-1.5 text-[13px] text-success-ink">
+          <span className="min-w-0 flex-1 truncate">
+            <span className="font-medium">Published</span> · {published.url.replace(/^https?:\/\//, "")}
+            {published.newer ? <span className="text-ink-muted"> · newer words here — Preview to publish them</span> : null}
+          </span>
+          <button type="button" onClick={() => void navigator.clipboard?.writeText(published.url).then(() => setLinkCopied(true))} className="inline-flex min-h-11 items-center gap-1 font-medium hover:underline">
+            {linkCopied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} {linkCopied ? "Copied" : "Copy"}
+          </button>
+        </p>
+      ) : null}
       {madeFrom && !madeFromSeen ? (
         <p role="status" className="mb-2 flex items-center gap-2 rounded-2xl bg-accent-softer px-3 py-1 text-[13px] text-ink">
           <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
@@ -1191,6 +1207,7 @@ export function Studio({
                 ]
               : writing
               ? [
+                  { label: "Read it on its own", hint: "Just the words, full screen", act: () => router.push(`/creations/${artifact.id}/read`) },
                   { label: "Publish as link", hint: "Its own page — the cover, the paper, your name", act: () => setSheet("publish") },
                   { label: "Refine with CreativeMind", hint: "Improve, shorten, or a quality review", act: () => setSheet("refine") },
                   { label: "Export", hint: artifact.format === "screenplay" ? "Fountain, text, Markdown or a web page" : "Markdown, text or a web page", act: () => setSheet("export") },

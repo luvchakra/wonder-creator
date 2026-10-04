@@ -88,6 +88,21 @@ the same on the canvas, the Read page and the published page (`components/writin
   `creation-images.ts` (save), `apps/web/src/components/images/edited-image.tsx` (preview + canvas export),
   `…/studio/images-canvas.tsx`, `…/creations/[id]/image`. Tests: `image-options.test.ts`, `e2e/images-page.spec.ts`.
 
+### Preview, and what's next (owner, 4 Oct 2026)
+
+"After writing… there are no options on the screen where I can go next" and "when I publish this as a link, it looks
+good… show the same to user as a prominent preview option so they understand what can happen next."
+
+- **Preview** is the Writing page's second secondary (Read moved to More). `/creations/[id]/preview` renders the
+  Creation through the public page's own renderer — the same snapshot, manifest, rights and provenance a publish would
+  freeze (`previewPublication`, built as the creator under RLS; nothing written) — with one bar beneath: **Publish as
+  link** (anyone with the link; the Creator Page stays opt-in), or, once published, the live link with **Copy link** and
+  **Open**, and **Publish the latest version** when the words moved on. Views aren't counted on a preview.
+- **The link stays in sight:** a published Creation shows "Published · its address · Copy" under the title on the
+  Writing page, with "newer words here — Preview to publish them" when they differ.
+- **The Palette follows the stage:** with saved words, Preview · Publish as link · Share lead; after publishing, Preview
+  & link · On my Creator Page · Share.
+
 ### Ornaments (owner, 4 Oct 2026)
 
 "Beautiful separator options for header and footer, simple but elegant, inspired from roman architecture… these header
