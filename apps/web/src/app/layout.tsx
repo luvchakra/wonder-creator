@@ -1,4 +1,4 @@
-import { KIT } from "@wonder/ui";
+import { APP_ICONS, KIT } from "@wonder/ui";
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
       { url: KIT.appIcon.appIconPrimary.svg, type: "image/svg+xml" },
       { url: KIT.appIconPng.s192.src, sizes: "192x192", type: "image/png" },
     ],
-    apple: { url: KIT.appIconPng.s180.src, sizes: "180x180" },
+    // iOS rounds the corners itself: a full-bleed icon, so no dark or white corners show.
+    apple: { url: APP_ICONS.apple180.src, sizes: "180x180" },
   },
   manifest: "/manifest.webmanifest",
 };
