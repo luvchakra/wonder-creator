@@ -5,8 +5,6 @@ import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SU
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
 import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound, FolderSync } from "lucide-react";
 import Link from "next/link";
-import type { OrnamentKind } from "@wonder/ui";
-import { OrnamentPicker } from "./ornament-picker";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TESTIMONIALS_FROM, TESTIMONIALS_FROM_HINT, TESTIMONIALS_FROM_LABEL, type TestimonialsFrom } from "@wonder/creator-identity/testimonials-options";
@@ -33,7 +31,6 @@ const toggle = (list: string[], v: string, max = 12) => (list.includes(v) ? list
 
 type Props = {
   section: string;
-  ornament: OrnamentKind;
   email: string;
   avatarUrl: string | null;
   profile: { displayName: string; handle: string; bio: string; location: string; showLocation: boolean; visibility: string; collaborationAvailability: "open" | "selective" | "closed"; languages: string[] };
@@ -268,14 +265,13 @@ function IdentitySection({ identity }: Props) {
   );
 }
 
-function PreferencesSection({ voice, boundaries, ornament }: Props) {
+function PreferencesSection({ voice, boundaries }: Props) {
   const [v, setV] = useState(voice);
   const [b, setB] = useState(boundaries);
   const { busy, save, status } = useSaver();
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold text-ink">Creative Preferences</h2>
-      <OrnamentPicker initial={ornament} />
       <div>
         <p className="mb-2 text-sm font-medium text-ink">Tone</p>
         <div className="flex flex-wrap gap-2">

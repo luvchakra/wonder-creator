@@ -1,5 +1,5 @@
 import { isSceneBreak, type WritingStyle } from "@wonder/creator-studio/pages";
-import { cn } from "@wonder/ui";
+import { Ornament, cn, type OrnamentKind } from "@wonder/ui";
 import type { ReactNode } from "react";
 
 /**
@@ -18,6 +18,7 @@ export function WrittenPiece({
   tone = "ink",
   as: Heading = "h2",
   empty,
+  ornament,
 }: {
   style: WritingStyle;
   /** The small line above the title — the kind, or a control that changes it. */
@@ -31,6 +32,8 @@ export function WrittenPiece({
   as?: "h1" | "h2";
   /** Shown when there are no words yet. */
   empty?: ReactNode;
+  /** The Roman ornament that heads and closes the piece; without one, a short hairline under the title. */
+  ornament?: OrnamentKind;
 }) {
   const light = tone === "light";
   const muted = light ? "text-white/80" : "text-ink-muted";
@@ -46,6 +49,10 @@ export function WrittenPiece({
   const shortDate = when ? when.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).toUpperCase() : null;
   const Kicker = kicker ? <div className={cn("text-[11px] font-semibold uppercase tracking-[0.16em]", light ? "text-white/80" : style === "news" || style === "feature" ? "text-accent-ink" : "text-ink-subtle")}>{kicker}</div> : null;
   const Empty = <p className={cn("mt-5 font-display text-[17px] italic", muted)}>{empty}</p>;
+  // Header and footer ornaments (owner, 4 Oct 2026): written Creations only.
+  const tint = light ? "text-white/55" : undefined;
+  const Head = (centred: boolean) => (ornament ? <Ornament kind={ornament} className={cn("mt-5", tint)} /> : <div aria-hidden className={cn("mt-5 h-px w-12", rule, centred && "mx-auto")} />);
+  const Foot = ornament ? <Ornament kind={ornament} className={cn("mt-10", tint)} /> : null;
 
   if (style === "verse")
     return (
@@ -53,7 +60,7 @@ export function WrittenPiece({
         {Kicker}
         <Heading className="mt-2 font-display text-[30px] leading-[1.1] [text-wrap:balance] sm:text-[38px]">{title}</Heading>
         {byline ? <p className={cn("mt-2 font-display text-[15px] italic", muted)}>{byline}</p> : null}
-        <div aria-hidden className={cn("mx-auto mt-5 h-px w-12", rule)} />
+        {Head(true)}
         {paras.length ? (
           <div className="mt-6 space-y-[1.2em] font-display text-[17px] leading-[1.95] sm:text-[20px]">
             {paras.map((stanza, k) => (
@@ -70,6 +77,7 @@ export function WrittenPiece({
         ) : (
           Empty
         )}
+        {Foot}
       </div>
     );
 
@@ -79,7 +87,9 @@ export function WrittenPiece({
         {Kicker}
         <Heading className="mt-3 text-center text-[17px] font-semibold uppercase tracking-[0.08em] underline underline-offset-4">{title}</Heading>
         {byline ? <p className={cn("mt-2 text-center text-[13px]", muted)}>written by {byline}</p> : null}
+        {ornament ? Head(true) : null}
         {paras.length ? <div className="mt-8 whitespace-pre-wrap text-[13.5px] leading-7">{text.trim()}</div> : Empty}
+        {Foot}
       </div>
     );
 
@@ -97,7 +107,7 @@ export function WrittenPiece({
           <div className="mt-5 space-y-4 font-sans text-[16px] leading-[1.7]">
             {paras.map((p, k) =>
               isSceneBreak(p) ? (
-                <Ornament key={k} light={light} />
+                <SceneBreak key={k} light={light} />
               ) : k === 0 ? (
                 <p key={k} className="whitespace-pre-line text-[17px] font-medium leading-[1.6]">
                   {shortDate ? <span className="mr-1 text-[12.5px] font-bold uppercase tracking-[0.1em]">{shortDate} —</span> : null}
@@ -113,6 +123,7 @@ export function WrittenPiece({
         ) : (
           Empty
         )}
+        {Foot}
       </div>
     );
 
@@ -125,16 +136,18 @@ export function WrittenPiece({
         {Kicker}
         {longDate ? <p className={cn("mt-2 text-right font-display text-[14px] italic", muted)}>{longDate}</p> : null}
         <Heading className="mt-3 font-display text-[24px] leading-tight [text-wrap:balance] sm:text-[28px]">{title}</Heading>
+        {ornament ? Head(false) : null}
         {paras.length ? (
           <div className="mt-6 space-y-4 font-display text-[17.5px] leading-[1.8]">
             {greeting ? <p className="italic">{greeting}</p> : null}
-            {body.map((p, k) => (isSceneBreak(p) ? <Ornament key={k} light={light} /> : <p key={k} className="whitespace-pre-line">{p}</p>))}
+            {body.map((p, k) => (isSceneBreak(p) ? <SceneBreak key={k} light={light} /> : <p key={k} className="whitespace-pre-line">{p}</p>))}
             {signoff ? <p className="whitespace-pre-line pt-2 text-right italic">{signoff}</p> : null}
             {byline && !signoff ? <p className="pt-2 text-right italic">{byline}</p> : null}
           </div>
         ) : (
           Empty
         )}
+        {Foot}
       </div>
     );
   }
@@ -154,12 +167,12 @@ export function WrittenPiece({
         {byline ? (
           <p className={cn("mt-3 text-[12px] font-semibold uppercase tracking-[0.14em]", muted, fiction && "font-normal tracking-[0.2em]")}>{fiction ? byline : `By ${byline}`}</p>
         ) : null}
-        <div aria-hidden className={cn("mt-5 h-px w-12", rule, fiction && "mx-auto")} />
+        {Head(fiction)}
       </div>
       {body.length ? (
         <div className={cn("mt-6 font-display text-[17.5px] leading-[1.8]", feature && "space-y-5")}>
           {body.map((p, k) => {
-            if (isSceneBreak(p)) return <Ornament key={k} light={light} />;
+            if (isSceneBreak(p)) return <SceneBreak key={k} light={light} />;
             const opens = k === 0 || isSceneBreak(body[k - 1]!);
             return (
               <p
@@ -181,11 +194,12 @@ export function WrittenPiece({
       ) : (
         Empty
       )}
+      {Foot}
     </div>
   );
 }
 
-function Ornament({ light }: { light: boolean }) {
+function SceneBreak({ light }: { light: boolean }) {
   return (
     <p aria-hidden className={cn("py-4 text-center font-display text-[18px] tracking-[0.5em]", light ? "text-white/70" : "text-ink/40")}>
       ⁂

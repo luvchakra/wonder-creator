@@ -33,6 +33,14 @@ test.describe("Writing page", () => {
     const cover = page.getByRole("dialog", { name: "Cover" });
     await expect(cover.getByRole("radiogroup", { name: "How the words are set" }).getByRole("radio")).toHaveText(["Paper"]);
     await expect(cover.getByRole("button", { name: /Let CreativeMind make one/ })).toBeVisible();
+    // The ornament that heads and closes the piece, after Roman architecture — kept with the Creation.
+    const ornaments = cover.getByRole("radiogroup", { name: "Ornament" });
+    await expect(ornaments.getByRole("radio", { name: "Keystone" })).toHaveAttribute("aria-checked", "true");
+    await ornaments.getByRole("radio", { name: "Laurel" }).click();
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await page.getByRole("button", { name: "Cover" }).click();
+    await expect(page.getByRole("dialog", { name: "Cover" }).getByRole("radio", { name: "Laurel" })).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
   });
 

@@ -20,9 +20,23 @@ export const LOOKS = ["cover", "blur", "paper"] as const;
 export type CreationLook = (typeof LOOKS)[number];
 export const LOOK_LABEL: Record<CreationLook, string> = { cover: "Over the cover", blur: "Blurred behind", paper: "Paper" };
 
+/**
+ * The ornament that heads and closes a written Creation (owner, 4 Oct 2026: separators "inspired from roman
+ * architecture… for writing creations only"). Keys match `ORNAMENTS` in @wonder/ui, which draws them.
+ */
+export const ORNAMENT_KEYS = ["line", "dentil", "arcade", "eggdart", "meander", "keystone", "laurel"] as const;
+export type OrnamentKey = (typeof ORNAMENT_KEYS)[number];
+export const DEFAULT_WRITING_ORNAMENT: OrnamentKey = "keystone";
+
 /** A Creation's presentation choices (artifacts.presentation). Unknown keys are ignored. */
 export interface CreationPresentation {
   look?: CreationLook;
+  ornament?: OrnamentKey;
+}
+
+export function ornamentOf(presentation: unknown): OrnamentKey {
+  const o = (presentation as CreationPresentation | null)?.ornament;
+  return o && (ORNAMENT_KEYS as readonly string[]).includes(o) ? o : DEFAULT_WRITING_ORNAMENT;
 }
 
 /** The look to show: the chosen one, or paper when there's no cover to set the words over. */

@@ -2,7 +2,7 @@
 import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
-import { creationPath, writingStyleOf, type CreationLook } from "@wonder/creator-studio/pages";
+import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
@@ -44,7 +44,7 @@ export function Studio({
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
   page?: "writing" | "studio";
-  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string };
+  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string; ornament?: OrnamentKey };
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
   initialAction: string | null;
@@ -480,6 +480,21 @@ export function Studio({
       setError(errorMessage(e));
     }
   }
+  // The Roman ornament that heads and closes the piece (owner, 4 Oct 2026), chosen in Cover beside the look.
+  const [ornament, setOrnament] = useState<OrnamentKey | undefined>(artifact.ornament);
+  const [ornamentFrom, setOrnamentFrom] = useState(artifact.ornament);
+  if (artifact.ornament !== ornamentFrom) {
+    setOrnamentFrom(artifact.ornament);
+    setOrnament(artifact.ornament);
+  }
+  async function chooseOrnament(o: OrnamentKey) {
+    setOrnament(o);
+    try {
+      await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { presentation: { ornament: o } } });
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
   // A new cover shows: off paper, onto the picture. No cover sets the words on paper.
   async function chooseCover(materialId: string | null) {
     await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { coverMaterialId: materialId, ...(materialId && look === "paper" ? { presentation: { look: "cover" } } : {}) } });
@@ -783,6 +798,7 @@ export function Studio({
                     date={artifact.updatedAt}
                     tone={look === "cover" ? "light" : "ink"}
                     empty="Nothing written yet. Tap Write to start."
+                    ornament={ornament}
                   />
                 </div>
               </div>
@@ -1167,7 +1183,7 @@ export function Studio({
       </Dialog>
       {writing ? (
         <>
-          <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} onCover={chooseCover} />
+          <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} ornament={ornament ?? "keystone"} onOrnament={(o) => void chooseOrnament(o)} onCover={chooseCover} />
           <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={dirty} onSaveFirst={() => setSheet("save")} />
           <KindSheet open={sheet === "kind"} onOpenChange={(o) => !o && setSheet(null)} current={artifact.type} busy={kindBusy} onChoose={(t) => void chooseKind(t)} />
           <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={dirty} />

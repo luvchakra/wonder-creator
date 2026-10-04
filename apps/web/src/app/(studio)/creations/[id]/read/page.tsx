@@ -1,4 +1,4 @@
-import { artifactType, creationPath, writingStyleOf } from "@wonder/creator-studio";
+import { artifactType, creationPath, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
 import { WrittenPiece } from "@/components/writing/written-piece";
 import { KIT } from "@wonder/ui";
 import { X } from "lucide-react";
@@ -18,7 +18,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
-  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id, current_version_id, updated_at").eq("id", id).maybeSingle();
+  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id, current_version_id, updated_at, presentation").eq("id", id).maybeSingle();
   if (!a) notFound();
   const mine = a.creator_id === creator.id;
   const [{ data: version }, { data: session }] = await Promise.all([
@@ -42,7 +42,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
       </Link>
       <article className="mx-auto max-w-[38rem] px-6 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[max(4.5rem,env(safe-area-inset-top))] sm:pt-24">
         {/* Set the way its kind is best read: a poem, an essay, news… (creation-pages.md §Writing kinds). */}
-        <WrittenPiece style={writingStyleOf(a.artifact_type)} kicker={def.label} title={a.title || "Untitled"} text={text} byline={author?.display_name} date={a.updated_at} as="h1" empty="Nothing written yet." />
+        <WrittenPiece style={writingStyleOf(a.artifact_type)} kicker={def.label} title={a.title || "Untitled"} text={text} byline={author?.display_name} date={a.updated_at} ornament={ornamentOf(a.presentation)} as="h1" empty="Nothing written yet." />
       </article>
     </div>
   );

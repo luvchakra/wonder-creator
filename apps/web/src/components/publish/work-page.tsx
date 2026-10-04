@@ -1,6 +1,6 @@
 import { writingStyleOf } from "@wonder/creator-studio/pages";
 import { EXPERIENCE_LABEL, clock } from "@wonder/creator-studio/publish";
-import { KIT, cn } from "@wonder/ui";
+import { KIT, Ornament, cn } from "@wonder/ui";
 import { ArrowLeft, Lock, MessagesSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
@@ -151,11 +151,16 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
               <div className="whitespace-pre-wrap font-display text-[17px] leading-[1.9] sm:text-[19px]">{s.content}</div>
             ) : (
               // Set the way its kind is best read: an essay's drop cap, a feature's standfirst, news, fiction… (creation-pages.md).
-              <WrittenPiece style={writingStyleOf(s.artifactType)} kicker={s.typeLabel} title={s.title} text={s.content} byline={work.creator.name} date={work.revision.publishedAt} as="h1" />
+              <WrittenPiece style={writingStyleOf(s.artifactType)} kicker={s.typeLabel} title={s.title} text={s.content} byline={work.creator.name} date={work.revision.publishedAt} ornament={s.ornament} as="h1" />
             )}
-            <p aria-hidden className="mt-10 text-center text-[18px] opacity-40">
-              ◇
-            </p>
+            {/* A poem closes with its ornament; prose pieces close their own (WrittenPiece). */}
+            {m.poem && s.ornament ? (
+              <Ornament kind={s.ornament} className="mt-10" />
+            ) : !s.ornament ? (
+              <p aria-hidden className="mt-10 text-center text-[18px] opacity-40">
+                ◇
+              </p>
+            ) : null}
           </article>
         )}
 

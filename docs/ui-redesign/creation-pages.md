@@ -65,6 +65,14 @@ the same on the canvas, the Read page and the published page (`components/writin
 | letter | letter | a letter | the date at the right, the greeting in italics, the sign-off set to the right |
 | script | screenplay, script, dialogue | a screenplay | mono, title underlined in capitals |
 
+### Ornaments (owner, 4 Oct 2026)
+
+"Beautiful separator options for header and footer, simple but elegant, inspired from roman architecture… these header
+and footer are for writing creations only." Each written Creation has an ornament that heads it (under the title) and
+closes it (after the last line): Hairline · Dentil · Arcade · Egg & dart · Meander · Keystone (default) · Laurel. It is
+chosen in Cover beside the look, kept in `artifacts.presentation.ornament`, frozen into the published snapshot, and drawn
+by `Ornament` (packages/ui) as hairline SVG in the ink — decorative only.
+
 Implementation: `packages/creator-studio/src/creation-pages.ts`, `apps/web/src/app/(studio)/creations/[id]/write`,
 `…/studio/screen.tsx` (shared loader + forwarding), `…/studio/writing-sheets.tsx`, `studio.tsx` (`page="writing"`),
 `components/publish/work-page.tsx` (looks). Tests: `creation-pages.test.ts`, `tests/db/artifacts.test.ts`

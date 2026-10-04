@@ -8,6 +8,9 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 > "continue with remaining items, don't stop, don't ask unless important"
 
 * Continue with the remaining items without stopping; don't ask unless it's important (a decision only the owner can make, credentials, or something destructive or irreversible).
+* **Always notify the owner when a task is done** (owner, 4 Oct 2026): send a push notification (`PushNotification`)
+  when each requested task finishes — merged, or blocked on something only the owner can do — in one line that says
+  what's done and anything they need to act on. Also notify when a decision of theirs is blocking work.
 * Ship through PRs: open a PR for each piece of work and merge it to `main` once CI is green.
 * Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 * UI direction: `docs/ui-redesign/spec.md` (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`. It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is no bottom navigation or module tab bar, and destinations/actions live in the corner Creative Palette. CreativeMind (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product.

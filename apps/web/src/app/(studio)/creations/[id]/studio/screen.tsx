@@ -1,5 +1,5 @@
 import { carouselView, findingsOf, providerReadiness } from "@wonder/creator-brain";
-import { actionsFor, artifactType, creationPath, lookOf } from "@wonder/creator-studio";
+import { actionsFor, artifactType, creationPath, lookOf, ornamentOf } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
@@ -50,7 +50,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         page={at === "write" ? "writing" : "studio"}
-        artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status, coverUrl: covers[a.id] ?? null, look: lookOf(a.presentation, !!covers[a.id]), updatedAt: a.updated_at }}
+        artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status, coverUrl: covers[a.id] ?? null, look: lookOf(a.presentation, !!covers[a.id]), updatedAt: a.updated_at, ornament: ornamentOf(a.presentation) }}
         version={version ? { id: version.id, number: version.version_number, content: version.content } : null}
         actions={actionsFor(a.artifact_type)}
         initialAction={action ?? null}

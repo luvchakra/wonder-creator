@@ -3,7 +3,7 @@ import { audit, DomainError, fromDbError, must, publishEvent } from "@wonder/cor
 import type { Db, Enums, Json, Tables, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
 import { artifactType, isKnownArtifactType } from "./artifact-types";
-import { LOOKS } from "./creation-pages";
+import { LOOKS, ORNAMENT_KEYS } from "./creation-pages";
 import { outputModeOf } from "./working-set-options";
 
 export type Artifact = Tables<"artifacts">;
@@ -195,7 +195,7 @@ export const updateArtifactSchema = z.object({
   /** A picture Material of the creator's as the cover, or none. */
   coverMaterialId: z.string().uuid().nullable().optional(),
   /** How the work is set on its page (creation-pages.md). */
-  presentation: z.object({ look: z.enum(LOOKS) }).partial().strict().optional(),
+  presentation: z.object({ look: z.enum(LOOKS), ornament: z.enum(ORNAMENT_KEYS) }).partial().strict().optional(),
   /** Another kind within the same format (a passage becomes a poem); the words stay as they are. */
   artifactType: z.string().max(40).optional(),
 });

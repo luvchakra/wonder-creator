@@ -1,9 +1,9 @@
 import { cn } from "../cn";
 
 /**
- * Separators drawn from Roman architecture (owner, 4 Oct 2026: "beautiful separator options for header and footer, simple
- * but elegant, inspired from roman architecture"). Hairline, in the ink at low strength, decorative only (hidden from
- * assistive tech). Repeating bands are an SVG mask over `currentColor`, so they take the colour of where they sit.
+ * Ornaments drawn from Roman architecture that head and close a written Creation (owner, 4 Oct 2026: "beautiful separator
+ * options for header and footer, simple but elegant, inspired from roman architecture… for writing creations only").
+ * Hairline, in the ink at low strength, decorative only (hidden from assistive tech). Repeating bands are an SVG mask over `currentColor`, so they take the colour of where they sit.
  *
  * - line — a single hairline (the quiet one)
  * - dentil — a cornice's row of small blocks under a fillet
@@ -24,7 +24,7 @@ export const ORNAMENT_LABEL: Record<OrnamentKind, string> = {
   keystone: "Keystone",
   laurel: "Laurel",
 };
-export const DEFAULT_ORNAMENT: OrnamentKind = "dentil";
+export const DEFAULT_ORNAMENT: OrnamentKind = "keystone";
 export const isOrnament = (v: unknown): v is OrnamentKind => typeof v === "string" && (ORNAMENTS as readonly string[]).includes(v);
 
 const svg = (w: number, h: number, body: string) =>
@@ -32,7 +32,7 @@ const svg = (w: number, h: number, body: string) =>
 
 /** The repeating bands: tile width × height and what one tile draws (a fillet line above the moulding). */
 const BANDS: Partial<Record<OrnamentKind, { mask: string; h: number }>> = {
-  dentil: { h: 9, mask: svg(11, 9, "<path d='M0 0.5H11M0 2.5H11' stroke-width='0.7'/><rect x='2' y='4' width='6' height='5' fill='black' stroke='none'/>") },
+  dentil: { h: 9, mask: svg(11, 9, "<path d='M0 0.5H11M0 2.5H11' stroke-width='0.7'/><rect x='2' y='4' width='6' height='5' fill='black' fill-opacity='0.6' stroke='none'/>") },
   arcade: { h: 12, mask: svg(16, 12, "<path d='M0 0.5H16' stroke-width='0.7'/><path d='M2 12V7A6 6 0 0 1 14 7V12'/><path d='M0 12V3.5M16 12V3.5' stroke-width='0.7'/>") },
   eggdart: { h: 12, mask: svg(16, 12, "<path d='M0 0.5H16' stroke-width='0.7'/><path d='M2.2 3A3.8 3.8 0 0 1 9.8 3C9.8 7.6 8 11 6 11S2.2 7.6 2.2 3Z'/><path d='M13 2V10.5M11.4 8.6L13 11L14.6 8.6'/>") },
   meander: { h: 12, mask: svg(14, 12, "<path d='M0 11.5H14M0 0.5H14' stroke-width='0.7'/><path d='M1.5 11.5V3H11V9H5V5.5H8.5'/>") },

@@ -1,5 +1,5 @@
 "use client";
-import { Avatar, ContextStrip, KIT, KitArt, Logo, Ornament, cn, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, type OrnamentKind } from "@wonder/ui";
+import { Avatar, ContextStrip, KIT, KitArt, Logo, cn, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@wonder/ui";
 import { Brain, FolderKanban, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,7 @@ import { NavSearch } from "./nav-search";
  * The top bar (UI redesign §6): logo, the Context Strip, search, messages, notifications and your account — nothing else. There is no module tab
  * bar and no bottom navigation: destinations and actions live in the corner Creative Palette.
  */
-export function AppNav({ me, ornament }: { me: { name: string; handle: string | null; avatarUrl: string | null }; ornament?: OrnamentKind }) {
+export function AppNav({ me }: { me: { name: string; handle: string | null; avatarUrl: string | null } }) {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const strip = useContextStrip();
@@ -26,9 +26,7 @@ export function AppNav({ me, ornament }: { me: { name: string; handle: string | 
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-cream/85 backdrop-blur-md">
-        {/* The header's lower edge: the creator's Roman ornament (Settings › Preferences), inside the bar so nothing shifts. */}
-        <Ornament kind={ornament} className="pointer-events-none absolute inset-x-0 bottom-0" />
+      <header className="sticky top-0 z-40 border-b border-border-soft/70 bg-cream/85 backdrop-blur-md">
         <div className="relative mx-auto flex h-[var(--nav-height)] max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
           {/* While searching on a phone, the field takes the whole bar (logo and status step aside). */}
           <Link href="/" className={cn("inline-flex min-h-11 shrink-0 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-accent", searchOpen && "hidden sm:inline-flex")} aria-label="Wonder Creator home">

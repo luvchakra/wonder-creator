@@ -1,8 +1,8 @@
 "use client";
 import { EXPORT_FORMATS, exportFormatsFor } from "@wonder/creator-studio/exports";
-import { LOOK_LABEL, LOOKS, WRITING_KINDS, writingStyleOf, type CreationLook } from "@wonder/creator-studio/pages";
+import { LOOK_LABEL, LOOKS, ORNAMENT_KEYS, WRITING_KINDS, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { artifactType } from "@wonder/creator-studio/types";
-import { Button, Dialog, DialogContent, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
+import { Button, Dialog, DialogContent, KIT, KitArt, ORNAMENT_LABEL, Ornament, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
 import Link from "next/link";
 import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,6 +23,8 @@ export function CoverSheet({
   coverUrl,
   look,
   onLook,
+  ornament,
+  onOrnament,
   onCover,
 }: {
   open: boolean;
@@ -31,18 +33,36 @@ export function CoverSheet({
   coverUrl: string | null;
   look: CreationLook;
   onLook: (l: CreationLook) => void;
+  ornament: OrnamentKey;
+  onOrnament: (o: OrnamentKey) => void;
   onCover: (materialId: string | null) => Promise<void>;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Cover" description="A picture behind the words — or none, on paper." art={KIT.iconChip.image}>
-        {open ? <CoverBody artifactId={artifactId} coverUrl={coverUrl} look={look} onLook={onLook} onCover={onCover} /> : null}
+        {open ? <CoverBody artifactId={artifactId} coverUrl={coverUrl} look={look} onLook={onLook} ornament={ornament} onOrnament={onOrnament} onCover={onCover} /> : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function CoverBody({ artifactId, coverUrl, look, onLook, onCover }: { artifactId: string; coverUrl: string | null; look: CreationLook; onLook: (l: CreationLook) => void; onCover: (materialId: string | null) => Promise<void> }) {
+function CoverBody({
+  artifactId,
+  coverUrl,
+  look,
+  onLook,
+  ornament,
+  onOrnament,
+  onCover,
+}: {
+  artifactId: string;
+  coverUrl: string | null;
+  look: CreationLook;
+  onLook: (l: CreationLook) => void;
+  ornament: OrnamentKey;
+  onOrnament: (o: OrnamentKey) => void;
+  onCover: (materialId: string | null) => Promise<void>;
+}) {
   const [pictures, setPictures] = useState<Picture[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -77,6 +97,26 @@ function CoverBody({ artifactId, coverUrl, look, onLook, onCover }: { artifactId
           onChange={onLook}
           options={LOOKS.filter((l) => l === "paper" || coverUrl).map((l) => ({ value: l, label: LOOK_LABEL[l] }))}
         />
+      </div>
+
+      {/* Header and footer of the piece: an ornament after Roman architecture (owner, 4 Oct 2026). */}
+      <div>
+        <p className="mb-1.5 text-[12.5px] font-medium text-ink-muted">Ornament · heads and closes the piece</p>
+        <div role="radiogroup" aria-label="Ornament" className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {ORNAMENT_KEYS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={ornament === k}
+              onClick={() => onOrnament(k)}
+              className={cn("flex min-h-12 flex-col justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-left", ornament === k ? "border-accent bg-accent-softer" : "border-border-soft hover:border-accent/50")}
+            >
+              <Ornament kind={k} className="text-ink/45" />
+              <span className="text-[12px] font-medium text-ink">{ORNAMENT_LABEL[k]}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <section aria-labelledby="cover-pictures">
