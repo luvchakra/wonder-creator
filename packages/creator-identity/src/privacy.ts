@@ -72,7 +72,7 @@ export const EXPORT_TABLES = [
   "rights_records", "rights_owners", "rights_events", "licenses", "ownership_assertions",
   "publications", "publication_attempts", "publication_metrics", "publication_signoffs", "publishing_destinations", "publishing_preferences", "published_works", "published_revisions",
   "market_listings", "business_records", "campaign_invitations", "campaign_deliverables", "payment_orders", "payment_refunds", "ledger_entries",
-  "projects", "project_items", "project_task_assignees", "project_task_comments", "crews", "crew_members", "crew_messages", "crew_message_reads",
+  "projects", "project_items", "project_task_assignees", "project_task_comments", "crews", "crew_members", "project_part_members", "crew_messages", "crew_message_reads",
   "huddle_participants", "huddle_messages", "huddle_events", "huddle_history", "huddle_preserved_items",
   "direct_messages", "direct_thread_reads", "scrapbook_posts", "scrapbook_attachments", "scrapbook_replies",
   "open_conversations", "open_conversation_replies", "open_conversation_reads", "open_conversation_invites",
