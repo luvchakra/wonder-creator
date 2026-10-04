@@ -20,7 +20,7 @@ minimal buttons and the best way to handle it. Plan approved the same day ("appr
 | --- | --- | --- |
 | 1 | **Writing** `/creations/[id]/write` + routing from the sheet | Done |
 | 2 | **Images** `/creations/[id]/image` | Done |
-| 3 | **Audio**: recorder (the voice-note recorder) above the words; Record / Write / Listen; Transcribe when the provider is live; export audio + text; a simple player page as the public link | Not started |
+| 3 | **Audio**: recorder (the voice-note recorder) above the words; Record / Write / Listen; Transcribe when the provider is live; export audio + text; a simple player page as the public link | Done |
 | 4 | **Presentation**: current slide large + strip; Edit slide / Add slide / Present; themes from the named palettes (Editorial Paper, Cinematic Dark, Soft Gradient); speaker notes; export via web-page print | Not started |
 | 5 | **Video**: storyboard + script (shots with frame, line, duration); Write / Add shot / Play through (animatic); exports; Render only when a video provider is connected (honest "not connected" otherwise) | Not started |
 
@@ -100,8 +100,31 @@ good… show the same to user as a prominent preview option so they understand w
   **Open**, and **Publish the latest version** when the words moved on. Views aren't counted on a preview.
 - **The link stays in sight:** a published Creation shows "Published · its address · Copy" under the title on the
   Writing page, with "newer words here — Preview to publish them" when they differ.
-- **The Palette follows the stage:** with saved words, Preview · Publish as link · Share lead; after publishing, Preview
-  & link · On my Creator Page · Share.
+- **The Palette supports the kind of writing** (owner, 4 Oct 2026: "the palette options are not useful, make it less
+  about AI, more about supporting the writing type"): the kind's own tool leads — **Lines & stanzas** (verse: each
+  line with its syllables, or words in other scripts; the stanza shape), **Headline & lede** (news), **Scenes &
+  runtime** (script: INT./EXT. headings, about a minute a page), **Scenes & length** (fiction), **Length & reading
+  time** (essay, feature, letter) — then **Hear it read** (the device's own voice; a poem's line breaks become pauses)
+  and **Publish as link** once there are words. Counted on the device, never sent, never a score
+  (`packages/creator-studio/src/writing-craft.ts`, `…/studio/writing-tools.tsx`). Preview and Cover are on the page,
+  so the Palette doesn't repeat them; Share, Versions, People and Change format are under More….
+
+## Audio (step 3)
+
+`/creations/[id]/audio` — a recording and its words (a script, lyrics, notes, or the transcript).
+
+- **Record** is the one primary action (**Record again** once there's a take). Recording starts at once in a sheet
+  (the voice-note recorder, shared with Quick Capture: `useAudioRecorder`); Stop, Listen, then **Keep this take**.
+- Keeping uploads the take as a voice Material (Quick Capture's exactly-once endpoint; transcribed when the provider is
+  live, honest when not) and makes a version naming it (`saveAudioTake`: the creator's own voice/audio Material only,
+  stale saves refused, lineage recorded). Earlier takes stay Materials and come back by restoring a version.
+- The take plays above the words (play/pause, a seek bar, times). **Listen** (the readers' page) and **Download** (the
+  take) are the two secondaries, shown once there's a take. "Use the transcript as the words" appears while they
+  differ. More: Publish as link, Save version, Export, Share, Versions, Make a carousel, Rights.
+- Publishing carries the kept take as the page's audio.
+- Implementation: `packages/creator-studio/src/audio-options.ts`, `creation-audio.ts`, `/api/v1/artifacts/[id]/audio`,
+  `…/studio/audio-canvas.tsx`, `apps/web/src/components/audio/use-recorder.ts`. Tests: `audio-options.test.ts`,
+  `e2e/audio-page.spec.ts`.
 
 ### Ornaments (owner, 4 Oct 2026)
 
