@@ -10,11 +10,12 @@ test.describe("Writing page", () => {
     await page.getByRole("dialog", { name: "Make a new Creation" }).getByRole("button", { name: /Writing/ }).click();
     await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/write$/);
 
-    // One primary action (Done while writing), two secondaries; the kind can still change while it's empty.
-    const kinds = page.getByRole("group", { name: "Kind of writing" });
-    await expect(kinds.getByRole("button")).toHaveText(["Passage", "Poem", "Screenplay"]);
-    await kinds.getByRole("button", { name: "Poem" }).click();
-    await expect(kinds.getByRole("button", { name: "Poem" })).toHaveAttribute("aria-pressed", "true");
+    // One primary action (Done while writing), two secondaries; the kind changes any time, the page set to suit it.
+    await page.getByRole("button", { name: "Kind of writing: Story" }).click();
+    const kinds = page.getByRole("dialog", { name: "Kind of writing" });
+    await expect(kinds.getByRole("button")).toContainText(["Poem", "Prose", "Essay", "Article", "News", "Story"]);
+    await kinds.getByRole("button", { name: /^Poem/ }).click();
+    await expect(page.getByRole("button", { name: "Kind of writing: Poem" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Cover" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Read", exact: true })).toBeVisible();
 
@@ -33,6 +34,23 @@ test.describe("Writing page", () => {
     await expect(cover.getByRole("radiogroup", { name: "How the words are set" }).getByRole("radio")).toHaveText(["Paper"]);
     await expect(cover.getByRole("button", { name: /Let CreativeMind make one/ })).toBeVisible();
     await page.keyboard.press("Escape");
+  });
+
+  test("each kind is set after the publications that set it best: an essay's drop cap, news with its dateline", async ({ page, creator }) => {
+    void creator;
+    const art = (await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "news", title: "Harbour reopens", content: "The harbour reopened on Saturday.\n\nCrews returned before dawn." } })).json()).artifact as { id: string };
+    await page.goto(`/creations/${art.id}/write`);
+    const editor = page.getByRole("region", { name: "Editor" });
+    await expect(editor.getByRole("heading", { name: "Harbour reopens" })).toBeVisible();
+    await expect(editor.getByText(/^By /)).toBeVisible();
+    await expect(editor.getByText(/^\d{1,2} [A-Z]{3} —$/)).toBeVisible();
+    // The same words as an essay, read on their own page.
+    await page.getByRole("button", { name: "Kind of writing: News" }).click();
+    await page.getByRole("dialog", { name: "Kind of writing" }).getByRole("button", { name: /^Essay/ }).click();
+    await expect(page.getByRole("button", { name: "Kind of writing: Essay" })).toBeVisible();
+    await page.getByRole("link", { name: "Read", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Harbour reopens" })).toBeVisible();
+    await expect(page.getByText("Crews returned before dawn.")).toBeVisible();
   });
 
   test("Publish as link: the latest saved version on its own page, link-only unless shown on the Creator Page", async ({ page, creator, browser }) => {

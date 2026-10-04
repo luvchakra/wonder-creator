@@ -2,7 +2,7 @@
 import type { CarouselView } from "@wonder/creator-brain";
 import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type MaterialAction, type WorkingSetView, type WorkingSource } from "@wonder/creator-studio/working-set";
 import type { StudioAction } from "@wonder/creator-studio/types";
-import { WRITING_KINDS, creationPath, type CreationLook } from "@wonder/creator-studio/pages";
+import { creationPath, writingStyleOf, type CreationLook } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
 import { ArrowLeft, BookOpen, Check, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
@@ -19,7 +19,8 @@ import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommu
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
 import { BringInSheet, ChangeFormatSheet, FragmentsSheet, SourceIcon, WorkingSetSheet } from "./working-set";
 import { WorkingTable, type ExternalAdded } from "./working-table";
-import { CoverSheet, ExportSheet, PublishLinkSheet } from "./writing-sheets";
+import { WrittenPiece } from "@/components/writing/written-piece";
+import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
 
 /**
  * The Creative Studio canvas (creative-studio-working-set.md §5–7, §44–47, §64–68): the Creation is the screen. One
@@ -43,7 +44,7 @@ export function Studio({
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
   page?: "writing" | "studio";
-  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook };
+  artifact: { id: string; title: string; type: string; typeLabel: string; format: string; status: string; coverUrl: string | null; look: CreationLook; updatedAt?: string };
   version: { id: string; number: number; content: string } | null;
   actions: StudioAction[];
   initialAction: string | null;
@@ -73,7 +74,7 @@ export function Studio({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // A transform chip on the way in (?action=) opens Change format straight away.
-  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
+  const [sheet, setSheet] = useState<null | "table" | "table-available" | "table-external" | "set" | "influence" | "bring" | "format" | "save" | "more" | "dejavu" | "responses" | "ask" | "refine" | "cover" | "publish" | "export" | "kind">(() => (actions.find((x) => x.key === initialAction)?.kind === "transform" ? "format" : null));
   const [fragmentsFor, setFragmentsFor] = useState<WorkingSource | null>(null);
   useEffect(() => {
     let live = true;
@@ -452,6 +453,8 @@ export function Studio({
   // The Writing page (creation-pages.md): verse centred in Playfair with room between lines; scripts in their mono layout.
   const writing = page === "writing";
   const verse = artifact.format === "verse";
+  // Each kind of writing is set after the publications that set it best (creation-pages.md §Writing kinds).
+  const style = writingStyleOf(artifact.type);
   const editorFont =
     artifact.format === "screenplay"
       ? "font-mono text-[14px] leading-7"
@@ -459,8 +462,9 @@ export function Studio({
         ? writing
           ? "text-center font-display text-[17px] leading-[1.95] sm:text-[20px]"
           : "font-display text-[19px] leading-8"
-        : "font-display text-[18px] leading-8";
-  const readFont = artifact.format === "screenplay" ? "font-mono text-[13.5px] leading-7" : verse ? "font-display text-[17px] leading-[1.95] sm:text-[20px]" : "font-display text-[17.5px] leading-[1.8]";
+        : writing && style === "news"
+          ? "font-sans text-[16px] leading-7"
+          : "font-display text-[18px] leading-8";
   // How the words are set — over the cover, over it blurred, or on paper — chosen in Cover and kept with the Creation.
   const [look, setLook] = useState<CreationLook>(artifact.look);
   const [lookFrom, setLookFrom] = useState(artifact.look);
@@ -483,13 +487,14 @@ export function Studio({
     setMode("view");
     router.refresh();
   }
-  // While the page is empty, the kind of writing can still change (a passage, a poem, a screenplay); the words stay.
+  // The kind of writing (a poem, an essay, news…) can change any time; the words stay, the page is set to suit them.
   const [kindBusy, setKindBusy] = useState<string | null>(null);
   async function chooseKind(type: string) {
-    if (type === artifact.type) return;
+    if (type === artifact.type) return setSheet(null);
     setKindBusy(type);
     try {
       await api(`/api/v1/artifacts/${artifact.id}`, { method: "PATCH", json: { artifactType: type } });
+      setSheet(null);
       router.refresh();
     } catch (e) {
       setError(errorMessage(e));
@@ -497,7 +502,18 @@ export function Studio({
       setKindBusy(null);
     }
   }
-  const showKinds = writing && !content.trim() && !base?.content?.trim() && !proposal;
+  const kindButton = (light: boolean) => (
+    <button
+      type="button"
+      onClick={() => setSheet("kind")}
+      aria-haspopup="dialog"
+      aria-label={`Kind of writing: ${artifact.typeLabel}`}
+      className={cn("-my-3 inline-flex min-h-11 items-center gap-1 uppercase tracking-[inherit] hover:underline", light ? "text-white/85" : "")}
+    >
+      {artifact.typeLabel}
+      <ChevronDown className="size-3" aria-hidden />
+    </button>
+  );
   const isCarousel = artifact.type === "carousel" && carousel;
   // "Arrange slides" (More sheet) asks the carousel canvas to open Arrange; each ask is a new number.
   const [arrangeReq, setArrangeReq] = useState(0);
@@ -667,7 +683,7 @@ export function Studio({
           <CarouselCanvas artifactId={artifact.id} initial={carousel} arrangeRequest={arrangeReq} onSlides={setSlides} news={news} />
         </section>
       ) : (
-        <section aria-label="Editor" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
+        <section aria-label="Editor" className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
           {proposal ? (
             <div className="p-3 sm:p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-accent-softer px-4 py-3">
@@ -755,26 +771,19 @@ export function Studio({
                   className={cn(
                     look === "blur" && "mx-auto max-w-[36rem] rounded-[26px] bg-[#f7f2ea]/80 px-4 py-7 shadow-[0_24px_60px_-28px_rgba(40,30,20,0.55)] backdrop-blur-md sm:px-10 sm:py-10",
                     look === "paper" && "mx-auto max-w-[36rem] px-1",
-                    verse && "text-center",
+                    look === "cover" && "mx-auto max-w-[36rem]",
                   )}
                 >
-                  {look !== "cover" ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-subtle">{artifact.typeLabel}</p> : null}
-                  <h2 className={cn("font-display leading-[1.08] [text-wrap:balance]", look === "cover" ? "text-[34px] [text-shadow:0_1px_14px_rgba(0,0,0,0.45)] sm:text-[44px]" : "mt-1.5 text-[30px] sm:text-[38px]")}>{title || "Untitled"}</h2>
-                  {look !== "cover" ? <div aria-hidden className={cn("mt-4 h-px w-14 bg-ink/15", verse && "mx-auto")} /> : null}
-                  <p className={cn("mt-5 whitespace-pre-wrap", readFont, look === "cover" && "text-white/95 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]")}>
-                    {!content ? (
-                      <span className={look === "cover" ? "text-white/75" : "text-ink-subtle"}>Nothing written yet. Tap Write to start.</span>
-                    ) : verse ? (
-                      // A line that has to wrap on a phone wraps evenly, not with one word left over.
-                      content.split("\n").map((line, k) => (
-                        <span key={k} className="block min-h-[1lh] [text-wrap:balance]">
-                          {line}
-                        </span>
-                      ))
-                    ) : (
-                      content
-                    )}
-                  </p>
+                  <WrittenPiece
+                    style={style}
+                    kicker={kindButton(look === "cover")}
+                    title={title || "Untitled"}
+                    text={content}
+                    byline={people[0]?.name}
+                    date={artifact.updatedAt}
+                    tone={look === "cover" ? "light" : "ink"}
+                    empty="Nothing written yet. Tap Write to start."
+                  />
                 </div>
               </div>
             </div>
@@ -807,23 +816,9 @@ export function Studio({
             </div>
           ) : (
             <>
-              {showKinds ? (
-                <div role="group" aria-label="Kind of writing" className="flex items-center gap-1 px-4 pt-3 sm:px-9 sm:pt-5">
-                  {WRITING_KINDS.map((k) => (
-                    <button
-                      key={k.type}
-                      type="button"
-                      aria-pressed={artifact.type === k.type}
-                      disabled={!!kindBusy}
-                      onClick={() => void chooseKind(k.type)}
-                      className="inline-flex min-h-11 items-center"
-                    >
-                      <span className={cn("inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium", artifact.type === k.type ? "bg-accent-soft text-accent-ink" : "text-ink-muted hover:bg-black/5")}>
-                        {kindBusy === k.type ? "…" : k.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+              {writing ? (
+                // The kind, above the words while writing too: a poem, an essay, news… changes how the page is set.
+                <div className="absolute left-5 top-4 z-10 text-[11px] font-semibold tracking-[0.16em] text-ink-subtle sm:left-10 sm:top-6">{kindButton(false)}</div>
               ) : null}
               <label htmlFor="editor" className="sr-only">
                 {artifact.typeLabel} text
@@ -838,7 +833,8 @@ export function Studio({
                 spellCheck
                 className={cn(
                   "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10",
-                  showKinds ? "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-12.75rem)] pt-3 sm:pt-4" : "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
+                  "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
+                  writing && "pt-14 sm:pt-16",
                   editorFont,
                 )}
                 style={writing ? { backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" } : undefined}
@@ -1173,6 +1169,7 @@ export function Studio({
         <>
           <CoverSheet open={sheet === "cover"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} coverUrl={artifact.coverUrl} look={look} onLook={(l) => void chooseLook(l)} onCover={chooseCover} />
           <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={dirty} onSaveFirst={() => setSheet("save")} />
+          <KindSheet open={sheet === "kind"} onOpenChange={(o) => !o && setSheet(null)} current={artifact.type} busy={kindBusy} onChoose={(t) => void chooseKind(t)} />
           <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={dirty} />
         </>
       ) : null}

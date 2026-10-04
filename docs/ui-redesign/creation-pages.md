@@ -47,6 +47,24 @@ text-on-image component.
   version; newer versions offer "Publish the latest version"; Take it down unpublishes. The published page keeps the
   look (`snapshot.look`). Rights and RLS are unchanged; "More publishing choices" opens the full Publish page.
 
+### Writing kinds (owner, 4 Oct 2026)
+
+"Allow option to choose if it's a poem, essay, article, prose, news… based on writing type, change layout a bit to suit
+that writing style, take cue from international literature publications." The kind is the small line above the title
+(tap it, any time; the words stay): Poem · Prose · Essay · Article · News · Story · Review · Letter · Lyrics · Spoken
+word · Screenplay · Blog post (Prose, News, Review and Letter are new types). `writingStyleOf(type)` picks how it's set,
+the same on the canvas, the Read page and the published page (`components/writing/written-piece.tsx`):
+
+| Style | Kinds | Set like | On the page |
+| --- | --- | --- | --- |
+| verse | poem, lyrics, spoken word | a poetry journal | centred, generous leading, stanzas kept, wrapped lines balanced |
+| essay | essay, review, statement, biography | a literary review | drop cap, book paragraphs (indented, no gaps), byline in small capitals |
+| feature | article, blog post, newsletter… | a magazine feature | large headline, first paragraph as an italic standfirst, byline, airy paragraphs |
+| news | news | a newspaper | bold headline, byline and date between rules, dateline "4 OCT —" on a strong lead, plain reading face |
+| fiction | story, prose, narration, treatment | a fiction page | italic centred title, opening line in capitals, indented paragraphs, ⁂ between scenes |
+| letter | letter | a letter | the date at the right, the greeting in italics, the sign-off set to the right |
+| script | screenplay, script, dialogue | a screenplay | mono, title underlined in capitals |
+
 Implementation: `packages/creator-studio/src/creation-pages.ts`, `apps/web/src/app/(studio)/creations/[id]/write`,
 `…/studio/screen.tsx` (shared loader + forwarding), `…/studio/writing-sheets.tsx`, `studio.tsx` (`page="writing"`),
 `components/publish/work-page.tsx` (looks). Tests: `creation-pages.test.ts`, `tests/db/artifacts.test.ts`

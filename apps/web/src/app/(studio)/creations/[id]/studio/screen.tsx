@@ -50,7 +50,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         page={at === "write" ? "writing" : "studio"}
-        artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status, coverUrl: covers[a.id] ?? null, look: lookOf(a.presentation, !!covers[a.id]) }}
+        artifact={{ id: a.id, title: a.title, type: a.artifact_type, typeLabel: def.label, format: def.format, status: a.status, coverUrl: covers[a.id] ?? null, look: lookOf(a.presentation, !!covers[a.id]), updatedAt: a.updated_at }}
         version={version ? { id: version.id, number: version.version_number, content: version.content } : null}
         actions={actionsFor(a.artifact_type)}
         initialAction={action ?? null}

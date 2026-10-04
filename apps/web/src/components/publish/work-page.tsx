@@ -1,3 +1,4 @@
+import { writingStyleOf } from "@wonder/creator-studio/pages";
 import { EXPERIENCE_LABEL, clock } from "@wonder/creator-studio/publish";
 import { KIT, cn } from "@wonder/ui";
 import { ArrowLeft, Lock, MessagesSquare, Sparkles } from "lucide-react";
@@ -6,6 +7,7 @@ import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
 import { ShareButton, ViewBeacon } from "./beacons";
 import { ListenRenderer, ViewRenderer, VoiceChip, WatchRenderer } from "./media";
 import { SwipeRenderer } from "./swipe";
+import { WrittenPiece } from "../writing/written-piece";
 
 /**
  * One published work (docs/creator-publish.md §3): a shared outer shell — header, the work, optional context, rights
@@ -134,7 +136,7 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
               blurred && "mt-6 max-w-[40rem] rounded-[28px] bg-[#f7f2ea]/85 px-5 py-9 shadow-[0_24px_60px_-28px_rgba(40,30,20,0.55)] backdrop-blur-md sm:px-12 sm:py-12",
             )}
           >
-            <Title title={s.title} byline={byline} align={m.poem && m.treatment === "centered" ? "center" : "left"} />
+            {m.poem ? <Title title={s.title} byline={byline} align={m.treatment === "centered" ? "center" : "left"} /> : null}
             {m.poem && s.voice && media(s.voice.objectId) ? (
               <div className={cn("-mt-2 mb-4", m.treatment === "centered" && "flex justify-center")}>
                 <VoiceChip src={media(s.voice.objectId)!} durationSeconds={s.voice.durationSeconds} />
@@ -148,16 +150,8 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
               // Line breaks, stanza spacing and indentation exactly as written (§7).
               <div className="whitespace-pre-wrap font-display text-[17px] leading-[1.9] sm:text-[19px]">{s.content}</div>
             ) : (
-              <div className="space-y-5 font-display text-[18.5px] leading-[1.8]">
-                {s.content
-                  .split(/\n\s*\n/)
-                  .filter((p) => p.trim())
-                  .map((p, k) => (
-                    <p key={k} className="whitespace-pre-line">
-                      {p.trim()}
-                    </p>
-                  ))}
-              </div>
+              // Set the way its kind is best read: an essay's drop cap, a feature's standfirst, news, fiction… (creation-pages.md).
+              <WrittenPiece style={writingStyleOf(s.artifactType)} kicker={s.typeLabel} title={s.title} text={s.content} byline={work.creator.name} date={work.revision.publishedAt} as="h1" />
             )}
             <p aria-hidden className="mt-10 text-center text-[18px] opacity-40">
               ◇

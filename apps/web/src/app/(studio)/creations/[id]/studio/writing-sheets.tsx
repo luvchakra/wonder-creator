@@ -1,7 +1,8 @@
 "use client";
 import { EXPORT_FORMATS, exportFormatsFor } from "@wonder/creator-studio/exports";
-import { LOOK_LABEL, LOOKS, type CreationLook } from "@wonder/creator-studio/pages";
-import { Button, Dialog, DialogContent, KIT, KitArt, Segmented, Switch, buttonClasses } from "@wonder/ui";
+import { LOOK_LABEL, LOOKS, WRITING_KINDS, writingStyleOf, type CreationLook } from "@wonder/creator-studio/pages";
+import { artifactType } from "@wonder/creator-studio/types";
+import { Button, Dialog, DialogContent, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
 import Link from "next/link";
 import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -306,6 +307,46 @@ export function ExportSheet({ open, onOpenChange, artifactId, type, unsaved }: {
               </a>
             </li>
           ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Each kind's name in the face its page is set in — the choice previews the page. */
+const KIND_FACE: Record<string, string> = {
+  verse: "font-display italic",
+  essay: "font-display",
+  feature: "font-display",
+  news: "font-display font-bold",
+  fiction: "font-display italic",
+  letter: "font-display italic",
+  script: "font-mono text-[14px] uppercase",
+};
+
+/** The kind of writing: a poem, prose, an essay, an article, news… The words stay; the page is set to suit the kind. */
+export function KindSheet({ open, onOpenChange, current, busy, onChoose }: { open: boolean; onOpenChange: (o: boolean) => void; current: string; busy: string | null; onChoose: (type: string) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent title="Kind of writing" description="Your words stay as they are; the page is set to suit them." art={KIT.iconChip.type}>
+        <ul className="grid grid-cols-2 gap-1.5" aria-label="Kinds">
+          {WRITING_KINDS.map((k) => {
+            const on = k.type === current;
+            return (
+              <li key={k.type}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  disabled={!!busy}
+                  onClick={() => onChoose(k.type)}
+                  className={cn("flex min-h-14 w-full flex-col justify-center rounded-2xl border px-3 py-2 text-left disabled:opacity-60", on ? "border-accent bg-accent-softer" : "border-border-soft hover:border-accent/50 hover:bg-accent-softer")}
+                >
+                  <span className={cn("text-[17px] leading-tight text-ink", KIND_FACE[writingStyleOf(k.type)])}>{busy === k.type ? "…" : k.label}</span>
+                  <span className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-subtle">{artifactType(k.type).description}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </DialogContent>
     </Dialog>

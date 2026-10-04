@@ -32,9 +32,57 @@ export function lookOf(presentation: unknown, hasCover: boolean): CreationLook {
   return look && (LOOKS as readonly string[]).includes(look) ? look : "cover";
 }
 
-/** The kinds of writing offered while a page is still empty — each sets the page (prose, verse, screenplay). */
+/** The kinds of writing a page can be — changeable any time; the words stay, the page is set to suit them. */
 export const WRITING_KINDS = [
-  { type: "story", label: "Passage" },
   { type: "poem", label: "Poem" },
+  { type: "prose", label: "Prose" },
+  { type: "essay", label: "Essay" },
+  { type: "article", label: "Article" },
+  { type: "news", label: "News" },
+  { type: "story", label: "Story" },
+  { type: "review", label: "Review" },
+  { type: "letter", label: "Letter" },
+  { type: "lyrics", label: "Lyrics" },
+  { type: "spoken_word", label: "Spoken word" },
   { type: "screenplay", label: "Screenplay" },
+  { type: "blog_post", label: "Blog post" },
 ] as const;
+
+/**
+ * How a kind of writing is set on the page, after the publications that set it best:
+ * - verse — a poetry journal: centred lines, generous leading, stanzas kept;
+ * - essay — a literary review: a drop cap, book paragraphs (indented, no gaps);
+ * - feature — a magazine feature: the first paragraph as a standfirst, a byline, airy paragraphs;
+ * - news — a newspaper: a bold headline, a dateline, the lead paragraph strong, a plain reading face;
+ * - fiction — a fiction page: the opening words in capitals, indented paragraphs, ⁂ between scenes;
+ * - letter — a letter: the date at the right, the greeting and sign-off set apart;
+ * - script — a screenplay's mono page.
+ */
+export type WritingStyle = "verse" | "essay" | "feature" | "news" | "fiction" | "letter" | "script";
+
+const STYLE: Record<string, WritingStyle> = {
+  poem: "verse",
+  lyrics: "verse",
+  spoken_word: "verse",
+  essay: "essay",
+  review: "essay",
+  artist_statement: "essay",
+  biography: "essay",
+  news: "news",
+  story: "fiction",
+  prose: "fiction",
+  narration: "fiction",
+  film_treatment: "fiction",
+  documentary: "fiction",
+  letter: "letter",
+  screenplay: "script",
+  script: "script",
+  dialogue: "script",
+};
+
+export function writingStyleOf(artifactType: string): WritingStyle {
+  return STYLE[artifactType] ?? "feature";
+}
+
+/** A paragraph that marks a scene break (***, * * *, #, ⁂, —). */
+export const isSceneBreak = (p: string) => /^\s*(\*\s*\*\s*\*|#|⁂|—|~)\s*$/.test(p);
