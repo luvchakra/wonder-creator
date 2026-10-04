@@ -138,9 +138,9 @@ test.describe("Studio, versions and lineage", () => {
     // And the material knows where it was used.
     await source.click();
     await expect(page).toHaveURL(new RegExp(`/materials/${materialId}$`));
-    await page.getByRole("tab", { name: "Usage (1)" }).click();
-    await expect(page.getByRole("heading", { name: "Used in" })).toBeVisible();
-    const usedIn = page.getByRole("complementary").locator("section").filter({ has: page.getByRole("heading", { name: "Used in" }) });
+    await expect(page.getByText("in 1 Creation")).toBeVisible();
+    await page.getByRole("button", { name: "Details" }).click();
+    const usedIn = page.getByRole("dialog", { name: "Details" }).getByRole("region", { name: "Used in" });
     await expect(usedIn.getByRole("link")).toHaveAttribute("href", `/creations/${artifactId}`);
   });
 

@@ -76,20 +76,19 @@ export function rulesFor(ctx: PaletteContext): Rules {
 
     case "material": {
       const m = i.materialId!;
-      const create: PaletteItem = { id: "create-with", label: "Create with this", icon: "spark", class: "create", target: route(`/create?material=${m}`), score: 100 };
       const related: PaletteItem[] = f.related
         ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/explore?q=${encodeURIComponent(f.related)}`), score: 85 }]
         : [];
       const collect: PaletteItem = { id: "collect", label: "Add to Collection", icon: "images", class: "context", target: route(`/materials/${m}#collections`), score: 80 };
       const explore: PaletteItem = { id: "explore", label: "Explore possibilities", icon: "compass", class: "create", target: route(`/create/discover?material=${m}`), score: 75 };
-      const edit: PaletteItem = { id: "edit", label: "Edit details", class: "utility", target: route(`/materials/${m}#details`), score: 30, requires: "edit" };
       const byKind: PaletteItem[] =
         ctx.entityType === "audio"
           ? [{ id: "words", label: "Use the words", hint: "The transcript", icon: "mic", class: "create", target: route(`/materials/${m}#transcript`), score: 90 }]
           : ctx.entityType === "note" || ctx.entityType === "document"
             ? [{ ...explore, id: "ideas", label: "Extract ideas", score: 90 }]
             : [];
-      return { title: "This Material", items: [create, ...byKind, ...related, collect, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), edit] };
+      // Fewer buttons (owner, 4 Oct 2026): the page shows Use in creation and Details, so neither is repeated here.
+      return { title: "This Material", items: [...byKind, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), ...related, collect] };
     }
 
     case "collection":

@@ -1,10 +1,10 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
-import { Badge, Button, ConfirmDialog, CreativeMindInsight, ErrorState, Field, Input, Select, Tab, TabList, TabPanel, Tabs, TagInput, Textarea, buttonClasses } from "@wonder/ui";
-import { Archive, Download, ExternalLink, FolderPlus, Lock, MessageCircle, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { Badge, Button, ConfirmDialog, Dialog, DialogContent, ErrorState, Field, Input, Select, TagInput, Textarea, buttonClasses } from "@wonder/ui";
+import { Archive, Download, ExternalLink, FolderPlus, Lock, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { VisualDirections } from "@/components/visual-directions";
 
@@ -22,6 +22,8 @@ const ORIGIN: Record<string, string> = {
   derived: "Derived",
   import: "Imported",
 };
+
+const KIND: Record<string, string> = { idea: "Idea", reference: "Reference", research: "Research", conversation: "Conversation", inspiration: "Inspiration", image: "Photo", sketch: "Sketch", voice: "Voice note", audio: "Audio", video: "Video", note: "Note", text: "Note", document: "Document", pdf: "Document", url: "Link" };
 
 const STATE: Record<string, string> = {
   received: "Received",
@@ -127,7 +129,56 @@ export function MaterialDetail({
       .filter(([k, v]) => k in META_LABEL && (typeof v === "string" || typeof v === "number") && String(v).length <= 200)
       .map(([k, v]) => [META_LABEL[k], String(v)]),
   );
-  const askPrompt = `What could I make with "${(m.title || "this material").slice(0, 80)}"?`;
+  const themes = [...(m.understanding?.themes ?? []), ...(m.understanding?.moods ?? [])];
+  // The Material itself, as large as it reads well: the picture, the recording, the film, the document or the link.
+  const preview =
+    (m.type === "image" || m.type === "sketch") && url ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt={m.understanding?.summary ?? m.title ?? "Image"} className="max-h-[72vh] w-full object-contain lg:max-h-[58vh]" />
+    ) : (m.type === "audio" || m.type === "voice") && url ? (
+      <div className="bg-surface p-5">
+        <audio controls src={url} className="w-full">
+          Your browser can&apos;t play this audio.
+        </audio>
+      </div>
+    ) : m.type === "video" && url ? (
+      <video controls src={url} className="max-h-[72vh] w-full bg-navy">
+        Your browser can&apos;t play this video.
+      </video>
+    ) : (m.type === "pdf" || m.type === "document") && url ? (
+      <div className="flex items-center justify-between gap-3 bg-surface p-5">
+        <p className="text-ink-muted">{file?.original_filename ?? "Document"}</p>
+        <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "secondary", size: "sm" })}>
+          Open <ExternalLink className="size-4" aria-hidden />
+        </a>
+      </div>
+    ) : yt ? (
+      <iframe
+        className="aspect-video w-full"
+        src={`https://www.youtube-nocookie.com/embed/${yt}`}
+        title={m.title ?? "YouTube video"}
+        allow="accelerometer; encrypted-media; picture-in-picture"
+        sandbox="allow-scripts allow-same-origin allow-presentation"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
+      />
+    ) : m.type === "url" && m.sourceUrl ? (
+      <div className="bg-surface p-5">
+        <p className="text-[13px] text-ink-subtle">{(m.metadata.siteName as string) ?? new URL(m.sourceUrl).hostname}</p>
+        {m.metadata.description ? <p className="mt-1 text-[14px] text-ink-muted">{m.metadata.description as string}</p> : null}
+        <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="mt-2 inline-flex min-h-11 items-center gap-1 text-[14px] font-medium text-accent-ink hover:underline">
+          Visit link <ExternalLink className="size-4" aria-hidden />
+        </a>
+      </div>
+    ) : file && !hasPreview ? (
+      <p className="bg-surface p-5 text-[14px] text-ink-muted" role="note">
+        {m.security === "clean"
+          ? "There's no preview for this kind of file here. Download the original from Details to open it."
+          : m.security === "quarantined"
+            ? "This file is held for safety, so it can't be previewed or downloaded."
+            : "The preview appears once the safety check finishes. Your original is saved."}
+      </p>
+    ) : null;
 
   async function run(key: string, fn: () => Promise<unknown>, done?: string) {
     setBusy(key);
@@ -144,169 +195,214 @@ export function MaterialDetail({
     }
   }
 
-  return (
-    <div className="grid gap-6 [&>*]:min-w-0 lg:grid-cols-[1.4fr_1fr]">
-      <section id="details" className="scroll-mt-20 space-y-4">
-        <Link href="/materials?tab=ideas" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-          ← Materials
-        </Link>
-        <div className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-          {(m.type === "image" || m.type === "sketch") && url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt={m.understanding?.summary ?? m.title ?? "Image"} className="max-h-[70vh] w-full object-contain bg-[#f3efe9]" />
-          ) : null}
-          {(m.type === "audio" || m.type === "voice") && url ? (
-            <div className="p-6">
-              <audio controls src={url} className="w-full">
-                Your browser can&apos;t play this audio.
-              </audio>
-            </div>
-          ) : null}
-          {m.type === "video" && url ? (
-            <video controls src={url} className="max-h-[70vh] w-full bg-navy">
-              Your browser can&apos;t play this video.
-            </video>
-          ) : null}
-          {(m.type === "pdf" || m.type === "document") && url ? (
-            <div className="flex items-center justify-between gap-3 p-6">
-              <p className="text-ink-muted">{file?.original_filename ?? "Document"}</p>
-              <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                Open <ExternalLink className="size-4" aria-hidden />
-              </a>
-            </div>
-          ) : null}
-          {yt ? (
-            <iframe
-              className="aspect-video w-full"
-              src={`https://www.youtube-nocookie.com/embed/${yt}`}
-              title={m.title ?? "YouTube video"}
-              allow="accelerometer; encrypted-media; picture-in-picture"
-              sandbox="allow-scripts allow-same-origin allow-presentation"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          ) : null}
-          {m.type === "url" && !yt && m.sourceUrl ? (
-            <div className="p-6">
-              <p className="text-sm text-ink-subtle">{(m.metadata.siteName as string) ?? new URL(m.sourceUrl).hostname}</p>
-              <p className="mt-1 text-ink-muted">{(m.metadata.description as string) ?? ""}</p>
-              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent-ink hover:underline">
-                Visit link <ExternalLink className="size-4" aria-hidden />
-              </a>
-            </div>
-          ) : null}
-          {file && !hasPreview ? (
-            <div className="p-6 text-sm text-ink-muted" role="note">
-              {m.security === "clean"
-                ? "There's no preview for this kind of file here. Download the original to open it."
-                : m.security === "quarantined"
-                  ? "This file is held for safety, so it can't be previewed or downloaded."
-                  : "The preview appears once the safety check finishes. Your original is saved."}
-            </div>
-          ) : null}
-          <div className="space-y-4 p-5 sm:p-6">
-            {dejavu ? <div className="-my-2">{dejavu}</div> : null}
-            {m.understanding?.summary ? (
-              <CreativeMindInsight kind="insight">
-                <span className="block">{m.understanding.summary}</span>
-                {[...(m.understanding.themes ?? []), ...(m.understanding.moods ?? [])].length ? (
-                  <span className="mt-2 flex flex-wrap gap-1.5">
-                    {[...(m.understanding.themes ?? []), ...(m.understanding.moods ?? [])].slice(0, 6).map((t) => (
-                      <Badge key={t} tone="accent">
-                        {t}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : null}
-              </CreativeMindInsight>
-            ) : null}
-            <Field label="Title" htmlFor="m-title">
-              <Input id="m-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
-            </Field>
-            {editableText ? (
-              <Field label="Text" htmlFor="m-text">
-                <Textarea id="m-text" value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 font-display text-[17px]" />
-              </Field>
-            ) : m.extracted ? (
-              <details id="transcript" open={Boolean(m.metadata.transcription)} className="scroll-mt-20 rounded-2xl bg-surface-muted p-4">
-                <summary className="cursor-pointer text-sm font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
-                {m.metadata.transcription ? <p className="mt-2 text-xs text-ink-muted">Transcribed automatically by CreativeMind. It may contain mistakes.</p> : null}
-                <p className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-sm text-ink-muted">{m.extracted}</p>
-              </details>
-            ) : null}
-            <Field label="Description" htmlFor="m-description" hint="What this is and why you kept it.">
-              <Textarea id="m-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} className="min-h-24" />
-            </Field>
-            <Field label="Source & rights note" htmlFor="m-source-note" hint="Where it came from, who made it, any permissions. Private to you.">
-              <Input id="m-source-note" value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} maxLength={1000} />
-            </Field>
-            <Field label="Tags" htmlFor="m-tags">
-              <TagInput id="m-tags" value={tags} onChange={setTags} placeholder="Add a tag…" max={20} />
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                loading={busy === "save"}
-                onClick={() =>
-                  run(
-                    "save",
-                    () =>
-                      api(`/api/v1/materials/${m.id}`, {
-                        method: "PATCH",
-                        json: {
-                          title,
-                          tags,
-                          description,
-                          sourceNote,
-                          ...(editableText ? { textContent: text } : {}),
-                        },
-                      }),
-                    "Saved.",
-                  )
-                }
-              >
-                Save changes
-              </Button>
-              <Link href={`/create?material=${m.id}`} className={buttonClasses({ variant: "soft" })}>
-                <Sparkles className="size-4" aria-hidden /> Use in creation
-              </Link>
-              <Link href={`/create?material=${m.id}&prompt=${encodeURIComponent(askPrompt)}`} prefetch={false} className={buttonClasses({ variant: "secondary" })}>
-                <MessageCircle className="size-4" aria-hidden /> Ask CreativeMind
-              </Link>
-              {downloadable ? (
-                <a href={`/api/v1/materials/${m.id}/download`} className={buttonClasses({ variant: "ghost" })}>
-                  <Download className="size-4" aria-hidden /> Download original
-                </a>
-              ) : null}
-            </div>
-            {msg ? (
-              <p role="status" className="text-sm text-success-ink">
-                {msg}
-              </p>
-            ) : null}
-            {error ? <ErrorState title="That didn't work" body={error} /> : null}
-            {/* Secondary to the Material itself: below its details, generated only when asked (image-generation §30). */}
-            {canGenerate ? <VisualDirections materialIds={[m.id]} purpose="explore" title="Ways this could look" className="border-t border-border-soft pt-3" /> : null}
-          </div>
-        </div>
-      </section>
+  // Details (owner, 4 Oct 2026: "don't show so many things, keep it simple"): the page is the Material, its name and one
+  // way to use it; everything else — what it is, where it came from, collections, where it's used — opens on request.
+  const [details, setDetails] = useState(false);
+  useEffect(() => {
+    const open = () => {
+      if (window.location.hash === "#details" || window.location.hash === "#collections") {
+        setDetails(true);
+        history.replaceState(history.state, "", window.location.pathname + window.location.search);
+      }
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, []);
+  const kind = KIND[m.type] ?? "Material";
+  const textDirty = editableText && text !== (m.text ?? "");
 
-      <aside className="space-y-4 lg:pt-8">
-        <Tabs defaultValue="details">
-          <TabList label="Material information">
-            <Tab value="details">Details</Tab>
-            <Tab value="insights">Insights</Tab>
-            <Tab value="links">Links</Tab>
-            <Tab value="usage">Usage{usedIn.length ? ` (${usedIn.length})` : ""}</Tab>
-          </TabList>
-          <TabPanel value="details" className="mt-3 space-y-4">
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">Status & provenance</h2>
-              <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+  return (
+    <div className="mx-auto max-w-2xl space-y-3">
+      <Link href="/materials?tab=ideas" className="inline-flex min-h-11 items-center text-[13px] text-accent-ink hover:underline">
+        ← Materials
+      </Link>
+      {preview ? <div className="overflow-hidden rounded-3xl bg-[#f3efe9] shadow-[var(--shadow-card)]">{preview}</div> : null}
+
+      <header className="space-y-0.5 px-1">
+        <h1 className="font-display text-[24px] leading-tight text-ink [overflow-wrap:anywhere]">{m.title?.trim() || `Untitled ${kind.toLowerCase()}`}</h1>
+        <p className="text-[13px] text-ink-muted">
+          {kind} · <RelativeTime iso={m.createdAt} />
+          {usedIn.length ? ` · in ${usedIn.length} Creation${usedIn.length === 1 ? "" : "s"}` : ""}
+          {m.status === "archived" ? " · Archived" : ""}
+        </p>
+      </header>
+
+      {editableText ? (
+        <Textarea id="m-text" aria-label="Text" value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 font-display text-[17px]" />
+      ) : m.extracted ? (
+        <details id="transcript" open={Boolean(m.metadata.transcription)} className="scroll-mt-20 rounded-2xl bg-surface-muted px-4 py-3">
+          <summary className="cursor-pointer text-[14px] font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
+          {m.metadata.transcription ? <p className="mt-2 text-[12px] text-ink-muted">Transcribed automatically by CreativeMind. It may contain mistakes.</p> : null}
+          <p className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-[14px] text-ink-muted">{m.extracted}</p>
+        </details>
+      ) : null}
+
+      {intake?.state === "failed" ? (
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-2xl bg-warning-soft px-4 py-3 text-[14px] text-warning-ink">
+          <span className="flex-1">{intake.error_message ?? "Processing didn't finish. Your original is safe."}</span>
+          <Button size="sm" variant="secondary" loading={busy === "retry"} onClick={() => run("retry", () => api(`/api/v1/send/${intake.id}/retry`, { method: "POST" }), "Processed.")}>
+            <RotateCcw className="size-4" aria-hidden /> Try again
+          </Button>
+        </div>
+      ) : null}
+
+      {/* One primary action; Details for the rest. Save appears only when the words changed. */}
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        {textDirty ? (
+          <Button loading={busy === "text"} onClick={() => run("text", () => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { textContent: text } }), "Saved.")}>
+            Save
+          </Button>
+        ) : (
+          <Link href={`/create?material=${m.id}`} className={buttonClasses()}>
+            <Sparkles className="size-4" aria-hidden /> Use in creation
+          </Link>
+        )}
+        <Button variant="secondary" aria-haspopup="dialog" onClick={() => setDetails(true)}>
+          Details
+        </Button>
+      </div>
+      {msg && !details ? (
+        <p role="status" className="px-1 text-[13px] text-success-ink">
+          {msg}
+        </p>
+      ) : null}
+      {error && !details ? <ErrorState title="That didn't work" body={error} /> : null}
+
+      <Dialog open={details} onOpenChange={setDetails}>
+        <DialogContent title="Details" description={`${kind} · private to you`}>
+          <div className="space-y-5">
+            <section aria-label="About it" className="space-y-3">
+              <Field label="Title" htmlFor="m-title">
+                <Input id="m-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+              </Field>
+              <Field label="Description" htmlFor="m-description" hint="What this is and why you kept it.">
+                <Textarea id="m-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} className="min-h-20" />
+              </Field>
+              <Field label="Source & rights note" htmlFor="m-source-note" hint="Where it came from, who made it, any permissions.">
+                <Input id="m-source-note" value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} maxLength={1000} />
+              </Field>
+              <Field label="Tags" htmlFor="m-tags">
+                <TagInput id="m-tags" value={tags} onChange={setTags} placeholder="Add a tag…" max={20} />
+              </Field>
+              <div className="flex items-center gap-3">
+                <Button
+                  loading={busy === "save"}
+                  onClick={() => run("save", () => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { title, tags, description, sourceNote, ...(editableText ? { textContent: text } : {}) } }), "Saved.")}
+                >
+                  Save changes
+                </Button>
+                {msg ? (
+                  <p role="status" className="text-[13px] text-success-ink">
+                    {msg}
+                  </p>
+                ) : null}
+              </div>
+              {error ? <ErrorState title="That didn't work" body={error} /> : null}
+            </section>
+
+            {m.understanding?.summary || dejavu ? (
+              <section aria-label="What CreativeMind understood" className="space-y-2 border-t border-border-soft pt-4">
+                {m.understanding?.summary ? (
+                  <>
+                    <h3 className="text-[13px] font-semibold text-ink">What CreativeMind understood</h3>
+                    <p className="text-[14px] text-ink-muted">{m.understanding.summary}</p>
+                    {themes.length ? (
+                      <p className="flex flex-wrap gap-1.5">
+                        {themes.slice(0, 6).map((t) => (
+                          <Badge key={t} tone="accent">
+                            {t}
+                          </Badge>
+                        ))}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+                {dejavu}
+              </section>
+            ) : null}
+
+            <section id="collections" aria-labelledby="m-collections" className="space-y-2 border-t border-border-soft pt-4">
+              <h3 id="m-collections" className="text-[13px] font-semibold text-ink">
+                Collections
+              </h3>
+              {member.length ? (
+                <ul className="flex flex-wrap gap-1.5" aria-label="In collections">
+                  {member.map((c) => (
+                    <li key={c.id}>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted py-1 pl-3 pr-1 text-[13px] text-ink">
+                        {c.name}
+                        <button
+                          type="button"
+                          className="inline-flex size-8 items-center justify-center rounded-full text-ink-subtle hover:bg-black/[0.06] hover:text-ink"
+                          aria-label={`Remove from ${c.name}`}
+                          disabled={busy === `rm:${c.id}`}
+                          onClick={() => run(`rm:${c.id}`, () => api(`/api/v1/collections/${c.id}/items`, { method: "DELETE", json: { materialId: m.id } }), `Removed from ${c.name}.`)}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[13px] text-ink-muted">Not in a collection yet.</p>
+              )}
+              {addable.length ? (
+                <div className="flex gap-2">
+                  <label htmlFor="collection" className="sr-only">
+                    Collection
+                  </label>
+                  <Select id="collection" value={collection} onChange={(e) => setCollection(e.target.value)}>
+                    {addable.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="secondary"
+                    loading={busy === "collect"}
+                    disabled={!collection}
+                    onClick={() => {
+                      const name = addable.find((c) => c.id === collection)?.name ?? "the collection";
+                      return run("collect", () => api(`/api/v1/collections/${collection}/items`, { method: "POST", json: { materialId: m.id } }), `Added to ${name}.`);
+                    }}
+                  >
+                    <FolderPlus className="size-4" aria-hidden /> Add<span className="sr-only"> to collection</span>
+                  </Button>
+                </div>
+              ) : collections.length ? null : (
+                <Link href="/materials?tab=collections" className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent-ink hover:underline">
+                  Create a collection
+                </Link>
+              )}
+            </section>
+
+            <section aria-labelledby="m-used" className="space-y-1 border-t border-border-soft pt-4">
+              <h3 id="m-used" className="text-[13px] font-semibold text-ink">
+                Used in
+              </h3>
+              {usedIn.length ? (
+                <ul className="space-y-0.5">
+                  {usedIn.map((a) => (
+                    <li key={a.id}>
+                      <Link href={`/creations/${a.id}`} className="inline-flex min-h-11 items-center text-[14px] font-medium text-accent-ink hover:underline">
+                        {a.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[13px] text-ink-muted">Not used in a Creation yet.</p>
+              )}
+            </section>
+
+            <details className="group border-t border-border-soft pt-4">
+              <summary className="flex min-h-11 cursor-pointer items-center text-[13px] font-semibold text-ink">About the file</summary>
+              <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                 <dt className="text-ink-subtle">Status</dt>
-                <dd className="text-ink">
-                  {STATE[m.processing] ?? m.processing}
-                  {m.status === "archived" ? " · Archived" : ""}
-                </dd>
+                <dd className="text-ink">{STATE[m.processing] ?? m.processing}</dd>
                 <dt className="text-ink-subtle">Source</dt>
                 <dd className="text-ink">{ORIGIN[m.provenance?.origin ?? ""] ?? "—"}</dd>
                 {file?.original_filename ? (
@@ -333,216 +429,70 @@ export function MaterialDetail({
                     <dd className="break-all text-ink">{m.provenance.source_url}</dd>
                   </>
                 ) : null}
+                {Object.entries(extractedMeta).map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-ink-subtle">{k}</dt>
+                    <dd className="break-words text-ink">{v}</dd>
+                  </div>
+                ))}
                 <dt className="text-ink-subtle">Owner</dt>
                 <dd className="text-ink">You</dd>
                 <dt className="text-ink-subtle">Visibility</dt>
                 <dd className="inline-flex items-center gap-1 text-ink">
                   <Lock className="size-3.5" aria-hidden /> Private to you
                 </dd>
-                <dt className="text-ink-subtle">Type</dt>
-                <dd className="capitalize text-ink">{m.type}</dd>
-                <dt className="text-ink-subtle">Added</dt>
-                <dd className="text-ink">
-                  <RelativeTime iso={m.createdAt} />
-                </dd>
               </dl>
-              {intake?.state === "failed" ? (
-                <div className="mt-3 rounded-xl bg-warning-soft p-3 text-sm text-warning-ink">
-                  <p>{intake.error_message ?? "Processing didn't finish. Your original is safe."}</p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="mt-2"
-                    loading={busy === "retry"}
-                    onClick={() =>
-                      run(
-                        "retry",
-                        () =>
-                          api(`/api/v1/send/${intake.id}/retry`, {
-                            method: "POST",
-                          }),
-                        "Processed.",
-                      )
-                    }
-                  >
-                    <RotateCcw className="size-4" aria-hidden /> Try again
-                  </Button>
-                </div>
-              ) : null}
-            </section>
-          </TabPanel>
-          <TabPanel value="insights" className="mt-3 space-y-4">
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">What CreativeMind understood</h2>
-              {m.understanding?.summary ? (
-                <>
-                  <p className="mt-2 text-[15px] text-ink-muted">{m.understanding.summary}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {[...(m.understanding.themes ?? []), ...(m.understanding.moods ?? [])].map((t) => (
-                      <Badge key={t} tone="accent">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-ink-muted">
-                  {typeof m.metadata.processingNote === "string"
-                    ? m.metadata.processingNote
-                    : m.processing === "ready"
-                      ? "Saved and ready to use in creation."
-                      : "Still processing — your original is safe."}
+              {!m.understanding?.summary ? (
+                <p className="mt-2 text-[13px] text-ink-muted">
+                  {typeof m.metadata.processingNote === "string" ? m.metadata.processingNote : m.processing === "ready" ? "Saved and ready to use in creation." : "Still processing — your original is safe."}
                 </p>
-              )}
-              {Object.keys(extractedMeta).length ? (
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                  {Object.entries(extractedMeta).map(([k, v]) => (
-                    <div key={k} className="contents">
-                      <dt className="text-ink-subtle">{k}</dt>
-                      <dd className="break-words text-ink">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
               ) : null}
-            </section>
-          </TabPanel>
-          <TabPanel value="links" className="mt-3 space-y-4">
-            <section id="collections" className="scroll-mt-20 rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">Collections</h2>
-              {member.length ? (
-                <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="In collections">
-                  {member.map((c) => (
-                    <li key={c.id}>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted py-1 pl-3 pr-1 text-sm text-ink">
-                        {c.name}
-                        <button
-                          type="button"
-                          className="inline-flex size-8 items-center justify-center rounded-full text-ink-subtle hover:bg-black/[0.06] hover:text-ink"
-                          aria-label={`Remove from ${c.name}`}
-                          disabled={busy === `rm:${c.id}`}
-                          onClick={() =>
-                            run(
-                              `rm:${c.id}`,
-                              () =>
-                                api(`/api/v1/collections/${c.id}/items`, {
-                                  method: "DELETE",
-                                  json: { materialId: m.id },
-                                }),
-                              `Removed from ${c.name}.`,
-                            )
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-ink-muted">Not in a collection yet.</p>
-              )}
-              {addable.length ? (
-                <div className="mt-3 flex gap-2">
-                  <label htmlFor="collection" className="sr-only">
-                    Collection
-                  </label>
-                  <Select id="collection" value={collection} onChange={(e) => setCollection(e.target.value)}>
-                    {addable.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    variant="secondary"
-                    loading={busy === "collect"}
-                    disabled={!collection}
-                    onClick={() => {
-                      const name = addable.find((c) => c.id === collection)?.name ?? "the collection";
-                      return run(
-                        "collect",
-                        () =>
-                          api(`/api/v1/collections/${collection}/items`, {
-                            method: "POST",
-                            json: { materialId: m.id },
-                          }),
-                        `Added to ${name}.`,
-                      );
-                    }}
-                  >
-                    <FolderPlus className="size-4" aria-hidden /> Add<span className="sr-only"> to collection</span>
-                  </Button>
-                </div>
-              ) : collections.length ? null : (
-                <Link href="/materials?tab=collections" className="mt-2 inline-block text-sm font-medium text-accent-ink hover:underline">
-                  Create a collection
-                </Link>
-              )}
-            </section>
+            </details>
 
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">Similar material</h2>
-              {similar.length ? (
-                <ul className="mt-3 grid grid-cols-2 gap-2">
+            {similar.length ? (
+              <details className="border-t border-border-soft pt-4">
+                <summary className="flex min-h-11 cursor-pointer items-center text-[13px] font-semibold text-ink">Similar material</summary>
+                <ul className="mt-1 grid grid-cols-3 gap-2">
                   {similar.map((s) => (
                     <li key={s.id}>
                       <Link href={`/materials/${s.id}`} className="block overflow-hidden rounded-xl border border-border-soft hover:border-accent">
                         {s.thumb ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={s.thumb} alt="" className="aspect-[4/3] w-full bg-[#f3efe9] object-cover" />
+                          <img src={s.thumb} alt="" className="aspect-square w-full bg-[#f3efe9] object-cover" />
                         ) : null}
-                        <span className="block truncate px-3 py-2 text-sm text-ink">{s.title || `Untitled ${s.type}`}</span>
+                        <span className="block truncate px-2 py-1.5 text-[12px] text-ink">{s.title || `Untitled ${s.type}`}</span>
                       </Link>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="mt-2 text-sm text-ink-muted">Nothing close in meaning yet. Similar material appears once your Space has been indexed for search.</p>
-              )}
-            </section>
-          </TabPanel>
-          <TabPanel value="usage" className="mt-3 space-y-4">
-            <section className="rounded-2xl border border-border-soft bg-surface p-5">
-              <h2 className="font-semibold text-ink">Used in</h2>
-              {usedIn.length ? (
-                <ul className="mt-2 space-y-1">
-                  {usedIn.map((a) => (
-                    <li key={a.id}>
-                      <Link href={`/creations/${a.id}`} className="text-[15px] font-medium text-accent-ink hover:underline">
-                        {a.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-ink-muted">Not used in any creation yet. Its provenance travels with anything you make from it.</p>
-              )}
-            </section>
-          </TabPanel>
-        </Tabs>
+              </details>
+            ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="ghost"
-            loading={busy === "archive"}
-            onClick={() =>
-              run("archive", () =>
-                api(`/api/v1/materials/${m.id}`, {
-                  method: "PATCH",
-                  json: {
-                    status: m.status === "archived" ? "active" : "archived",
-                  },
-                }),
-              )
-            }
-          >
-            <Archive className="size-4" aria-hidden /> {m.status === "archived" ? "Unarchive" : "Archive"}
-          </Button>
-          <Button variant="ghost" className="text-danger" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="size-4" aria-hidden /> Delete
-          </Button>
-        </div>
-      </aside>
+            {/* Generated only when asked (image-generation §30). */}
+            {canGenerate ? <VisualDirections materialIds={[m.id]} purpose="explore" title="Ways this could look" className="border-t border-border-soft pt-3" /> : null}
+
+            <div className="flex flex-wrap gap-1 border-t border-border-soft pt-3">
+              {downloadable ? (
+                <a href={`/api/v1/materials/${m.id}/download`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+                  <Download className="size-4" aria-hidden /> Download original
+                </a>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={busy === "archive"}
+                onClick={() => run("archive", () => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { status: m.status === "archived" ? "active" : "archived" } }))}
+              >
+                <Archive className="size-4" aria-hidden /> {m.status === "archived" ? "Unarchive" : "Archive"}
+              </Button>
+              <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="size-4" aria-hidden /> Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
@@ -557,9 +507,7 @@ export function MaterialDetail({
         confirmLabel="Delete permanently"
         onConfirm={() =>
           run("delete", async () => {
-            await api(`/api/v1/materials/${m.id}?confirm=true`, {
-              method: "DELETE",
-            });
+            await api(`/api/v1/materials/${m.id}?confirm=true`, { method: "DELETE" });
             router.replace("/materials?tab=ideas");
           })
         }
