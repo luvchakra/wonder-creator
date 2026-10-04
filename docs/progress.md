@@ -199,3 +199,22 @@ Contract: `docs/testimonials.md`. Written by someone else, approved by you, newe
 | Studio: content first | Done | The writing canvas fills the screen with the full text scrolling over the cover; Refine with CreativeMind and Quality moved off the page into a sheet (More, or the Palette's Refine via #creativemind); a corner button and More → "Read it on its own" open `/creations/[id]/read`: title and words on paper, one way back, music keeps playing |
 | Home: capture first, four ways | Done | Quick Capture moved above My Scrapbook; Quick Pic and Video Note join Quick note and Voice note — the device camera, straight to a Material through CreatorSend (checked bytes, big files browser → storage), one tap, "Picture/Video saved · Open" |
 
+
+## Creation pages (owner, 4 Oct 2026)
+
+Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), one PR per step.
+
+| Item | Status | Notes |
+|---|---|---|
+| 1 · Writing page + routing | Done | Make a new Creation › Writing opens `/creations/[id]/write` (the Studio forwards writing there). Words over the cover, the cover blurred behind, or paper (migration 082 `artifacts.presentation`); verse centred, screenplay mono; Passage · Poem · Screenplay while empty. Write is the one primary action; Cover (your pictures or one CreativeMind makes) and Read are the two secondaries; More holds Publish as link (CreatorPublish, link-only by default, Creator Page opt-in), Refine, Export, Share, Versions, Rights |
+| 2 · Images page | Not started | Next |
+| 3 · Audio · 4 · Presentation · 5 · Video | Not started | |
+
+## Owner requests, 4 Oct 2026 (afternoon)
+
+| Item | Status | Notes |
+|---|---|---|
+| Writing kinds and editorial layouts | Done | Poem · Prose · Essay · Article · News · Story · Review · Letter · Lyrics · Spoken word · Screenplay · Blog post, changeable any time from the kicker. Each set like the publications that set it best (`components/writing/written-piece.tsx`), on the canvas, the Read page and the published page |
+| Fewer buttons: Home + Palette, as a rule | Done (Home) · Ongoing (other pages) | CLAUDE.md › Fewer buttons. Home: section titles are the links (no "All …" rows), From Pulse's title links to Pulse, the Connect-sources promo left Home (Settings › Personal sources). Palette: 3 contextual actions, 4 global destinations (Huddles is a door in Explore). Other pages get the same pass as they're touched |
+| Quick Pic / Video Note use the phone's camera defaults | Done | `capture` without a lens hint (also Send and the composer): the camera app opens with its own last lens, mode and settings |
+| Roman ornaments: header and footer of written Creations | Done | Owner: "for writing creations only". `Ornament` in packages/ui: Hairline · Dentil · Arcade · Egg & dart · Meander · Keystone (default) · Laurel. Chosen per Creation in the Writing page's Cover sheet (`artifacts.presentation.ornament`); heads (under the title) and closes the piece on the canvas, the Read page and the published page. The app bar and public site keep their plain lines |

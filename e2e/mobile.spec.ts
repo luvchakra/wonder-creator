@@ -27,7 +27,7 @@ test.describe("mobile layout @mobile", () => {
     const dialog = page.getByRole("dialog", { name: "Start a new Creation" });
     await dialog.getByLabel("Title").fill("Pocket poem");
     await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-    await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
+    await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
     const studio = new URL(page.url()).pathname;
     const material = `/materials/${await saveNote(page, `Pocket note ${uid()}`)}`;
 
@@ -45,8 +45,8 @@ test.describe("mobile layout @mobile", () => {
       ["/settings/audit", (p) => expect(p.getByRole("list", { name: "Summary" })).toBeVisible()],
       ["/scrapbook", (p) => expect(p.getByRole("form", { name: "Share to your Scrapbook" })).toBeVisible()],
       ["/settings/ai", (p) => expect(p.getByRole("region", { name: "Status" })).toBeVisible()],
-      [`${studio.replace(/\/studio$/, "")}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
-      [`${studio.replace(/\/studio$/, "")}/publish`, (p) => expect(p.getByRole("heading", { name: "Publish", level: 1 })).toBeVisible()],
+      [`${studio.replace(/\/(?:studio|write)$/, "")}/share`, (p) => expect(p.getByRole("heading", { name: "Private link" })).toBeVisible()],
+      [`${studio.replace(/\/(?:studio|write)$/, "")}/publish`, (p) => expect(p.getByRole("heading", { name: "Publish", level: 1 })).toBeVisible()],
       ["/settings", (p) => expect(p.getByRole("heading", { name: "Account & Profile" })).toBeVisible()],
     ];
     for (const [path, ready] of screens) {

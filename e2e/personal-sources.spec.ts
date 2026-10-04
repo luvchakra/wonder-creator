@@ -7,12 +7,11 @@ test.describe("Personal Sources", () => {
       { title: "Sketches from Pune", text: "People, light, architecture —", place: "Pune", daysAgo: 2 },
       { title: "Lighthouse", text: "What if the lighthouse kept every name it ever saw,", daysAgo: 120 },
     ]);
-    // Home invites, it doesn't scan: nothing is connected yet.
+    // Home doesn't advertise setup (fewer buttons, owner 4 Oct 2026): nothing connected, no card. Sources live in Me.
     await page.goto("/");
     const world = page.getByRole("region", { name: "From your world" });
-    await expect(world.getByText("Discover useful context from places you already keep your memories.")).toBeVisible();
-    await world.getByRole("link", { name: "Connect sources" }).click();
-    await expect(page).toHaveURL(/\/sources$/);
+    await expect(world).toHaveCount(0);
+    await page.goto("/sources");
     await expect(page.getByRole("heading", { name: "Connect your world" })).toBeVisible();
 
     // Mail and calendar aren't faked: they say they're not set up. Notes connect directly and sync at once.

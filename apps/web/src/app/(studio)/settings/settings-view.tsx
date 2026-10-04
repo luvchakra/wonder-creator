@@ -3,7 +3,7 @@ import { AUTONOMY_DOMAINS, AUTONOMY_LEVELS, type AutonomyDomain, type AutonomyLe
 import { CONTACT_PREFERENCES, EXCLUSIVITY, RATE_VISIBILITY, WORK_MODES } from "@wonder/creator-identity/collaboration-options";
 import { DISCIPLINES, EXPERIMENTATION, FORMALITY, LANGUAGES, SUGGESTED_AVOID, SUGGESTED_PRESERVE, TONES, VISUAL_STYLES, WRITING_STYLES } from "@wonder/creator-identity/vocabulary";
 import { Avatar, Badge, Button, ChoiceChip, ConfirmDialog, Dialog, DialogContent, Field, Input, Select, Switch, TagInput, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { BadgeCheck, Brain, Download, Handshake, KeyRound, Palette, Plug, Shield, SlidersHorizontal, Sparkles, UserRound, FolderSync } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -96,6 +96,12 @@ export function SettingsView(props: Props) {
         <Link href="/settings/ai" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>
           <span className={NAV_PILL}>
             <KeyRound className="size-4" aria-hidden /> AI Providers
+          </span>
+        </Link>
+        {/* Where connecting sources lives now that Home no longer advertises it (fewer buttons, owner 4 Oct 2026). */}
+        <Link href="/sources" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>
+          <span className={NAV_PILL}>
+            <FolderSync className="size-4" aria-hidden /> Personal sources
           </span>
         </Link>
         <Link href="/publishing" className={cn(NAV_ITEM, "text-ink-muted [&>span]:hover:bg-black/[0.04]")}>

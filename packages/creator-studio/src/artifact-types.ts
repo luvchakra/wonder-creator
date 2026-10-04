@@ -25,6 +25,10 @@ export const ARTIFACT_TYPES: ArtifactTypeDef[] = [
   { type: "artist_statement", label: "Artist Statement", category: "writing", format: "prose", description: "What your work is about" },
   { type: "spoken_word", label: "Spoken Word", category: "writing", format: "verse", description: "Poetry written for the voice" },
   { type: "blog_post", label: "Blog Post", category: "writing", format: "prose", description: "A long-form reflection" },
+  { type: "prose", label: "Prose", category: "writing", format: "prose", description: "A passage, freely written" },
+  { type: "news", label: "News", category: "writing", format: "prose", description: "What happened — the facts first" },
+  { type: "review", label: "Review", category: "writing", format: "prose", description: "A considered response to a work" },
+  { type: "letter", label: "Letter", category: "writing", format: "prose", description: "Words written to someone" },
   // Visual
   { type: "visual_concept", label: "Visual Concept", category: "visual", format: "concept", description: "Imagery direction for a Creation" },
   { type: "poster", label: "Poster", category: "visual", format: "concept", description: "A poster concept and copy" },

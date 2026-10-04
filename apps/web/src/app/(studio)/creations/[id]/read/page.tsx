@@ -1,4 +1,5 @@
-import { artifactType } from "@wonder/creator-studio";
+import { artifactType, creationPath, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
+import { WrittenPiece } from "@/components/writing/written-piece";
 import { KIT } from "@wonder/ui";
 import { X } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +18,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
-  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id, current_version_id, updated_at").eq("id", id).maybeSingle();
+  const { data: a } = await db.from("artifacts").select("id, title, artifact_type, creator_id, current_version_id, updated_at, presentation").eq("id", id).maybeSingle();
   if (!a) notFound();
   const mine = a.creator_id === creator.id;
   const [{ data: version }, { data: session }] = await Promise.all([
@@ -27,8 +28,8 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
   const draftNewer = !!(session?.draft && session.draft_saved_at && session.draft_saved_at > a.updated_at);
   const text = (draftNewer ? session!.draft : version?.content) ?? "";
   const def = artifactType(a.artifact_type);
-  const verse = def.format === "verse";
-  const back = mine ? `/creations/${id}/studio` : `/creations/${id}`;
+  const { data: author } = await db.from("creators").select("display_name").eq("id", a.creator_id).maybeSingle();
+  const back = mine ? creationPath(id, a.artifact_type) : `/creations/${id}`;
 
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-background" style={{ backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" }}>
@@ -40,12 +41,8 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
         <X className="size-5" aria-hidden />
       </Link>
       <article className="mx-auto max-w-[38rem] px-6 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[max(4.5rem,env(safe-area-inset-top))] sm:pt-24">
-        <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-subtle">{def.label}</p>
-        <h1 className="mt-2 font-display text-[34px] leading-[1.1] text-ink [text-wrap:balance] sm:text-[44px]">{a.title || "Untitled"}</h1>
-        <div aria-hidden className="mt-5 h-px w-16 bg-ink/15" />
-        <div className={verse ? "mt-7 whitespace-pre-wrap font-display text-[20px] leading-9 text-ink" : "mt-7 whitespace-pre-wrap font-display text-[19px] leading-[1.75] text-ink"}>
-          {text.trim() ? text : <span className="text-ink-subtle">Nothing written yet.</span>}
-        </div>
+        {/* Set the way its kind is best read: a poem, an essay, news… (creation-pages.md §Writing kinds). */}
+        <WrittenPiece style={writingStyleOf(a.artifact_type)} kicker={def.label} title={a.title || "Untitled"} text={text} byline={author?.display_name} date={a.updated_at} ornament={ornamentOf(a.presentation)} as="h1" empty="Nothing written yet." />
       </article>
     </div>
   );

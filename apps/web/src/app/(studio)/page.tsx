@@ -12,6 +12,7 @@ import { ConnectionActions, FoundConnection } from "@/components/home/connection
 import { QuickCapture } from "@/components/home/quick-capture";
 import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
 import { FromYourWorld } from "@/components/sources/from-your-world";
+import { SectionTitle } from "@/components/home/section-title";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
@@ -94,7 +95,8 @@ export default async function HomePage() {
 
 
         {/* Personal Sources (owner spec, 2 Oct 2026): one thing worth exploring from the creator's world, with a quiet Sync. */}
-        {world ? <FromYourWorld {...world} /> : null}
+        {/* Only when something real arrived from the creator's sources; connecting them lives in Me (fewer buttons on Home). */}
+        {world?.candidate ? <FromYourWorld {...world} /> : null}
 
         {/* The rest, as compact rows (owner board, 29 Sep 2026): what it is, one line of why, nothing more. */}
         {home.whileAway || home.yourQuestion || home.worldConnecting || home.dejavu || home.spark || home.couldHelp ? (
@@ -240,14 +242,14 @@ export default async function HomePage() {
 
 /**
  * Continue (owner, 3 Oct 2026: "instead of a large continue image, show 4 thin rows"): the last three edited Creations
- * in progress, each opening in the Creative Studio, then "All my creations". The newest is the page's primary action.
+ * in progress, each opening where it's worked on; the title opens them all. The newest is the page's primary action.
  */
 function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
   return (
     <section aria-labelledby="continue-title">
-      <h2 id="continue-title" className="flex min-h-11 items-center text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+      <SectionTitle id="continue-title" href="/creations">
         Continue
-      </h2>
+      </SectionTitle>
       <ul aria-label="Creations in progress" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
         {items.map((c, i) => (
           <li key={c.id}>
@@ -269,12 +271,6 @@ function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
             </TrackedLink>
           </li>
         ))}
-        <li>
-          <Link href="/creations" className="flex min-h-11 items-center gap-2.5 px-3 py-1.5 text-[13.5px] font-medium text-accent-ink hover:bg-surface-muted">
-            <span className="min-w-0 flex-1">All my creations</span>
-            <ChevronRight className="size-4 shrink-0" aria-hidden />
-          </Link>
-        </li>
       </ul>
     </section>
   );

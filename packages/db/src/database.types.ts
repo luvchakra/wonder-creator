@@ -377,13 +377,13 @@ isOneToOne: false
                   ]
                 },"artifacts": {
                   Row: {
-                    "artifact_type": string,"category": string,"cover_material_id": string | null,"created_at": string,"creator_id": string,"current_version_id": string | null,"description": string | null,"featured_on_profile": boolean,"id": string,"made_for": string | null,"privacy": Database["public"]['Enums']["privacy_class"],"provenance_id": string,"search": unknown,"status": Database["public"]['Enums']["artifact_status"],"title": string,"updated_at": string
+                    "artifact_type": string,"category": string,"cover_material_id": string | null,"created_at": string,"creator_id": string,"current_version_id": string | null,"description": string | null,"featured_on_profile": boolean,"id": string,"made_for": string | null,"presentation": NonNullable<Json>,"privacy": Database["public"]['Enums']["privacy_class"],"provenance_id": string,"search": unknown,"status": Database["public"]['Enums']["artifact_status"],"title": string,"updated_at": string
                   }
                   Insert: {
-                    "artifact_type": string,"category": string,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"current_version_id"?: string | null,"description"?: string | null,"featured_on_profile"?: boolean,"id"?: string,"made_for"?: string | null,"privacy"?: Database["public"]['Enums']["privacy_class"],"provenance_id": string,"search"?: never,"status"?: Database["public"]['Enums']["artifact_status"],"title": string,"updated_at"?: string
+                    "artifact_type": string,"category": string,"cover_material_id"?: string | null,"created_at"?: string,"creator_id": string,"current_version_id"?: string | null,"description"?: string | null,"featured_on_profile"?: boolean,"id"?: string,"made_for"?: string | null,"presentation"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"provenance_id": string,"search"?: never,"status"?: Database["public"]['Enums']["artifact_status"],"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "artifact_type"?: string,"category"?: string,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"current_version_id"?: string | null,"description"?: string | null,"featured_on_profile"?: boolean,"id"?: string,"made_for"?: string | null,"privacy"?: Database["public"]['Enums']["privacy_class"],"provenance_id"?: string,"search"?: never,"status"?: Database["public"]['Enums']["artifact_status"],"title"?: string,"updated_at"?: string
+                    "artifact_type"?: string,"category"?: string,"cover_material_id"?: string | null,"created_at"?: string,"creator_id"?: string,"current_version_id"?: string | null,"description"?: string | null,"featured_on_profile"?: boolean,"id"?: string,"made_for"?: string | null,"presentation"?: NonNullable<Json>,"privacy"?: Database["public"]['Enums']["privacy_class"],"provenance_id"?: string,"search"?: never,"status"?: Database["public"]['Enums']["artifact_status"],"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {

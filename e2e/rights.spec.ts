@@ -7,7 +7,7 @@ async function newPiece(page: Page, title: string): Promise<string> {
   await dialog.getByLabel("Kind of Creation").selectOption({ label: "Poem" });
   await dialog.getByLabel("Title").fill(title);
   await dialog.getByRole("button", { name: "Open Creative Studio" }).click();
-  await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/studio$/);
+  await page.waitForURL(/\/creations\/[0-9a-f-]{36}\/(?:studio|write)$/);
   await page.getByLabel("Poem text").fill("Salt on the window;\nthe harbour hums.");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("dialog", { name: "Save as new version" }).getByRole("button", { name: "Save version" }).click();

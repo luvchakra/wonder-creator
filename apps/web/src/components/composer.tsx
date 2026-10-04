@@ -307,7 +307,7 @@ export function Composer({
         accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx"
         onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))}
       />
-      <input id={ids.camera} type="file" hidden accept="image/*" capture="environment" onChange={(e) => setPhotos((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
+      <input id={ids.camera} type="file" hidden accept="image/*" capture onChange={(e) => setPhotos((f) => [...f, ...Array.from(e.target.files ?? [])].slice(0, 12))} />
     </div>
   );
 }

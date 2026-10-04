@@ -22,7 +22,7 @@ test("old addresses land on the same page under its new name", async ({ page, cr
   // A Creation's old address, with its sub-page.
   const art = ((await (await page.request.post("/api/v1/artifacts", { data: { artifactType: "poem", title: "Old links", content: "Still here." } })).json()) as { artifact: { id: string } }).artifact;
   await page.goto(`/artifacts/${art.id}/studio`);
-  await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/studio$`));
+  await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/(?:studio|write)$`));
   // The API keeps its address.
   expect((await page.request.get(`/api/v1/artifacts/${art.id}`)).status()).toBe(200);
 });

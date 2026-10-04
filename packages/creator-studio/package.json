@@ -12,6 +12,7 @@
     "./carousel": "./src/carousel.ts",
     "./business": "./src/business.ts",
     "./working-set": "./src/working-set-options.ts",
+    "./pages": "./src/creation-pages.ts",
     "./publish": "./src/publish-options.ts",
     "./creator-page": "./src/creator-page-templates.ts"
   }
