@@ -169,9 +169,11 @@ export function NavMemory() {
     const list = read();
     const at = list.map((e) => pathOf(e.p)).lastIndexOf(pathOf(here));
     write([...(at >= 0 ? list.slice(0, at) : list), { p: here, t: pageTitle() }]);
-    // The title can arrive just after the path (streamed metadata): keep this page's entry in step with it.
+    // The title can arrive just after the path (streamed metadata): keep this page's entry in step with it — but only
+    // while this is still the page: on a navigation the next page's title lands before this effect is cleaned up.
     const head = document.head;
     const obs = new MutationObserver(() => {
+      if (window.location.pathname !== pathname) return;
       const t = pageTitle();
       const list = read();
       const last = list[list.length - 1];

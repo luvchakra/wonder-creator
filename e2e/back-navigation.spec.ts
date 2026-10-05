@@ -26,7 +26,7 @@ test.describe("Back navigation", () => {
     await page.reload();
 
     // The owner's case: Back names the Room and goes there.
-    await expect(page.getByRole("link", { name: `Back to ${title}` })).toBeVisible();
+    await expect(page.getByRole("link", { name: `Back to ${title}`, exact: true })).toBeVisible();
     await page.getByRole("link", { name: `Back to ${title}` }).click();
     await expect(page).toHaveURL(new RegExp(`${room}$`));
 

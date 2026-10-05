@@ -224,7 +224,9 @@ Making one thing together — a song by three people (`docs/creative-room-parts.
 | 1 · Parts | Done | A Room says what the work is made of: parts, each a Creation of its own by whoever is on it. Crew claim parts (two or more may share one); anyone may be invited to a single part without joining the Room; final is said by the people on it. Templates: Song · Podcast episode · Illustrated story. The Room leads with the work (option B) and tells what happened (C's timeline). RLS: part-only invitees see the Room's name and parts, read the parts' Creations, nothing else |
 | 2 · Made with | Done | Every version of a part records the other parts' versions (migration 085); a part's page says what moved on since and shows the changed lines; the Room's rows and timeline say what each was made with; *Suggest to Lyrics* sends a change proposal the part's owner decides on |
 | 3 · Play-along | Done | Both ways: the other parts' takes play from a part's page (one at a time; CreativeRadio pauses); the Audio page shows the writing part's words with *Use these words*, and records over a track (on by default, with headphones) with the words to sing in the record sheet. Takes reach only the people making the work (`part_takes`, migration 086; a short-lived media link per take) |
-| 4 · The Song page · 5 · Completion | Not started | |
+| 4a · Listen together | Done | `/rooms/<id>/song`, from the Room's hero once a part has a kept take: every take the viewer may hear plays as one in the browser, each from its start and at its level (or muted); Where it stands in one line; the writing part's words beneath; *Download the mix* renders a WAV on the device. The mix is the Room's settings (`project_mixes`, migration 087), changed only by the people making the work through `part_mix_set`; it autosaves and changes no one's part. Also fixed: Back's label could take the next page's title during a navigation |
+| 4b · Publishing the song; comments on a moment | Not started | |
+| 5 · Completion | Not started | |
 
 ## Owner requests, 4 Oct 2026 (afternoon)
 
