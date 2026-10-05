@@ -47,8 +47,8 @@ test.describe("Creative Palette", () => {
     await palette.getByRole("button", { name: "Create" }).click();
     // Create shows every format at once (owner, 2 Oct 2026); a tap makes the Creation and opens its Studio.
     const sheet = page.getByRole("dialog", { name: "Make a new Creation" });
-    // Owner, 4 Oct 2026: Video and Presentation aren't offered here; making with others is.
-    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveText([/Writing/, /Carousel/, /Images/, /Audio/]);
+    // Every format, each with its own page (owner, 5 Oct 2026: Video and Presentation back); and making with others.
+    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveText([/Writing/, /Carousel/, /Images/, /Video/, /Audio/, /Presentation/]);
     await expect(sheet.getByRole("link", { name: /Collaborate with others/ })).toHaveAttribute("href", "/rooms?new=1");
     await expect(palette).toHaveCount(0);
     await sheet.getByRole("button", { name: /Carousel/ }).click();

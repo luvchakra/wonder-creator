@@ -16,6 +16,7 @@
     "./images": "./src/image-options.ts",
     "./audio": "./src/audio-options.ts",
     "./deck": "./src/deck-options.ts",
+    "./storyboard": "./src/storyboard-options.ts",
     "./craft": "./src/writing-craft.ts",
     "./publish": "./src/publish-options.ts",
     "./creator-page": "./src/creator-page-templates.ts"
