@@ -269,7 +269,7 @@ export function Studio({
   }
 
   /** Save as new version (board §12): the checkpoint that makes a durable version from the draft. */
-  async function saveVersion(opts: { name: string; keepUnused: boolean }) {
+  async function saveVersion(opts: { name: string; keepUnused: boolean }): Promise<boolean> {
     // The version supersedes any pending draft autosave, which would otherwise land afterwards and re-store the draft.
     if (autosave.current) {
       clearTimeout(autosave.current);
@@ -305,11 +305,23 @@ export function Studio({
       setSavedVersion(r.version.version_number);
       setSheet(null);
       router.refresh();
+      return true;
     } catch (e) {
       setError(errorMessage(e));
+      return false;
     } finally {
       setWorking(null);
     }
+  }
+
+  /**
+   * Preview shows what readers would get — and what Publish publishes: the latest version. Words written since (the
+   * autosaved draft) are saved as a version first, so Preview always has the latest (owner, 5 Oct 2026).
+   */
+  async function openPreview(e: React.MouseEvent) {
+    if (!dirty || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    if (await saveVersion({ name: "Before preview", keepUnused: true })) router.push(`/creations/${artifact.id}/preview`);
   }
 
   // "Use this" results (owner, 28 Sep 2026): what the chosen uses did, said once; and news for the carousel canvas.
@@ -687,7 +699,7 @@ export function Studio({
         {audioPage ? (
           <div className="ml-auto flex items-center gap-1.5">
             {take ? (
-              <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
+              <Link href={`/creations/${artifact.id}/preview`} onClick={(e) => void openPreview(e)} aria-busy={working === "version"} className="inline-flex min-h-11 items-center">
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
                   <Headphones className="size-4 text-ink-muted" aria-hidden />
                   Listen
@@ -743,10 +755,10 @@ export function Studio({
               </span>
             </button>
             {/* Preview (owner, 4 Oct 2026): the page readers would see, with Publish beneath — the clearest "what's next". */}
-            <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
+            <Link href={`/creations/${artifact.id}/preview`} onClick={(e) => void openPreview(e)} aria-busy={working === "version"} className="inline-flex min-h-11 items-center">
               <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
                 <Eye className="size-4 text-ink-muted" aria-hidden />
-                Preview
+                {working === "version" ? "Saving…" : "Preview"}
               </span>
             </Link>
           </div>
