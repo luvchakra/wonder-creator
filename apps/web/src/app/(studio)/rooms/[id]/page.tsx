@@ -17,6 +17,7 @@ import {
   listParts,
   partsTimeline,
   partTakes,
+  songAgreement,
   type ProjectStatus,
 } from "@wonder/creator-projects";
 import { creationPath } from "@wonder/creator-studio";
@@ -66,6 +67,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const timeline = parts.length ? await partsTimeline(db, id, parts) : [];
   // Listen together (step 4) once some part has a take this viewer may hear.
   const listenable = parts.some((x) => x.kind === "audio" && x.artifactId) ? (await partTakes(db, id).catch(() => [])).length > 0 : false;
+  // Credits & shares (step 5a): the open or agreed proposal, once there could be one.
+  const agreement = parts.length ? await songAgreement(db, id).catch(() => null) : null;
   const crewRow = await crewForProject(db, id);
   const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
   const inCrew = !!crew && crew.me?.status === "active";
@@ -126,7 +129,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           permissions: canEdit ? ["edit", "invite"] : [],
           ids: { projectId: id, crewId: crew?.crew.id },
           facts: { activeCreationId, hasCrew: !!crew, hasParts: parts.length > 0, myPartHref: myPart?.artifact ? creationPath(myPart.artifact.id, myPart.artifact.type) : null },
-          strip: { label: parts.length ? `${parts.filter((x) => x.status === "final").length} of ${parts.length} parts final` : activeCreationTitle ? `${activeCreationTitle} · Active` : "No active Creation" },
+          strip: { label: parts.length ? (agreement ? (agreement.status === "agreed" && agreement.holds ? "Credits agreed" : `Credits · waiting on ${agreement.lines.filter((l) => l.decision !== "approve").length || "a new proposal"}`) : `${parts.filter((x) => x.status === "final").length} of ${parts.length} parts final`) : activeCreationTitle ? `${activeCreationTitle} · Active` : "No active Creation" },
         }}
       />
       <ProjectView
@@ -180,7 +183,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         }
         contributions={ledger ? { manages: role === "owner" || role === "admin", entries: ledger, summary: contributionSummary(ledger), people } : null}
         rights={rights}
-        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt, listenable } : null}
+        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt, listenable, agreement } : null}
         avatars={avatars}
         canEdit={canEdit}
         ownerName={owner.data?.display_name ?? "A creator"}

@@ -1,7 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
-import { DEFAULT_ARTIFACT_TYPE, MIX_GAIN, MIX_OFFSET_MS, PART_KINDS, PART_TEMPLATES, type MadeWith, type Mix, type MixNote, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, DEFAULT_CREDIT, MIX_GAIN, MIX_OFFSET_MS, PART_KINDS, PART_TEMPLATES, type MadeWith, type Mix, type MixNote, type PartCredit, type SongAgreement, PART_CREDITS, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
 
 /**
  * Parts (docs/creative-room-parts.md): what a joint Creation is made of — Lyrics · Tune · Voice — each a Creation of
@@ -32,7 +32,7 @@ const person = (c: CreatorRef) => (c ? { id: c.id, name: c.display_name, handle:
 export async function listParts(db: Db, projectId: string, viewerId: string): Promise<PartView[]> {
   const { data, error } = await db
     .from("project_parts")
-    .select("id, project_id, title, kind, artifact_type, position, status, artifact_id, final_at, project_part_members(creator_id, status, creators:creators!project_part_members_creator_id_fkey(id, display_name, handle))")
+    .select("id, project_id, title, kind, artifact_type, credit, position, status, artifact_id, final_at, project_part_members(creator_id, status, creators:creators!project_part_members_creator_id_fkey(id, display_name, handle))")
     .eq("project_id", projectId)
     .order("position")
     .order("created_at");
@@ -66,6 +66,7 @@ export async function listParts(db: Db, projectId: string, viewerId: string): Pr
       title: r.title,
       kind: r.kind as PartKind,
       artifactType: r.artifact_type,
+      credit: r.credit as PartCredit,
       position: r.position,
       status: r.status as PartStatus,
       artifactId: r.artifact_id,
@@ -245,7 +246,7 @@ export async function addPart(db: Db, creatorId: string, projectId: string, raw:
   const row = must(
     await db
       .from("project_parts")
-      .insert({ project_id: projectId, title: input.title, kind: input.kind, artifact_type: input.artifactType ?? DEFAULT_ARTIFACT_TYPE[input.kind], position: (last?.position ?? -1) + 1, created_by: creatorId })
+      .insert({ project_id: projectId, title: input.title, kind: input.kind, artifact_type: input.artifactType ?? DEFAULT_ARTIFACT_TYPE[input.kind], credit: DEFAULT_CREDIT[input.kind], position: (last?.position ?? -1) + 1, created_by: creatorId })
       .select("id")
       .single(),
   );
@@ -256,7 +257,7 @@ export async function addPart(db: Db, creatorId: string, projectId: string, raw:
 export async function addTemplateParts(db: Db, creatorId: string, projectId: string, template: PartTemplateKey): Promise<void> {
   const t = PART_TEMPLATES[template];
   if (!t) throw new DomainError("validation", "Unknown template.");
-  const { error } = await db.from("project_parts").insert(t.parts.map((p, i) => ({ project_id: projectId, title: p.title, kind: p.kind, artifact_type: p.artifactType, position: i, created_by: creatorId })));
+  const { error } = await db.from("project_parts").insert(t.parts.map((p, i) => ({ project_id: projectId, title: p.title, kind: p.kind, artifact_type: p.artifactType, credit: p.credit, position: i, created_by: creatorId })));
   if (error) throw fromDbError(error);
 }
 
@@ -444,4 +445,66 @@ export async function deleteMixNote(db: Db, noteId: string): Promise<void> {
   const { data, error } = await db.from("project_mix_notes").delete().eq("id", noteId).select("id");
   if (error) throw fromDbError(error);
   if (!data?.length) throw new DomainError("forbidden", "Only its author or the Room's owner can delete a note.");
+}
+
+// ── Completion: credits, shares, sign-off (step 5a) ──────────────────────────────────────────────────────────────────
+
+export const songProposalSchema = z.object({
+  /** {creatorId: percent} — omitted for equal shares. */
+  shares: z.record(z.string().uuid(), z.number().min(0).max(100).multipleOf(0.01)).nullish(),
+  /** {partId: credit} — what each part is credited as. */
+  credits: z.record(z.string().uuid(), z.enum(PART_CREDITS)).nullish(),
+  note: z.string().trim().max(1000).nullish(),
+});
+export const songSignSchema = z.object({ decision: z.enum(["approve", "object"]), note: z.string().trim().max(500).nullish() });
+
+/** The Room's current credits and shares — the open proposal or the agreed one — with who has signed off. */
+export async function songAgreement(db: Db, projectId: string): Promise<SongAgreement | null> {
+  const { data: g, error } = await db
+    .from("project_song_agreements")
+    .select("id, status, lines, versions, note, created_at, agreed_at, proposer:creators!project_song_agreements_proposed_by_fkey(id, display_name)")
+    .eq("project_id", projectId)
+    .in("status", ["open", "agreed"])
+    .maybeSingle();
+  if (error) throw fromDbError(error);
+  if (!g) return null;
+  const { data: signs } = await db.from("project_song_signoffs").select("creator_id, decision, note").eq("agreement_id", g.id);
+  const versions = (Array.isArray(g.versions) ? g.versions : []) as Array<{ partId: string; title: string; artifactId: string; versionId: string; versionNumber: number }>;
+  const { data: now } = versions.length ? await db.from("artifacts").select("id, current_version_id").in("id", versions.map((v) => v.artifactId)) : { data: [] };
+  const current = new Map((now ?? []).map((a) => [a.id, a.current_version_id]));
+  const moved = versions.filter((v) => current.has(v.artifactId) && current.get(v.artifactId) !== v.versionId).map((v) => v.title);
+  const lines = (Array.isArray(g.lines) ? g.lines : []) as Array<{ creatorId: string; name: string; percent: number; parts: Array<{ partId: string; title: string; credit: PartCredit }> }>;
+  const proposer = g.proposer as { id: string; display_name: string } | null;
+  return {
+    id: g.id,
+    status: g.status as "open" | "agreed",
+    holds: moved.length === 0,
+    moved,
+    proposedBy: proposer ? { id: proposer.id, name: proposer.display_name } : null,
+    note: g.note,
+    createdAt: g.created_at,
+    agreedAt: g.agreed_at,
+    lines: lines.map((l) => {
+      const s = (signs ?? []).find((x) => x.creator_id === l.creatorId);
+      return { creatorId: l.creatorId, name: l.name, percent: Number(l.percent), parts: l.parts ?? [], decision: (s?.decision as "approve" | "object" | undefined) ?? null, note: s?.note ?? null };
+    }),
+    versions: versions.map((v) => ({ partId: v.partId, title: v.title, versionNumber: v.versionNumber })),
+  };
+}
+
+/** Propose the credits and shares (the Room's owner or admins, once every part is final). Replaces any earlier proposal. */
+export async function proposeSong(db: Db, projectId: string, raw: unknown): Promise<string> {
+  const p = songProposalSchema.parse(raw);
+  const { data, error } = await db.rpc("song_propose", { p_project: projectId, p_shares: p.shares ?? undefined, p_credits: p.credits ?? undefined, p_note: p.note || undefined });
+  if (error) throw fromDbError(error);
+  return data as string;
+}
+
+/** Sign off on the credits and shares, or object (with what you'd change). Returns "agreed" once everyone has. */
+export async function signSong(db: Db, agreementId: string, raw: unknown): Promise<"open" | "agreed"> {
+  const s = songSignSchema.parse(raw);
+  if (s.decision === "object" && !s.note) throw new DomainError("validation", "Say what you'd change.");
+  const { data, error } = await db.rpc("song_sign", { p_agreement: agreementId, p_decision: s.decision, p_note: s.note || undefined });
+  if (error) throw fromDbError(error);
+  return data as "open" | "agreed";
 }
