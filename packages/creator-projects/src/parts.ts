@@ -338,3 +338,21 @@ export async function myPartInvites(db: Db, creatorId: string): Promise<PartInvi
     return [{ partId: part.id, partTitle: part.title, projectId: part.project_id, projectTitle: part.projects.title, invitedBy: (m.inviter as { display_name: string } | null)?.display_name ?? "Someone", note: m.invite_note }];
   });
 }
+
+export interface PartTake {
+  partId: string;
+  title: string;
+  artifactId: string;
+  versionNumber: number;
+  storageObjectId: string;
+  seconds: number;
+}
+/**
+ * The Room's parts whose current version is a kept take (step 3), for people who read those parts' Creations. The
+ * caller mints a short-lived media link for each storage object; the database decided who may have one.
+ */
+export async function partTakes(db: Db, projectId: string): Promise<PartTake[]> {
+  const { data, error } = await db.rpc("part_takes", { p_project: projectId });
+  if (error) throw fromDbError(error);
+  return (data ?? []).map((r) => ({ partId: r.part_id, title: r.title, artifactId: r.artifact_id, versionNumber: r.version_number, storageObjectId: r.storage_object_id, seconds: Number(r.seconds) || 0 }));
+}

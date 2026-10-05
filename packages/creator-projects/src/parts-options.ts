@@ -94,3 +94,16 @@ export interface PartEventView {
   at: string;
 }
 
+/** Play-along (step 3): another part's kept take, ready to play on this part's page. */
+export interface PlayAlongTrack {
+  partId: string;
+  title: string;
+  versionNumber: number;
+  url: string;
+  seconds: number;
+}
+/** What a part's page can play and read alongside: the other parts' takes, and the words of a writing part. */
+export interface PlayAlong {
+  tracks: PlayAlongTrack[];
+  words: { partId: string; title: string; versionNumber: number; text: string } | null;
+}

@@ -61,6 +61,21 @@ final".
 * The people making the work read each part's versions (`versions_read` admits `app.reads_part_artifact`), and a
   proposer reads their own proposal even without access to the Creation.
 
+## Play-along (step 3)
+
+* **Both ways.** On a writing part's page, a compact *Play along* row plays the other parts' kept takes ("Tune · v2
+  0:42"); one plays at a time, and CreativeRadio pauses, as for any sound on the page. On an audio part's page the same
+  row sits with the recording, the words of the writing part show beneath ("Lyrics · v3", with *Use these words*), and
+  *Play Tune while I record — with headphones* is on by default.
+* **Record over a track.** With it on, the record sheet says "Recording over Tune v2", plays the track from the start
+  when recording starts and stops it with the recording; the words to sing stay readable in the sheet. Only the
+  microphone is recorded. The take is an ordinary version, so it records what it was made with (step 2).
+* **Who hears what.** A part's take is its owner's private Material. `part_takes(project)` (security definer) returns,
+  for each part whose current version is a kept take of its owner's own checked recording, the storage object — only
+  where the caller reads that part's Creation (`app.reads_part_artifact`). The server mints a short-lived media link for
+  exactly those objects. Outsiders get nothing; a recording held for safety, or a take naming someone else's Material,
+  is never offered.
+
 ## Rules
 
 * A part's Creation is the member's **own** (they own it; others on the part edit it). Starting is `part_attach`: the
@@ -83,11 +98,11 @@ final".
 | --- | --- | --- |
 | 1 | Parts: peers, many people per part, part-only invites, templates; the Room's hero, Where it stands, timeline; Palette | Done |
 | 2 | *Made with*: versions and takes record the other parts' versions; "changed since this take" with the changed lines; Suggest to the lyricist (a proposal from the Audio page) | Done |
-| 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Not started |
+| 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Done |
 | 4 | The Song page: the mix (tracks, offsets, levels), Where it stands, browser-rendered download, publishing; comments on a moment | Not started |
 | 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, publish together | Not started |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`), `packages/creator-projects/src/parts.ts`
-(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`.
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`), `packages/creator-projects/src/parts.ts`
+(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`.
 Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `e2e/parts.spec.ts`. Mockups: the owner's canvas
 (4 Oct 2026).
