@@ -213,7 +213,8 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | Make a new Creation | Done | Writing · Carousel · Images · Audio (Video and Presentation removed, owner); "Collaborate with others" (a new Creative Room) replaces "Let CreativeMind decide" |
 | My Creative Space: no Reference Shelf; hold to delete | Done | Owner: "remove reference shelf" / "long press the items here to delete them". The header's Reference Shelf button and the Material page's shelf section are gone (data and the Inspirations tab stay). Press and hold a card — or right-click / the context-menu key — to delete it after one confirmation; a tap still opens it (`components/hold-to-delete.tsx`) |
 | My Creative Space: fewer buttons | Done | Removed: the header's "+ New" (its own Start-a-new-Creation dialog — the Palette's Create sheet does this) and "Shared with you" (now the Shared tab's title link), the "Add new material" tile (Bring Material is in the Palette) and the Inspirations tab (the Reference Shelf by another name; its data stays). The page's Palette: Create · Continue · Bring Material (Explore is global); the Materials Palette drops Capture (same as Bring) and Explore |
-| 4 · Presentation · 5 · Video | Not started | |
+| 4 · Presentation page | Done | `/creations/[id]/deck`: the current slide large in its theme, the strip beneath; Edit slide (title, words, speaker notes; move or delete) is the primary action, Add slide and Present the secondaries; Theme (Editorial Paper · Cinematic Dark · Soft Gradient) and Print or save as PDF under More. Present fills the screen (arrows, tap, N for notes, Escape). Every change autosaves as a version holding the deck and its words; outlines written before open as slides. Not offered in Make a new Creation yet (owner) |
+| 5 · Video page | Not started | |
 
 ## Creative Room parts (owner brief, 4 Oct 2026)
 

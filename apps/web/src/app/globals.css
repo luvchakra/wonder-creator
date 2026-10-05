@@ -67,3 +67,29 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* A Presentation printed or saved as PDF (creation-pages.md, step 4): only the slides, one to a landscape page. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+  body.printing-deck * {
+    visibility: hidden !important;
+  }
+  body.printing-deck .deck-print {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  body.printing-deck .deck-print,
+  body.printing-deck .deck-print * {
+    visibility: visible !important;
+  }
+  body.printing-deck .deck-print > * {
+    break-after: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
