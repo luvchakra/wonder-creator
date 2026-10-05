@@ -38,7 +38,7 @@ export function BackLink({
   const fromTrail = raw ? trailTarget(raw, `${pathname}${search}`) : null;
   const fromLink = raw !== null ? fromTarget(new URLSearchParams(search).get("from")) : null;
   const target = fromTrail?.p ?? fromLink ?? home;
-  const label = fromTrail ? (fromTrail.t ?? nameOf(fromTrail.p) ?? homeLabel) : fromLink ? (nameOf(fromLink) ?? homeLabel) : homeLabel;
+  const label = plain(fromTrail ? (fromTrail.t ?? nameOf(fromTrail.p) ?? homeLabel) : fromLink ? (nameOf(fromLink) ?? homeLabel) : homeLabel);
   const name = `Back to ${label}`;
 
   return (
@@ -74,6 +74,9 @@ export function BackLink({
     </Link>
   );
 }
+
+/** A name, never markup: titles come from what creators type (the Studio's title field) and from page titles. */
+const plain = (label: string) => label.replace(/</g, "").replace(/>/g, "");
 
 /** "the Creative Room" reads "Creative Room" beside the arrow. */
 const display = (label: string) => label.replace(/^the /, "").replace(/^./, (c) => c.toUpperCase());
