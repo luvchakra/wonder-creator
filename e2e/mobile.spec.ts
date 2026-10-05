@@ -98,7 +98,7 @@ test.describe("mobile layout @mobile", () => {
       [`/create?c=${conversation}`, (p) => expect(p.getByRole("region", { name: "meTalk" })).toBeVisible()],
       [material, (p) => expect(p.getByRole("button", { name: "Details" })).toBeVisible()],
       ["/materials?tab=collections", (p) => expect(p.getByRole("button", { name: "New collection" })).toBeVisible()],
-      [`/creations/${art.id}`, (p) => expect(p.getByRole("button", { name: "Download" })).toBeVisible()],
+      [`/creations/${art.id}`, (p) => expect(p.getByRole("button", { name: "More actions" })).toBeVisible()],
       [`/creations/${art.id}/context?tab=people`, (p) => expect(p.getByRole("region", { name: "People" })).toBeVisible()],
       [`/creations/${art.id}/transform`, (p) => expect(p.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible()],
       [`/creations/${art.id}/studio`, (p) => expect(p.getByRole("region", { name: "Editor" })).toBeVisible()],

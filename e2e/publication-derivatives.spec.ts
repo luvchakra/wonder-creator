@@ -23,7 +23,8 @@ test.describe("Publication derivatives", () => {
     await made.getByRole("link", { name: /^Review / }).click();
     await expect(page).not.toHaveURL(new RegExp(`/creations/${art.id}$`));
     // The derivative links back to its source.
-    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Context" }).click();
     await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     await expect(page.getByText(title).first()).toBeVisible();
   });
