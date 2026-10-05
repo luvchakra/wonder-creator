@@ -27,7 +27,13 @@ import { flagOn } from "@/lib/features";
 import { requireSession } from "@/lib/session";
 import { ProjectView, type ProjectTab } from "./project-view";
 
-export const metadata = { title: "Creative Room" };
+// The Room's own name: the tab reads it, and Back elsewhere says "Back to <Room>" (back-navigation.md).
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { db } = await requireSession();
+  const { data } = /^[0-9a-f-]{36}$/i.test(id) ? await db.from("projects").select("title").eq("id", id).maybeSingle() : { data: null };
+  return { title: data?.title ?? "Creative Room" };
+}
 
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;

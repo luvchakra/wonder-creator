@@ -3,6 +3,7 @@ import { ConfirmDialog } from "@wonder/ui";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { forget } from "@/components/nav-memory";
 
 /**
  * Press and hold a card to delete it (owner, 4 Oct 2026: "long press the items here to delete them"). The hold — or a
@@ -36,6 +37,7 @@ export function HoldToDelete({ kind, id, title, children }: { kind: "material" |
     setBusy(true);
     try {
       await api(kind === "material" ? `/api/v1/materials/${id}?confirm=true` : `/api/v1/artifacts/${id}?confirm=true`, { method: "DELETE" });
+      forget(kind === "material" ? `/materials/${id}` : `/creations/${id}`);
       setOpen(false);
       router.refresh();
     } catch (e) {

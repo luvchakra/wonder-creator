@@ -32,6 +32,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { OverlayText, SlideFrame, composeSlide, encodeCanvas, loadImage } from "@/components/carousel/slide-render";
 import { api, errorMessage } from "@/lib/client";
 import { RegenerateSheet } from "../../carousel/composer";
+import { BackLink } from "@/components/back-link";
 
 type Tool = "text" | "style" | "image" | null;
 
@@ -255,9 +256,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
     <div className="-mx-4 -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] -mt-6 flex min-h-[calc(100dvh-var(--nav-height)-1px)] flex-col bg-[#15161c] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1 text-white sm:mx-0 sm:mb-0 sm:mt-0 sm:min-h-[calc(100dvh-var(--nav-height)-1px-var(--palette-clearance)-2.5rem)] sm:rounded-3xl sm:px-5">
       {/* Header: back · n of N · More (§51). */}
       <div className="flex items-center justify-between">
-        <Link href={`/creations/${artifactId}/studio`} aria-label="Back to slides" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/10">
-          <ChevronLeft className="size-5" aria-hidden />
-        </Link>
+        <BackLink variant="icon" home={`/creations/${artifactId}/studio`} homeLabel="the slides" className="text-white hover:bg-white/10" />
         <p className="text-sm font-medium">
           {index + 1} of {total}
         </p>

@@ -1,12 +1,13 @@
 "use client";
 import type { DirectMessage } from "@wonder/creator-projects";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, cn, EmptyNote, KIT } from "@wonder/ui";
-import { ArrowLeft, MoreHorizontal, Tag } from "lucide-react";
+import { MoreHorizontal, Tag } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { MessageComposer, type ComposerOption } from "@/components/message-composer";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 const POLL_MS = 10_000;
 
@@ -50,9 +51,7 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Link href="/messages" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> Messages
-      </Link>
+      <BackLink home="/messages" homeLabel="Messages" />
       <header>
         <h1 className="font-display text-3xl text-ink">
           {thread.other.handle ? (

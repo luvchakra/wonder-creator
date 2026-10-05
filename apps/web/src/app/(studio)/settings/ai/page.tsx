@@ -1,12 +1,12 @@
 import { BYOK_PROVIDERS, providerReadiness } from "@wonder/creator-brain";
 import { PageTitle } from "@wonder/ui";
-import Link from "next/link";
 import { providerFor } from "@/lib/brain";
 import { listKeys } from "@/lib/byok";
 import { requireSession } from "@/lib/session";
 import { serviceConfigured } from "@/lib/supabase/service";
 import { AiProviders } from "./ai-providers";
 import { PaletteScope } from "@/components/creative-palette";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = { title: "AI Providers" };
 
@@ -27,9 +27,7 @@ export default async function AiProvidersPage() {
     <>
       <PaletteScope context={{ page: "settings", strip: { label: "AI & CreativeMind" } }} />
       <div className="mx-auto max-w-3xl">
-        <Link href="/settings" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-          ← Settings
-        </Link>
+        <BackLink home="/settings" homeLabel="Settings" />
         <PageTitle title="AI Providers" subtitle="Which AI model CreativeMind uses for you, and your own keys if you'd like to use them." />
         <AiProviders
           providers={BYOK_PROVIDERS.map((p) => ({ id: p.id, name: p.name, keyLabel: p.keyLabel, keyHelp: p.keyHelp, dataUse: p.dataUse }))}

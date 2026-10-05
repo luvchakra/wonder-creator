@@ -1,6 +1,5 @@
 import { creationPath } from "@wonder/creator-studio";
-import { X } from "lucide-react";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { notFound, redirect } from "next/navigation";
 import { PublishedWorkPage } from "@/components/publish/work-page";
 import { loadWorkPreview, siteOrigin } from "@/lib/public-pages";
@@ -27,9 +26,8 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
   const url = creator.handle ? `${origin}/p/${creator.handle}/${p.view.slug}` : null;
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-background">
-      <Link href={back} aria-label="Close preview" className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 inline-flex size-11 items-center justify-center rounded-full bg-surface/85 text-ink-muted shadow-[var(--shadow-card)] backdrop-blur hover:text-ink">
-        <X className="size-5" aria-hidden />
-      </Link>
+      {/* Closing returns to where Preview was opened from: the Writing page, the Creation page… (back-navigation.md). */}
+      <BackLink variant="close" home={back} homeLabel="writing" />
       <div className="pb-28">
         {p.empty ? (
           <p className="mx-auto max-w-md px-6 pt-24 text-center font-display text-[20px] text-ink-muted">Nothing to show yet — write or add something first.</p>

@@ -1,10 +1,11 @@
 "use client";
 import { Avatar, Badge, Button, Field, Input, PageTitle, Textarea, buttonClasses, cn, EmptyNote, KIT } from "@wonder/ui";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 type Availability = "open" | "selective" | "closed";
 const AVAILABILITY_LABEL: Record<Availability, string> = { open: "Open to collaborate", selective: "Selective", closed: "Not taking collaborations" };
@@ -69,9 +70,7 @@ export function DiscoverView({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {project ? (
-        <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-          <ArrowLeft className="size-4" aria-hidden /> {project.title}
-        </Link>
+        <BackLink home={`/rooms/${project.id}`} homeLabel={project.title} />
       ) : null}
       <PageTitle
         art={KIT.botanical.botanicalSprig2}

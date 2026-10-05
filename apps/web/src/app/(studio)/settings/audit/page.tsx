@@ -1,9 +1,9 @@
 import { PageTitle } from "@wonder/ui";
-import Link from "next/link";
 import { AUDIT_CATEGORIES, listAudit } from "@/lib/audit";
 import { requireSession } from "@/lib/session";
 import { AuditView } from "./audit-view";
 import { PaletteScope } from "@/components/creative-palette";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = { title: "Security & activity" };
 
@@ -21,9 +21,7 @@ export default async function AuditPage() {
     <>
       <PaletteScope context={{ page: "settings", strip: { label: "Activity" } }} />
       <div className="mx-auto max-w-3xl">
-        <Link href="/settings?section=privacy" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-          ← Privacy & Security
-        </Link>
+        <BackLink home="/settings?section=privacy" homeLabel="Privacy & Security" />
         <PageTitle title="Security & activity" subtitle="What happened on your account, in plain words. Only you can see this." />
         <AuditView
           categories={[...AUDIT_CATEGORIES]}

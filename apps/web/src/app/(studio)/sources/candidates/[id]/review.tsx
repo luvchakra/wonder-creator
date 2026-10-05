@@ -1,11 +1,11 @@
 "use client";
 import { KIT, KitArt } from "@wonder/ui";
-import { ChevronLeft, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ItemPicker } from "@/components/sources/item-picker";
 import { api } from "@/lib/client";
 import type { CandidateCard, CandidateItem } from "@/lib/sources";
+import { BackLink } from "@/components/back-link";
 
 export function ReviewCandidate({
   c,
@@ -15,12 +15,7 @@ export function ReviewCandidate({
   const router = useRouter();
   return (
     <div className="mx-auto max-w-2xl pb-4">
-      <Link
-        href="/sources"
-        className="-ml-2 inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-[13.5px] text-ink-muted hover:text-ink"
-      >
-        <ChevronLeft className="size-4" aria-hidden /> From your world
-      </Link>
+      <BackLink home="/sources" homeLabel="From your world" />
       <header className="relative isolate overflow-hidden rounded-2xl border border-border-soft bg-[image:var(--gradient-card)] px-4 py-4 shadow-[var(--shadow-card)]">
         <KitArt
           art={KIT.wash.washLavender}

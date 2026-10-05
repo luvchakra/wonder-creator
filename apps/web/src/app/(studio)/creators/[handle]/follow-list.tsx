@@ -1,12 +1,12 @@
 import { followList, getCreatorByHandle } from "@wonder/creator-identity";
 import { Avatar, BACKGROUNDS, BrandBackground } from "@wonder/ui";
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { FollowButton } from "./follow-button";
+import { BackLink } from "@/components/back-link";
 
 /** Followers / Following for a Profile: people the viewer may see, newest first, with a Follow toggle for each. */
 export async function FollowListPage({ handle, kind, before }: { handle: string; kind: "followers" | "following"; before?: string }) {
@@ -26,9 +26,7 @@ export async function FollowListPage({ handle, kind, before }: { handle: string;
       <div className="mx-auto max-w-2xl space-y-3">
         <BrandBackground src={BACKGROUNDS.mistyMountains} overlay="none" className="-mx-4 h-20 sm:-mx-6 lg:mx-0 lg:rounded-3xl" />
         <header className="relative z-10 -mt-10 flex items-center gap-3 rounded-2xl bg-surface/95 px-2 py-2 shadow-[var(--shadow-card)] backdrop-blur-sm">
-          <Link href={base} aria-label={`Back to ${name}`} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-muted">
-            <ArrowLeft className="size-4" aria-hidden />
-          </Link>
+          <BackLink variant="icon" home={base} homeLabel={name} className="hover:bg-surface-muted" />
           <div className="min-w-0">
             <h1 className="font-display text-[22px] leading-tight text-ink">{title}</h1>
             <p className="truncate text-[12.5px] text-ink-muted">{name}</p>

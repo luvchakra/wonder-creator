@@ -2,7 +2,7 @@
 import type { CommunityPrivacy } from "@wonder/creator-community/shared";
 import { CREW_STATUS_LABEL, MAX_GOALS, PROJECT_ITEM_LABEL, type CrewStatus, PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectItemKind, type ProjectStatus } from "@wonder/creator-projects/options";
 import { AvatarStack, BACKGROUNDS, Badge, CreativeMindInsight, KitArt, KIT, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Switch, Textarea, buttonClasses, cn, chipBase } from "@wonder/ui";
-import { ArrowLeft, MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
+import { MessageCircle, MoreHorizontal, PenLine, Plus, Search, Sparkles, Users } from "lucide-react";
 import { CrewChat, type ChatMessage } from "./crew-chat";
 import { ContributionsPanel } from "./contributions-panel";
 import { RightsPanel } from "./rights-panel";
@@ -15,6 +15,7 @@ import { ArtifactCard, MaterialCard, type ArtifactCardData, type MaterialCardDat
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
 import { CommunityPrivacyDialog } from "@/components/community/community-actions";
+import { BackLink } from "@/components/back-link";
 
 interface Project {
   id: string;
@@ -187,9 +188,7 @@ export function ProjectView({
   return (
     <div className="space-y-5">
       <div className="-mb-2">
-        <Link href="/rooms" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-          <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
-        </Link>
+        <BackLink home="/rooms" homeLabel="Creative Rooms" />
       </div>
 
       <section aria-labelledby="project-title" className="overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">

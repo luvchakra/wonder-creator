@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 /**
  * The one bar under a preview: this is what readers would see — publish it as a link (anyone with the link; the Creator
@@ -68,9 +69,7 @@ export function PreviewBar({ artifactId, back, url, published, changed, empty }:
             </Button>
           </div>
         )}
-        <Link href={back} className="self-start text-[13px] font-medium text-ink-muted underline-offset-2 hover:underline">
-          Back to writing
-        </Link>
+        <BackLink home={back} homeLabel="writing" className="self-start" />
       </div>
     </div>
   );

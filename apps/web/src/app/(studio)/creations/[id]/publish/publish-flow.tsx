@@ -8,6 +8,7 @@ import { LocalTime, RelativeTime } from "@/components/client-time";
 import { ConnectWebhookDialog as ConnectDialog } from "@/components/connect-webhook-dialog";
 import { api, errorMessage } from "@/lib/client";
 import { PublishOnPage } from "@/components/publish/publish-on-page";
+import { BackLink } from "@/components/back-link";
 
 type Destination = { id: string; name: string; url: string; secret: string };
 type Attempt = { attempt_no: number; started_at: string; finished_at: string | null; outcome: string | null; http_status: number | null; error: string | null };
@@ -186,9 +187,7 @@ export function PublishFlow(props: {
           ← {artifact.title}
         </button>
       ) : (
-        <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-          ← {artifact.title}
-        </Link>
+        <BackLink home={`/creations/${artifact.id}`} homeLabel={artifact.title} />
       )}
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">Publish</h1>
       <p className="mt-1 text-[15px] text-ink-muted">Nothing goes out until you approve it, and it&apos;s shown as published only once the destination confirms.</p>

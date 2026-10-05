@@ -148,12 +148,13 @@ test.describe("Carousel Composer", () => {
     await expect(strip.getByRole("button", { name: "Slide 8 of 8" })).toBeInViewport();
 
     // Back goes where the creator came from, never round into the Studio again.
-    await page.getByRole("link", { name: "Back" }).click();
+    await page.getByRole("link", { name: /^Back to / }).click();
     await expect(page).toHaveURL(/\/materials\?tab=creations$/);
     await page.goto("/");
     await page.goto(`/creations/${id}`); // a Carousel's Creation page opens its Studio
     await expect(page).toHaveURL(new RegExp(`/creations/${id}/studio$`));
-    await page.getByRole("link", { name: "Back" }).click();
+    // The Creation page only forwarded here, so it's no stop of its own: Back names Home (back-navigation.md).
+    await page.getByRole("link", { name: "Back to Home" }).click();
     await expect(page).toHaveURL(/\/$/);
   });
 

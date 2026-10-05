@@ -1,13 +1,14 @@
 "use client";
 import { CREW_ACCESS_HELP, CREW_ACCESS_LABEL, CREW_STATUS_LABEL, ROLE_SUGGESTIONS, type CrewAccess, type CrewStatus } from "@wonder/creator-projects/options";
 import { Avatar, Badge, Button, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, MoreHorizontal, UserPlus, Users } from "lucide-react";
+import { MoreHorizontal, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LocalTime, RelativeTime } from "@/components/client-time";
 import { CreatorPicker, type PickedCreator } from "@/components/creator-picker";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 interface Member {
   creatorId: string;
@@ -139,13 +140,9 @@ export function CrewView({
     <div className="space-y-8">
       <div>
         {myAccess ? (
-          <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-            <ArrowLeft className="size-4" aria-hidden /> {project.title}
-          </Link>
+          <BackLink home={`/rooms/${project.id}`} homeLabel={project.title} />
         ) : (
-          <Link href="/rooms" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-            <ArrowLeft className="size-4" aria-hidden /> Creative Rooms
-          </Link>
+          <BackLink home="/rooms" homeLabel="Creative Rooms" />
         )}
       </div>
 

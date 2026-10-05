@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LocalTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 function duration(from: string, to: string | null): string {
   if (!to) return "still going";
@@ -24,9 +25,7 @@ export function SummaryView({ summary: s }: { summary: HuddleSummary }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/huddles" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← Huddles
-      </Link>
+      <BackLink home="/huddles" homeLabel="Huddles" />
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">{s.topic ? `Talking about ${s.topic}` : "Your Huddle"}</h1>
       <p className="mt-1 text-[15px] text-ink-muted">
         <LocalTime iso={s.joinedAt} /> · {duration(s.joinedAt, s.leftAt ?? s.endedAt)} · {s.role === "host" ? "you started it" : "you joined"}

@@ -2,11 +2,10 @@ import { MATERIAL_BUCKET } from "@wonder/creator-library";
 import { getSharedItem } from "@wonder/creator-projects";
 import { artifactType } from "@wonder/creator-studio/types";
 import { Badge, buttonClasses } from "@wonder/ui";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LocalTime } from "@/components/client-time";
 import { requireSession } from "@/lib/session";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = { title: "Shared with the crew" };
 
@@ -20,9 +19,7 @@ export default async function SharedItemPage({ params }: { params: Promise<{ id:
   const image = item.kind === "material" && item.fileUrl && item.mimeType?.startsWith("image/");
   return (
     <article className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/rooms/${id}?tab=work`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> Back to the Creative Room
-      </Link>
+      <BackLink home={`/rooms/${id}?tab=work`} homeLabel="the Creative Room" />
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="neutral">Read-only</Badge>

@@ -3,7 +3,7 @@ import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType, creationPath, getRights, lineageGraph, listLicenseRequests, listVersions, ornamentOf, RIGHTS_DISCLAIMER, writingStyleOf } from "@wonder/creator-studio";
 import { partContextFor } from "@wonder/creator-projects";
 import { notFound, redirect } from "next/navigation";
-import { ContextBack } from "@/components/context-back";
+import { BackLink } from "@/components/back-link";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
@@ -21,9 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: data?.title ?? "Creation" };
 }
 
-export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; details?: string; from?: string }> }) {
+export default async function ArtifactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; details?: string }> }) {
   const { id } = await params;
-  const { tab, details, from } = await searchParams;
+  const { tab, details } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   // Lineage and references moved to the Context view (UI redesign §16); old links keep working.
   if (tab === "lineage" || tab === "references") redirect(`/creations/${id}/context?tab=${tab === "lineage" ? "related" : "references"}`);
@@ -116,7 +116,8 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
   const permissions: Array<"edit" | "publish" | "rights" | "collaborate" | "invite"> = isOwner ? ["edit", "publish", "rights", "collaborate", "invite"] : collaborator ? ["collaborate"] : [];
   return (
     <>
-      <ContextBack db={db} from={from} />
+      {/* Back goes where the creator came from; with no trail, a part's Room, else the Creations (back-navigation.md). */}
+      <BackLink home={part ? `/rooms/${part.project.id}` : "/materials?tab=creations"} homeLabel={part ? part.project.title : "Creations"} className="mb-1" />
       <PaletteScope
         context={{
           page: "creation",

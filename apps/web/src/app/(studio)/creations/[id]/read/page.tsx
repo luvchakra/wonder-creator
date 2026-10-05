@@ -1,8 +1,7 @@
 import { artifactType, creationPath, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
 import { WrittenPiece } from "@/components/writing/written-piece";
 import { KIT } from "@wonder/ui";
-import { X } from "lucide-react";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 
@@ -33,13 +32,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-background" style={{ backgroundImage: `url(${KIT.texture.texturePaper.svg})`, backgroundSize: "512px" }}>
-      <Link
-        href={back}
-        aria-label="Close reading"
-        className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 inline-flex size-11 items-center justify-center rounded-full bg-surface/80 text-ink-muted shadow-[var(--shadow-card)] backdrop-blur hover:text-ink"
-      >
-        <X className="size-5" aria-hidden />
-      </Link>
+      <BackLink variant="close" home={back} homeLabel={mine ? "writing" : a.title || "the Creation"} />
       <article className="mx-auto max-w-[38rem] px-6 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[max(4.5rem,env(safe-area-inset-top))] sm:pt-24">
         {/* Set the way its kind is best read: a poem, an essay, news… (creation-pages.md §Writing kinds). */}
         <WrittenPiece style={writingStyleOf(a.artifact_type)} kicker={def.label} title={a.title || "Untitled"} text={text} byline={author?.display_name} date={a.updated_at} ornament={ornamentOf(a.presentation)} as="h1" empty="Nothing written yet." />

@@ -80,7 +80,9 @@ test.describe("Studio, versions and lineage", () => {
     await sheet.getByRole("button", { name: "Save version" }).click();
     await expect(page.getByRole("link", { name: "Version 2 — see versions" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Back to Creation" }).click();
+    // Back goes where the creator came from — meTalk, where the poem was made — not to a parent page (back-navigation.md).
+    await expect(page.getByRole("link", { name: "Back to Create" })).toHaveAttribute("href", /^\/create\?/);
+    await page.goto(`/creations/${artifactId}`);
     await expect(page.getByRole("heading", { level: 1, name: "Harbour Psalm" })).toBeVisible();
     await expect(page.getByRole("article")).toContainText(added);
     await page.getByRole("tab", { name: "Versions (2)" }).click();
@@ -163,7 +165,7 @@ test.describe("Studio, versions and lineage", () => {
     await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /Read it on its own/ }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/read$`));
     await expect(page.getByRole("article").getByRole("heading", { level: 1 })).toBeVisible();
-    await page.getByRole("link", { name: "Close reading" }).click();
+    await page.getByRole("link", { name: /^Close, back to / }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}/(?:studio|write)$`));
   });
 });

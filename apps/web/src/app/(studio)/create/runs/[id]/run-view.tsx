@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 const POLL_MS = 1500;
 
@@ -55,9 +56,7 @@ export function RunView({ initial, providerLive }: { initial: RunProgress; provi
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={backToTalk} className="text-sm text-accent-ink hover:underline">
-        ← Back to the conversation
-      </Link>
+      <BackLink home={backToTalk} homeLabel="the conversation" />
       <header className="mt-3">
         <p className="text-sm text-ink-subtle" role="status">
           {STATUS_TEXT[p.run.status]}

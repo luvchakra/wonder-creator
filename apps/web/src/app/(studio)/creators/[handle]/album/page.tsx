@@ -1,13 +1,12 @@
 import { getCreatorByHandle } from "@wonder/creator-identity";
 import { KIT, KitArt } from "@wonder/ui";
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { AlbumGallery } from "@/components/profile/album";
 import { albumOf } from "@/lib/album";
 import { flagOn } from "@/lib/features";
 import { requireSession } from "@/lib/session";
+import { BackLink } from "@/components/back-link";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -30,9 +29,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ handle: 
     <>
       <PaletteScope context={{ page: isMe ? "me" : "creator", ids: { creatorHandle: c.handle ?? handle }, strip: { label: `${name} · Album` } }} />
       <div className="mx-auto max-w-4xl space-y-3">
-        <Link href={`/creators/${c.handle ?? handle}`} className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-ink-muted hover:text-ink">
-          <ChevronLeft className="size-4" aria-hidden /> {isMe ? "Your profile" : name}
-        </Link>
+        <BackLink home={`/creators/${c.handle ?? handle}`} homeLabel={isMe ? "Your profile" : name} />
         <header className="relative">
           <KitArt art={KIT.painted.blossomSprig} sizes="6rem" className="pointer-events-none absolute -top-2 right-0 h-20 w-auto opacity-80" />
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-subtle">Album</p>

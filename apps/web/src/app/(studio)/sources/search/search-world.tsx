@@ -1,11 +1,11 @@
 "use client";
 import { Button, Input } from "@wonder/ui";
-import { ChevronLeft, History, Loader2, Search, X } from "lucide-react";
-import Link from "next/link";
+import { History, Loader2, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ItemPicker } from "@/components/sources/item-picker";
 import { api, errorMessage } from "@/lib/client";
 import type { CandidateItem } from "@/lib/sources";
+import { BackLink } from "@/components/back-link";
 
 const ACTIVE = new Set(["queued", "running", "paused"]);
 
@@ -75,9 +75,7 @@ export function SearchWorld({ initialQuery }: { initialQuery: string }) {
   const shown = terms.length >= 2 ? items : null;
   return (
     <div className="mx-auto max-w-2xl pb-4">
-      <Link href="/sources" className="-ml-2 inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-[13.5px] text-ink-muted hover:text-ink">
-        <ChevronLeft className="size-4" aria-hidden /> Personal Sources
-      </Link>
+      <BackLink home="/sources" homeLabel="Personal Sources" />
       <h1 className="font-display text-[26px] leading-tight text-ink">Search your world</h1>
       <div className="relative mt-3">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />

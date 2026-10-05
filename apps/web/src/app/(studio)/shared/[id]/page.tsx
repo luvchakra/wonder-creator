@@ -1,9 +1,9 @@
 import { openCreatorShare } from "@wonder/creator-studio";
 import { EmptyState } from "@wonder/ui";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SharedPieceView } from "@/components/shared-piece";
 import { requireSession } from "@/lib/session";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = { title: "Shared with you" };
 
@@ -15,9 +15,7 @@ export default async function SharedPiecePage({ params }: { params: Promise<{ id
   return (
     <div>
       <div className="mx-auto max-w-2xl">
-        <Link href="/shared" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-          ← Shared with you
-        </Link>
+        <BackLink home="/shared" homeLabel="Shared with you" />
       </div>
       {piece ? (
         <SharedPieceView piece={piece} downloadBase={`/api/v1/shares/${id}/download`} />

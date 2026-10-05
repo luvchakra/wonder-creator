@@ -1,12 +1,13 @@
 "use client";
 import type { DerivativeView, PublicationDerivativePreset } from "@wonder/creator-studio";
 import { Badge, Button, PageTitle, buttonClasses, EmptyNote, KIT } from "@wonder/ui";
-import { ArrowLeft, GitBranch, Sparkles } from "lucide-react";
+import { GitBranch, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 const PUB_STATUS: Record<string, { label: string; tone: "neutral" | "accent" | "success" | "danger" }> = {
   draft: { label: "Draft", tone: "neutral" },
@@ -34,9 +35,7 @@ export function DerivativesView({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Link href={`/creations/${source.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> {source.title}
-      </Link>
+      <BackLink home={`/creations/${source.id}`} homeLabel={source.title} />
       <PageTitle art={KIT.painted.coralLeaves} title="Derivatives" subtitle="Platform adaptations are Creations in their own right: each keeps a link to the version it came from, inherits its rights, and is published only after you approve it." />
 
       <section aria-label="Source" className="rounded-2xl border border-border-soft bg-surface px-4 py-3">

@@ -4,6 +4,7 @@ import { Clapperboard, Feather, FileText, Lightbulb, ListChecks, type LucideIcon
 import Link from "next/link";
 import { useState } from "react";
 import { TransformDialog, type TransformSource } from "../view";
+import { BackLink } from "@/components/back-link";
 
 export interface FormatOption {
   type: string;
@@ -71,9 +72,7 @@ export function TransformChooser({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/creations/${artifactId}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-        ← {source.title}
-      </Link>
+      <BackLink home={`/creations/${artifactId}`} homeLabel={source.title} />
       <header>
         <h1 className="font-display text-3xl text-ink sm:text-4xl">Transform</h1>
         <p className="mt-1 text-[15px] text-ink-muted">

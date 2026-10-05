@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { VisualDirections } from "@/components/visual-directions";
+import { BackLink } from "@/components/back-link";
+import { forget } from "@/components/nav-memory";
 
 const ORIGIN: Record<string, string> = {
   upload: "Uploaded",
@@ -218,9 +220,7 @@ export function MaterialDetail({
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
-      <Link href="/materials?tab=ideas" className="inline-flex min-h-11 items-center text-[13px] text-accent-ink hover:underline">
-        ← Materials
-      </Link>
+      <BackLink home="/materials?tab=ideas" homeLabel="Materials" />
       {preview ? <div className="overflow-hidden rounded-3xl bg-[#f3efe9] shadow-[var(--shadow-card)]">{preview}</div> : null}
 
       <header className="space-y-0.5 px-1">
@@ -513,6 +513,7 @@ export function MaterialDetail({
         onConfirm={() =>
           run("delete", async () => {
             await api(`/api/v1/materials/${m.id}?confirm=true`, { method: "DELETE" });
+            forget(`/materials/${m.id}`);
             router.replace("/materials?tab=ideas");
           })
         }
