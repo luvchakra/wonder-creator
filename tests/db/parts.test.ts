@@ -12,12 +12,14 @@ import {
   listParts,
   myPartInvites,
   partContextFor,
+  partMix,
   partTakes,
   partWords,
   partsTimeline,
   respondToCrew,
   respondToPart,
   setPartFinal,
+  setPartMix,
   startCrew,
   suggestToPart,
   updatePart,
@@ -240,5 +242,30 @@ describe("parts: who sees and does what", () => {
     await attachPartArtifact(db(owner), lyrics.id, lyricsArt);
     expectOk(await owner.client.rpc("create_artifact_version", { p_artifact_id: lyricsArt, p_content: "words", p_label: "Draft", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 1 } } }));
     expect((await partTakes(db(dee), p.id)).map((t) => t.partId)).not.toContain(lyrics.id);
+  });
+
+  it("listen together: the people making the work set the mix; whoever sees the Room reads it; nothing else rides along", async () => {
+    const { p, lyrics, tune } = await songRoom();
+    await claimPart(db(ana), tune.id);
+    await inviteToPart(db(owner), lyrics.id, { creatorId: dee.creatorId });
+    const set = { [tune.id]: { offsetMs: 1500, gain: 0.8, muted: false } };
+    // Invited isn't making the work yet; accepting is.
+    await expect(setPartMix(db(dee), p.id, set)).rejects.toThrow();
+    await respondToPart(db(dee), lyrics.id, true);
+    await setPartMix(db(dee), p.id, set);
+    for (const who of [owner, ana, dee]) expect((await partMix(db(who), p.id)).tracks).toEqual(set);
+    // An outsider neither reads nor changes it.
+    expect((await partMix(db(cy), p.id)).tracks).toEqual({});
+    await expect(setPartMix(db(cy), p.id, {})).rejects.toThrow();
+    // Only this Room's parts, only in range, only through the function; unknown fields are dropped.
+    const other = await songRoom();
+    expectDenied(await owner.client.rpc("part_mix_set", { p_project: p.id, p_tracks: { [other.tune.id]: { offsetMs: 0, gain: 1, muted: false } } }));
+    expectDenied(await owner.client.rpc("part_mix_set", { p_project: p.id, p_tracks: { [tune.id]: { offsetMs: 0, gain: 5, muted: false } } }));
+    expectDenied(await owner.client.rpc("part_mix_set", { p_project: p.id, p_tracks: { [tune.id]: { offsetMs: 0, gain: "loud", muted: false } } }));
+    expectDenied(await owner.client.from("project_mixes").update({ tracks: {} }).eq("project_id", p.id));
+    expectDenied(await owner.client.from("project_mixes").insert({ project_id: other.p.id, tracks: {} }));
+    expectOk(await owner.client.rpc("part_mix_set", { p_project: p.id, p_tracks: { [tune.id]: { offsetMs: 250.4, gain: 1, muted: true, url: "https://example.com/x.mp3" } } }));
+    const row = expectOk(await adminClient().from("project_mixes").select("tracks, updated_by").eq("project_id", p.id).single());
+    expect(row).toEqual({ tracks: { [tune.id]: { offsetMs: 250, gain: 1, muted: true } }, updated_by: owner.creatorId });
   });
 });

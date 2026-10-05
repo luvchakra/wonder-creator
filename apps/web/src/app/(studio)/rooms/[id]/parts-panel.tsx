@@ -1,7 +1,7 @@
 "use client";
 import { PART_KINDS, PART_KIND_LABEL, type PartEventView, type PartKind, type PartView } from "@wonder/creator-projects/parts-options";
 import { Avatar, Button, Dialog, DialogContent, Field, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
-import { ChevronRight, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronRight, Headphones, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,11 +24,13 @@ export interface PartsData {
   canClaim: boolean;
   /** The first lines of a writing part the viewer may read, for the hero. */
   excerpt: { partTitle: string; lines: string[] } | null;
+  /** Some part has a kept take the viewer may hear: Listen together (step 4). */
+  listenable: boolean;
 }
 
 const DOT: Record<PartView["status"], string> = { open: "border-2 border-border bg-transparent", in_rounds: "bg-accent", final: "bg-success-ink" };
 
-export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
+export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt, listenable }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +119,12 @@ export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, mana
             )
           ) : canClaim && open.length ? (
             <Button onClick={() => setClaiming(true)}>Claim a part</Button>
+          ) : null}
+          {listenable ? (
+            <Link href={`/rooms/${projectId}/song`} className={buttonClasses({ variant: primary || (canClaim && open.length) ? "secondary" : "primary" })}>
+              <Headphones className="size-4" aria-hidden />
+              Listen together
+            </Link>
           ) : null}
           {mine.length > 1 ? <span className="text-[12.5px] text-ink-muted">You&rsquo;re also on {mine.slice(1).map((p) => p.title).join(", ")}.</span> : null}
         </div>

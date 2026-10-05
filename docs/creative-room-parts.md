@@ -76,6 +76,22 @@ final".
   exactly those objects. Outsiders get nothing; a recording held for safety, or a take naming someone else's Material,
   is never offered.
 
+## Listen together (step 4)
+
+* **The parts heard as one.** *Listen together* (`/rooms/<id>/song`, from the Room's hero once a part has a kept take)
+  plays every take the viewer may hear (`part_takes`) at once, in the browser: each from its **start** (an offset, so a
+  voice can come in after the intro, or a take can start part-way in) at its **level**, or muted. One primary action —
+  Play — and one secondary, *Download the mix*.
+* **Where it stands** in one line under the title: each part, its version, whether its people call it final.
+  The words of the writing part sit beneath, set as a poem.
+* **The mix is the Room's, not anyone's part.** `project_mixes` holds settings only (start in ms, level 0–2, muted) for
+  this Room's parts; whoever sees the Room reads it, and the people making the work (on a part, or in the crew) change
+  it through `part_mix_set`, which drops anything else. It saves as they go; nothing about a part or a take changes.
+  Others see the settings, not the controls.
+* **The download is made on the device**: the same takes and settings rendered offline into a WAV. Nothing is mixed,
+  uploaded or stored on the server; the file carries only what the listener could already hear.
+* Still to come (4b): publishing the song, and comments on a moment of it.
+
 ## Rules
 
 * A part's Creation is the member's **own** (they own it; others on the part edit it). Starting is `part_attach`: the
@@ -99,10 +115,13 @@ final".
 | 1 | Parts: peers, many people per part, part-only invites, templates; the Room's hero, Where it stands, timeline; Palette | Done |
 | 2 | *Made with*: versions and takes record the other parts' versions; "changed since this take" with the changed lines; Suggest to the lyricist (a proposal from the Audio page) | Done |
 | 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Done |
-| 4 | The Song page: the mix (tracks, offsets, levels), Where it stands, browser-rendered download, publishing; comments on a moment | Not started |
+| 4a | Listen together: the takes as one (starts, levels, mute), Where it stands, the words, a WAV made on the device | Done |
+| 4b | Publishing the song; comments on a moment | Not started |
 | 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, publish together | Not started |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`), `packages/creator-projects/src/parts.ts`
-(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`.
-Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `e2e/parts.spec.ts`. Mockups: the owner's canvas
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`), `packages/creator-projects/src/parts.ts`
+(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`, `rooms/[id]/song/` with
+`components/audio/use-mix.ts` and `lib/wav.ts`.
+Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `lib/wav.test.ts`, `e2e/parts.spec.ts`, `e2e/play-along.spec.ts`,
+`e2e/listen-together.spec.ts`. Mockups: the owner's canvas
 (4 Oct 2026).

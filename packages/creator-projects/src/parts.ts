@@ -1,7 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
-import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, type MadeWith, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, MIX_GAIN, MIX_OFFSET_MS, PART_KINDS, PART_TEMPLATES, type MadeWith, type Mix, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
 
 /**
  * Parts (docs/creative-room-parts.md): what a joint Creation is made of — Lyrics · Tune · Voice — each a Creation of
@@ -355,4 +355,30 @@ export async function partTakes(db: Db, projectId: string): Promise<PartTake[]> 
   const { data, error } = await db.rpc("part_takes", { p_project: projectId });
   if (error) throw fromDbError(error);
   return (data ?? []).map((r) => ({ partId: r.part_id, title: r.title, artifactId: r.artifact_id, versionNumber: r.version_number, storageObjectId: r.storage_object_id, seconds: Number(r.seconds) || 0 }));
+}
+
+// ── Listen together (step 4) ─────────────────────────────────────────────────────────────────────────────────────────
+
+export const mixSchema = z.record(
+  z.string().uuid(),
+  z.object({
+    offsetMs: z.number().int().min(MIX_OFFSET_MS.min).max(MIX_OFFSET_MS.max),
+    gain: z.number().min(MIX_GAIN.min).max(MIX_GAIN.max),
+    muted: z.boolean(),
+  }),
+);
+
+/** The Room's mix: where each part's take starts and how loud it is. Whoever sees the Room reads it. */
+export async function partMix(db: Db, projectId: string): Promise<{ tracks: Mix; updatedAt: string | null }> {
+  const { data, error } = await db.from("project_mixes").select("tracks, updated_at").eq("project_id", projectId).maybeSingle();
+  if (error) throw fromDbError(error);
+  const parsed = mixSchema.safeParse(data?.tracks ?? {});
+  return { tracks: parsed.success ? parsed.data : {}, updatedAt: data?.updated_at ?? null };
+}
+
+/** Replace the Room's mix — the people making the work only (the database decides). */
+export async function setPartMix(db: Db, projectId: string, raw: unknown): Promise<void> {
+  const tracks = mixSchema.parse(raw);
+  const { error } = await db.rpc("part_mix_set", { p_project: projectId, p_tracks: tracks });
+  if (error) throw fromDbError(error);
 }

@@ -107,3 +107,54 @@ export interface PlayAlong {
   tracks: PlayAlongTrack[];
   words: { partId: string; title: string; versionNumber: number; text: string } | null;
 }
+
+/** Listen together (step 4): one track of the Room's mix — where it starts (ms, may be negative) and its level. */
+export interface MixTrack {
+  offsetMs: number;
+  /** 1 = as recorded; 0…2. */
+  gain: number;
+  muted: boolean;
+}
+export type Mix = Record<string, MixTrack>;
+export const MIX_OFFSET_MS = { min: -30_000, max: 600_000 } as const;
+export const MIX_GAIN = { min: 0, max: 2 } as const;
+const AS_RECORDED: MixTrack = { offsetMs: 0, gain: 1, muted: false };
+
+/** A part's settings in the mix; a part nobody has touched plays from the start, as recorded. */
+export function mixTrackOf(mix: Mix, partId: string): MixTrack {
+  return { ...AS_RECORDED, ...mix[partId] };
+}
+
+/** A part's take on the Song page: what plays, and whose. */
+export interface ListenTrack extends PlayAlongTrack {
+  people: string[];
+}
+
+/** How long the mix lasts: the latest end among the tracks that sound (an unmuted track with a level). */
+export function mixLength(tracks: Array<{ partId: string; seconds: number }>, mix: Mix): number {
+  let end = 0;
+  for (const t of tracks) {
+    const m = mixTrackOf(mix, t.partId);
+    if (m.muted || m.gain <= 0) continue;
+    end = Math.max(end, m.offsetMs / 1000 + t.seconds);
+  }
+  return Math.max(0, end);
+}
+
+/**
+ * For a playhead at `at` seconds into the mix: how long until this track sounds (`wait`) and from where in its take it
+ * plays (`from`) — or null when it has already finished. A negative offset starts the take part-way in.
+ */
+export function placeAt(offsetMs: number, seconds: number, at: number): { wait: number; from: number } | null {
+  const start = offsetMs / 1000;
+  const from = Math.max(0, at - start);
+  if (from >= seconds) return null;
+  return { wait: Math.max(0, start - at), from };
+}
+
+/** "+1.2s", "−0.5s", "from the start" — where a track starts, said plainly. */
+export function offsetLabel(offsetMs: number): string {
+  if (offsetMs === 0) return "from the start";
+  const s = Math.abs(offsetMs) / 1000;
+  return `${offsetMs > 0 ? "+" : "−"}${s.toFixed(s < 10 ? 1 : 0)}s`;
+}

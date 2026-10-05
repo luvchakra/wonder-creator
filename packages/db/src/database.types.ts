@@ -2868,6 +2868,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_mixes": {
+                  Row: {
+                    "project_id": string,"tracks": NonNullable<Json>,"updated_at": string,"updated_by": string | null
+                  }
+                  Insert: {
+                    "project_id": string,"tracks"?: NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "project_id"?: string,"tracks"?: NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_mixes_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: true
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_mixes_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_part_events": {
                   Row: {
                     "actor_creator_id": string | null,"created_at": string,"detail": NonNullable<Json>,"id": string,"kind": string,"part_id": string,"project_id": string,"subject_creator_id": string | null
@@ -4576,6 +4601,9 @@ isOneToOne: false
                            },
 "part_leave":
 { Args: { "p_part": string }; Returns: undefined
+                           },
+"part_mix_set":
+{ Args: { "p_project": string,"p_tracks": Json }; Returns: undefined
                            },
 "part_remove":
 { Args: { "p_creator": string,"p_part": string }; Returns: undefined

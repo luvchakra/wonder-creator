@@ -16,6 +16,7 @@ import {
   getProjectRights,
   listParts,
   partsTimeline,
+  partTakes,
   type ProjectStatus,
 } from "@wonder/creator-projects";
 import { creationPath } from "@wonder/creator-studio";
@@ -63,6 +64,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   // Parts (docs/creative-room-parts.md): what the work is made of, who's on each, and what happened.
   const parts = await listParts(db, id, creator.id);
   const timeline = parts.length ? await partsTimeline(db, id, parts) : [];
+  // Listen together (step 4) once some part has a take this viewer may hear.
+  const listenable = parts.some((x) => x.kind === "audio" && x.artifactId) ? (await partTakes(db, id).catch(() => [])).length > 0 : false;
   const crewRow = await crewForProject(db, id);
   const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
   const inCrew = !!crew && crew.me?.status === "active";
@@ -177,7 +180,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         }
         contributions={ledger ? { manages: role === "owner" || role === "admin", entries: ledger, summary: contributionSummary(ledger), people } : null}
         rights={rights}
-        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt } : null}
+        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt, listenable } : null}
         avatars={avatars}
         canEdit={canEdit}
         ownerName={owner.data?.display_name ?? "A creator"}
