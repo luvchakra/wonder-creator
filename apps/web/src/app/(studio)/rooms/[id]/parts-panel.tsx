@@ -1,4 +1,5 @@
 "use client";
+import { clockOf } from "@wonder/creator-studio/audio";
 import { PART_KINDS, PART_KIND_LABEL, type PartEventView, type PartKind, type PartView } from "@wonder/creator-projects/parts-options";
 import { Avatar, Button, Dialog, DialogContent, Field, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
 import { ChevronRight, Headphones, MoreHorizontal, Plus } from "lucide-react";
@@ -400,6 +401,8 @@ function describe(e: PartEventView, viewerId: string): string {
       const madeWith = Array.isArray(e.detail.madeWith) ? (e.detail.madeWith as string[]) : [];
       return `${who} saved ${e.partTitle}${n ? ` v${n}` : ""}${label}${madeWith.length ? `, with ${madeWith.join(" · ")}` : ""}.`;
     }
+    case "noted":
+      return `${who} left a note on ${e.partTitle}${typeof e.detail.atMs === "number" ? ` at ${clockOf(e.detail.atMs / 1000)}` : ""}${typeof e.detail.summary === "string" ? ` — “${e.detail.summary}”` : ""}.`;
     case "suggested":
       return `${who} suggested a change to ${e.partTitle}${typeof e.detail.summary === "string" ? ` — “${e.detail.summary}”` : ""}.`;
     default:

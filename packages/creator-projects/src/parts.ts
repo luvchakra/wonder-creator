@@ -1,7 +1,7 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db, TablesUpdate } from "@wonder/db";
 import { z } from "zod";
-import { DEFAULT_ARTIFACT_TYPE, MIX_GAIN, MIX_OFFSET_MS, PART_KINDS, PART_TEMPLATES, type MadeWith, type Mix, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, MIX_GAIN, MIX_OFFSET_MS, PART_KINDS, PART_TEMPLATES, type MadeWith, type Mix, type MixNote, type PartContext, type PartEventView, type PartKind, type PartStatus, type PartTemplateKey, type PartView } from "./parts-options";
 
 /**
  * Parts (docs/creative-room-parts.md): what a joint Creation is made of — Lyrics · Tune · Voice — each a Creation of
@@ -381,4 +381,67 @@ export async function setPartMix(db: Db, projectId: string, raw: unknown): Promi
   const tracks = mixSchema.parse(raw);
   const { error } = await db.rpc("part_mix_set", { p_project: projectId, p_tracks: tracks });
   if (error) throw fromDbError(error);
+}
+
+// ── Notes on a moment (step 4b) ──────────────────────────────────────────────────────────────────────────────────────
+
+export const mixNoteSchema = z.object({
+  atMs: z.number().int().min(0).max(3_600_000),
+  body: z.string().trim().min(1, "Say it in a line or two.").max(1000),
+  partId: z.string().uuid().nullish(),
+});
+
+const heardOf = (raw: unknown): MixNote["heard"] =>
+  Array.isArray(raw)
+    ? raw.flatMap((h) => {
+        const x = h as { partId?: unknown; title?: unknown; versionNumber?: unknown };
+        return typeof x.partId === "string" && typeof x.title === "string" && typeof x.versionNumber === "number" ? [{ partId: x.partId, title: x.title, versionNumber: x.versionNumber }] : [];
+      })
+    : [];
+
+/** The Room's notes on the song, in the song's order. Whoever sees the Room reads them. */
+export async function mixNotes(db: Db, projectId: string, viewerId: string, manages: boolean): Promise<MixNote[]> {
+  const { data, error } = await db
+    .from("project_mix_notes")
+    .select("id, at_ms, body, part_id, heard, resolved_at, created_at, author:creators!project_mix_notes_creator_id_fkey(id, display_name), part:project_parts(title)")
+    .eq("project_id", projectId)
+    .order("at_ms", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) throw fromDbError(error);
+  return (data ?? []).map((n) => {
+    const author = n.author as { id: string; display_name: string } | null;
+    return {
+      id: n.id,
+      atMs: n.at_ms,
+      body: n.body,
+      partId: n.part_id,
+      partTitle: (n.part as { title: string } | null)?.title ?? null,
+      author: author ? { id: author.id, name: author.display_name } : null,
+      heard: heardOf(n.heard),
+      resolved: !!n.resolved_at,
+      createdAt: n.created_at,
+      canResolve: manages || author?.id === viewerId,
+    };
+  });
+}
+
+/** Leave a note at a moment — the people making the work (the database decides). */
+export async function addMixNote(db: Db, projectId: string, raw: unknown): Promise<string> {
+  const n = mixNoteSchema.parse(raw);
+  const { data, error } = await db.rpc("mix_note_add", { p_project: projectId, p_at_ms: n.atMs, p_body: n.body, p_part: n.partId ?? undefined });
+  if (error) throw fromDbError(error);
+  return data as string;
+}
+
+export async function resolveMixNote(db: Db, noteId: string, resolved: boolean): Promise<void> {
+  const { error } = await db.rpc("mix_note_resolve", { p_note: noteId, p_resolved: resolved });
+  if (error) throw fromDbError(error);
+}
+
+/** Delete a note — its author, or the Room's owner/admins. */
+export async function deleteMixNote(db: Db, noteId: string): Promise<void> {
+  const { data, error } = await db.from("project_mix_notes").delete().eq("id", noteId).select("id");
+  if (error) throw fromDbError(error);
+  if (!data?.length) throw new DomainError("forbidden", "Only its author or the Room's owner can delete a note.");
 }

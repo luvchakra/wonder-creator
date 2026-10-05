@@ -1,5 +1,5 @@
 import { mediaLink } from "@wonder/core/server";
-import { getProject, listParts, partMix, partTakes, partWords } from "@wonder/creator-projects";
+import { getProject, listParts, mixNotes, partMix, partTakes, partWords } from "@wonder/creator-projects";
 import { creationPath } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
@@ -40,6 +40,7 @@ export default async function ListenPage({ params }: { params: Promise<{ id: str
   const text = writing ? await partWords(db, writing.id).catch(() => null) : null;
   const words = writing && text?.current.content.trim() ? { partId: writing.id, title: writing.title, versionNumber: text.current.number, text: text.current.content } : null;
   const making = !!role || parts.some((p) => p.mine);
+  const notes = await mixNotes(db, id, creator.id, role === "owner" || role === "admin");
   const myPart = parts.find((x) => x.mine && x.artifact) ?? null;
   return (
     <>
@@ -60,6 +61,7 @@ export default async function ListenPage({ params }: { params: Promise<{ id: str
         mix={mix.tracks}
         words={words}
         making={making}
+        notes={notes}
       />
     </>
   );
