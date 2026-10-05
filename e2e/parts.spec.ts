@@ -31,6 +31,12 @@ test.describe("Creative Room parts", () => {
     expect(art.title).toBe(`${title} · Lyrics`);
     await page.request.post(`/api/v1/artifacts/${artifactId}/versions`, { data: { content: "Every Sunday my father waited\nat Platform 3, coat folded.", baseVersionId: art.current_version_id, label: "First words" } });
 
+    // The Creation page fits its context: the words set as lyrics, which Room they're a part of, Continue writing first.
+    await page.goto(`/creations/${artifactId}`);
+    await expect(page.getByRole("region", { name: "Preview" })).toContainText("Every Sunday my father waited");
+    await expect(page.getByRole("status").filter({ hasText: "Lyrics in" }).getByRole("link", { name: title })).toHaveAttribute("href", `/rooms/${projectId}`);
+    await expect(page.getByRole("link", { name: "Continue writing" })).toHaveAttribute("href", `/creations/${artifactId}/write`);
+
     // Back in the Room: the words glimpsed in the hero, the row at v2, Open Lyrics as the primary action.
     await page.goto(`/rooms/${projectId}`);
     await expect(work.getByText("Every Sunday my father waited")).toBeVisible();

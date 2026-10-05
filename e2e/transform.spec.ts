@@ -10,7 +10,9 @@ test.describe("Artifact transformation", () => {
     expect((await page.request.post(`/api/v1/artifacts/${artifactId}/versions`, { data: { content: "A quieter second draft.", baseVersionId: art.current_version_id, label: "Revised" } })).ok()).toBe(true);
 
     await page.goto(`/creations/${artifactId}`);
-    await page.getByRole("link", { name: "Transform", exact: true }).click();
+    // A poem with words leads with Continue writing and Preview; Transform is under More.
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Transform" }).click();
     // The Transform screen: forms that suit a poem first, every other form after.
     await expect(page.getByRole("heading", { name: "Transform", level: 1 })).toBeVisible();
     await expect(page.getByRole("region", { name: "Suits this poem" })).toBeVisible();
@@ -33,7 +35,8 @@ test.describe("Artifact transformation", () => {
     await page.getByRole("tab", { name: "Rights" }).click();
     await expect(page.getByText(/Derived from “.*” \(v1\)/)).toBeVisible();
     // Lineage, in the Context view: source piece, the version it came from, and the material.
-    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Context" }).click();
     await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     const lineage = page.getByRole("list", { name: "Creative lineage, from sources to derivatives" });
     await expect(lineage).toContainText(art.title);

@@ -125,9 +125,9 @@ test.describe("Studio, versions and lineage", () => {
   test("lineage shows the source material", async ({ page }) => {
     const { artifactId, noteTitle, materialId } = await poemFromNote(page);
     await page.goto(`/creations/${artifactId}`);
-    await expect(page.getByText("Created from")).toBeVisible();
-    await expect(page.getByText("1 material")).toBeVisible();
-    await page.getByRole("link", { name: "Context", exact: true }).click();
+    await expect(page.getByText(/Started .* from 1 material/)).toBeVisible();
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Context" }).click();
     await page.getByRole("navigation", { name: "Context sections" }).getByRole("link", { name: /^Related/ }).click();
     const lineage = page.getByRole("list", { name: "Creative lineage, from sources to derivatives" });
     await expect(lineage).toBeVisible();

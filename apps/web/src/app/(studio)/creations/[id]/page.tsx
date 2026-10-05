@@ -1,6 +1,7 @@
 import { entityDejaVus } from "@wonder/creator-moments";
 import { signedUrlsFor } from "@wonder/creator-library";
-import { artifactType, getRights, lineageGraph, listLicenseRequests, listVersions, RIGHTS_DISCLAIMER } from "@wonder/creator-studio";
+import { artifactType, creationPath, getRights, lineageGraph, listLicenseRequests, listVersions, ornamentOf, RIGHTS_DISCLAIMER, writingStyleOf } from "@wonder/creator-studio";
+import { partContextFor } from "@wonder/creator-projects";
 import { notFound, redirect } from "next/navigation";
 import { ContextBack } from "@/components/context-back";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
@@ -68,7 +69,7 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     );
   }
 
-  const [versions, graph, rights, contributors, quality, owner, dejavus] = await Promise.all([
+  const [versions, graph, rights, contributors, quality, owner, dejavus, part] = await Promise.all([
     listVersions(db, id),
     lineageGraph(db, id),
     getRights(db, id),
@@ -76,7 +77,11 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     db.from("quality_reports").select("*").eq("artifact_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("creators").select("id, display_name, handle").eq("id", artifact.creator_id).maybeSingle(),
     entityDejaVus(db, "creation", id).catch(() => ({ momentId: null, dejavus: [] })),
+    // A part of a Room's joint work: which Room, and where the other parts stand (creative-room-parts.md).
+    partContextFor(db, id, creator.id).catch(() => null),
   ]);
+  const workPath = creationPath(id, artifact.artifact_type);
+  const workPage = (workPath.split("/").pop() ?? "studio") as "write" | "image" | "audio" | "studio";
 
   const materialIds = graph.nodes.filter((n) => n.type === "material").map((n) => n.id);
   const { data: mats } = materialIds.length
@@ -125,6 +130,11 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
       <ArtifactView
         dejavu={<DejaVuChips entityType="creation" entityId={id} initial={dejavus} />}
         initialTab={tab}
+        workPath={workPath}
+        workPage={workPage}
+        writingStyle={writingStyleOf(artifact.artifact_type)}
+        ornament={ornamentOf(artifact.presentation)}
+        part={part}
         artifact={artifact}
         typeLabel={artifactType(artifact.artifact_type).label}
         isOwner={isOwner}

@@ -92,7 +92,7 @@ test.describe("creating with CreativeMind", () => {
 
     await card.getByRole("link", { name: /View/ }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${artifactId}$`));
-    await expect(page.getByText("v1 In Progress")).toBeVisible();
+    await expect(page.getByText(/v1 · In Progress/)).toBeVisible();
     await expect(page.getByRole("article")).not.toBeEmpty();
     await page.getByRole("tab", { name: "Materials (1)" }).click();
     await expect(page.getByRole("tabpanel").getByRole("link", { name: noteTitle })).toBeVisible();

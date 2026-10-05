@@ -16,10 +16,12 @@ test.describe("share, download and export", () => {
     await page.goto(`/creations/${id}`);
 
     // Downloads offer the formats that suit a poem.
-    await page.getByRole("button", { name: "Download" }).click();
-    await expect(page.getByRole("menuitem")).toHaveText(["Markdown (.md)", "Plain text (.txt)", "Web page (.html)"]);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Download…" }).click();
+    const formats = page.getByRole("dialog", { name: "Download" });
+    await expect(formats.getByRole("listitem")).toHaveText(["Markdown (.md)", "Plain text (.txt)", "Web page (.html)"]);
     const download = page.waitForEvent("download");
-    await page.getByRole("menuitem", { name: "Plain text (.txt)" }).click();
+    await formats.getByRole("button", { name: "Plain text (.txt)" }).click();
     expect((await download).suggestedFilename()).toMatch(/^harbour-lamps-.*\.txt$/);
 
     await page.getByRole("button", { name: "Share" }).click();
