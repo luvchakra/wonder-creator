@@ -508,3 +508,18 @@ export async function signSong(db: Db, agreementId: string, raw: unknown): Promi
   if (error) throw fromDbError(error);
   return data as "open" | "agreed";
 }
+
+// ── Publishing the song together (step 5b) ───────────────────────────────────────────────────────────────────────────
+
+/** The Room's song as a Creation of its own, once there is one. */
+export async function songOf(db: Db, projectId: string): Promise<string | null> {
+  const { data, error } = await db.from("project_songs").select("artifact_id").eq("project_id", projectId).maybeSingle();
+  if (error) throw fromDbError(error);
+  return data?.artifact_id ?? null;
+}
+
+/** Make the caller's Creation the Room's song — the Room's owner, once the credits are agreed and hold. */
+export async function attachSong(db: Db, projectId: string, artifactId: string): Promise<void> {
+  const { error } = await db.rpc("song_attach", { p_project: projectId, p_artifact: artifactId });
+  if (error) throw fromDbError(error);
+}

@@ -180,6 +180,14 @@ async function rightsFor(db: Db, artifactId: string, versionId: string | null, s
     const name = (c.creators as unknown as { display_name: string } | null)?.display_name;
     if (name) credits.add(`${name}${c.role ? ` · ${c.role}` : ""}`);
   }
+  // A Room's song (creative-room-parts.md, step 5b): the credits everyone agreed to, by part.
+  const { data: song } = await db.from("project_songs").select("project_id").eq("artifact_id", artifactId).maybeSingle();
+  if (song) {
+    const { data: g } = await db.from("project_song_agreements").select("lines").eq("project_id", song.project_id).eq("status", "agreed").maybeSingle();
+    for (const l of (Array.isArray(g?.lines) ? g.lines : []) as Array<{ name?: string; parts?: Array<{ title: string; credit: string }> }>) {
+      if (l.name) credits.add(`${l.name} · ${(l.parts ?? []).map((x) => `${x.title} (${x.credit})`).join(", ")}`);
+    }
+  }
   for (const m of mats ?? []) {
     const lic = (m.metadata as { license?: { name?: string; creator?: string | null; provider?: string | null } } | null)?.license;
     if (lic?.name && licenseRights(lic.name) === "attribution_required") credits.add([lic.creator ? `Image by ${lic.creator}` : "Image", lic.name, lic.provider].filter(Boolean).join(" · "));

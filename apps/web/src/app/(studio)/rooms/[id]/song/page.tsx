@@ -1,5 +1,5 @@
 import { mediaLink } from "@wonder/core/server";
-import { getProject, listParts, mixNotes, partMix, partTakes, partWords } from "@wonder/creator-projects";
+import { getProject, listParts, mixNotes, partMix, partTakes, partWords, songAgreement, songOf } from "@wonder/creator-projects";
 import { creationPath } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
@@ -41,6 +41,16 @@ export default async function ListenPage({ params }: { params: Promise<{ id: str
   const words = writing && text?.current.content.trim() ? { partId: writing.id, title: writing.title, versionNumber: text.current.number, text: text.current.content } : null;
   const making = !!role || parts.some((p) => p.mine);
   const notes = await mixNotes(db, id, creator.id, role === "owner" || role === "admin");
+  // Publishing the song together (step 5b): the Room's owner, once everyone has agreed the credits.
+  const isOwner = data.project.creator_id === creator.id;
+  const [agreement, songId] = isOwner ? await Promise.all([songAgreement(db, id), songOf(db, id)]) : [null, null];
+  const { data: work } = songId ? await db.from("published_works").select("slug, visibility, unpublished_at").eq("artifact_id", songId).maybeSingle() : { data: null };
+  const publish = isOwner
+    ? {
+        ready: !!agreement && agreement.status === "agreed" && agreement.holds,
+        published: work && !work.unpublished_at && creator.handle ? { url: `/p/${creator.handle}/${work.slug}`, visibility: work.visibility } : null,
+      }
+    : null;
   const myPart = parts.find((x) => x.mine && x.artifact) ?? null;
   return (
     <>
@@ -62,6 +72,7 @@ export default async function ListenPage({ params }: { params: Promise<{ id: str
         words={words}
         making={making}
         notes={notes}
+        publish={publish}
       />
     </>
   );

@@ -1,12 +1,13 @@
 "use client";
 import { MIX_GAIN, heardEarlier, mixTrackOf, offsetLabel, type ListenTrack, type Mix, type MixNote, type MixTrack, type PartKind, type PartStatus } from "@wonder/creator-projects/parts-options";
 import { clockOf } from "@wonder/creator-studio/audio";
-import { Button, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
-import { Download, MessageSquarePlus, Minus, MoreHorizontal, Pause, Play, Plus, Volume2, VolumeX } from "lucide-react";
+import { Button, Dialog, DialogContent, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
+import { Download, ExternalLink, MessageSquarePlus, Minus, MoreHorizontal, Pause, Play, Plus, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackLink } from "@/components/back-link";
+import { uploadRecording } from "@/components/audio/use-recorder";
 import { useMix } from "@/components/audio/use-mix";
 import { api, errorMessage } from "@/lib/client";
 
@@ -35,6 +36,7 @@ export function ListenView({
   words,
   making,
   notes,
+  publish,
 }: {
   project: { id: string; title: string };
   parts: PartLine[];
@@ -43,6 +45,8 @@ export function ListenView({
   words: { partId: string; title: string; versionNumber: number; text: string } | null;
   making: boolean;
   notes: MixNote[];
+  /** The Room's owner: whether the song can be published (credits agreed and holding) and where it is if it was. */
+  publish: { ready: boolean; published: { url: string; visibility: string } | null } | null;
 }) {
   const router = useRouter();
   const [mix, setMix] = useState<Mix>(initial);
@@ -323,6 +327,8 @@ export function ListenView({
         </section>
       ) : null}
 
+      {publish && tracks.length && (publish.ready || publish.published) ? <PublishSong projectId={project.id} publish={publish} render={player.render} duration={player.duration} /> : null}
+
       {notes.length ? <NotesSection notes={notes} tracks={tracks} busy={busy} onPlay={(atMs) => void player.play(atMs / 1000)} run={run} /> : null}
 
       {words ? (
@@ -384,6 +390,98 @@ function NotesSection({ notes, tracks, busy, onPlay, run }: { notes: MixNote[]; 
           <ul className="divide-y divide-border-soft">{resolved.map(row)}</ul>
         </details>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Publish the song together (step 5b): once everyone has agreed the credits, the Room's owner publishes the mix as heard
+ * — rendered here, kept as their recording — with the words and the agreed credits, on their page.
+ */
+function PublishSong({ projectId, publish, render, duration }: { projectId: string; publish: { ready: boolean; published: { url: string; visibility: string } | null }; render: () => Promise<Blob | null>; duration: number }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [visibility, setVisibility] = useState<"public" | "unlisted">("public");
+  const [step, setStep] = useState<"idle" | "mixing" | "uploading" | "publishing">("idle");
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function go() {
+    setError(null);
+    try {
+      setStep("mixing");
+      const blob = await render();
+      if (!blob) throw new Error("There's nothing to mix yet.");
+      setStep("uploading");
+      const { materialId } = await uploadRecording({ blob, seconds: Math.round(duration) }, crypto.randomUUID(), setProgress);
+      if (!materialId) throw new Error("The mix couldn't be kept. Try again.");
+      setStep("publishing");
+      await api(`/api/v1/projects/${projectId}/song`, { method: "POST", json: { materialId, seconds: Math.round(duration), visibility } });
+      setOpen(false);
+      router.refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setStep("idle");
+    }
+  }
+
+  return (
+    <section aria-labelledby="publish-title" className="rounded-3xl border border-border-soft bg-surface/90 px-4 py-3.5 shadow-[var(--shadow-card)]">
+      <h2 id="publish-title" className="font-display text-[17px] text-ink">
+        {publish.published ? "Published" : "Ready to publish"}
+      </h2>
+      {publish.published ? (
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13.5px] text-ink-muted">
+          <span>On your page{publish.published.visibility === "unlisted" ? ", for anyone with the link" : ""}, with the agreed credits.</span>
+          <a href={publish.published.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium text-accent-ink hover:underline">
+            Open it <ExternalLink className="size-3.5" aria-hidden />
+          </a>
+          {publish.ready ? (
+            <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center font-medium text-ink-muted hover:text-ink">
+              Publish the latest mix
+            </button>
+          ) : (
+            <span className="text-[12.5px]">A part moved on since — the credits need agreeing again before it&rsquo;s published again.</span>
+          )}
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-[13.5px] text-ink-muted">Everyone agreed the credits. Publish the song — the mix as you hear it, with the words and the credits — on your page.</p>
+          <Button className="mt-3" variant="secondary" onClick={() => setOpen(true)}>
+            Publish the song
+          </Button>
+        </>
+      )}
+      <Dialog open={open} onOpenChange={(o) => (step === "idle" ? setOpen(o) : null)}>
+        <DialogContent title="Publish the song" description="The mix as you hear it now, the words, and the credits everyone agreed.">
+          <fieldset className="space-y-1">
+            <legend className="sr-only">Who can see it</legend>
+            {(["public", "unlisted"] as const).map((v) => (
+              <label key={v} className="flex min-h-11 items-center gap-2 text-[14px] text-ink">
+                <input type="radio" name="visibility" checked={visibility === v} onChange={() => setVisibility(v)} className="accent-[var(--color-accent)]" />
+                {v === "public" ? "Public — on your page" : "Unlisted — only people with the link"}
+              </label>
+            ))}
+          </fieldset>
+          {error ? (
+            <p role="alert" className="mt-2 rounded-2xl bg-[#fdecec] px-3.5 py-2 text-[14px] text-danger">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <span role="status" className="mr-auto text-[12.5px] text-ink-muted">
+              {step === "mixing" ? "Mixing…" : step === "uploading" ? `Uploading${progress != null ? ` ${progress}%` : "…"}` : step === "publishing" ? "Publishing…" : ""}
+            </span>
+            <Button variant="ghost" disabled={step !== "idle"} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button loading={step !== "idle"} onClick={() => void go()}>
+              Publish
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
