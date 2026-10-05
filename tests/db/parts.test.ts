@@ -3,6 +3,7 @@ import {
   addPart,
   addMixNote,
   addTemplateParts,
+  attachSong,
   attachPartArtifact,
   claimPart,
   createProject,
@@ -26,11 +27,13 @@ import {
   setPartFinal,
   setPartMix,
   signSong,
+  songOf,
   songAgreement,
   startCrew,
   suggestToPart,
   updatePart,
 } from "@wonder/creator-projects";
+import { publishCreation } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createArtifact, createProvenance, createTestCreator, createVersion, expectDenied, expectOk, registerStorageObject, type TestCreator } from "./helpers";
 
@@ -372,5 +375,44 @@ describe("parts: who sees and does what", () => {
     // Only through the functions.
     expectDenied(await owner.client.from("project_song_agreements").update({ status: "agreed" }).eq("id", second));
     expectDenied(await owner.client.from("project_song_signoffs").insert({ agreement_id: second, creator_id: dee.creatorId, decision: "approve" }));
+  });
+
+  it("publishing the song: the owner's own Creation, only while everyone's agreed credits hold", async () => {
+    const { p, lyrics, tune } = await songRoom();
+    await claimPart(db(owner), lyrics.id);
+    await claimPart(db(ana), tune.id);
+    await deletePart(db(owner), (await listParts(db(owner), p.id, owner.creatorId)).find((x) => x.title === "Voice")!.id);
+    const tuneArt = await createArtifact(ana, { title: "Platform 3 · Tune", artifact_type: "song_concept", category: "audio" });
+    const lyricsArt = await createArtifact(owner, { title: "Platform 3 · Lyrics", artifact_type: "lyrics", category: "writing" });
+    await attachPartArtifact(db(ana), tune.id, tuneArt);
+    await attachPartArtifact(db(owner), lyrics.id, lyricsArt);
+    for (const [who, art] of [[ana, tuneArt], [owner, lyricsArt]] as const) expectOk(await who.client.rpc("create_artifact_version", { p_artifact_id: art, p_content: "v1", p_label: "First", p_author_kind: "creator" }));
+    await setPartFinal(db(owner), lyrics.id, true);
+    await setPartFinal(db(ana), tune.id, true);
+    const song = await createArtifact(owner, { title: "Platform 3", artifact_type: "song_concept", category: "audio" });
+    expectOk(await owner.client.rpc("create_artifact_version", { p_artifact_id: song, p_content: "Every Sunday my father waited", p_label: "The song", p_author_kind: "creator" }));
+    // Not before the credits are agreed.
+    await expect(attachSong(db(owner), p.id, song)).rejects.toThrow();
+    const g = await proposeSong(db(owner), p.id, {});
+    await signSong(db(ana), g, { decision: "approve" });
+    // Only the Room's owner, only their own Creation, never a part.
+    const anasSong = await createArtifact(ana, { title: "Mine", artifact_type: "song_concept", category: "audio" });
+    await expect(attachSong(db(ana), p.id, anasSong)).rejects.toThrow();
+    await expect(attachSong(db(owner), p.id, lyricsArt)).rejects.toThrow();
+    await attachSong(db(owner), p.id, song);
+    expect(await songOf(db(ana), p.id)).toBe(song);
+    expect(await songOf(db(cy), p.id)).toBeNull();
+    await expect(attachSong(db(owner), p.id, await createArtifact(owner, { title: "Another", artifact_type: "song_concept", category: "audio" }))).rejects.toThrow();
+    expectDenied(await owner.client.from("project_songs").delete().eq("project_id", p.id).select("project_id").single());
+    // Published with the agreed credits.
+    const pub = await publishCreation(db(owner), owner.creatorId, song, { visibility: "unlisted" });
+    const { data: rev } = await owner.client.from("published_revisions").select("rights_snapshot").eq("work_id", pub.workId).order("revision_number", { ascending: false }).limit(1).single();
+    expect((rev!.rights_snapshot as { credits: string[] }).credits).toEqual(expect.arrayContaining([expect.stringContaining("Lyrics (writing)"), expect.stringContaining("Tune (sound)")]));
+    // A part moves on: the agreement no longer holds, so the song can't be published again until it's agreed again.
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "v2", p_label: "Again", p_author_kind: "creator" }));
+    await expect(publishCreation(db(owner), owner.creatorId, song, { visibility: "unlisted" })).rejects.toThrow();
+    const again = await proposeSong(db(owner), p.id, {});
+    await signSong(db(ana), again, { decision: "approve" });
+    await publishCreation(db(owner), owner.creatorId, song, { visibility: "unlisted" });
   });
 });

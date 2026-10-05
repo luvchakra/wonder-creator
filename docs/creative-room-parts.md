@@ -117,6 +117,19 @@ final".
   aren't in the crew's contributions ledger. It assigns no legal rights by itself; publishing the song (5b) requires an
   agreement that still holds.
 
+## Publishing the song together (step 5b)
+
+* **Once everyone has agreed the credits** (and they still hold), *Listen together* shows the Room's owner *Ready to
+  publish*. *Publish the song* renders the mix as heard on the device, keeps it as the owner's recording, and publishes
+  the song on their page — public, or unlisted for people with the link — with the writing part's words (behind
+  *Lyrics*) and the agreed credits ("Mira · Voice (performance)").
+* **The song is a Creation of its own** — the owner's, of the listen kind — made once and given a new version each time
+  the latest mix is published (`project_songs` links it to the Room; only `song_attach` writes it, only for the Room's
+  owner, their own Creation, never a part, and only once the credits are agreed).
+* **The database refuses a publication of a Room's song whose credits aren't agreed or no longer hold**
+  (`app.song_blocks_publish` in the `published_revisions` insert policy, migration 090). A part that moves on after
+  publishing leaves what was published as it was; publishing again needs the credits agreed again.
+
 ## Rules
 
 * A part's Creation is the member's **own** (they own it; others on the part edit it). Starting is `part_attach`: the
@@ -143,11 +156,11 @@ final".
 | 4a | Listen together: the takes as one (starts, levels, mute), Where it stands, the words, a WAV made on the device | Done |
 | 4b | Notes on a moment: left at the playhead, on the song's timeline, played from, resolved; in the Room's timeline | Done |
 | 5a | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off by everyone named | Done |
-| 5b | Publishing the song together, once the credits are agreed | Not started |
+| 5b | Publishing the song together: the mix as heard, the words and the agreed credits, on the owner's page; refused while the credits don't hold | Done |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`, `…088_mix_notes.sql`, `…089_song_agreement.sql`), `packages/creator-projects/src/parts.ts`
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`, `…088_mix_notes.sql`, `…089_song_agreement.sql`, `…090_song_publish.sql`), `packages/creator-projects/src/parts.ts`
 (+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`, `rooms/[id]/credits-panel.tsx`, `rooms/[id]/song/` with
 `components/audio/use-mix.ts` and `lib/wav.ts`.
 Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `lib/wav.test.ts`, `e2e/parts.spec.ts`, `e2e/play-along.spec.ts`,
-`e2e/listen-together.spec.ts`, `e2e/credits.spec.ts`. Mockups: the owner's canvas
+`e2e/listen-together.spec.ts`, `e2e/credits.spec.ts`, `e2e/publish-song.spec.ts`. Mockups: the owner's canvas
 (4 Oct 2026).

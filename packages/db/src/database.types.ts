@@ -3166,6 +3166,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_songs": {
+                  Row: {
+                    "artifact_id": string,"created_at": string,"created_by": string | null,"project_id": string
+                  }
+                  Insert: {
+                    "artifact_id": string,"created_at"?: string,"created_by"?: string | null,"project_id": string
+                  }
+                  Update: {
+                    "artifact_id"?: string,"created_at"?: string,"created_by"?: string | null,"project_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_songs_artifact_id_fkey"
+      columns: ["artifact_id"]
+isOneToOne: true
+      referencedRelation: "artifacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_songs_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_songs_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: true
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_task_assignees": {
                   Row: {
                     "assigned_at": string,"assigned_by": string | null,"creator_id": string,"task_id": string
@@ -4946,6 +4977,9 @@ isOneToOne: false
 { Args: { "p_limit"?: number,"p_material": string,"p_min_similarity"?: number }; Returns: {
               "material_id": string,"similarity": number
             }[]
+                           },
+"song_attach":
+{ Args: { "p_artifact": string,"p_project": string }; Returns: undefined
                            },
 "song_propose":
 { Args: { "p_credits"?: Json,"p_note"?: string,"p_project": string,"p_shares"?: Json }; Returns: string
