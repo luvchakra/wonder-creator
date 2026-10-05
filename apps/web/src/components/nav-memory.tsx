@@ -37,7 +37,7 @@ function write(list: TrailEntry[]) {
 }
 const pathOf = (p: string) => p.split(/[?#]/)[0]!;
 // A name only, never markup: the title is shown as Back's label ("Back to <title>").
-const pageTitle = () => document.title.replace(/[<>]/g, "").replace(/\s*·\s*Wonder Creator$/, "").trim() || undefined;
+const pageTitle = () => document.title.replace(/</g, "").replace(/>/g, "").replace(/\s*·\s*Wonder Creator$/, "").trim() || undefined;
 
 /** Drop every page under `prefix` from the trail (a Creation or Material deleted, a Huddle left). */
 export function forget(prefix: string) {
