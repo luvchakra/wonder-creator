@@ -65,8 +65,8 @@ and these specifics. Contract: `docs/ui-redesign/palette-spec.md`; implementatio
 * **What can I do next?** — never status. Status belongs in the navbar Context Line (`docs/ui-redesign/context-strip.md`,
   `docs/ui-redesign/ai-context-line.md`).
 * Contextual Palette: **3 primary actions**, then `More…` and `Go to…`; global Palette **4** destinations (Create,
-  Materials, Explore, Me — Home too, away from Home; Huddles is a door in Explore) plus the quiet music leaf (owner, 4 Oct 2026). Create opens the Make a new Creation sheet: Writing · Carousel · Images · Audio (Video and Presentation
-  are not offered there for now), Collaborate with others (a new Creative Room), and a quiet bring-in/capture link
+  Materials, Explore, Me — Home too, away from Home; Huddles is a door in Explore) plus the quiet music leaf (owner, 4 Oct 2026). Create opens the Make a new Creation sheet: Writing · Carousel · Images · Video · Audio · Presentation (each opens
+  its own page; owner, 5 Oct 2026), Collaborate with others (a new Creative Room), and a quiet bring-in/capture link
   (owner, 4 Oct 2026).
 * Deterministic and context-aware: page → lifecycle / media type → permissions → rank. Dangerous, rights, commerce and
   destructive actions are never first level. It hides what the server would refuse; it is not a security boundary.

@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation } from "lucide-react";
+import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation, Clapperboard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -24,6 +24,8 @@ import type { ImageSet } from "@wonder/creator-studio/images";
 import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas";
 import { DeckCanvas, type DeckControls } from "./deck-canvas";
 import type { Deck } from "@wonder/creator-studio/deck";
+import type { Storyboard } from "@wonder/creator-studio/storyboard";
+import { VideoCanvas, type VideoControls } from "./video-canvas";
 import { AloudSheet, CraftSheet } from "./writing-tools";
 import { AudioPanel, type AudioRequest, type AudioTakeView } from "./audio-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
@@ -41,6 +43,7 @@ export function Studio({
   page = "studio",
   images,
   deck = null,
+  video = null,
   audio,
   published = null,
   artifact,
@@ -58,7 +61,9 @@ export function Studio({
   playAlong = null,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
-  page?: "writing" | "images" | "audio" | "presentation" | "studio";
+  page?: "writing" | "images" | "audio" | "presentation" | "video" | "studio";
+  /** The Video page's storyboard and its frames' addresses (creation-pages.md, step 5). */
+  video?: { storyboard: Storyboard; frames: Record<string, string | null> } | null;
   /** The Presentation page's slides (creation-pages.md, step 4). */
   deck?: Deck | null;
   /** Published and reachable: the live link, and whether newer saved words exist here. */
@@ -225,7 +230,7 @@ export function Studio({
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
   // Refine lives in a sheet: the Palette's Refine (and old links) arrive as #creativemind; a revision on the canvas closes it.
-  const writingCanvas = artifact.type !== "carousel" && page !== "images" && page !== "presentation";
+  const writingCanvas = artifact.type !== "carousel" && page !== "images" && page !== "presentation" && page !== "video";
   useEffect(() => {
     if (!writingCanvas && !part) return;
     // The Writing page's own tools arrive the same way from the Palette: #craft (that kind's counts) and #aloud. The hash
@@ -527,6 +532,14 @@ export function Studio({
     setSheet(null);
     deckControls?.[kind]();
   };
+  // The Video page: Write is the primary action, Add shot and Play through the two secondaries; Render under More.
+  const videoPage = page === "video";
+  const hasShots = !!video?.storyboard.shots.length;
+  const [videoControls, setVideoControls] = useState<VideoControls | null>(null);
+  const askVideo = (kind: keyof VideoControls) => {
+    setSheet(null);
+    videoControls?.[kind]();
+  };
   // The Audio page: Record is the primary action, Listen (the page readers would hear) and Download the two secondaries.
   const audioPage = page === "audio";
   const take = audio?.take ?? null;
@@ -715,6 +728,21 @@ export function Studio({
               </a>
             ) : null}
           </div>
+        ) : videoPage ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={() => askVideo("add")} className="inline-flex min-h-11 items-center">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Plus className="size-4 text-ink-muted" aria-hidden />
+                Add shot
+              </span>
+            </button>
+            <button type="button" onClick={() => askVideo("play")} disabled={!hasShots} className="inline-flex min-h-11 items-center disabled:opacity-50">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Clapperboard className="size-4 text-ink-muted" aria-hidden />
+                Play through
+              </span>
+            </button>
+          </div>
         ) : deckPage ? (
           <div className="ml-auto flex items-center gap-1.5">
             <button type="button" onClick={() => askDeck("add")} className="inline-flex min-h-11 items-center">
@@ -838,7 +866,20 @@ export function Studio({
         </section>
       ) : (
         <section aria-label="Editor" className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-          {deckPage && deck ? (
+          {videoPage && video ? (
+            <VideoCanvas
+              artifactId={artifact.id}
+              initial={video.storyboard}
+              frames={video.frames}
+              baseVersionId={base?.id ?? null}
+              controls={setVideoControls}
+              onKept={(v) => {
+                setBase({ id: v.id, number: v.version_number, content: v.content });
+                setContent(v.content);
+                setSavedVersion(v.version_number);
+              }}
+            />
+          ) : deckPage && deck ? (
             <DeckCanvas
               artifactId={artifact.id}
               title={title || artifact.title}
@@ -1145,7 +1186,7 @@ export function Studio({
       {/* In-use visuals (owner board "Fan + Preview Bubble"): a compact strip of the pictures on the table, above the
           Sources pill, in the cover view only. Tapping a picture opens the Working Set on what's In use; + brings more in. */}
       {/* Not on the Images page: its text toolbar sits there, and the Working Table bar already names the sources. */}
-      {mode === "view" && !isCarousel && !imagesPage && !deckPage && !proposal && !showNudge && thumbs.length ? (
+      {mode === "view" && !isCarousel && !imagesPage && !deckPage && !videoPage && !proposal && !showNudge && thumbs.length ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-20 mx-auto flex max-w-3xl">
           <ul className="pointer-events-auto flex items-center gap-1 rounded-xl border border-border-soft bg-surface/85 p-1 shadow-[var(--shadow-card)] backdrop-blur" aria-label="Pictures in use">
             {thumbs.map((t) => (
@@ -1184,6 +1225,14 @@ export function Studio({
             <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
               <Mic className="size-4" aria-hidden />
               {take ? "Record again" : "Record"}
+            </span>
+          </button>
+        ) : videoPage ? (
+          // Write: the Video page's one primary action (Add a shot until there is one).
+          <button type="button" onClick={() => askVideo("write")} className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
+            <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
+              {hasShots ? <PenLine className="size-4" aria-hidden /> : <Plus className="size-4" aria-hidden />}
+              {hasShots ? "Write" : "Add a shot"}
             </span>
           </button>
         ) : deckPage ? (
@@ -1347,6 +1396,17 @@ export function Studio({
                   { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
                   ...suggestRows,
                 ]
+              : videoPage
+              ? [
+                  { label: "Render video", hint: "Make a draft video from the storyboard — when a video provider is connected", act: () => askVideo("render") },
+                  { label: "Export", hint: "The shot list as Markdown, text or a web page", act: () => setSheet("export") },
+                  ...(hasShots ? [{ label: "Publish as link", hint: "Its own page — the shot list, your name", act: () => setSheet("publish") }] : []),
+                  { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+                  { label: "Versions", hint: `v${base?.number ?? 1} is current — every change is a version`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
+                  { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+                  { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                  ...suggestRows,
+                ]
               : deckPage
               ? [
                   { label: "Theme", hint: "Editorial Paper, Cinematic Dark or Soft Gradient", act: () => askDeck("theme") },
@@ -1426,7 +1486,9 @@ export function Studio({
           </ul>
         </DialogContent>
       </Dialog>
-      {imagesPage || deckPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
+      {imagesPage || deckPage || videoPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
+      {/* Export on the Audio and Video pages (the Writing page has its own, below). */}
+      {audioPage || videoPage ? <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={false} /> : null}
       {part ? (
         <>
           {partSheet?.kind === "changes" ? <PartChangesSheet key={partSheet.other.partId} open projectId={part.project.id} other={partSheet.other} onOpenChange={(o) => !o && setPartSheet(null)} /> : null}

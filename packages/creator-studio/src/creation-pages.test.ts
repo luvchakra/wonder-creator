@@ -9,7 +9,8 @@ describe("creation pages", () => {
     expect(creationPath("a1", "poem")).toBe("/creations/a1/write");
     expect(creationPath("a1", "screenplay")).toBe("/creations/a1/write");
     expect(creationPath("a1", "carousel")).toBe("/creations/a1/studio");
-    expect(creationPath("a1", "short_film")).toBe("/creations/a1/studio");
+    expect(creationPath("a1", "short_film")).toBe("/creations/a1/video");
+    expect(creationPath("a1", "storyboard")).toBe("/creations/a1/video");
     expect(hasOwnPage("essay")).toBe(true);
     expect(hasOwnPage("presentation")).toBe(true);
     expect(creationPath("a1", "presentation")).toBe("/creations/a1/deck");

@@ -16,8 +16,8 @@ const MODE_CHIP: Record<OutputMode, keyof typeof KIT.iconChip> = {
   presentation: "file",
 };
 
-/** The formats offered here (owner, 4 Oct 2026: Video and Presentation removed until their pages exist). */
-const OFFERED = new Set<OutputMode>(["writing", "carousel", "image", "audio"]);
+/** The formats offered here: every format, now that each has its own page (owner, 5 Oct 2026: Video and Presentation back). */
+const OFFERED = new Set<OutputMode>(["writing", "carousel", "image", "video", "audio", "presentation"]);
 
 /**
  * Palette › Create (owner, 2 Oct 2026: "on click of create, show all the creation type options"): the formats at once.

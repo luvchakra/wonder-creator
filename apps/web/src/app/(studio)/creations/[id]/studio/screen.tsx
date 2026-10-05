@@ -1,5 +1,5 @@
 import { carouselView, findingsOf, providerReadiness } from "@wonder/creator-brain";
-import { actionsFor, artifactType, audioSetOf, creationPath, deckOf, imageSetOf, lookOf, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
+import { actionsFor, artifactType, audioSetOf, creationPath, deckOf, imageSetOf, storyboardOf, lookOf, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
 import { signedUrlsFor } from "@wonder/creator-library";
 import { partContextFor, partTakes, partWords, type PlayAlong } from "@wonder/creator-projects";
 import { mediaLink } from "@wonder/core/server";
@@ -21,7 +21,7 @@ export type StudioSearch = { action?: string; add?: string; from?: string };
  * keeping what was asked for (?action, ?add, ?from). The canvas is the Creation; the Working Set lives in its
  * StudioSession, loaded by the client so the page never waits on it.
  */
-export async function StudioScreen({ id, search, at }: { id: string; search: StudioSearch; at: "studio" | "write" | "image" | "audio" | "deck" }) {
+export async function StudioScreen({ id, search, at }: { id: string; search: StudioSearch; at: "studio" | "write" | "image" | "audio" | "deck" | "video" }) {
   const { action, add, from } = search;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
@@ -58,6 +58,15 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   }
   // The Presentation page (creation-pages.md, step 4): the deck, or the slides its outline makes.
   const deck = at === "deck" ? deckOf(version?.structured_content, version?.content ?? "") : null;
+  // The Video page (creation-pages.md, step 5): the shots, and an address for each frame.
+  const storyboard = at === "video" ? storyboardOf(version?.structured_content, version?.content ?? "") : null;
+  let frames: Record<string, string | null> = {};
+  const frameIds = [...new Set((storyboard?.shots ?? []).map((x) => x.frame).filter((x): x is string => !!x))];
+  if (frameIds.length) {
+    const { data: mats } = await db.from("creative_materials").select("id, storage_object_id").in("id", frameIds);
+    const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>);
+    frames = Object.fromEntries((mats ?? []).map((m) => [m.id, m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null]));
+  }
   // The Audio page (creation-pages.md, step 3): the kept take, its address and its transcript (or why there isn't one).
   let audioTake: { materialId: string; url: string | null; seconds: number; transcript: string | null; note: string | null; done: boolean } | null = null;
   const take = at === "audio" ? audioSetOf(version?.structured_content).take : null;
@@ -109,8 +118,9 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       {/* The Creation Palette during active work (palette-spec §9.16). */}
       <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own, hasWords: !!version?.content?.trim(), published: !!published, suggestTo: part?.others.find((o) => o.canSuggest)?.title ?? null, ...(at === "write" ? { writingStyle: writingStyleOf(a.artifact_type) } : {}) }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
-        page={at === "write" ? "writing" : at === "image" ? "images" : at === "audio" ? "audio" : at === "deck" ? "presentation" : "studio"}
+        page={at === "write" ? "writing" : at === "image" ? "images" : at === "audio" ? "audio" : at === "deck" ? "presentation" : at === "video" ? "video" : "studio"}
         deck={deck}
+        video={storyboard ? { storyboard, frames } : null}
         audio={at === "audio" ? { take: audioTake } : null}
         images={imageSet ? { set: imageSet, pictures } : null}
         published={published}

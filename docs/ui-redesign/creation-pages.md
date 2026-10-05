@@ -22,7 +22,7 @@ minimal buttons and the best way to handle it. Plan approved the same day ("appr
 | 2 | **Images** `/creations/[id]/image` | Done |
 | 3 | **Audio**: recorder (the voice-note recorder) above the words; Record / Write / Listen; Transcribe when the provider is live; export audio + text; a simple player page as the public link | Done |
 | 4 | **Presentation**: current slide large + strip; Edit slide / Add slide / Present; themes from the named palettes (Editorial Paper, Cinematic Dark, Soft Gradient); speaker notes; export via web-page print | Done |
-| 5 | **Video**: storyboard + script (shots with frame, line, duration); Write / Add shot / Play through (animatic); exports; Render only when a video provider is connected (honest "not connected" otherwise) | Not started |
+| 5 | **Video**: storyboard + script (shots with frame, line, duration); Write / Add shot / Play through (animatic); exports; Render only when a video provider is connected (honest "not connected" otherwise) | Done |
 
 Shared across formats as they arrive: Publish as link, Download everywhere, one cover/background component, one
 text-on-image component.
@@ -44,8 +44,26 @@ text-on-image component.
   a heading per slide, never the notes — for search, export and reading. A save against an older version is refused.
 - **Presentations written before the page** (an outline in plain text) open as slides: every heading, "Slide N" line or
   `---` rule starts one.
-- Not offered in *Make a new Creation* yet (the owner's choice, 4 Oct 2026); decks made elsewhere — Change format,
-  CreativeMind, imports — open here.
+- Offered in *Make a new Creation* again (owner, 5 Oct 2026), with Video.
+
+## Video (step 5)
+
+- **The page** (`/creations/[id]/video`, for short_film · storyboard · shot_list · trailer · reel_concept): the
+  storyboard. The current shot large — its frame (a picture of the creator's), or a painted card with its line until
+  there is one — with its number and length, the line beneath, and the shots in a strip with the runtime
+  ("12 shots, 0:48"). **Write** is the one primary action (Add a shot until there is one): the line (what's seen or
+  said), the camera and staging, how long it holds (− / +, 1–60s), and **Choose a frame** from the creator's own
+  pictures; Move earlier · Move later · Delete shot. **Add shot** and **Play through** are the two secondaries.
+- **Play through** is the animatic: each frame held for its length with its line beneath, a progress line for the
+  whole; arrows and space move and pause; Escape ends it on the shot reached.
+- **Render video** (More) says plainly that video rendering isn't connected — no fake provider; the storyboard, shot
+  list and animatic are the work until one is. **Export** gives the shot list as Markdown, text or a web page.
+- **Every change is a version**, autosaved (`saveStoryboard`, `POST /api/v1/artifacts/:id/storyboard`): the
+  storyboard in `structured_content` (`storyboardOf` / `storyboardSchema`, `@wonder/creator-studio/storyboard`) and a
+  shot list as text. A frame new to the Creation must be the saver's own picture and gains a lineage edge; a save
+  against an older version is refused.
+- **Scripts written before the page** open as shots: scene headings (INT./EXT.), "Shot N" lines and headings each start
+  one (a length named in it, "3s", is kept); otherwise each paragraph is a shot.
 
 ## Writing (step 1)
 
