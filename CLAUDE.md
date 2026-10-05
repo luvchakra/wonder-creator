@@ -157,6 +157,19 @@ posts, shared Creations, Huddles), enforced in the database. Home has a **Commun
 No likes, follower counts or ranking. Contract: `docs/communities.md`. Implementation:
 `packages/creator-community/src/communities.ts`, `/api/v1/communities`, `/communities/[id]`.
 
+## Back goes where you came from (owner's standing instruction, 5 Oct 2026)
+
+> "I opened the writing page from the creative room, so it should take me back to the creative room. The app should
+> remember the context."
+
+Back is a **return, not a parent link**. Every Back arrow and "← Somewhere" link goes to the page the creator came from
+in this tab (the per-tab trail, `NavMemory`), skipping pages that only forward; then an explicit `?from=` on the link;
+only then the page's natural home — and the home follows context (a part's Creation → its Room, never a generic list
+when something more specific is true). One component, `BackLink`, with an accessible name that says where it goes
+("Back to the Creative Room"). Deleting or leaving something drops its pages from the trail. Done is not Back; the
+Palette's `Go to…` and the top bar start new journeys. Never hard-wire a Back to a parent page. Contract:
+`docs/ui-redesign/back-navigation.md`.
+
 ## Creative Room parts (owner brief, 4 Oct 2026)
 
 Making one thing together — three creators, one song: a Room says what the work is **made of** (parts: Lyrics · Tune ·
