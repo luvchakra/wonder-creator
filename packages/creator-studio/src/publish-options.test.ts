@@ -17,6 +17,10 @@ describe("CreatorPublish experiences (§4–5)", () => {
     // A short film with no film yet is read as its words.
     expect(experiencesFor("short_film", snap({ content: "treatment" }))).toEqual(["read"]);
     expect(experiencesFor("spoken_word", snap({ content: "w", media: { kind: "audio", objectId: "a", title: "t" } }))[0]).toBe("listen");
+    // A Presentation is viewed as its slides, and says how many.
+    const deck = { theme: "paper" as const, slides: [{ title: "Hello", body: "", objectId: null }, { title: "Why", body: "- a", objectId: "o" }] };
+    expect(experiencesFor("presentation", snap({ content: "## Hello", deck }))[0]).toBe("view");
+    expect(descriptorFor("presentation", "view", snap({ content: "## Hello", deck }))).toBe("Presentation · 2 slides");
   });
 
   it("describes a work the way its card should (§17)", () => {

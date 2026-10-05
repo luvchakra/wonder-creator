@@ -44,6 +44,12 @@ text-on-image component.
   a heading per slide, never the notes — for search, export and reading. A save against an older version is refused.
 - **Presentations written before the page** (an outline in plain text) open as slides: every heading, "Slide N" line or
   `---` rule starts one.
+- **A picture on a slide** (owner, 5 Oct 2026): *Add a picture* in the slide's editor chooses one of the creator's own
+  pictures. With words, it sits on the right; with none (or on the title slide), it fills the slide behind the title
+  with a scrim. A picture new to the deck must be the saver's own and gains a lineage edge.
+- **Published, it reads as slides** (owner, 5 Oct 2026): the public page shows every slide in its theme — the words and
+  the pictures, never the speaker notes ("Presentation · N slides"). The same slide renderer
+  (`components/deck/slide-view.tsx`) draws the page, the strip, Present, print and the published page.
 - Offered in *Make a new Creation* again (owner, 5 Oct 2026), with Video.
 
 ## Video (step 5)

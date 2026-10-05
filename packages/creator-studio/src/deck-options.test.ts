@@ -3,8 +3,10 @@ import { blankSlide, deckOf, deckText, MAX_SLIDES } from "./deck-options";
 
 describe("Presentation decks", () => {
   it("read a saved deck as it is", () => {
-    const deck = { kind: "deck", theme: "cinematic", slides: [{ id: "s1abc", title: "Hello", body: "World", notes: "Smile" }] };
+    const deck = { kind: "deck", theme: "cinematic", slides: [{ id: "s1abc", title: "Hello", body: "World", notes: "Smile", image: "6f9619ff-8b86-4011-b42d-00cf4fc964ff" }] };
     expect(deckOf(deck)).toEqual(deck);
+    // Decks saved before slides held pictures read with none.
+    expect(deckOf({ ...deck, slides: [{ id: "s1abc", title: "Hello", body: "World", notes: "Smile" }] }).slides[0]!.image).toBeNull();
   });
 
   it("open an outline as slides: headings, Slide N lines and rules each start one", () => {

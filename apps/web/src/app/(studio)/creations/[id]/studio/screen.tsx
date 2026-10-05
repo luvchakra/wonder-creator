@@ -58,6 +58,13 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   }
   // The Presentation page (creation-pages.md, step 4): the deck, or the slides its outline makes.
   const deck = at === "deck" ? deckOf(version?.structured_content, version?.content ?? "") : null;
+  let slidePictures: Record<string, string | null> = {};
+  const slideImageIds = [...new Set((deck?.slides ?? []).map((x) => x.image).filter((x): x is string => !!x))];
+  if (slideImageIds.length) {
+    const { data: mats } = await db.from("creative_materials").select("id, storage_object_id").in("id", slideImageIds);
+    const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>);
+    slidePictures = Object.fromEntries((mats ?? []).map((m) => [m.id, m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null]));
+  }
   // The Video page (creation-pages.md, step 5): the shots, and an address for each frame.
   const storyboard = at === "video" ? storyboardOf(version?.structured_content, version?.content ?? "") : null;
   let frames: Record<string, string | null> = {};
@@ -119,7 +126,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       <PaletteScope context={{ page: "studio", entityType: "creation", permissions: ["edit", "publish", "rights", "collaborate", "invite"], lifecycle: a.status === "in_review" ? "review" : a.status === "final" ? "finished" : a.status === "published" ? "published" : "in-progress", ids: { artifactId: id }, facts: { format: def.format, workPath: own, hasWords: !!version?.content?.trim(), published: !!published, suggestTo: part?.others.find((o) => o.canSuggest)?.title ?? null, ...(at === "write" ? { writingStyle: writingStyleOf(a.artifact_type) } : {}) }, strip: { version: version?.version_number, visibility: a.privacy as "private" | "shared" | "public" } }} />
       <Studio
         page={at === "write" ? "writing" : at === "image" ? "images" : at === "audio" ? "audio" : at === "deck" ? "presentation" : at === "video" ? "video" : "studio"}
-        deck={deck}
+        deck={deck ? { deck, pictures: slidePictures } : null}
         video={storyboard ? { storyboard, frames } : null}
         audio={at === "audio" ? { take: audioTake } : null}
         images={imageSet ? { set: imageSet, pictures } : null}

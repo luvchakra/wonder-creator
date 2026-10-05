@@ -1,4 +1,4 @@
-import { expect, test, uid } from "./fixtures";
+import { expect, pngBytes, sendItem, test, uid, uploadViaInbox } from "./fixtures";
 
 // Creation pages, step 4 (docs/ui-redesign/creation-pages.md): a Presentation opens on its own page — the current slide
 // large and the strip; Edit slide, Add slide, Present; a theme from the named palettes; speaker notes; print to PDF.
@@ -71,6 +71,30 @@ test.describe("Presentation page", () => {
     await page.getByRole("dialog", { name: "Save, version and publish" }).getByRole("button", { name: /^Print or save as PDF/ }).click();
     expect(await page.evaluate(() => (window as unknown as { printed: string | null }).printed)).toContain("printing-deck");
     await expect(page.locator(".deck-print > *")).toHaveCount(4);
+
+    // A picture on a slide: one of the creator's own, beside the words.
+    const pic = `slide-${uid()}`;
+    await uploadViaInbox(page, [{ name: `${pic}.png`, mimeType: "image/png", buffer: pngBytes(64) }]);
+    await expect(sendItem(page, pic).getByLabel("Ready")).toBeVisible({ timeout: 30_000 });
+    await page.goto(`/creations/${id}/deck`);
+    await slides.getByRole("button", { name: "Slide 2: Why we wait" }).click();
+    await page.getByRole("button", { name: "Edit slide" }).click();
+    await editor.getByRole("button", { name: "Add a picture" }).click();
+    await page.getByRole("dialog", { name: "A picture for this slide" }).getByRole("button", { name: /^Use / }).first().click();
+    await expect(editor.getByRole("button", { name: "Change the picture" })).toBeVisible();
+    await expect(editor.getByText("Saved")).toBeVisible();
+    await expect(editor.locator("img").first()).toBeAttached();
+
+    // Published, it reads as slides — the words and the picture, never the speaker notes.
+    const pub = await page.request.post(`/api/v1/artifacts/${id}/publication`, { data: { visibility: "unlisted" } });
+    expect(pub.ok()).toBe(true);
+    const { publication } = (await pub.json()) as { publication: { slug: string } };
+    await page.goto(`/p/${creator.handle}/${publication.slug}`);
+    const published = page.getByRole("list", { name: "Slides" });
+    await expect(published.locator(":scope > li")).toHaveCount(4);
+    await expect(published.getByRole("listitem", { name: "Slide 2: Why we wait" }).locator("img")).toBeAttached();
+    await expect(page.getByText("Pause here.")).toHaveCount(0);
+    await expect(page.getByText(/^A presentation by/)).toBeVisible();
 
     // A save made against an older version is refused.
     const stale = await page.request.post(`/api/v1/artifacts/${id}/deck`, { data: { deck: { kind: "deck", theme: "paper", slides: [] }, baseVersionId: "00000000-0000-0000-0000-000000000000" } });

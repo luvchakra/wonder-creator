@@ -57,7 +57,7 @@ const card = (handle: string, c: RawCard): PublicCard => ({ ...c, coverUrl: link
 
 /** Every storage object a snapshot names. */
 export function snapshotObjects(s: PublishedSnapshot): string[] {
-  const ids = [s.coverObjectId, s.media?.objectId, s.media?.posterObjectId, s.voice?.objectId, ...(s.slides ?? []).map((x) => x.objectId), ...(s.images ?? []).map((x) => x.objectId)];
+  const ids = [s.coverObjectId, s.media?.objectId, s.media?.posterObjectId, s.voice?.objectId, ...(s.slides ?? []).map((x) => x.objectId), ...(s.images ?? []).map((x) => x.objectId), ...(s.deck?.slides ?? []).map((x) => x.objectId)];
   for (const b of s.blocks ?? []) if (b.kind !== "text") ids.push(b.objectId, b.kind === "video" ? b.posterObjectId : null);
   return [...new Set(ids.filter((x): x is string => !!x))];
 }
