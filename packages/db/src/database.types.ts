@@ -3031,13 +3031,13 @@ isOneToOne: true
                   ]
                 },"project_parts": {
                   Row: {
-                    "artifact_id": string | null,"artifact_type": string,"created_at": string,"created_by": string,"final_at": string | null,"final_by": string | null,"id": string,"kind": string,"position": number,"project_id": string,"status": string,"title": string,"updated_at": string
+                    "artifact_id": string | null,"artifact_type": string,"created_at": string,"created_by": string,"credit": string,"final_at": string | null,"final_by": string | null,"id": string,"kind": string,"position": number,"project_id": string,"status": string,"title": string,"updated_at": string
                   }
                   Insert: {
-                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by": string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id": string,"status"?: string,"title": string,"updated_at"?: string
+                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by": string,"credit": string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id": string,"status"?: string,"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by"?: string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                    "artifact_id"?: string | null,"artifact_type"?: string,"created_at"?: string,"created_by"?: string,"credit"?: string,"final_at"?: string | null,"final_by"?: string | null,"id"?: string,"kind"?: string,"position"?: number,"project_id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3111,6 +3111,56 @@ isOneToOne: true
     },{
       foreignKeyName: "project_rights_policies_updated_by_fkey"
       columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_song_agreements": {
+                  Row: {
+                    "agreed_at": string | null,"created_at": string,"id": string,"lines": NonNullable<Json>,"note": string | null,"project_id": string,"proposed_by": string | null,"status": string,"versions": NonNullable<Json>
+                  }
+                  Insert: {
+                    "agreed_at"?: string | null,"created_at"?: string,"id"?: string,"lines": NonNullable<Json>,"note"?: string | null,"project_id": string,"proposed_by"?: string | null,"status"?: string,"versions": NonNullable<Json>
+                  }
+                  Update: {
+                    "agreed_at"?: string | null,"created_at"?: string,"id"?: string,"lines"?: NonNullable<Json>,"note"?: string | null,"project_id"?: string,"proposed_by"?: string | null,"status"?: string,"versions"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_song_agreements_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_song_agreements_proposed_by_fkey"
+      columns: ["proposed_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_song_signoffs": {
+                  Row: {
+                    "agreement_id": string,"created_at": string,"creator_id": string,"decision": string,"note": string | null
+                  }
+                  Insert: {
+                    "agreement_id": string,"created_at"?: string,"creator_id": string,"decision": string,"note"?: string | null
+                  }
+                  Update: {
+                    "agreement_id"?: string,"created_at"?: string,"creator_id"?: string,"decision"?: string,"note"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_song_signoffs_agreement_id_fkey"
+      columns: ["agreement_id"]
+isOneToOne: false
+      referencedRelation: "project_song_agreements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_song_signoffs_creator_id_fkey"
+      columns: ["creator_id"]
 isOneToOne: false
       referencedRelation: "creators"
       referencedColumns: ["id"]
@@ -4896,6 +4946,12 @@ isOneToOne: false
 { Args: { "p_limit"?: number,"p_material": string,"p_min_similarity"?: number }; Returns: {
               "material_id": string,"similarity": number
             }[]
+                           },
+"song_propose":
+{ Args: { "p_credits"?: Json,"p_note"?: string,"p_project": string,"p_shares"?: Json }; Returns: string
+                           },
+"song_sign":
+{ Args: { "p_agreement": string,"p_decision": string,"p_note"?: string }; Returns: string
                            },
 "source_secret_read":
 { Args: { "p_connection": string,"p_creator": string }; Returns: string

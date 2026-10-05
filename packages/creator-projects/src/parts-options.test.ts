@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, PART_TEMPLATE_KEYS, heardEarlier, mixLength, mixTrackOf, offsetLabel, placeAt } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, PART_TEMPLATE_KEYS, equalShares, heardEarlier, mixLength, mixTrackOf, offsetLabel, placeAt } from "./parts-options";
 
 describe("Parts templates", () => {
   it("lay out distinct, well-formed parts of known kinds", () => {
@@ -66,5 +66,18 @@ describe("Notes on a moment: which takes they were left on", () => {
     expect(heardEarlier(heard, [{ partId: "tune", versionNumber: 3 }, { partId: "voice", versionNumber: 1 }])).toBe("on Tune v2 · Voice v1");
     // A take no longer heard at all isn't "moved on".
     expect(heardEarlier(heard, [{ partId: "voice", versionNumber: 1 }])).toBeNull();
+  });
+});
+
+describe("Completion: equal shares", () => {
+  it("split 100 to the cent, the leftover cents to the first people", () => {
+    expect(equalShares(3)).toEqual([33.34, 33.33, 33.33]);
+    expect(equalShares(4)).toEqual([25, 25, 25, 25]);
+    expect(equalShares(7).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+    expect(equalShares(1)).toEqual([100]);
+    expect(equalShares(0)).toEqual([]);
+  });
+  it("every template part says what it is credited as", () => {
+    expect(PART_TEMPLATES.song.parts.map((p) => p.credit)).toEqual(["writing", "sound", "performance"]);
   });
 });

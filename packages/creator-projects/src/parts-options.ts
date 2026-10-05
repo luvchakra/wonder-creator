@@ -12,15 +12,22 @@ export const PART_KIND_LABEL: Record<PartKind, string> = { writing: "Writing", a
 /** What a part's Creation is when nothing more specific is chosen: the kind's own page. */
 export const DEFAULT_ARTIFACT_TYPE: Record<PartKind, string> = { writing: "prose", audio: "song_concept", image: "photo_essay", video: "film_treatment", other: "prose" };
 
+/** What a part is credited as (step 5): Lyrics → writing, Tune → sound, Voice → performance. */
+export const PART_CREDITS = ["writing", "sound", "performance", "design", "production", "other"] as const;
+export type PartCredit = (typeof PART_CREDITS)[number];
+export const PART_CREDIT_LABEL: Record<PartCredit, string> = { writing: "Writing", sound: "Sound", performance: "Performance", design: "Design", production: "Production", other: "Other" };
+export const DEFAULT_CREDIT: Record<PartKind, PartCredit> = { writing: "writing", audio: "sound", image: "design", video: "production", other: "other" };
+
 export interface PartTemplatePart {
   title: string;
   kind: PartKind;
   artifactType: string;
+  credit: PartCredit;
 }
 export const PART_TEMPLATES = {
-  song: { label: "Song", hint: "Lyrics · Tune · Voice", parts: [{ title: "Lyrics", kind: "writing", artifactType: "lyrics" }, { title: "Tune", kind: "audio", artifactType: "song_concept" }, { title: "Voice", kind: "audio", artifactType: "song_concept" }] },
-  podcast: { label: "Podcast episode", hint: "Script · Host · Edit", parts: [{ title: "Script", kind: "writing", artifactType: "narration" }, { title: "Host", kind: "audio", artifactType: "podcast_concept" }, { title: "Edit", kind: "audio", artifactType: "sound_design" }] },
-  illustrated_story: { label: "Illustrated story", hint: "Words · Pictures", parts: [{ title: "Words", kind: "writing", artifactType: "story" }, { title: "Pictures", kind: "image", artifactType: "photo_essay" }] },
+  song: { label: "Song", hint: "Lyrics · Tune · Voice", parts: [{ title: "Lyrics", kind: "writing", artifactType: "lyrics", credit: "writing" }, { title: "Tune", kind: "audio", artifactType: "song_concept", credit: "sound" }, { title: "Voice", kind: "audio", artifactType: "song_concept", credit: "performance" }] },
+  podcast: { label: "Podcast episode", hint: "Script · Host · Edit", parts: [{ title: "Script", kind: "writing", artifactType: "narration", credit: "writing" }, { title: "Host", kind: "audio", artifactType: "podcast_concept", credit: "performance" }, { title: "Edit", kind: "audio", artifactType: "sound_design", credit: "production" }] },
+  illustrated_story: { label: "Illustrated story", hint: "Words · Pictures", parts: [{ title: "Words", kind: "writing", artifactType: "story", credit: "writing" }, { title: "Pictures", kind: "image", artifactType: "photo_essay", credit: "design" }] },
 } as const satisfies Record<string, { label: string; hint: string; parts: readonly PartTemplatePart[] }>;
 export type PartTemplateKey = keyof typeof PART_TEMPLATES;
 export const PART_TEMPLATE_KEYS = Object.keys(PART_TEMPLATES) as PartTemplateKey[];
@@ -39,6 +46,7 @@ export interface PartView {
   title: string;
   kind: PartKind;
   artifactType: string;
+  credit: PartCredit;
   position: number;
   status: PartStatus;
   artifactId: string | null;
@@ -182,4 +190,35 @@ export function heardEarlier(heard: MixNote["heard"], now: Array<{ partId: strin
     return n && n.versionNumber !== h.versionNumber;
   });
   return moved ? `on ${heard.map((h) => `${h.title} v${h.versionNumber}`).join(" · ")}` : null;
+}
+
+/** Equal shares for n people, in percent to two decimals, adding up to exactly 100 (the first get the leftover cents). */
+export function equalShares(n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor(10_000 / n);
+  const extra = 10_000 % n;
+  return Array.from({ length: n }, (_, i) => (base + (i < extra ? 1 : 0)) / 100);
+}
+
+/** The credits and shares for the work (step 5a), as proposed and signed off. */
+export interface SongAgreement {
+  id: string;
+  status: "open" | "agreed";
+  /** Every part is still the version agreed to; false once one moves on (propose again). */
+  holds: boolean;
+  /** The parts that moved on since ("Lyrics"). */
+  moved: string[];
+  proposedBy: { id: string; name: string } | null;
+  note: string | null;
+  createdAt: string;
+  agreedAt: string | null;
+  lines: Array<{
+    creatorId: string;
+    name: string;
+    percent: number;
+    parts: Array<{ partId: string; title: string; credit: PartCredit }>;
+    decision: "approve" | "object" | null;
+    note: string | null;
+  }>;
+  versions: Array<{ partId: string; title: string; versionNumber: number }>;
 }

@@ -18,12 +18,15 @@ import {
   mixNotes,
   partTakes,
   partWords,
+  proposeSong,
   partsTimeline,
   respondToCrew,
   resolveMixNote,
   respondToPart,
   setPartFinal,
   setPartMix,
+  signSong,
+  songAgreement,
   startCrew,
   suggestToPart,
   updatePart,
@@ -314,5 +317,60 @@ describe("parts: who sees and does what", () => {
     expectDenied(await owner.client.rpc("mix_note_add", { p_project: p.id, p_at_ms: -1, p_body: "x" }));
     expectDenied(await owner.client.rpc("mix_note_add", { p_project: p.id, p_at_ms: 0, p_body: "   " }));
     expect((await mixNotes(db(owner), p.id, owner.creatorId, true)).map((n) => n.id)).toEqual([deeNote]);
+  });
+
+  it("completion: once every part is final, the owner proposes credits and equal shares; everyone signs off", async () => {
+    const { p, lyrics, tune, voice } = await songRoom();
+    await claimPart(db(owner), lyrics.id);
+    await claimPart(db(ana), tune.id);
+    await inviteToPart(db(owner), voice.id, { creatorId: dee.creatorId });
+    await respondToPart(db(dee), voice.id, true);
+    // Each part made and called final by its people.
+    const arts: Record<string, string> = {};
+    for (const [who, part, type] of [[owner, lyrics, "lyrics"], [ana, tune, "song_concept"], [dee, voice, "song_concept"]] as const) {
+      const art = await createArtifact(who, { title: `Platform 3 · ${part.title}`, artifact_type: type, category: part.kind === "writing" ? "writing" : "audio" });
+      await attachPartArtifact(db(who), part.id, art);
+      expectOk(await who.client.rpc("create_artifact_version", { p_artifact_id: art, p_content: `${part.title} v1`, p_label: "First", p_author_kind: "creator" }));
+      arts[part.id] = art;
+    }
+    // Not before every part is final.
+    await setPartFinal(db(owner), lyrics.id, true);
+    await setPartFinal(db(ana), tune.id, true);
+    await expect(proposeSong(db(owner), p.id, {})).rejects.toThrow();
+    await setPartFinal(db(dee), voice.id, true);
+    // Only the owner or admins propose.
+    await expect(proposeSong(db(ana), p.id, {})).rejects.toThrow();
+    const first = await proposeSong(db(owner), p.id, {});
+    const g = (await songAgreement(db(dee), p.id))!;
+    expect(g.id).toBe(first);
+    expect(g.status).toBe("open");
+    expect(g.lines.map((l) => [l.creatorId, l.percent, l.parts.map((x) => `${x.title}:${x.credit}`).join(), l.decision])).toEqual([
+      [owner.creatorId, 33.34, "Lyrics:writing", "approve"],
+      [ana.creatorId, 33.33, "Tune:sound", null],
+      [dee.creatorId, 33.33, "Voice:performance", null],
+    ]);
+    expect(await songAgreement(db(cy), p.id)).toBeNull();
+    // Only the people named sign; an objection says why; everyone signing makes it agreed.
+    await expect(signSong(db(cy), first, { decision: "approve" })).rejects.toThrow();
+    await expect(signSong(db(ana), first, { decision: "object" })).rejects.toThrow();
+    expect(await signSong(db(ana), first, { decision: "object", note: "I'd like Tune credited as music and lyrics" })).toBe("open");
+    expect((await songAgreement(db(owner), p.id))!.lines[1]).toMatchObject({ decision: "object", note: "I'd like Tune credited as music and lyrics" });
+    expect(await signSong(db(ana), first, { decision: "approve" })).toBe("open");
+    expect(await signSong(db(dee), first, { decision: "approve" })).toBe("agreed");
+    expect((await songAgreement(db(ana), p.id))!.status).toBe("agreed");
+    await expect(signSong(db(dee), first, { decision: "object", note: "Changed my mind" })).rejects.toThrow();
+    // Proposing again replaces it; shares must name everyone and add up to 100.
+    await expect(proposeSong(db(owner), p.id, { shares: { [owner.creatorId]: 50, [ana.creatorId]: 25 } })).rejects.toThrow();
+    await expect(proposeSong(db(owner), p.id, { shares: { [owner.creatorId]: 50, [ana.creatorId]: 25, [dee.creatorId]: 20 } })).rejects.toThrow();
+    const second = await proposeSong(db(owner), p.id, { shares: { [owner.creatorId]: 50, [ana.creatorId]: 25, [dee.creatorId]: 25 }, credits: { [tune.id]: "writing" } });
+    const g2 = (await songAgreement(db(owner), p.id))!;
+    expect([g2.id, g2.status, g2.lines.map((l) => l.percent), g2.lines[1]!.parts[0]!.credit]).toEqual([second, "open", [50, 25, 25], "writing"]);
+    // A part that moves on means proposing again: no one can sign what no longer stands.
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: arts[tune.id]!, p_content: "Tune v2", p_label: "Again", p_author_kind: "creator" }));
+    expect((await songAgreement(db(owner), p.id))!).toMatchObject({ holds: false, moved: ["Tune"] });
+    await expect(signSong(db(dee), second, { decision: "approve" })).rejects.toThrow();
+    // Only through the functions.
+    expectDenied(await owner.client.from("project_song_agreements").update({ status: "agreed" }).eq("id", second));
+    expectDenied(await owner.client.from("project_song_signoffs").insert({ agreement_id: second, creator_id: dee.creatorId, decision: "approve" }));
   });
 });

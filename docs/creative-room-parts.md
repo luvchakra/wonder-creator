@@ -99,6 +99,24 @@ final".
 * **Publishing the song moves to step 5**: a song made of other people's takes is published only with their sign-off,
   which step 5 brings (credits, shares, sign-off, publish together).
 
+## Completion: credits, shares, sign-off (step 5a)
+
+* **Once every part is final**, the Room shows *Credits & shares*. The Room's owner or admins propose them: each
+  person on a part is credited for it — what a part is credited as comes from the part (Lyrics → writing, Tune →
+  sound, Voice → performance; set by the template, changeable in the proposal) — and **shares are equal per person**
+  (three people, 33.34 · 33.33 · 33.33, to the cent) unless the proposer changes them, in which case they name everyone
+  on the work and add up to 100. A short note may go with it.
+* **Everyone named signs off**, or says what they'd change (an objection needs a line saying why; the owner sees it and
+  can propose again). It is **agreed** when all of them have signed off. A proposer who is on the work has signed by
+  proposing. People named hear about it in their notifications ("Sign off on the credits for “Platform 3”").
+* **What was agreed to is recorded**: the parts' versions at the time. A part that moves on afterwards means the
+  agreement no longer holds ("Tune moved on since this was agreed") and nobody can sign a proposal that no longer
+  stands; the owner proposes again, which replaces it. Agreements are read by whoever sees the Room, written only
+  through `song_propose` / `song_sign` (`project_song_agreements`, `project_song_signoffs`, migration 089).
+* This is the Room's own record of the work's credits and shares: people invited to a single part are in it, as they
+  aren't in the crew's contributions ledger. It assigns no legal rights by itself; publishing the song (5b) requires an
+  agreement that still holds.
+
 ## Rules
 
 * A part's Creation is the member's **own** (they own it; others on the part edit it). Starting is `part_attach`: the
@@ -124,11 +142,12 @@ final".
 | 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Done |
 | 4a | Listen together: the takes as one (starts, levels, mute), Where it stands, the words, a WAV made on the device | Done |
 | 4b | Notes on a moment: left at the playhead, on the song's timeline, played from, resolved; in the Room's timeline | Done |
-| 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, and publishing the song together | Not started |
+| 5a | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off by everyone named | Done |
+| 5b | Publishing the song together, once the credits are agreed | Not started |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`, `…088_mix_notes.sql`), `packages/creator-projects/src/parts.ts`
-(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`, `rooms/[id]/song/` with
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`, `…088_mix_notes.sql`, `…089_song_agreement.sql`), `packages/creator-projects/src/parts.ts`
+(+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`, `rooms/[id]/credits-panel.tsx`, `rooms/[id]/song/` with
 `components/audio/use-mix.ts` and `lib/wav.ts`.
 Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `lib/wav.test.ts`, `e2e/parts.spec.ts`, `e2e/play-along.spec.ts`,
-`e2e/listen-together.spec.ts`. Mockups: the owner's canvas
+`e2e/listen-together.spec.ts`, `e2e/credits.spec.ts`. Mockups: the owner's canvas
 (4 Oct 2026).

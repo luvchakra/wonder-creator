@@ -4,7 +4,7 @@ import { liveCards } from "@wonder/creator-huddle";
 import { inviteThreadsWaiting, myCrewInvites, unreadMessages } from "@wonder/creator-projects";
 import type { Db } from "@wonder/db";
 
-export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim" | "message" | "testimonial" | "testimonial_shown";
+export type NotificationKind = "proposal" | "join_request" | "huddle_invite" | "intake_failed" | "run_active" | "run_unfinished" | "license_request" | "license_response" | "shared_with_you" | "crew_invite" | "crew_question" | "proposal_review" | "proposal_decided" | "collaborator_added" | "rights_claim" | "message" | "testimonial" | "testimonial_shown" | "song_signoff";
 
 export interface Notification {
   id: string;
@@ -181,6 +181,22 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       out.push({ id: `testimonial:${t.id}`, kind: "testimonial", title: `${writer} wrote you a testimonial`, detail: "Read it, then show it or keep it private", href: "/me", at: t.created_at, actor: { id: t.from_creator_id, name: writer } });
     } else if (receiver?.handle) {
       out.push({ id: `testimonial-shown:${t.id}`, kind: "testimonial_shown", title: `${receiver.display_name} is showing your testimonial`, detail: null, href: `/creators/${receiver.handle}`, at: t.decided_at ?? t.created_at });
+    }
+  }
+  // Credits and shares waiting for your sign-off (creative-room-parts.md, step 5a).
+  const { data: songs } = await db
+    .from("project_song_agreements")
+    .select("id, project_id, created_at, projects(title)")
+    .eq("status", "open")
+    // jsonb containment needs the JSON itself (an array here would be sent as a Postgres array literal).
+    .filter("lines", "cs", JSON.stringify([{ creatorId }]))
+    .limit(10);
+  if (songs?.length) {
+    const { data: mine } = await db.from("project_song_signoffs").select("agreement_id, decision").eq("creator_id", creatorId).in("agreement_id", songs.map((g) => g.id));
+    for (const g of songs) {
+      if ((mine ?? []).some((m) => m.agreement_id === g.id && m.decision === "approve")) continue;
+      const title = (g.projects as { title: string } | null)?.title ?? "a Creative Room";
+      out.push({ id: `song:${g.id}`, kind: "song_signoff", title: `Sign off on the credits for “${title}”`, detail: "Who's credited for what, and the shares", href: `/rooms/${g.project_id}#credits`, at: g.created_at });
     }
   }
   for (const c of crewInvites) {

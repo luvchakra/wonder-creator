@@ -1,6 +1,6 @@
 "use client";
 import { clockOf } from "@wonder/creator-studio/audio";
-import { PART_KINDS, PART_KIND_LABEL, type PartEventView, type PartKind, type PartView } from "@wonder/creator-projects/parts-options";
+import { PART_KINDS, PART_KIND_LABEL, type PartEventView, type PartKind, type PartView, type SongAgreement } from "@wonder/creator-projects/parts-options";
 import { Avatar, Button, Dialog, DialogContent, Field, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
 import { ChevronRight, Headphones, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { CreatorPicker } from "@/components/creator-picker";
 import { api, errorMessage } from "@/lib/client";
+import { CreditsPanel } from "./credits-panel";
 
 /**
  * The Room's parts (docs/creative-room-parts.md): what the joint work is made of, who's on each, where it stands, and
@@ -27,11 +28,13 @@ export interface PartsData {
   excerpt: { partTitle: string; lines: string[] } | null;
   /** Some part has a kept take the viewer may hear: Listen together (step 4). */
   listenable: boolean;
+  /** The credits and shares, proposed or agreed (step 5a). */
+  agreement: SongAgreement | null;
 }
 
 const DOT: Record<PartView["status"], string> = { open: "border-2 border-border bg-transparent", in_rounds: "bg-accent", final: "bg-success-ink" };
 
-export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt, listenable }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
+export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt, listenable, agreement }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +139,8 @@ export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, mana
           {error}
         </p>
       ) : null}
+
+      <CreditsPanel projectId={projectId} viewerId={viewerId} manages={manages} parts={parts} agreement={agreement} />
 
       <h3 className="pt-1 text-[15px] font-semibold text-ink">Where it stands</h3>
       <ul aria-label="Where it stands" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/95">
