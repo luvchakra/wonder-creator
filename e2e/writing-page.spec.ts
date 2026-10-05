@@ -108,7 +108,7 @@ test.describe("Preview", () => {
     await expect(page.getByText(/^Published/)).toBeVisible();
     await expect(page.getByRole("button", { name: /Copy link/ })).toBeVisible();
     // Back on the Writing page, the link is right there.
-    await page.getByRole("link", { name: "Back to writing" }).click();
+    await page.getByRole("link", { name: /^Back to / }).click();
     await expect(page).toHaveURL(new RegExp(`/creations/${art.id}/write$`));
     await expect(page.getByRole("status").filter({ hasText: "Published" })).toContainText(`/p/${creator.handle}/lantern-${tag.toLowerCase()}`);
   });

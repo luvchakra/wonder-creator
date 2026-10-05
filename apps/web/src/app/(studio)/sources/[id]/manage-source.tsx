@@ -1,7 +1,7 @@
 "use client";
 import type { Provider } from "@wonder/creator-sources";
 import { Button, ConfirmDialog, KIT, KitArt, Segmented, Switch } from "@wonder/ui";
-import { ChevronLeft, Lock, RefreshCw, Trash2 } from "lucide-react";
+import { Lock, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { RelativeTime } from "@/components/client-time";
 import { SourceIcon, phaseText } from "@/components/sources/source-bits";
 import { useSync } from "@/components/sources/use-sync";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 const WHAT: Record<Provider, string> = {
   native_notes: "Your notes and ideas from the last six months, then whatever's new each time you sync. They already live in Wonder Creator; syncing only finds the ones worth returning to.",
@@ -58,9 +59,7 @@ export function ManageSource({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/sources" className="-ml-2 inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-[13.5px] text-ink-muted hover:text-ink">
-        <ChevronLeft className="size-4" aria-hidden /> Personal Sources
-      </Link>
+      <BackLink home="/sources" homeLabel="Personal Sources" />
       <header className="relative isolate flex items-center gap-3">
         <SourceIcon provider={s.provider} className="size-14" />
         <div className="min-w-0">

@@ -10,6 +10,7 @@ import { ScrapbookPostCard } from "@/components/scrapbook-post";
 import { useFeature } from "@/components/features";
 import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 type Reply = { id: string; body: string; createdAt: string; author: { id: string; name: string; handle: string | null }; mine: boolean; canRemove: boolean };
 type Data = { post: ScrapbookPost; canReply: boolean; replies: Reply[] };
@@ -45,9 +46,7 @@ export function PostDetail({ initial }: { initial: Data }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/scrapbook" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← Scrapbook
-      </Link>
+      <BackLink home="/scrapbook" homeLabel="Scrapbook" />
       <div className="mt-2">
         <ScrapbookPostCard post={post} linkToDetail={false} />
       </div>

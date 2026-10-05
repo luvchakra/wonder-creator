@@ -1,7 +1,6 @@
 import { getMaterial, listCollections, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { entityDejaVus } from "@wonder/creator-moments";
 import { notFound } from "next/navigation";
-import { ContextBack } from "@/components/context-back";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
 import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
@@ -27,9 +26,8 @@ const KIND_LABEL: Record<string, string> = {
   url: "Link",
 };
 
-export default async function MaterialPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
+export default async function MaterialPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { from } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
   const m = await getMaterial(db, id).catch(() => null);
@@ -61,7 +59,6 @@ export default async function MaterialPage({ params, searchParams }: { params: P
   };
   return (
     <>
-      <ContextBack db={db} from={from} />
       <PaletteScope
         context={{
           page: "material",

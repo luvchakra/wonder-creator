@@ -45,6 +45,7 @@ import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { LicencePayment } from "@/components/payments/licence-payment";
 import { ChannelChips, CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
+import { forget } from "@/components/nav-memory";
 
 interface Version {
   id: string;
@@ -502,6 +503,7 @@ export function ArtifactView(props: {
               setBusy(true);
               try {
                 await api(`/api/v1/artifacts/${a.id}?confirm=true`, { method: "DELETE" });
+                forget(`/creations/${a.id}`);
                 router.replace("/materials");
               } catch (e) {
                 setError(errorMessage(e));

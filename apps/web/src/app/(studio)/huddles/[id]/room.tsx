@@ -30,6 +30,7 @@ import { useStripSignal } from "@/components/creative-palette";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { createClient } from "@/lib/supabase/client";
+import { forget } from "@/components/nav-memory";
 
 interface CreatorLite {
   id: string;
@@ -242,6 +243,8 @@ export function HuddleRoom({
     try {
       await roomRef.current?.disconnect();
       await api(`/api/v1/huddles/${huddleId}/leave`, { method: "POST" });
+      // Left for good: Back from the summary never offers the room again (back-navigation.md).
+      forget(`/huddles/${huddleId}`);
       router.push(`/huddles/${huddleId}/summary`);
       router.refresh();
     } catch (e) {

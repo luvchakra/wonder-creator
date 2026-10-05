@@ -87,7 +87,8 @@ test.describe("Autonomy approval in meTalk", () => {
     await talk.getByRole("link", { name: "Details" }).click();
     await expect(page).toHaveURL(/\/approvals\/[0-9a-f-]{36}$/);
     await expect(page.getByText("your setting: Ask for approval")).toBeVisible();
-    await page.getByRole("link", { name: "← Back to the conversation" }).click();
+    // Back goes where the creator came from: the conversation (back-navigation.md).
+    await page.getByRole("link", { name: /^Back to / }).click();
     await expect(page).toHaveURL(new RegExp(`/create\\?c=${conversationId}$`));
 
     await talk.getByRole("button", { name: "Approve once" }).click();

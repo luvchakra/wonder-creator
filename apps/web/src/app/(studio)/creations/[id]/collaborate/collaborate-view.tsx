@@ -1,6 +1,6 @@
 "use client";
 import { Badge, Button, buttonClasses, ConfirmDialog, Dialog, DialogContent, Field, Input, Menu, MenuContent, MenuItem, MenuTrigger, SectionHeader, Select, Textarea, cn, EmptyNote, KIT } from "@wonder/ui";
-import { ArrowLeft, Bot, MoreHorizontal, UserPlus } from "lucide-react";
+import { Bot, MoreHorizontal, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { CreatorPicker, type PickedCreator } from "@/components/creator-picker";
 import { SignoffDialog } from "@/components/signoff-dialog";
 import { api, errorMessage } from "@/lib/client";
 import { TextDiff } from "@/components/text-diff";
+import { BackLink } from "@/components/back-link";
 
 type Access = "comment" | "propose" | "edit";
 const ACCESS_LABEL: Record<Access, string> = { comment: "Can comment", propose: "Can propose changes", edit: "Can edit" };
@@ -67,9 +68,7 @@ export function CollaborateView({ viewerId, access, artifact, current, collabora
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> {artifact.title}
-      </Link>
+      <BackLink home={`/creations/${artifact.id}`} homeLabel={artifact.title} />
       <header className="space-y-2">
         <h1 className="font-display text-3xl text-ink sm:text-4xl">Collaborate</h1>
         <p className="text-[15px] text-ink-muted">

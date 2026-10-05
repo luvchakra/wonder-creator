@@ -1,8 +1,8 @@
 "use client";
 import { Field, Segmented, Select, cn } from "@wonder/ui";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { diffLines } from "@/lib/diff";
+import { BackLink } from "@/components/back-link";
 
 interface V {
   id: string;
@@ -37,9 +37,7 @@ export function CompareView({ artifact, versions, currentId, initialA, initialB 
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <Link href={`/creations/${artifact.id}?tab=versions`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-        ← {artifact.title}
-      </Link>
+      <BackLink home={`/creations/${artifact.id}?tab=versions`} homeLabel={artifact.title} />
       <header>
         <h1 className="font-display text-3xl text-ink sm:text-4xl">Compare versions</h1>
         <p className="mt-1 text-[15px] text-ink-muted">Nothing here changes a version. Restoring an older one adds a new version, so history stays whole.</p>

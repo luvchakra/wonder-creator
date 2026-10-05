@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { ArrowLeft, Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type } from "lucide-react";
+import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +13,7 @@ import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider"
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { useFeature } from "@/components/features";
-import { lastPageOutside } from "@/components/nav-memory";
+import { BackLink } from "@/components/back-link";
 import { CarouselCanvas, type CanvasNews, type SlidesState } from "./carousel-canvas";
 import { AskCommunitySheet, CommunityResponsesSheet, DejaVuIntakeSheet, useCommunityResponses, type AskFragment } from "./studio-community";
 import { QualityPanel, type QualityProposal, type QualityReportView } from "./quality-panel";
@@ -609,22 +609,14 @@ export function Studio({
     <div className="mx-auto -mb-[calc(var(--palette-clearance)+env(safe-area-inset-bottom)+1rem)] max-w-3xl pb-[calc(4.25rem+env(safe-area-inset-bottom))]" style={{ ["--canvas-extra" as string]: offline ? "4rem" : "0rem" }}>
       {/* Top bar (§6, §65): back · the Creation and its version · autosaved · who's on it · more. */}
       <header className="mb-2 flex items-center gap-1.5">
-        {/* A Carousel's Creation page is this Studio, so Back leaves the Creation: to the page the creator came from,
-            else their Creations (owner, 29 Sep 2026: "back button on carousel is not working"). */}
-        <Link
-          href={isCarousel ? "/materials?tab=creations" : `/creations/${artifact.id}`}
-          onClick={(e) => {
-            if (!isCarousel) return;
-            const to = lastPageOutside(`/creations/${artifact.id}`);
-            if (!to) return;
-            e.preventDefault();
-            router.push(to);
-          }}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-black/5"
-          aria-label={isCarousel ? "Back" : "Back to Creation"}
-        >
-          <ArrowLeft className="size-5" aria-hidden />
-        </Link>
+        {/* Back goes where the creator came from (back-navigation.md): the Room, Home, the Creation page… Its home, when
+            the tab has no trail: a part's Room; else the Creation page (a Carousel's Creation page is this Studio, so
+            its home is the Creations list). */}
+        <BackLink
+          variant="icon"
+          home={part ? `/rooms/${part.project.id}` : isCarousel ? "/materials?tab=creations" : `/creations/${artifact.id}`}
+          homeLabel={part ? part.project.title : isCarousel ? "Creations" : title || "the Creation"}
+        />
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="flex min-w-0 items-center gap-1.5 rounded-full bg-surface/90 py-1 pl-3 pr-1.5 ring-1 ring-border-soft">
             <label htmlFor="title" className="sr-only">

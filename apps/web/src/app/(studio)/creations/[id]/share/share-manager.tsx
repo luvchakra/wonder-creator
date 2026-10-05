@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 type Version = { id: string; number: number; label: string; current: boolean };
 const EXPIRY = [
@@ -33,9 +34,7 @@ export function ShareManager({ artifact, versions, initialShares }: { artifact: 
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={`/creations/${artifact.id}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← {artifact.title}
-      </Link>
+      <BackLink home={`/creations/${artifact.id}`} homeLabel={artifact.title} />
       <h1 className="mt-2 font-display text-[28px] leading-tight text-ink">Share</h1>
       <p className="mt-1 text-[15px] text-ink-muted">
         {artifact.isPublic ? "This Creation is public on your profile." : "This Creation is private."} Links and shares below show only the Creation itself, never your source material.

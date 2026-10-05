@@ -9,6 +9,7 @@ import { useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
 import { StateBadge } from "../shared";
+import { BackLink } from "@/components/back-link";
 
 type ApproveResult = { kind: "version"; artifactId: string } | { kind: "artifact"; artifact: { id: string } };
 
@@ -50,9 +51,7 @@ export function ApprovalDetail({ approval: a, setting }: { approval: ApprovalVie
     <div className="mx-auto max-w-2xl">
       <nav aria-label="Back" className="flex flex-wrap gap-x-5">
         {a.conversationId ? (
-          <Link href={`/create?c=${a.conversationId}`} className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-            ← Back to the conversation
-          </Link>
+          <BackLink home={`/create?c=${a.conversationId}`} homeLabel="the conversation" />
         ) : null}
         <Link href="/approvals" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
           All approvals

@@ -49,7 +49,9 @@ Back on page **P** goes to the first of these that exists:
   agrees.)
 * **Leaving something for good drops its pages from the trail**: deleting a Creation or Material, leaving a Huddle,
   declining an invitation. Back never offers a page the creator just closed.
-* A page is recorded once per visit: revisiting moves it to the end rather than duplicating it.
+* **Coming back to a page is a return to it.** When a page already in the trail is visited again (by any link, Done
+  included), the pages after it leave the trail, as on a stack. So Studio → Slide editor → Done → Back goes where the
+  Studio was opened from, never back into the Slide editor.
 
 ## What Back looks like
 
@@ -87,6 +89,9 @@ Back on page **P** goes to the first of these that exists:
   with `?from`.
 * Every page spec that taps Back asserts the destination, not the parent.
 
-Implementation (when asked): `apps/web/src/components/nav-memory.tsx` (trail + `forget(prefix)` + `backTarget`),
-`apps/web/src/components/back-link.tsx`, the forwarders (`ForwardTo`, `next.config.ts` redirects), and each page's
-Back replaced by `BackLink` with its home.
+Implementation: `apps/web/src/components/nav-memory.tsx` (the trail, `forget(prefix)`, `trailTarget`, `fromTarget`,
+`popTo`), `apps/web/src/components/back-link.tsx` (`icon`, `text` and `close` forms), and each page's Back replaced by
+`BackLink` with its home. A forwarder is recognised by timing: a page left within 1.5s of arriving with no tap or key in
+between is replaced in the trail by the page it forwarded to (a redirect that reloads the document is trusted only when
+the new page's referrer is that forwarder). The Room and the Creation's work pages carry their own names as page titles, so Back reads "Back to
+<name>".

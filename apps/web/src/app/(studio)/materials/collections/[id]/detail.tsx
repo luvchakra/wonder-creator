@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
+import { forget } from "@/components/nav-memory";
 
 type Item = MaterialCardData & { status: string; storage_object_id: string | null };
 
@@ -65,9 +67,7 @@ export function CollectionDetail({
 
   return (
     <div>
-      <Link href="/materials?tab=collections" className="text-sm text-accent-ink hover:underline">
-        ← Collections
-      </Link>
+      <BackLink home="/materials?tab=collections" homeLabel="Collections" />
       <header className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h1 className="font-display text-3xl text-ink sm:text-4xl">{c.name}</h1>
@@ -242,6 +242,7 @@ export function CollectionDetail({
         onConfirm={() =>
           run("delete", async () => {
             await api(`/api/v1/collections/${c.id}?confirm=true`, { method: "DELETE" });
+            forget(`/materials/collections/${c.id}`);
             router.replace("/materials?tab=collections");
           })
         }

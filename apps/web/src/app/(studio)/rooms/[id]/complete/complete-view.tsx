@@ -2,12 +2,13 @@
 import type { completionReview } from "@wonder/creator-projects";
 import { PROJECT_STATUS_LABEL, TASK_STATUS_LABEL, type ProjectStatus } from "@wonder/creator-projects/options";
 import { Badge, Button, ConfirmDialog, Field, Input, Select, Textarea, cn } from "@wonder/ui";
-import { ArrowLeft, CircleAlert, CircleCheck } from "lucide-react";
+import { CircleAlert, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LocalTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 type Review = Awaited<ReturnType<typeof completionReview>>;
 
@@ -74,9 +75,7 @@ export function CompleteView({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href={`/rooms/${project.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden /> {project.title}
-      </Link>
+      <BackLink home={`/rooms/${project.id}`} homeLabel={project.title} />
       <header className="space-y-2">
         <h1 className="font-display text-3xl text-ink sm:text-4xl">{closed ? "Creative Room closed" : "Complete this Creative Room"}</h1>
         <p className="text-[15px] text-ink-muted">

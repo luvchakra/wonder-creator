@@ -1,6 +1,6 @@
 "use client";
 import { Button, KIT, KitArt, buttonClasses, cn } from "@wonder/ui";
-import { ArrowRight, ChevronLeft, ChevronRight, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, ChevronRight, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { readPhoto, type LocalPhoto } from "@/components/sources/local-photos";
 import { SourceIcon, phaseText } from "@/components/sources/source-bits";
 import { api, errorMessage } from "@/lib/client";
 import type { CandidateCard, SourceRow } from "@/lib/sources";
+import { BackLink } from "@/components/back-link";
 
 const ACTIVE = new Set(["queued", "running", "paused"]);
 const MAX_PHOTOS = 200;
@@ -134,9 +135,7 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/" className="-ml-2 inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-[13.5px] text-ink-muted hover:text-ink">
-        <ChevronLeft className="size-4" aria-hidden /> Home
-      </Link>
+      <BackLink home="/" homeLabel="Home" />
       <header className="relative isolate pr-24">
         <KitArt art={KIT.painted.lavenderSprig} sizes="7rem" priority className="pointer-events-none absolute -top-8 right-0 -z-10 h-auto w-24 opacity-90 sm:w-28" />
         <h1 className="font-display text-[28px] leading-tight text-ink sm:text-[34px]">Connect your world</h1>

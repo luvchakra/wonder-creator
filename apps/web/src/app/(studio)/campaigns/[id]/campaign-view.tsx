@@ -1,10 +1,10 @@
 "use client";
 import { DELIVERABLE_STATUS_LABEL } from "@wonder/creator-projects/campaign-labels";
 import { Badge, Button, Field, Input, Textarea } from "@wonder/ui";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { BackLink } from "@/components/back-link";
 
 type Person = { display_name: string; handle: string | null } | null;
 interface Data {
@@ -50,9 +50,7 @@ export function CampaignView({ me, data, creations, projects }: { me: string; da
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Link href="/campaigns" className="inline-flex min-h-11 items-center text-sm text-accent-ink hover:underline">
-        ← Campaigns
-      </Link>
+      <BackLink home="/campaigns" homeLabel="Campaigns" />
       <header className="rounded-2xl border border-border-soft bg-surface p-4">
         <p className="text-xs uppercase tracking-wide text-ink-subtle">{c.brand_name}</p>
         <h1 className="font-display text-2xl leading-tight text-ink">{c.title}</h1>

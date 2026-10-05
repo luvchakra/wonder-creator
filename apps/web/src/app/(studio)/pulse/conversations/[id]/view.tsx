@@ -14,6 +14,7 @@ import { useFeature } from "@/components/features";
 import { StudioNoteLine, bringToStudio, type StudioNote } from "@/components/studio/bring-to-studio";
 import { api, errorMessage } from "@/lib/client";
 import type { ConversationSummaryView } from "@/lib/conversation-summary";
+import { BackLink } from "@/components/back-link";
 
 type Props = {
   detail: ConversationDetail;
@@ -84,9 +85,7 @@ export function ConversationView({ detail, viewerId, attachments, dejavus, summa
           </span>
         </Link>
       ) : (
-        <Link href="/pulse?filter=conversations" className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-accent-ink hover:underline">
-          <ArrowLeft className="size-4" aria-hidden /> Pulse
-        </Link>
+        <BackLink home="/pulse?filter=conversations" homeLabel="Pulse" />
       )}
 
       {c.removedAt ? (

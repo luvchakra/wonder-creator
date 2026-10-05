@@ -7,6 +7,7 @@ import { avatarUrls } from "@/lib/avatars";
 import { requireSession } from "@/lib/session";
 import { Lineage, MaterialGrid } from "../context-parts";
 import { PaletteScope } from "@/components/creative-palette";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = { title: "Context" };
 
@@ -65,9 +66,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
     <>
       <PaletteScope context={{ page: "context", permissions: a.creator_id === creator.id ? ["edit", "collaborate"] : [], ids: { artifactId: id } }} />
       <div className="mx-auto max-w-3xl space-y-5">
-        <Link href={`/creations/${a.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink hover:underline">
-          ← {a.title}
-        </Link>
+        <BackLink home={`/creations/${a.id}`} homeLabel={a.title} />
         <header>
           <h1 className="font-display text-3xl text-ink sm:text-4xl">Context</h1>
           <p className="mt-1 text-[15px] text-ink-muted">Everything around “{a.title}”.</p>
