@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   addPart,
+  addMixNote,
   addTemplateParts,
   attachPartArtifact,
   claimPart,
   createProject,
+  deleteMixNote,
   deletePart,
   inviteToCrew,
   inviteToPart,
@@ -13,10 +15,12 @@ import {
   myPartInvites,
   partContextFor,
   partMix,
+  mixNotes,
   partTakes,
   partWords,
   partsTimeline,
   respondToCrew,
+  resolveMixNote,
   respondToPart,
   setPartFinal,
   setPartMix,
@@ -267,5 +271,48 @@ describe("parts: who sees and does what", () => {
     expectOk(await owner.client.rpc("part_mix_set", { p_project: p.id, p_tracks: { [tune.id]: { offsetMs: 250.4, gain: 1, muted: true, url: "https://example.com/x.mp3" } } }));
     const row = expectOk(await adminClient().from("project_mixes").select("tracks, updated_by").eq("project_id", p.id).single());
     expect(row).toEqual({ tracks: { [tune.id]: { offsetMs: 250, gain: 1, muted: true } }, updated_by: owner.creatorId });
+  });
+
+  it("notes on a moment: left by the people making the work, read by the Room, resolved by their author or the owner", async () => {
+    const { p, lyrics, tune } = await songRoom();
+    await claimPart(db(ana), tune.id);
+    await inviteToPart(db(owner), lyrics.id, { creatorId: dee.creatorId });
+    // Invited isn't making the work yet; an outsider never is.
+    await expect(addMixNote(db(dee), p.id, { atMs: 1000, body: "Too early" })).rejects.toThrow();
+    await expect(addMixNote(db(cy), p.id, { atMs: 1000, body: "Too early" })).rejects.toThrow();
+    await respondToPart(db(dee), lyrics.id, true);
+    // Tune has a take (v1) when Dee leaves her note about it.
+    const tuneArt = await createArtifact(ana, { title: "Platform 3 · Tune", artifact_type: "song_concept", category: "audio" });
+    await attachPartArtifact(db(ana), tune.id, tuneArt);
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "", p_label: "Take", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: "00000000-0000-0000-0000-000000000000", seconds: 40 } } }));
+    const deeNote = await addMixNote(db(dee), p.id, { atMs: 42_000, body: "The voice comes in early here", partId: tune.id });
+    const anaNote = await addMixNote(db(ana), p.id, { atMs: 5_000, body: "Lovely intro" });
+    for (const who of [owner, ana, dee]) {
+      const notes = await mixNotes(db(who), p.id, who.creatorId, who === owner);
+      expect(notes.map((n) => [n.atMs, n.body, n.partTitle, n.author?.id])).toEqual([
+        [5_000, "Lovely intro", null, ana.creatorId],
+        [42_000, "The voice comes in early here", "Tune", dee.creatorId],
+      ]);
+      expect(notes[1]!.heard).toEqual([{ partId: tune.id, title: "Tune", versionNumber: 1 }]);
+    }
+    expect(await mixNotes(db(cy), p.id, cy.creatorId, false)).toEqual([]);
+    // A note about a part shows in the Room's timeline.
+    expect((await partsTimeline(db(owner), p.id, await listParts(db(owner), p.id, owner.creatorId))).find((e) => e.kind === "noted")?.detail).toMatchObject({ noteId: deeNote, atMs: 42_000 });
+    // Resolving: its author or the owner — not another member. Deleting likewise.
+    await expect(resolveMixNote(db(ana), deeNote, true)).rejects.toThrow();
+    await resolveMixNote(db(owner), deeNote, true);
+    expect((await mixNotes(db(dee), p.id, dee.creatorId, false)).find((n) => n.id === deeNote)?.resolved).toBe(true);
+    await resolveMixNote(db(dee), deeNote, false);
+    expect((await mixNotes(db(dee), p.id, dee.creatorId, false)).find((n) => n.id === deeNote)?.resolved).toBe(false);
+    await expect(deleteMixNote(db(dee), anaNote)).rejects.toThrow();
+    await deleteMixNote(db(owner), anaNote);
+    // Only through the function: no direct writes, no notes on another Room's part, nothing out of range.
+    const other = await songRoom();
+    expectDenied(await owner.client.from("project_mix_notes").insert({ project_id: p.id, at_ms: 0, body: "x", creator_id: owner.creatorId }));
+    expectDenied(await owner.client.from("project_mix_notes").update({ body: "edited" }).eq("id", deeNote));
+    expectDenied(await owner.client.rpc("mix_note_add", { p_project: p.id, p_at_ms: 0, p_body: "x", p_part: other.tune.id }));
+    expectDenied(await owner.client.rpc("mix_note_add", { p_project: p.id, p_at_ms: -1, p_body: "x" }));
+    expectDenied(await owner.client.rpc("mix_note_add", { p_project: p.id, p_at_ms: 0, p_body: "   " }));
+    expect((await mixNotes(db(owner), p.id, owner.creatorId, true)).map((n) => n.id)).toEqual([deeNote]);
   });
 });

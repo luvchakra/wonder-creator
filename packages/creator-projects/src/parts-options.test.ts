@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, PART_TEMPLATE_KEYS, mixLength, mixTrackOf, offsetLabel, placeAt } from "./parts-options";
+import { DEFAULT_ARTIFACT_TYPE, PART_KINDS, PART_TEMPLATES, PART_TEMPLATE_KEYS, heardEarlier, mixLength, mixTrackOf, offsetLabel, placeAt } from "./parts-options";
 
 describe("Parts templates", () => {
   it("lay out distinct, well-formed parts of known kinds", () => {
@@ -53,5 +53,18 @@ describe("Listen together: the mix's timing", () => {
     expect(offsetLabel(1200)).toBe("+1.2s");
     expect(offsetLabel(-500)).toBe("−0.5s");
     expect(offsetLabel(12_000)).toBe("+12s");
+  });
+});
+
+describe("Notes on a moment: which takes they were left on", () => {
+  const heard = [
+    { partId: "tune", title: "Tune", versionNumber: 2 },
+    { partId: "voice", title: "Voice", versionNumber: 1 },
+  ];
+  it("says nothing while the takes are the same, and names them once one has moved on", () => {
+    expect(heardEarlier(heard, [{ partId: "tune", versionNumber: 2 }, { partId: "voice", versionNumber: 1 }])).toBeNull();
+    expect(heardEarlier(heard, [{ partId: "tune", versionNumber: 3 }, { partId: "voice", versionNumber: 1 }])).toBe("on Tune v2 · Voice v1");
+    // A take no longer heard at all isn't "moved on".
+    expect(heardEarlier(heard, [{ partId: "voice", versionNumber: 1 }])).toBeNull();
   });
 });

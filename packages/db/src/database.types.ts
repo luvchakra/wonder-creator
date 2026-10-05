@@ -2868,6 +2868,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"project_mix_notes": {
+                  Row: {
+                    "at_ms": number,"body": string,"created_at": string,"creator_id": string | null,"heard": NonNullable<Json>,"id": string,"part_id": string | null,"project_id": string,"resolved_at": string | null,"resolved_by": string | null
+                  }
+                  Insert: {
+                    "at_ms": number,"body": string,"created_at"?: string,"creator_id"?: string | null,"heard"?: NonNullable<Json>,"id"?: string,"part_id"?: string | null,"project_id": string,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Update: {
+                    "at_ms"?: number,"body"?: string,"created_at"?: string,"creator_id"?: string | null,"heard"?: NonNullable<Json>,"id"?: string,"part_id"?: string | null,"project_id"?: string,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_mix_notes_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_mix_notes_part_id_fkey"
+      columns: ["part_id"]
+isOneToOne: false
+      referencedRelation: "project_parts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_mix_notes_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "project_mix_notes_resolved_by_fkey"
+      columns: ["resolved_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"project_mixes": {
                   Row: {
                     "project_id": string,"tracks": NonNullable<Json>,"updated_at": string,"updated_by": string | null
@@ -4556,6 +4593,12 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"mix_note_add":
+{ Args: { "p_at_ms": number,"p_body": string,"p_part"?: string,"p_project": string }; Returns: string
+                           },
+"mix_note_resolve":
+{ Args: { "p_note": string,"p_resolved": boolean }; Returns: undefined
+                           },
 "my_consents":
 { Args: Record<PropertyKey, never>; Returns: {
               "created_at": string,"granted": boolean,"notice_version": string,"purpose": string

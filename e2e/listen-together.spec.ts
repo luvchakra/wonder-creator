@@ -4,7 +4,7 @@ import { expect, fakeMicrophone, test, uid } from "./fixtures";
 // Parts, step 4 (docs/creative-room-parts.md): Listen together — the Room's kept takes played as one, each at its
 // start and level, the words beneath, and a download made on the device.
 test.describe("Creative Room parts: listen together", () => {
-  test("the takes play as one; starts and levels save; the mix downloads as a WAV", async ({ page, creator }) => {
+  test("the takes play as one; starts and levels save; notes sit at moments; the mix downloads as a WAV", async ({ page, creator }) => {
     void creator;
     await fakeMicrophone(page, true);
     const title = `Platform 3 ${uid()}`;
@@ -74,6 +74,24 @@ test.describe("Creative Room parts: listen together", () => {
     await takes.getByRole("button", { name: "Unmute Tune" }).click();
     await expect(takes.getByText("Saved")).toBeVisible();
 
+    // A note at a moment, about Tune: it sits on the song's timeline and plays from there.
+    await page.getByLabel("Position").fill("1");
+    await page.getByRole("button", { name: "Note this moment" }).click();
+    const note = page.getByRole("form", { name: /^Note at 0:0\d$/ });
+    await note.getByRole("textbox").fill("The tune could breathe a beat longer here");
+    await note.getByLabel("About").selectOption({ label: "Tune" });
+    await note.getByRole("button", { name: "Leave note" }).click();
+    const notes = page.getByRole("region", { name: "Notes on the song" });
+    await expect(notes).toContainText("The tune could breathe a beat longer here");
+    await expect(notes).toContainText("about Tune");
+    await notes.getByRole("button", { name: /^Play from 0:0\d$/ }).click();
+    await expect(page.getByRole("button", { name: "Pause" })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "Pause" }).click();
+    await notes.getByRole("button", { name: /^Note at 0:0\d actions$/ }).click();
+    await page.getByRole("menuitem", { name: "Resolve" }).click();
+    await expect(notes.getByText("1 resolved")).toBeVisible();
+    await expect(notes).toContainText("Every note is resolved.");
+
     // The download is the mix as heard: a WAV made here.
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download the mix" }).click();
@@ -84,8 +102,9 @@ test.describe("Creative Room parts: listen together", () => {
     expect(bytes.subarray(8, 12).toString("ascii")).toBe("WAVE");
     expect(bytes.length).toBeGreaterThan(44 + 44_100 * 2 * 2); // at least a second of stereo sound
 
-    // Back goes to the Room.
+    // Back goes to the Room, whose timeline tells of the note.
     await page.getByRole("link", { name: `Back to ${title}`, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/rooms/${projectId}$`));
+    await expect(page.getByText(/left a note on Tune at 0:0\d — “The tune could breathe a beat longer here”/)).toBeVisible();
   });
 });

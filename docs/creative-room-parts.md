@@ -90,7 +90,14 @@ final".
   Others see the settings, not the controls.
 * **The download is made on the device**: the same takes and settings rendered offline into a WAV. Nothing is mixed,
   uploaded or stored on the server; the file carries only what the listener could already hear.
-* Still to come (4b): publishing the song, and comments on a moment of it.
+* **Notes on a moment (4b).** *Note this moment* (the people making the work) pauses and leaves a note at the playhead,
+  about the whole song or one part — "the voice comes in a little early here". Notes sit as dots on the song's
+  timeline and as a list in the song's order; tapping a note's time plays from there. Each records which take of each
+  part was playing, so a note left on an earlier take says "on Tune v2 · Voice v1". Whoever sees the Room reads them;
+  only `mix_note_add` writes them; their author or the Room's owner/admins resolve (they fold away) or delete them. A
+  note about a part shows in the Room's timeline ("Mira left a note on Voice at 0:42 — …").
+* **Publishing the song moves to step 5**: a song made of other people's takes is published only with their sign-off,
+  which step 5 brings (credits, shares, sign-off, publish together).
 
 ## Rules
 
@@ -116,10 +123,10 @@ final".
 | 2 | *Made with*: versions and takes record the other parts' versions; "changed since this take" with the changed lines; Suggest to the lyricist (a proposal from the Audio page) | Done |
 | 3 | Play-along both ways: the tune on the Writing page; words and tune on the Audio page; record over a track | Done |
 | 4a | Listen together: the takes as one (starts, levels, mute), Where it stands, the words, a WAV made on the device | Done |
-| 4b | Publishing the song; comments on a moment | Not started |
-| 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, publish together | Not started |
+| 4b | Notes on a moment: left at the playhead, on the song's timeline, played from, resolved; in the Room's timeline | Done |
+| 5 | Completion: credits (Lyrics → writing, Tune → sound, Voice → performance), equal shares, sign-off, and publishing the song together | Not started |
 
-Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`), `packages/creator-projects/src/parts.ts`
+Implementation: `supabase/migrations/20261004000083_project_parts.sql` (+ `…085_part_made_with.sql`, `…086_part_takes.sql`, `…087_part_mix.sql`, `…088_mix_notes.sql`), `packages/creator-projects/src/parts.ts`
 (+ `parts-options.ts`), `/api/v1/projects/[id]/parts/**`, `apps/web/src/app/(studio)/rooms/[id]/parts-panel.tsx`, `creations/[id]/studio/part-context.tsx`, `play-along.tsx`, `rooms/[id]/song/` with
 `components/audio/use-mix.ts` and `lib/wav.ts`.
 Tests: `tests/db/parts.test.ts`, `parts-options.test.ts`, `lib/wav.test.ts`, `e2e/parts.spec.ts`, `e2e/play-along.spec.ts`,

@@ -158,3 +158,28 @@ export function offsetLabel(offsetMs: number): string {
   const s = Math.abs(offsetMs) / 1000;
   return `${offsetMs > 0 ? "+" : "−"}${s.toFixed(s < 10 ? 1 : 0)}s`;
 }
+
+/** A note left at a moment of the song (step 4b), about the whole song or one part. */
+export interface MixNote {
+  id: string;
+  atMs: number;
+  body: string;
+  partId: string | null;
+  partTitle: string | null;
+  author: { id: string; name: string } | null;
+  /** The takes as they were when it was left ("Tune v2"). */
+  heard: Array<{ partId: string; title: string; versionNumber: number }>;
+  resolved: boolean;
+  createdAt: string;
+  /** The viewer may resolve it (its author, or the Room's owner/admins) and delete it. */
+  canResolve: boolean;
+}
+
+/** "on Tune v2 · Voice v1" when a note was left on takes that have since moved on; null when it was these ones. */
+export function heardEarlier(heard: MixNote["heard"], now: Array<{ partId: string; versionNumber: number }>): string | null {
+  const moved = heard.some((h) => {
+    const n = now.find((x) => x.partId === h.partId);
+    return n && n.versionNumber !== h.versionNumber;
+  });
+  return moved ? `on ${heard.map((h) => `${h.title} v${h.versionNumber}`).join(" · ")}` : null;
+}
