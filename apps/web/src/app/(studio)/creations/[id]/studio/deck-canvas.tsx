@@ -1,8 +1,10 @@
 "use client";
-import { blankSlide, DECK_THEMES, DECK_THEME_LABEL, MAX_SLIDES, type Deck, type DeckSlide, type DeckTheme } from "@wonder/creator-studio/deck";
-import { Dialog, DialogContent, KIT, KitArt, cn } from "@wonder/ui";
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, NotebookText, Trash2, X } from "lucide-react";
+import { blankSlide, DECK_THEMES, DECK_THEME_LABEL, MAX_SLIDES, type Deck, type DeckSlide } from "@wonder/creator-studio/deck";
+import { Dialog, DialogContent, cn } from "@wonder/ui";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ImagePlus, NotebookText, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { SlideView } from "@/components/deck/slide-view";
+import { YourPictures } from "@/components/images/your-pictures";
 import { api, errorMessage } from "@/lib/client";
 
 /**
@@ -20,15 +22,12 @@ export interface DeckControls {
   print: () => void;
 }
 
-/** The named palettes (CLAUDE.md, Colour), defined once for the deck: background, ink, quieter ink, and art. */
-const THEMES: Record<DeckTheme, { surface: string; ink: string; muted: string; rule: string; art: "paper" | "dark" | "wash" }> = {
-  paper: { surface: "bg-[#f6efe3]", ink: "text-[#2b241c]", muted: "text-[#7a6d5e]", rule: "bg-[#e2d6c3]", art: "paper" },
-  cinematic: { surface: "bg-[radial-gradient(120%_90%_at_20%_10%,#2a2119_0%,#0d0b09_60%)]", ink: "text-[#f3ebe0]", muted: "text-[#cbbfae]", rule: "bg-[#e9ae6b]", art: "dark" },
-  gradient: { surface: "bg-[linear-gradient(135deg,#ece8fb_0%,#f6f1f8_50%,#fbf3ee_100%)]", ink: "text-[#2a2440]", muted: "text-[#6b6380]", rule: "bg-[#c6bdf8]", art: "wash" },
-};
-
-export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls, onKept }: { artifactId: string; title: string; initial: Deck; baseVersionId: string | null; controls: Ref<DeckControls>; onKept: (v: { id: string; version_number: number; content: string }) => void }) {
+export function DeckCanvas({ artifactId, title, initial, pictures: initialPictures, baseVersionId, controls, onKept }: { artifactId: string; title: string; initial: Deck; pictures: Record<string, string | null>; baseVersionId: string | null; controls: Ref<DeckControls>; onKept: (v: { id: string; version_number: number; content: string }) => void }) {
   const [deck, setDeck] = useState<Deck>(initial);
+  // Each slide picture's address; ones chosen here join as they're picked.
+  const [pictures, setPictures] = useState(initialPictures);
+  const [choosing, setChoosing] = useState(false);
+  const urlOf = (s: DeckSlide) => (s.image ? (pictures[s.image] ?? null) : null);
   const [at, setAt] = useState(0);
   const [editing, setEditing] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -132,7 +131,7 @@ export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls
     <div className="p-3 sm:p-4">
       {slide ? (
         <>
-          <SlideView slide={slide} index={Math.min(at, deck.slides.length - 1)} theme={deck.theme} deckTitle={title} className="rounded-2xl shadow-[var(--shadow-card)]" />
+          <SlideView slide={slide} index={Math.min(at, deck.slides.length - 1)} theme={deck.theme} deckTitle={title} imageUrl={urlOf(slide)} className="rounded-2xl shadow-[var(--shadow-card)]" />
           <p className="mt-1.5 flex items-center justify-between text-[12px] text-ink-subtle" aria-live="polite">
             <span>
               Slide {Math.min(at, deck.slides.length - 1) + 1} of {deck.slides.length} · {DECK_THEME_LABEL[deck.theme]}
@@ -153,6 +152,16 @@ export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls
           <textarea aria-label="Words on the slide" value={slide.body} maxLength={2000} rows={4} placeholder={"What the slide says.\n- A line starting with a dash is a point"} onChange={(e) => edit({ body: e.target.value })} className="block w-full resize-y rounded-xl border border-border-soft bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent" />
           <textarea aria-label="Speaker notes" value={slide.notes} maxLength={4000} rows={2} placeholder="Speaker notes — only you see these while presenting" onChange={(e) => edit({ notes: e.target.value })} className="block w-full resize-y rounded-xl border border-border-soft bg-surface px-3 py-2 text-[13.5px] text-ink-muted outline-none focus:border-accent" />
           <div className="flex flex-wrap items-center gap-1">
+            <button type="button" onClick={() => setChoosing(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-accent-ink hover:underline">
+              <ImagePlus className="size-4" aria-hidden /> {slide.image ? "Change the picture" : "Add a picture"}
+            </button>
+            {slide.image ? (
+              <button type="button" onClick={() => edit({ image: null })} className="inline-flex min-h-11 items-center rounded-full px-2 text-[13px] text-ink-muted hover:text-ink">
+                Remove the picture
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
             <button type="button" onClick={() => move(-1)} disabled={at === 0} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-[13px] text-ink-muted hover:text-ink disabled:opacity-40">
               <ArrowLeft className="size-4" aria-hidden /> Move earlier
             </button>
@@ -172,7 +181,7 @@ export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls
           {deck.slides.map((s, i) => (
             <li key={s.id} className="w-28 shrink-0 snap-start">
               <button type="button" onClick={() => setAt(i)} aria-label={`Slide ${i + 1}: ${s.title || "untitled"}`} aria-current={i === Math.min(at, deck.slides.length - 1) ? "true" : undefined} className={cn("block w-full overflow-hidden rounded-lg ring-2 ring-offset-2 ring-offset-surface", i === Math.min(at, deck.slides.length - 1) ? "ring-accent" : "ring-transparent hover:ring-border")}>
-                <SlideView slide={s} index={i} theme={deck.theme} deckTitle={title} small />
+                <SlideView slide={s} index={i} theme={deck.theme} deckTitle={title} imageUrl={urlOf(s)} small />
               </button>
             </li>
           ))}
@@ -192,7 +201,7 @@ export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls
             {DECK_THEMES.map((t) => (
               <li key={t}>
                 <button type="button" aria-pressed={deck.theme === t} onClick={() => (change({ ...deck, theme: t }), setTheming(false))} className={cn("block w-full rounded-xl p-1 text-left ring-2", deck.theme === t ? "ring-accent" : "ring-transparent hover:ring-border")}>
-                  <SlideView slide={slide ?? blankSlide(title)} index={0} theme={t} deckTitle={title} small />
+                  <SlideView slide={slide ?? blankSlide(title)} index={0} theme={t} deckTitle={title} imageUrl={slide ? urlOf(slide) : null} small />
                   <span className="mt-1 block px-1 text-[13px] font-medium text-ink">{DECK_THEME_LABEL[t]}</span>
                 </button>
               </li>
@@ -201,58 +210,34 @@ export function DeckCanvas({ artifactId, title, initial, baseVersionId, controls
         </DialogContent>
       </Dialog>
 
-      {presenting ? <Presenter deck={deck} start={Math.min(at, deck.slides.length - 1)} deckTitle={title} onClose={(i) => (setPresenting(false), setAt(i))} /> : null}
+      {presenting ? <Presenter deck={deck} pictures={pictures} start={Math.min(at, deck.slides.length - 1)} deckTitle={title} onClose={(i) => (setPresenting(false), setAt(i))} /> : null}
+
+      <Dialog open={choosing} onOpenChange={setChoosing}>
+        <DialogContent title="A picture for this slide" description="One of your pictures — beside the words, or filling the slide when there are none.">
+          <YourPictures
+            busy={false}
+            verb="Use"
+            onPick={(id, url) => {
+              setPictures((p) => ({ ...p, [id]: url }));
+              edit({ image: id });
+              setChoosing(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Print or save as PDF: every slide on its own landscape page (globals.css, .printing-deck). */}
       <div className="deck-print hidden" aria-hidden>
         {deck.slides.map((s, i) => (
-          <SlideView key={s.id} slide={s} index={i} theme={deck.theme} deckTitle={title} />
+          <SlideView key={s.id} slide={s} index={i} theme={deck.theme} deckTitle={title} imageUrl={urlOf(s)} />
         ))}
       </div>
     </div>
   );
 }
 
-/** One slide in its theme, at any size: the type scales with the slide (container units). The first slide is the title. */
-export function SlideView({ slide, index, theme, deckTitle, small = false, className }: { slide: DeckSlide; index: number; theme: DeckTheme; deckTitle: string; small?: boolean; className?: string }) {
-  const t = THEMES[theme];
-  const lines = slide.body.split("\n").filter((l) => l.trim());
-  const points = lines.length > 0 && lines.every((l) => /^\s*[-•*]\s+/.test(l));
-  const opening = index === 0;
-  return (
-    <div className={cn("@container relative isolate aspect-video w-full overflow-hidden", t.surface, className)} aria-hidden={small || undefined}>
-      {t.art === "paper" ? (
-        <>
-          <KitArt art={KIT.texture.texturePaper} sizes="40rem" className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-50" />
-          <KitArt art={KIT.painted.leafSprigSage} sizes="12rem" className="pointer-events-none absolute -bottom-[6%] -right-[3%] -z-10 h-auto w-[22%] opacity-70" />
-        </>
-      ) : t.art === "wash" ? (
-        <KitArt art={KIT.wash.washLavender} sizes="30rem" className="pointer-events-none absolute -right-[12%] -top-[20%] -z-10 h-auto w-[60%] opacity-70" />
-      ) : null}
-      <div className={cn("flex h-full flex-col px-[7cqw] py-[6cqw]", opening ? "items-center justify-center text-center" : "justify-start")}>
-        <p className={cn("font-display leading-[1.12]", t.ink, opening ? "text-[7cqw]" : "text-[5cqw]")}>{slide.title || (opening ? deckTitle : "")}</p>
-        {!opening ? <span className={cn("mt-[2cqw] block h-[0.35cqw] w-[8cqw] rounded-full", t.rule)} /> : null}
-        {lines.length ? (
-          points ? (
-            <ul className={cn("mt-[3cqw] space-y-[1.4cqw] text-[2.9cqw] leading-snug", t.ink)}>
-              {lines.map((l, i) => (
-                <li key={i} className="flex gap-[1.4cqw]">
-                  <span className={cn("mt-[1.1cqw] size-[0.9cqw] shrink-0 rounded-full", t.rule)} />
-                  <span>{l.replace(/^\s*[-•*]\s+/, "")}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={cn("mt-[3cqw] whitespace-pre-line leading-snug", opening ? cn("text-[2.8cqw]", t.muted) : cn("text-[3cqw]", t.ink))}>{slide.body}</p>
-          )
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 /** Present: the slides fill the screen, one at a time; the notes on request. */
-function Presenter({ deck, start, deckTitle, onClose }: { deck: Deck; start: number; deckTitle: string; onClose: (at: number) => void }) {
+function Presenter({ deck, pictures, start, deckTitle, onClose }: { deck: Deck; pictures: Record<string, string | null>; start: number; deckTitle: string; onClose: (at: number) => void }) {
   const [i, setI] = useState(start);
   const [notes, setNotes] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -282,7 +267,7 @@ function Presenter({ deck, start, deckTitle, onClose }: { deck: Deck; start: num
     <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Presenting" className="fixed inset-0 z-[70] flex flex-col bg-black outline-none">
       <div className="relative flex min-h-0 flex-1 items-center justify-center">
         <div className="w-full max-w-[calc((100dvh-4rem)*16/9)]">
-          <SlideView slide={slide} index={i} theme={deck.theme} deckTitle={deckTitle} />
+          <SlideView slide={slide} index={i} theme={deck.theme} deckTitle={deckTitle} imageUrl={slide.image ? (pictures[slide.image] ?? null) : null} />
         </div>
         {/* Tap zones for touch; the buttons below are the accessible controls. */}
         <div aria-hidden onClick={() => setI((x) => Math.max(0, x - 1))} className="absolute inset-y-0 left-0 w-1/4 cursor-w-resize" />

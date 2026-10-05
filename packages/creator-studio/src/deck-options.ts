@@ -15,6 +15,8 @@ export interface DeckSlide {
   title: string;
   body: string;
   notes: string;
+  /** A picture Material of the creator's on the slide: beside the words, or filling the slide when there are none. */
+  image?: string | null;
 }
 export interface Deck {
   kind: "deck";
@@ -27,6 +29,7 @@ const slideSchema = z.object({
   title: z.string().max(200),
   body: z.string().max(2000),
   notes: z.string().max(4000),
+  image: z.string().uuid().nullable().optional(),
 });
 export const deckSchema = z.object({
   kind: z.literal("deck"),
@@ -41,7 +44,7 @@ export function slideId(): string {
   return `s${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export const blankSlide = (title = ""): DeckSlide => ({ id: slideId(), title, body: "", notes: "" });
+export const blankSlide = (title = ""): DeckSlide => ({ id: slideId(), title, body: "", notes: "", image: null });
 
 /**
  * The deck a version holds; for a version without one, the deck its words outline — every Markdown heading, "Slide N"
@@ -49,7 +52,7 @@ export const blankSlide = (title = ""): DeckSlide => ({ id: slideId(), title, bo
  */
 export function deckOf(structured: unknown, content = ""): Deck {
   const parsed = deckSchema.safeParse(structured);
-  if (parsed.success) return parsed.data;
+  if (parsed.success) return { ...parsed.data, slides: parsed.data.slides.map((x) => ({ ...x, image: x.image ?? null })) };
   const theme = (structured as { theme?: unknown } | null)?.theme;
   return { kind: "deck", theme: DECK_THEMES.includes(theme as DeckTheme) ? (theme as DeckTheme) : "paper", slides: outlineSlides(content) };
 }

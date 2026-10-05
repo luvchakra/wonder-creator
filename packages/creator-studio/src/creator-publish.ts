@@ -6,6 +6,7 @@ import { artifactType } from "./artifact-types";
 import { lookOf, ornamentOf } from "./creation-pages";
 import { imageSetOf } from "./image-options";
 import { audioSetOf } from "./audio-options";
+import { deckOf } from "./deck-options";
 import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
 import { TEMPLATE_IDS, mergeTemplateSettings, normalizeSections, resolveTemplateId, settingsFor, validateSettings, type CreatorPageTemplateId, type TemplateSettings } from "./creator-page-templates";
@@ -137,6 +138,11 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
   if (audio && isPoem(type)) snapshot.voice = { objectId: audio.storage_object_id!, durationSeconds: durationOf(audio) };
   if (snapshot.media) snapshot.transcript = content.trim() || (snapshot.media.kind === "audio" ? audio?.text_content : video?.text_content) || null;
 
+  // A Presentation (creation-pages.md, step 4): its slides in their theme, with the pictures on them; notes stay private.
+  if (outputModeOf(type) === "presentation") {
+    const deck = deckOf(v?.structured_content, content);
+    if (deck.slides.length) snapshot.deck = { theme: deck.theme, slides: deck.slides.map((x) => ({ title: x.title, body: x.body, objectId: x.image ? obj(byId.get(x.image)?.storage_object_id) : null })) };
+  }
   // A Journey: the authored text in its order, with the Creation's pictures, recordings and films between passages.
   const paragraphs = content
     .split(/\n\s*\n/)

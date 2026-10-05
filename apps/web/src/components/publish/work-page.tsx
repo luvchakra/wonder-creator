@@ -10,6 +10,7 @@ import { SwipeRenderer } from "./swipe";
 import { textsOf } from "@wonder/creator-studio/images";
 import { EditedImage } from "../images/edited-image";
 import { WrittenPiece } from "../writing/written-piece";
+import { SlideView } from "../deck/slide-view";
 
 /**
  * One published work (docs/creator-publish.md §3): a shared outer shell — header, the work, optional context, rights
@@ -71,6 +72,18 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
           <>
             <Title title={s.title} byline={byline} small />
             <SwipeRenderer workId={work.workId} slides={s.slides} aspect={m.aspectRatio ?? "4:5"} media={work.media} fullscreen={m.treatment === "fullscreen"} title={s.title} />
+          </>
+        ) : m.experience === "view" && s.deck?.slides.length ? (
+          // A Presentation (creation-pages.md, step 4): its slides in their theme, one after another; notes stay private.
+          <>
+            <Title title={s.title} byline={byline} small />
+            <ol aria-label="Slides" className="mx-auto max-w-4xl space-y-5">
+              {s.deck.slides.map((x, k) => (
+                <li key={k} aria-label={`Slide ${k + 1}${x.title ? `: ${x.title}` : ""}`}>
+                  <SlideView slide={x} index={k} theme={s.deck!.theme} deckTitle={s.title} imageUrl={media(x.objectId)} className="rounded-2xl shadow-[0_18px_40px_-24px_rgba(0,0,0,0.45)]" />
+                </li>
+              ))}
+            </ol>
           </>
         ) : m.experience === "view" && s.pictures?.length ? (
           // The Images page's pictures, as shaped (creation-pages.md, step 2): one large, the rest below with captions.

@@ -64,8 +64,8 @@ export function Studio({
   page?: "writing" | "images" | "audio" | "presentation" | "video" | "studio";
   /** The Video page's storyboard and its frames' addresses (creation-pages.md, step 5). */
   video?: { storyboard: Storyboard; frames: Record<string, string | null> } | null;
-  /** The Presentation page's slides (creation-pages.md, step 4). */
-  deck?: Deck | null;
+  /** The Presentation page's slides and their pictures' addresses (creation-pages.md, step 4). */
+  deck?: { deck: Deck; pictures: Record<string, string | null> } | null;
   /** Published and reachable: the live link, and whether newer saved words exist here. */
   published?: { url: string; newer: boolean } | null;
   /** The Images page's pictures and what was done to them (creation-pages.md, step 2). */
@@ -525,7 +525,7 @@ export function Studio({
   };
   // The Presentation page: Edit slide is the primary action, Add slide and Present the two secondaries.
   const deckPage = page === "presentation";
-  const hasSlides = !!deck?.slides.length;
+  const hasSlides = !!deck?.deck.slides.length;
   // The canvas hands its controls over through a callback ref, so the header and sheets can call them from their handlers.
   const [deckControls, setDeckControls] = useState<DeckControls | null>(null);
   const askDeck = (kind: keyof DeckControls) => {
@@ -883,7 +883,8 @@ export function Studio({
             <DeckCanvas
               artifactId={artifact.id}
               title={title || artifact.title}
-              initial={deck}
+              initial={deck.deck}
+              pictures={deck.pictures}
               baseVersionId={base?.id ?? null}
               controls={setDeckControls}
               onKept={(v) => {

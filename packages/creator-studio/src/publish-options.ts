@@ -102,6 +102,8 @@ export interface PublishedSnapshot {
   /** As shaped on the Images page: `texts` (boxes), or `words` in snapshots published before 4 Oct 2026. */
   pictures?: Array<{ objectId: string; caption: string; edits: ImageEdits; texts?: TextBox[]; words?: SlideOverlay }>;
   media?: { kind: "audio" | "video"; objectId: string; title: string; durationSeconds?: number | null; posterObjectId?: string | null; vertical?: boolean };
+  /** A Presentation's slides in their theme (creation-pages.md, step 4) — the words and pictures, never the notes. */
+  deck?: { theme: "paper" | "cinematic" | "gradient"; slides: Array<{ title: string; body: string; objectId: string | null }> };
   /** A creator's reading of a poem: offered, never the page's centre. */
   voice?: { objectId: string; durationSeconds?: number | null } | null;
   blocks?: PublicBlock[];
@@ -139,12 +141,14 @@ const LISTEN_TYPES = new Set(["podcast_concept", "song_concept", "sound_design",
 export const isPoem = (type: string) => WRITING_POEM.has(type);
 
 /** The experiences a snapshot can honestly support; the first is the one inferred from its type (§27: change only when several fit). */
-export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks" | "pictures">): PublicationExperience[] {
+export function experiencesFor(type: string, s: Pick<PublishedSnapshot, "content" | "slides" | "images" | "media" | "blocks" | "pictures" | "deck">): PublicationExperience[] {
   const hasText = !!s.content.trim();
   const out: PublicationExperience[] = [];
   const add = (e: PublicationExperience, ok: boolean) => ok && !out.includes(e) && out.push(e);
   // Pictures shaped on the Images page (creation-pages.md, step 2) are viewed, pictures first; then the type decides…
   add("view", !!s.pictures?.length);
+  // A Presentation's slides are viewed as slides (creation-pages.md, step 4).
+  add("view", !!s.deck?.slides.length);
   if (type === "carousel" || type === "social_series") add("swipe", !!s.slides?.length);
   if (WATCH_TYPES.has(type)) add("watch", s.media?.kind === "video");
   if (LISTEN_TYPES.has(type)) add("listen", s.media?.kind === "audio");
@@ -172,6 +176,7 @@ export function descriptorFor(type: string, experience: PublicationExperience, s
     const min = Math.max(1, Math.round(words / 220 + (s.blocks?.filter((b) => b.kind !== "text").length ?? 0) * 0.2));
     return words > 60 ? `${label} · ${min} min` : label;
   }
+  if (experience === "view" && s.deck?.slides.length) return `${label} · ${s.deck.slides.length} ${s.deck.slides.length === 1 ? "slide" : "slides"}`;
   if (experience === "view" && (s.images?.length ?? 0) > 1) return `${label} · ${s.images!.length} images`;
   return label;
 }
