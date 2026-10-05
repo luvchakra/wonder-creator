@@ -21,11 +21,31 @@ minimal buttons and the best way to handle it. Plan approved the same day ("appr
 | 1 | **Writing** `/creations/[id]/write` + routing from the sheet | Done |
 | 2 | **Images** `/creations/[id]/image` | Done |
 | 3 | **Audio**: recorder (the voice-note recorder) above the words; Record / Write / Listen; Transcribe when the provider is live; export audio + text; a simple player page as the public link | Done |
-| 4 | **Presentation**: current slide large + strip; Edit slide / Add slide / Present; themes from the named palettes (Editorial Paper, Cinematic Dark, Soft Gradient); speaker notes; export via web-page print | Not started |
+| 4 | **Presentation**: current slide large + strip; Edit slide / Add slide / Present; themes from the named palettes (Editorial Paper, Cinematic Dark, Soft Gradient); speaker notes; export via web-page print | Done |
 | 5 | **Video**: storyboard + script (shots with frame, line, duration); Write / Add shot / Play through (animatic); exports; Render only when a video provider is connected (honest "not connected" otherwise) | Not started |
 
 Shared across formats as they arrive: Publish as link, Download everywhere, one cover/background component, one
 text-on-image component.
+
+## Presentation (step 4)
+
+- **The page** (`/creations/[id]/deck`, for `presentation` and `pitch_deck`): the current slide large, set in its
+  theme, and the strip of slides beneath. **Edit slide** is the one primary action (Add a slide until there is one):
+  the slide's title, its words (lines starting with a dash are points) and its **speaker notes** open beneath it, with
+  Move earlier · Move later · Delete slide. **Add slide** and **Present** are the two secondaries; **Theme** and
+  **Print or save as PDF** live under More, with Publish as link, Share, Versions and Make a carousel.
+- **Themes** from the named palettes, defined once in the canvas: Editorial Paper (warm paper, its grain and a painted
+  sprig), Cinematic Dark (near-black, warm light) and Soft Gradient (lavender to peach, a wash). The type scales with
+  the slide, so the strip, the page and the screen all read the same.
+- **Present** fills the screen: arrows, space or a tap at either side move on; **N** shows the slide's notes; Escape
+  ends it, back on the slide you reached. **Print or save as PDF** prints only the slides, one to a landscape page.
+- **Every change is a version**, autosaved a moment after the last edit (`saveDeck`, `POST /api/v1/artifacts/:id/deck`):
+  the deck in `structured_content` (`deckOf` / `deckSchema`, `@wonder/creator-studio/deck`) and its words as text —
+  a heading per slide, never the notes — for search, export and reading. A save against an older version is refused.
+- **Presentations written before the page** (an outline in plain text) open as slides: every heading, "Slide N" line or
+  `---` rule starts one.
+- Not offered in *Make a new Creation* yet (the owner's choice, 4 Oct 2026); decks made elsewhere — Change format,
+  CreativeMind, imports — open here.
 
 ## Writing (step 1)
 

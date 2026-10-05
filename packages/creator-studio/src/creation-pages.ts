@@ -5,7 +5,7 @@ import { outputModeOf, type OutputMode } from "./working-set-options";
  * database access. Formats without their own page yet keep the general Creative Studio.
  */
 
-const PAGE: Partial<Record<OutputMode, string>> = { writing: "write", image: "image", audio: "audio" };
+const PAGE: Partial<Record<OutputMode, string>> = { writing: "write", image: "image", audio: "audio", presentation: "deck" };
 
 /** Where a Creation is worked on: its format's own page, else the Creative Studio. */
 export function creationPath(id: string, artifactType: string): string {

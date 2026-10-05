@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type } from "lucide-react";
+import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,6 +22,8 @@ import { WorkingTable, type ExternalAdded } from "./working-table";
 import { WrittenPiece } from "@/components/writing/written-piece";
 import type { ImageSet } from "@wonder/creator-studio/images";
 import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas";
+import { DeckCanvas, type DeckControls } from "./deck-canvas";
+import type { Deck } from "@wonder/creator-studio/deck";
 import { AloudSheet, CraftSheet } from "./writing-tools";
 import { AudioPanel, type AudioRequest, type AudioTakeView } from "./audio-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
@@ -38,6 +40,7 @@ import { PartChangesSheet, PartNotice, SuggestSheet, type PartOther } from "./pa
 export function Studio({
   page = "studio",
   images,
+  deck = null,
   audio,
   published = null,
   artifact,
@@ -55,7 +58,9 @@ export function Studio({
   playAlong = null,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
-  page?: "writing" | "images" | "audio" | "studio";
+  page?: "writing" | "images" | "audio" | "presentation" | "studio";
+  /** The Presentation page's slides (creation-pages.md, step 4). */
+  deck?: Deck | null;
   /** Published and reachable: the live link, and whether newer saved words exist here. */
   published?: { url: string; newer: boolean } | null;
   /** The Images page's pictures and what was done to them (creation-pages.md, step 2). */
@@ -220,7 +225,7 @@ export function Studio({
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<QualityProposal | null>(pendingProposal);
   // Refine lives in a sheet: the Palette's Refine (and old links) arrive as #creativemind; a revision on the canvas closes it.
-  const writingCanvas = artifact.type !== "carousel" && page !== "images";
+  const writingCanvas = artifact.type !== "carousel" && page !== "images" && page !== "presentation";
   useEffect(() => {
     if (!writingCanvas && !part) return;
     // The Writing page's own tools arrive the same way from the Palette: #craft (that kind's counts) and #aloud. The hash
@@ -501,6 +506,15 @@ export function Studio({
     setSheet(null);
     setImgReq((r) => ({ kind, n: (r?.n ?? 0) + 1 }));
   };
+  // The Presentation page: Edit slide is the primary action, Add slide and Present the two secondaries.
+  const deckPage = page === "presentation";
+  const hasSlides = !!deck?.slides.length;
+  // The canvas hands its controls over through a callback ref, so the header and sheets can call them from their handlers.
+  const [deckControls, setDeckControls] = useState<DeckControls | null>(null);
+  const askDeck = (kind: keyof DeckControls) => {
+    setSheet(null);
+    deckControls?.[kind]();
+  };
   // The Audio page: Record is the primary action, Listen (the page readers would hear) and Download the two secondaries.
   const audioPage = page === "audio";
   const take = audio?.take ?? null;
@@ -689,6 +703,21 @@ export function Studio({
               </a>
             ) : null}
           </div>
+        ) : deckPage ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={() => askDeck("add")} className="inline-flex min-h-11 items-center">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Plus className="size-4 text-ink-muted" aria-hidden />
+                Add slide
+              </span>
+            </button>
+            <button type="button" onClick={() => askDeck("present")} disabled={!hasSlides} className="inline-flex min-h-11 items-center disabled:opacity-50">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
+                <Presentation className="size-4 text-ink-muted" aria-hidden />
+                Present
+              </span>
+            </button>
+          </div>
         ) : imagesPage ? (
           <div className="ml-auto flex items-center gap-1.5">
             <button type="button" onClick={() => askImages("text")} disabled={!hasPictures} className="inline-flex min-h-11 items-center disabled:opacity-50">
@@ -797,7 +826,20 @@ export function Studio({
         </section>
       ) : (
         <section aria-label="Editor" className="relative overflow-hidden rounded-3xl border border-border-soft bg-surface shadow-[var(--shadow-card)]">
-          {imagesPage && images ? (
+          {deckPage && deck ? (
+            <DeckCanvas
+              artifactId={artifact.id}
+              title={title || artifact.title}
+              initial={deck}
+              baseVersionId={base?.id ?? null}
+              controls={setDeckControls}
+              onKept={(v) => {
+                setBase({ id: v.id, number: v.version_number, content: v.content });
+                setContent(v.content);
+                setSavedVersion(v.version_number);
+              }}
+            />
+          ) : imagesPage && images ? (
             <ImagesCanvas
               artifactId={artifact.id}
               title={title || artifact.title}
@@ -1090,7 +1132,7 @@ export function Studio({
       {/* In-use visuals (owner board "Fan + Preview Bubble"): a compact strip of the pictures on the table, above the
           Sources pill, in the cover view only. Tapping a picture opens the Working Set on what's In use; + brings more in. */}
       {/* Not on the Images page: its text toolbar sits there, and the Working Table bar already names the sources. */}
-      {mode === "view" && !isCarousel && !imagesPage && !proposal && !showNudge && thumbs.length ? (
+      {mode === "view" && !isCarousel && !imagesPage && !deckPage && !proposal && !showNudge && thumbs.length ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[4.25rem] z-20 mx-auto flex max-w-3xl">
           <ul className="pointer-events-auto flex items-center gap-1 rounded-xl border border-border-soft bg-surface/85 p-1 shadow-[var(--shadow-card)] backdrop-blur" aria-label="Pictures in use">
             {thumbs.map((t) => (
@@ -1129,6 +1171,14 @@ export function Studio({
             <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
               <Mic className="size-4" aria-hidden />
               {take ? "Record again" : "Record"}
+            </span>
+          </button>
+        ) : deckPage ? (
+          // Edit slide: the Presentation page's one primary action (Add a slide until there is one).
+          <button type="button" onClick={() => askDeck("edit")} className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center">
+            <span className={buttonClasses({ className: "h-11 gap-1.5 rounded-full px-4" })}>
+              {hasSlides ? <PenLine className="size-4" aria-hidden /> : <Plus className="size-4" aria-hidden />}
+              {hasSlides ? "Edit slide" : "Add a slide"}
             </span>
           </button>
         ) : imagesPage ? (
@@ -1284,6 +1334,18 @@ export function Studio({
                   { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
                   ...suggestRows,
                 ]
+              : deckPage
+              ? [
+                  { label: "Theme", hint: "Editorial Paper, Cinematic Dark or Soft Gradient", act: () => askDeck("theme") },
+                  ...(hasSlides ? [{ label: "Print or save as PDF", hint: "Every slide on its own landscape page", act: () => askDeck("print") }] : []),
+                  ...(hasSlides ? [{ label: "Publish as link", hint: "Its own page — the slides' words, your name", act: () => setSheet("publish") }] : []),
+                  { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
+                  { label: "Versions", hint: `v${base?.number ?? 1} is current — every change is a version`, act: () => router.push(`/creations/${artifact.id}?tab=versions`) },
+                  { label: "Make a carousel", hint: "Turn the slides into a carousel — the deck stays here", act: () => setSheet("format") },
+                  { label: "What's influencing this?", hint: workingSetSummary(sources), act: () => setSheet("influence") },
+                  { label: "Rights", hint: "Who may use it, and how", act: () => router.push(`/creations/${artifact.id}?tab=rights`) },
+                  ...suggestRows,
+                ]
               : imagesPage
               ? [
                   { label: "Add a picture", hint: "Take one, choose one of yours, or let CreativeMind make one", act: () => askImages("add") },
@@ -1351,7 +1413,7 @@ export function Studio({
           </ul>
         </DialogContent>
       </Dialog>
-      {imagesPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
+      {imagesPage || deckPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
       {part ? (
         <>
           {partSheet?.kind === "changes" ? <PartChangesSheet key={partSheet.other.partId} open projectId={part.project.id} other={partSheet.other} onOpenChange={(o) => !o && setPartSheet(null)} /> : null}

@@ -11,7 +11,9 @@ describe("creation pages", () => {
     expect(creationPath("a1", "carousel")).toBe("/creations/a1/studio");
     expect(creationPath("a1", "short_film")).toBe("/creations/a1/studio");
     expect(hasOwnPage("essay")).toBe(true);
-    expect(hasOwnPage("presentation")).toBe(false);
+    expect(hasOwnPage("presentation")).toBe(true);
+    expect(creationPath("a1", "presentation")).toBe("/creations/a1/deck");
+    expect(creationPath("a1", "pitch_deck")).toBe("/creations/a1/deck");
   });
 
   it("sets the words on paper without a cover, else as chosen (over the cover by default)", () => {
