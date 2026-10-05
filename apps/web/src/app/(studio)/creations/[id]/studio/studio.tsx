@@ -25,7 +25,8 @@ import { ImagesCanvas, type ImagesRequest, type Picture } from "./images-canvas"
 import { AloudSheet, CraftSheet } from "./writing-tools";
 import { AudioPanel, type AudioRequest, type AudioTakeView } from "./audio-canvas";
 import { CoverSheet, ExportSheet, KindSheet, PublishLinkSheet } from "./writing-sheets";
-import type { PartContext } from "@wonder/creator-projects/parts-options";
+import type { PartContext, PlayAlong } from "@wonder/creator-projects/parts-options";
+import { PlayAlongBar } from "./play-along";
 import { PartChangesSheet, PartNotice, SuggestSheet, type PartOther } from "./part-context";
 
 /**
@@ -51,6 +52,7 @@ export function Studio({
   pendingProposal,
   offline,
   part = null,
+  playAlong = null,
 }: {
   /** The Writing page (creation-pages.md) or the general Studio. Same header, Working Table and Save as version. */
   page?: "writing" | "images" | "audio" | "studio";
@@ -75,6 +77,8 @@ export function Studio({
   offline: boolean;
   /** A part of a Creative Room's joint work (creative-room-parts.md, step 2): what it was made with, what moved on. */
   part?: PartContext | null;
+  /** Step 3: the other parts' takes to play here, and (on the Audio page) a writing part's words to read. */
+  playAlong?: PlayAlong | null;
 }) {
   // Immersive: the mini player stays a slim tab (music keeps playing; mini-player.md §33).
   useMiniPlayerConstraint({ forceCollapsed: true });
@@ -781,6 +785,8 @@ export function Studio({
         </p>
       ) : null}
       {part ? <PartNotice part={part} onChanges={(other) => setPartSheet({ kind: "changes", other })} /> : null}
+      {/* Play-along while writing or shaping (step 3); the Audio page shows it with the recording instead. */}
+      {playAlong?.tracks.length && !audioPage ? <PlayAlongBar tracks={playAlong.tracks} className="mb-2" /> : null}
 
       {usedNote ? (
         <p role="status" className="mb-2 flex items-start gap-2 rounded-2xl bg-accent-softer px-3 py-2 text-[13px] text-ink">
@@ -958,6 +964,7 @@ export function Studio({
                     setSavedVersion(v.version_number);
                   }}
                   onUseTranscript={(text) => onType(text)}
+                  playAlong={playAlong}
                 />
               ) : null}
               {writing ? (

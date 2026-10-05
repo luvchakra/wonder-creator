@@ -12,6 +12,7 @@ import {
   listParts,
   myPartInvites,
   partContextFor,
+  partTakes,
   partWords,
   partsTimeline,
   respondToCrew,
@@ -22,7 +23,7 @@ import {
   updatePart,
 } from "@wonder/creator-projects";
 import type { Db as AppDb } from "@wonder/db";
-import { cleanupTestCreators, createArtifact, createTestCreator, createVersion, expectDenied, expectOk, type TestCreator } from "./helpers";
+import { adminClient, cleanupTestCreators, createArtifact, createProvenance, createTestCreator, createVersion, expectDenied, expectOk, registerStorageObject, type TestCreator } from "./helpers";
 
 // Parts (docs/creative-room-parts.md): peers, with one or more people each; someone invited to a part alone sees the
 // Room's name and its parts, not its items, tasks or chat. Membership moves only through the functions.
@@ -199,5 +200,45 @@ describe("parts: who sees and does what", () => {
     await expect(suggestToPart(db(dee), tune.id, { content: "x", summary: "x" })).rejects.toThrow(/no words yet/);
     // Version context is history: it can't be written by clients.
     expectDenied(await dee.client.from("project_part_version_context").insert({ version_id: w1.id, part_id: lyrics.id, project_id: p.id }));
+  });
+
+  it("play-along: a part's kept take is offered to the people making the work, never to anyone else", async () => {
+    const { p, lyrics, tune } = await songRoom();
+    await claimPart(db(ana), tune.id);
+    await claimPart(db(owner), lyrics.id);
+    await inviteToPart(db(owner), lyrics.id, { creatorId: dee.creatorId });
+    await respondToPart(db(dee), lyrics.id, true);
+    // Ana keeps a take on Tune: a checked recording of her own, as the Audio page saves it.
+    const admin = adminClient();
+    const take = async (status: "clean" | "quarantined") => {
+      const obj = await registerStorageObject(ana);
+      expectOk(await admin.from("storage_objects").update({ security_status: status, mime_type: "audio/webm" }).eq("id", obj));
+      const mat = expectOk(
+        await admin
+          .from("creative_materials")
+          .insert({ creator_id: ana.creatorId, type: "audio", title: "Tune take", storage_object_id: obj, provenance_id: await createProvenance(ana, "upload"), security_status: status })
+          .select("id")
+          .single(),
+      ).id;
+      return { obj, mat };
+    };
+    const tuneArt = await createArtifact(ana, { title: "Platform 3 · Tune", artifact_type: "song_concept", category: "audio" });
+    await attachPartArtifact(db(ana), tune.id, tuneArt);
+    const good = await take("clean");
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "", p_label: "First take", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 42 } } }));
+    // The lyricist (crew owner) and Dee (on Lyrics only) both get it; an outsider gets nothing.
+    for (const who of [owner, dee]) {
+      expect(await partTakes(db(who), p.id)).toEqual([{ partId: tune.id, title: "Tune", artifactId: tuneArt, versionNumber: 1, storageObjectId: good.obj, seconds: 42 }]);
+    }
+    expect(await partTakes(db(cy), p.id)).toEqual([]);
+    // A written part is no take; a recording held for safety is never offered.
+    const bad = await take("quarantined");
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "", p_label: "Second take", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: bad.mat, seconds: 40 } } }));
+    expect(await partTakes(db(owner), p.id)).toEqual([]);
+    // Someone else's Material named in a take isn't offered either: the take must be the part owner's own recording.
+    const lyricsArt = await createArtifact(owner, { title: "Platform 3 · Lyrics", artifact_type: "lyrics", category: "writing" });
+    await attachPartArtifact(db(owner), lyrics.id, lyricsArt);
+    expectOk(await owner.client.rpc("create_artifact_version", { p_artifact_id: lyricsArt, p_content: "words", p_label: "Draft", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 1 } } }));
+    expect((await partTakes(db(dee), p.id)).map((t) => t.partId)).not.toContain(lyrics.id);
   });
 });

@@ -1,7 +1,8 @@
 import { carouselView, findingsOf, providerReadiness } from "@wonder/creator-brain";
 import { actionsFor, artifactType, audioSetOf, creationPath, imageSetOf, lookOf, ornamentOf, writingStyleOf } from "@wonder/creator-studio";
 import { signedUrlsFor } from "@wonder/creator-library";
-import { partContextFor } from "@wonder/creator-projects";
+import { partContextFor, partTakes, partWords, type PlayAlong } from "@wonder/creator-projects";
+import { mediaLink } from "@wonder/core/server";
 import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { avatarUrls } from "@/lib/avatars";
@@ -80,6 +81,20 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
     const { data: rev } = pub.current_revision_id ? await db.from("published_revisions").select("version_id").eq("id", pub.current_revision_id).maybeSingle() : { data: null };
     published = { url: `${await siteOrigin()}/p/${creator.handle}/${pub.slug}`, newer: !!rev && rev.version_id !== (a.current_version_id ?? null) };
   }
+  // Play-along (creative-room-parts.md, step 3): the other parts' kept takes, and a writing part's words on the Audio page.
+  // part_takes returns only what this viewer may read; a short-lived media link is minted for exactly those.
+  let playAlong: PlayAlong | null = null;
+  if (part) {
+    const takes = (await partTakes(db, part.project.id).catch(() => [])).filter((t) => t.partId !== part.part.id);
+    const tracks = takes.flatMap((t) => {
+      const url = mediaLink(t.storageObjectId);
+      return url ? [{ partId: t.partId, title: t.title, versionNumber: t.versionNumber, url, seconds: t.seconds }] : [];
+    });
+    const lyric = at === "audio" ? part.others.find((o) => o.kind === "writing" && o.current) : undefined;
+    const text = lyric ? await partWords(db, lyric.partId).catch(() => null) : null;
+    const words = lyric && text?.current.content.trim() ? { partId: lyric.partId, title: lyric.title, versionNumber: text.current.number, text: text.current.content } : null;
+    playAlong = tracks.length || words ? { tracks, words } : null;
+  }
   const peopleIds = [creator.id, ...(contributors ?? []).map((c) => c.contributor_creator_id)];
   const avatars = await avatarUrls(db, peopleIds);
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
@@ -117,6 +132,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
         }
         offline={!providerReadiness().live}
         part={part}
+        playAlong={playAlong}
       />
     </>
   );

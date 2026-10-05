@@ -3,7 +3,9 @@ import { clockOf } from "@wonder/creator-studio/audio";
 import { Button, Dialog, DialogContent, KIT, KitArt, cn } from "@wonder/ui";
 import { Mic, Pause, Play, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PlayAlong, PlayAlongTrack } from "@wonder/creator-projects/parts-options";
+import { PlayAlongBar, PlayAlongWords } from "./play-along";
 import { clock, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { api, errorMessage } from "@/lib/client";
 
@@ -31,7 +33,10 @@ export function AudioPanel({
   request,
   onKept,
   onUseTranscript,
+  playAlong = null,
 }: {
+  /** A part of a Room's work (step 3): the other parts' takes to play, and the words to read while recording. */
+  playAlong?: PlayAlong | null;
   artifactId: string;
   take: AudioTakeView | null;
   baseVersionId: string | null;
@@ -57,6 +62,9 @@ export function AudioPanel({
     setD(take?.seconds ?? 0);
     setPlaying(false);
   }
+  // Record over a track: the first other part's take plays while recording (headphones keep it out of the take).
+  const track = playAlong?.tracks[0] ?? null;
+  const [over, setOver] = useState(true);
   // Offered while the words differ from what was said; the words it replaces stay in the versions once saved.
   const transcriptOffer = !!take?.transcript && words.trim() !== take.transcript.trim();
 
@@ -125,15 +133,42 @@ export function AudioPanel({
           {words.trim() ? "Replace the words with the transcript" : "Use the transcript as the words"}
         </button>
       ) : null}
-      <RecordSheet open={recording} onOpenChange={setRecording} artifactId={artifactId} baseVersionId={baseVersionId} words={words} again={!!take} onKept={onKept} />
+      {playAlong ? (
+        <div className="mt-3 space-y-2">
+          <PlayAlongBar tracks={playAlong.tracks} />
+          {track ? (
+            <label className="flex min-h-11 items-center gap-2 text-[13px] text-ink">
+              <input type="checkbox" checked={over} onChange={(e) => setOver(e.target.checked)} className="size-4 accent-[var(--color-accent,#6d5dfc)]" />
+              Play {track.title} while I record <span className="text-ink-muted">— with headphones</span>
+            </label>
+          ) : null}
+          {playAlong.words ? <PlayAlongWords words={playAlong.words} onUse={onUseTranscript} /> : null}
+        </div>
+      ) : null}
+      <RecordSheet
+        open={recording}
+        onOpenChange={setRecording}
+        artifactId={artifactId}
+        baseVersionId={baseVersionId}
+        words={words}
+        again={!!take}
+        onKept={onKept}
+        track={track && over ? track : null}
+        lyrics={playAlong?.words?.text ?? null}
+      />
     </div>
   );
 }
 
-function RecordSheet({ open, onOpenChange, ...rest }: { open: boolean; onOpenChange: (o: boolean) => void; artifactId: string; baseVersionId: string | null; words: string; again: boolean; onKept: AudioPanelKept }) {
+type RecordProps = { artifactId: string; baseVersionId: string | null; words: string; again: boolean; onKept: AudioPanelKept; track: PlayAlongTrack | null; lyrics: string | null };
+function RecordSheet({ open, onOpenChange, ...rest }: { open: boolean; onOpenChange: (o: boolean) => void } & RecordProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={rest.again ? "Record again" : "Record"} description={rest.again ? "A new take; the earlier one is kept." : "Recording starts now. Stop when you're done."} art={KIT.iconChip.waveform}>
+      <DialogContent
+        title={rest.again ? "Record again" : "Record"}
+        description={rest.track ? `Recording over ${rest.track.title} v${rest.track.versionNumber} — it plays from the start.` : rest.again ? "A new take; the earlier one is kept." : "Recording starts now. Stop when you're done."}
+        art={KIT.iconChip.waveform}
+      >
         {open ? <RecordBody {...rest} onClose={() => onOpenChange(false)} /> : null}
       </DialogContent>
     </Dialog>
@@ -141,7 +176,7 @@ function RecordSheet({ open, onOpenChange, ...rest }: { open: boolean; onOpenCha
 }
 type AudioPanelKept = (v: { id: string; version_number: number; content: string }) => void;
 
-function RecordBody({ artifactId, baseVersionId, words, onKept, onClose }: { artifactId: string; baseVersionId: string | null; words: string; again: boolean; onKept: AudioPanelKept; onClose: () => void }) {
+function RecordBody({ artifactId, baseVersionId, words, onKept, onClose, track, lyrics }: RecordProps & { onClose: () => void }) {
   const router = useRouter();
   const { state, seconds, levelRef, stop } = useAudioRecorder({ fallback: "write the words instead" });
   const [progress, setProgress] = useState<number | null>(null);
@@ -150,6 +185,17 @@ function RecordBody({ artifactId, baseVersionId, words, onKept, onClose }: { art
   const player = useRef<HTMLAudioElement>(null);
   const clientId = useRef(crypto.randomUUID());
   const recorded = state.phase === "recorded" ? state : null;
+  // Recording over a track: it starts with the recording and stops with it.
+  const backing = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const el = backing.current;
+    if (!el) return;
+    if (state.phase === "recording") {
+      el.currentTime = 0;
+      void el.play().catch(() => undefined);
+    } else el.pause();
+  }, [state.phase]);
+  const readAlong = (lyrics ?? words).trim();
 
   async function keep() {
     if (!recorded) return;
@@ -199,6 +245,7 @@ function RecordBody({ artifactId, baseVersionId, words, onKept, onClose }: { art
     );
   return (
     <div className="space-y-4">
+      {track ? <audio ref={backing} src={track.url} preload="auto" className="hidden" /> : null}
       <p className="text-center font-display text-[32px] tabular-nums leading-none text-ink">{clock(seconds)}</p>
       <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-surface-muted">
         <span ref={levelRef} className="block h-full origin-left scale-x-[0.06] rounded-full bg-accent" />
@@ -209,6 +256,11 @@ function RecordBody({ artifactId, baseVersionId, words, onKept, onClose }: { art
       <Button className={cn("w-full")} disabled={state.phase !== "recording"} onClick={stop}>
         <Square className="size-4 fill-current" aria-hidden /> Stop
       </Button>
+      {readAlong ? (
+        <p aria-label="Words to sing" className="max-h-48 overflow-auto whitespace-pre-wrap rounded-2xl bg-surface-muted px-4 py-3 text-center font-display text-[16px] leading-relaxed text-ink">
+          {readAlong}
+        </p>
+      ) : null}
     </div>
   );
 }

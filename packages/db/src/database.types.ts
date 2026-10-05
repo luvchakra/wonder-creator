@@ -4589,6 +4589,11 @@ isOneToOne: false
 "part_suggest":
 { Args: { "p_content": string,"p_part": string,"p_summary": string }; Returns: string
                            },
+"part_takes":
+{ Args: { "p_project": string }; Returns: {
+              "artifact_id": string,"part_id": string,"seconds": number,"storage_object_id": string,"title": string,"version_id": string,"version_number": number
+            }[]
+                           },
 "payment_apply_event":
 { Args: { "p_amount"?: number,"p_body_sha256": string,"p_currency"?: string,"p_event_id": string,"p_event_type": string,"p_kind": string,"p_payment"?: string,"p_provider": string,"p_ref"?: string,"p_refund_ref"?: string }; Returns: string
                            },
