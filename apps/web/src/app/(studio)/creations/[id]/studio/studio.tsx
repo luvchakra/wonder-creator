@@ -269,7 +269,7 @@ export function Studio({
   }
 
   /** Save as new version (board §12): the checkpoint that makes a durable version from the draft. */
-  async function saveVersion(opts: { name: string; keepUnused: boolean }) {
+  async function saveVersion(opts: { name: string; keepUnused: boolean }): Promise<boolean> {
     // The version supersedes any pending draft autosave, which would otherwise land afterwards and re-store the draft.
     if (autosave.current) {
       clearTimeout(autosave.current);
@@ -305,11 +305,23 @@ export function Studio({
       setSavedVersion(r.version.version_number);
       setSheet(null);
       router.refresh();
+      return true;
     } catch (e) {
       setError(errorMessage(e));
+      return false;
     } finally {
       setWorking(null);
     }
+  }
+
+  /**
+   * Preview shows what readers would get — and what Publish publishes: the latest version. Words written since (the
+   * autosaved draft) are saved as a version first, so Preview always has the latest (owner, 5 Oct 2026).
+   */
+  async function openPreview(e: React.MouseEvent) {
+    if (!dirty || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    if (await saveVersion({ name: "Before preview", keepUnused: true })) router.push(`/creations/${artifact.id}/preview`);
   }
 
   // "Use this" results (owner, 28 Sep 2026): what the chosen uses did, said once; and news for the carousel canvas.
@@ -687,7 +699,7 @@ export function Studio({
         {audioPage ? (
           <div className="ml-auto flex items-center gap-1.5">
             {take ? (
-              <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
+              <Link href={`/creations/${artifact.id}/preview`} onClick={(e) => void openPreview(e)} aria-busy={working === "version"} className="inline-flex min-h-11 items-center">
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
                   <Headphones className="size-4 text-ink-muted" aria-hidden />
                   Listen
@@ -743,10 +755,10 @@ export function Studio({
               </span>
             </button>
             {/* Preview (owner, 4 Oct 2026): the page readers would see, with Publish beneath — the clearest "what's next". */}
-            <Link href={`/creations/${artifact.id}/preview`} className="inline-flex min-h-11 items-center">
+            <Link href={`/creations/${artifact.id}/preview`} onClick={(e) => void openPreview(e)} aria-busy={working === "version"} className="inline-flex min-h-11 items-center">
               <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
                 <Eye className="size-4 text-ink-muted" aria-hidden />
-                Preview
+                {working === "version" ? "Saving…" : "Preview"}
               </span>
             </Link>
           </div>
@@ -932,7 +944,7 @@ export function Studio({
                 tabIndex={0}
                 aria-label={`${title || "Untitled"}, read`}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-10 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent sm:px-8",
+                  "absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-[calc(10rem+env(safe-area-inset-bottom))] [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent sm:px-8",
                   look === "cover" ? "pt-[18vh] text-white" : "pt-8 text-ink sm:pt-12",
                 )}
               >
@@ -965,7 +977,7 @@ export function Studio({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={artifact.coverUrl ?? BACKGROUNDS.coastalVillage} alt="" className="absolute inset-0 size-full object-cover" />
               <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.6)_40%,rgba(20,18,40,0.88)_100%)]" />
-              <div tabIndex={0} aria-label={`${title || "Untitled"}, read`} className="absolute inset-0 overflow-y-auto overscroll-contain px-5 pb-10 pt-[18vh] text-white [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-8">
+              <div tabIndex={0} aria-label={`${title || "Untitled"}, read`} className="absolute inset-0 overflow-y-auto overscroll-contain px-5 pb-[calc(10rem+env(safe-area-inset-bottom))] pt-[18vh] text-white [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-8">
                 <h2 className="font-display text-[34px] leading-[1.05] [text-shadow:0_1px_14px_rgba(0,0,0,0.45)] sm:text-[44px]">{title || "Untitled"}</h2>
                 <p
                   className={cn(
@@ -1017,7 +1029,8 @@ export function Studio({
                 autoFocus={!!version?.content}
                 spellCheck
                 className={cn(
-                  "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10",
+                  // The bottom bar floats over the canvas: room beneath the last line so it can always scroll into view.
+                  "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 text-ink focus:outline-none sm:px-10 sm:pt-10",
                   audioPage ? "min-h-[16rem] h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-16rem)]" : "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
                   writing && "pt-14 sm:pt-16",
                   editorFont,
