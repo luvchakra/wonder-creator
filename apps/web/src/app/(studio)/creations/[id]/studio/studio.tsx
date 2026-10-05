@@ -944,7 +944,7 @@ export function Studio({
                 tabIndex={0}
                 aria-label={`${title || "Untitled"}, read`}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-10 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent sm:px-8",
+                  "absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-[calc(10rem+env(safe-area-inset-bottom))] [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent sm:px-8",
                   look === "cover" ? "pt-[18vh] text-white" : "pt-8 text-ink sm:pt-12",
                 )}
               >
@@ -977,7 +977,7 @@ export function Studio({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={artifact.coverUrl ?? BACKGROUNDS.coastalVillage} alt="" className="absolute inset-0 size-full object-cover" />
               <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,40,0.35)_0%,rgba(20,18,40,0.6)_40%,rgba(20,18,40,0.88)_100%)]" />
-              <div tabIndex={0} aria-label={`${title || "Untitled"}, read`} className="absolute inset-0 overflow-y-auto overscroll-contain px-5 pb-10 pt-[18vh] text-white [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-8">
+              <div tabIndex={0} aria-label={`${title || "Untitled"}, read`} className="absolute inset-0 overflow-y-auto overscroll-contain px-5 pb-[calc(10rem+env(safe-area-inset-bottom))] pt-[18vh] text-white [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-8">
                 <h2 className="font-display text-[34px] leading-[1.05] [text-shadow:0_1px_14px_rgba(0,0,0,0.45)] sm:text-[44px]">{title || "Untitled"}</h2>
                 <p
                   className={cn(
@@ -1029,7 +1029,8 @@ export function Studio({
                 autoFocus={!!version?.content}
                 spellCheck
                 className={cn(
-                  "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 py-6 text-ink focus:outline-none sm:px-10 sm:py-10",
+                  // The bottom bar floats over the canvas: room beneath the last line so it can always scroll into view.
+                  "block min-h-[22rem] w-full resize-none rounded-3xl bg-transparent px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 text-ink focus:outline-none sm:px-10 sm:pt-10",
                   audioPage ? "min-h-[16rem] h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-16rem)]" : "h-[calc(100dvh-var(--nav-height)-var(--canvas-extra)-9.75rem)]",
                   writing && "pt-14 sm:pt-16",
                   editorFont,
