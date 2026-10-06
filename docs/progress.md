@@ -219,6 +219,7 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | 5 · Video page | Done | `/creations/[id]/video`: the storyboard — the current shot large (its frame, or a painted card with its line), the shots in a strip with the runtime. Write (line, camera and staging, length, a frame from your pictures; move or delete) is the primary action, Add shot and Play through (the animatic) the secondaries; Render video says plainly no video provider is connected; Export gives the shot list. Every change autosaves as a version; scripts written before open as shots |
 | Make a new Creation: every format | Done | Owner, 5 Oct 2026: Video and Presentation are back in the sheet, each opening its own page |
 | Presentation: pictures on slides; published as slides | Done | Owner, 5 Oct 2026. A slide can hold one of your pictures — beside the words, or filling the slide behind the title when there are none (own pictures only when new, with lineage). Published, a presentation reads as its slides in their theme (words and pictures, never the notes) instead of text; one slide renderer for the page, Present, print and the public page |
+| Parts you are on show on Home | Done | Owner, 6 Oct 2026: accepting (or claiming) a part adds it to Home's Continue rows — "Tune · Song title" and "Not started yet" until someone starts it (the row opens the Room), then the part's own Creation, newest first within the same three rows. Room-mates' Creations you edit join too. No new button or section |
 
 ## Creative Room parts (owner brief, 4 Oct 2026)
 

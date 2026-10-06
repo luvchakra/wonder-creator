@@ -255,7 +255,7 @@ function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
           <li key={c.id}>
             <TrackedLink
               event="home_continue_clicked"
-              href={`/creations/${c.id}/studio`}
+              href={c.href ?? `/creations/${c.id}/studio`}
               {...(i === 0 ? { "data-primary-action": true } : {})}
               className="flex min-h-12 items-center gap-2.5 px-3 py-1.5 hover:bg-surface-muted"
             >
