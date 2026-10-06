@@ -121,6 +121,7 @@ test.describe("Creative Room parts", () => {
     const invite = page.getByRole("dialog", { name: "Invite to Tune" });
     await invite.getByLabel("Find a creator").fill(`@${mira.handle}`);
     await invite.getByRole("button", { name: `Invite ${mira.name}` }).click();
+    await expect(invite).toBeHidden();
 
     await b.goto(room);
     await b.getByRole("button", { name: "Accept" }).click();
