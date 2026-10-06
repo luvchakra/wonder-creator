@@ -1,14 +1,15 @@
 "use client";
 import { clockOf } from "@wonder/creator-studio/audio";
-import { PART_KINDS, PART_KIND_LABEL, type PartEventView, type PartKind, type PartView, type SongAgreement } from "@wonder/creator-projects/parts-options";
+import { PART_KINDS, PART_KIND_LABEL, type ListenTrack, type Mix, type PartEventView, type PartKind, type PartView, type SongAgreement } from "@wonder/creator-projects/parts-options";
 import { Avatar, Button, Dialog, DialogContent, Field, Input, KIT, KitArt, Menu, MenuContent, MenuItem, MenuTrigger, buttonClasses, cn } from "@wonder/ui";
-import { ChevronRight, Headphones, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Pause, Play, Plus, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { CreatorPicker } from "@/components/creator-picker";
 import { api, errorMessage } from "@/lib/client";
+import { useMix } from "@/components/audio/use-mix";
 import { CreditsPanel } from "./credits-panel";
 
 /**
@@ -24,17 +25,18 @@ export interface PartsData {
   manages: boolean;
   /** In the Room (owner or crew): may claim a part. */
   canClaim: boolean;
-  /** The first lines of a writing part the viewer may read, for the hero. */
-  excerpt: { partTitle: string; lines: string[] } | null;
+  /** The first lines of a writing part the viewer may read, for the hero, and the rest of it for "More". */
+  excerpt: { partTitle: string; lines: string[]; rest?: string[] } | null;
   /** Some part has a kept take the viewer may hear: Listen together (step 4). */
-  listenable: boolean;
+  /** The kept takes this viewer may hear and the Room's mix: the work plays in its hero (owner, 6 Oct 2026). */
+  listen: { tracks: ListenTrack[]; mix: Mix } | null;
   /** The credits and shares, proposed or agreed (step 5a). */
   agreement: SongAgreement | null;
 }
 
 const DOT: Record<PartView["status"], string> = { open: "border-2 border-border bg-transparent", in_rounds: "bg-accent", final: "bg-success-ink" };
 
-export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt, listenable, agreement }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
+export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, manages, canClaim, excerpt, listen, agreement }: PartsData & { projectId: string; viewerId: string; avatars: Record<string, string | null> }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,17 +101,11 @@ export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, mana
           </p>
         </div>
         {excerpt ? (
-          <blockquote className="mt-3 font-display text-[16px] leading-[1.65] text-ink">
-            {excerpt.lines.map((l, i) => (
-              <span key={i} className="block">
-                {l}
-              </span>
-            ))}
-            <span className="mt-1 block font-sans text-[12px] text-ink-muted">— {excerpt.partTitle}</span>
-          </blockquote>
+          <Excerpt excerpt={excerpt} />
         ) : (
           <p className="mt-2 text-[13.5px] text-ink-muted">Each part is a Creation of its own, by whoever is on it. None waits on another; nothing is final until its people say so.</p>
         )}
+        {listen ? <WorkPlayer projectId={projectId} tracks={listen.tracks} mix={listen.mix} /> : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {primary ? (
             primary.href ? (
@@ -124,12 +120,7 @@ export function PartsPanel({ projectId, viewerId, avatars, parts, timeline, mana
           ) : canClaim && open.length ? (
             <Button onClick={() => setClaiming(true)}>Claim a part</Button>
           ) : null}
-          {listenable ? (
-            <Link href={`/rooms/${projectId}/song`} className={buttonClasses({ variant: primary || (canClaim && open.length) ? "secondary" : "primary" })}>
-              <Headphones className="size-4" aria-hidden />
-              Listen together
-            </Link>
-          ) : null}
+
           {mine.length > 1 ? <span className="text-[12.5px] text-ink-muted">You&rsquo;re also on {mine.slice(1).map((p) => p.title).join(", ")}.</span> : null}
         </div>
       </div>
@@ -413,4 +404,100 @@ function describe(e: PartEventView, viewerId: string): string {
     default:
       return `${who}: ${e.kind.replace(/_/g, " ")} — ${e.partTitle}.`;
   }
+}
+
+/**
+ * The work's words in the hero: the first four lines, and — when there's more — a quiet "More" at their end that opens
+ * the rest inline, just below (owner, 6 Oct 2026). Stanza breaks are kept; "Less" folds it again.
+ */
+function Excerpt({ excerpt }: { excerpt: { partTitle: string; lines: string[]; rest?: string[] } }) {
+  const [open, setOpen] = useState(false);
+  const rest = excerpt.rest ?? [];
+  return (
+    <blockquote className="mt-3 font-display text-[16px] leading-[1.65] text-ink">
+      {excerpt.lines.map((l, i) => (
+        <span key={i} className="block">
+          {l}
+        </span>
+      ))}
+      {open ? (
+        <span id="work-rest" className="block">
+          {rest.map((l, i) => (l ? <span key={i} className="block">{l}</span> : <span key={i} aria-hidden className="block h-[0.8em]" />))}
+        </span>
+      ) : null}
+      {rest.length ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="work-rest"
+          onClick={() => setOpen((o) => !o)}
+          className="-ml-1 inline-flex min-h-11 items-center rounded-full px-1 font-sans text-[13px] font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          {open ? "Less" : "More"}
+        </button>
+      ) : null}
+      <span className={cn("block font-sans text-[12px] text-ink-muted", rest.length ? "" : "mt-1")}>— {excerpt.partTitle}</span>
+    </blockquote>
+  );
+}
+
+/**
+ * The work, heard as one, right in the Room's hero (owner, 6 Oct 2026: "run the combined project in the top section, it
+ * should feel seamless"): every kept take at its start and level from the Room's mix, one Play, a position you can move.
+ * The takes are fetched and decoded quietly once the hero is on screen (not on a data-saving connection), so Play starts
+ * at once. Background music steps aside while it plays. Mixing, notes and the download live on Listen together.
+ */
+function WorkPlayer({ projectId, tracks, mix }: { projectId: string; tracks: ListenTrack[]; mix: Mix }) {
+  const player = useMix(tracks, mix);
+  const box = useRef<HTMLDivElement>(null);
+  const { prepare } = player;
+  useEffect(() => {
+    const el = box.current;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (!el || saveData || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        io.disconnect();
+        void prepare();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [prepare]);
+  const names = tracks.map((t) => t.title).join(" · ");
+  return (
+    <div ref={box} className="mt-3 flex items-center gap-3" aria-label="Play the work">
+      <button
+        type="button"
+        onClick={() => (player.playing ? player.pause() : void player.play())}
+        aria-label={player.playing ? "Pause" : "Play the work"}
+        className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-ink text-white shadow-[0_10px_24px_-12px_rgba(30,30,60,0.6)] transition-transform hover:bg-ink/90 active:scale-95 motion-reduce:transition-none"
+      >
+        {player.playing ? <Pause className="size-5" aria-hidden /> : <Play className="ml-0.5 size-5" aria-hidden />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <input
+          type="range"
+          aria-label="Position in the work"
+          min={0}
+          max={Math.max(1, player.duration)}
+          step={0.1}
+          value={Math.min(player.at, player.duration)}
+          onChange={(e) => player.seek(Number(e.target.value))}
+          className="block h-8 w-full accent-[var(--color-accent)]"
+        />
+        <p className="-mt-0.5 flex items-center justify-between gap-2 text-[12px] tabular-nums text-ink-muted">
+          <span className="min-w-0 truncate">
+            {clockOf(player.at)} · <span className="font-sans">{names}</span>
+          </span>
+          <span role="status" className="shrink-0">
+            {player.status === "error" ? "Couldn't load — Play again" : player.status === "loading" && player.playing ? "…" : clockOf(player.duration)}
+          </span>
+        </p>
+      </div>
+      <Link href={`/rooms/${projectId}/song`} aria-label="Mix, notes and download" title="Mix, notes and download" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-black/[0.04] hover:text-ink">
+        <SlidersHorizontal className="size-[18px]" aria-hidden />
+      </Link>
+    </div>
+  );
 }

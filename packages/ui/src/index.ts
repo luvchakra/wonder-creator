@@ -5,6 +5,7 @@ export * from "./components/form";
 export * from "./components/overlay";
 export * from "./components/atmosphere";
 export * from "./components/brand";
+export * from "./components/logo-bloom";
 export { KIT, type KitAsset, type KitVector, type KitRaster } from "./brand/kit";
 export { APP_ICONS } from "./brand/app-icons";
 export * from "./brand/kit-icons";

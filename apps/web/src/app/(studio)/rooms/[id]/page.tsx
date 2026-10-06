@@ -1,3 +1,4 @@
+import { mediaLink } from "@wonder/core/server";
 import type { CommunityPrivacy } from "@wonder/creator-community/shared";
 import { listApprovals } from "@wonder/creator-brain";
 import { signedUrlsFor } from "@wonder/creator-library";
@@ -16,7 +17,7 @@ import {
   getProjectRights,
   listParts,
   partsTimeline,
-  partTakes,
+  partMix, partTakes,
   songAgreement,
   type ProjectStatus,
 } from "@wonder/creator-projects";
@@ -64,13 +65,24 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const canEdit = p.creator_id === creator.id;
   // Parts (docs/creative-room-parts.md): what the work is made of, who's on each, and what happened.
   const parts = await listParts(db, id, creator.id);
-  const timeline = parts.length ? await partsTimeline(db, id, parts) : [];
-  // Listen together (step 4) once some part has a take this viewer may hear.
-  const listenable = parts.some((x) => x.kind === "audio" && x.artifactId) ? (await partTakes(db, id).catch(() => [])).length > 0 : false;
-  // Credits & shares (step 5a): the open or agreed proposal, once there could be one.
-  const agreement = parts.length ? await songAgreement(db, id).catch(() => null) : null;
-  const crewRow = await crewForProject(db, id);
-  const crew = crewRow ? await getCrew(db, creator.id, crewRow.id) : null;
+  // Everything that needs only the parts, at once (docs/performance.md): the timeline; the kept takes and the Room's mix,
+  // so the work plays right here in its hero (owner, 6 Oct 2026); credits & shares (step 5a); and the crew.
+  const [timeline, takes, mix, agreement, crew] = await Promise.all([
+    parts.length ? partsTimeline(db, id, parts) : Promise.resolve([]),
+    parts.some((x) => x.kind === "audio" && x.artifactId) ? partTakes(db, id).catch(() => []) : Promise.resolve([]),
+    parts.length ? partMix(db, id).catch(() => ({ tracks: {}, updatedAt: null })) : Promise.resolve({ tracks: {}, updatedAt: null }),
+    parts.length ? songAgreement(db, id).catch(() => null) : Promise.resolve(null),
+    crewForProject(db, id).then((row) => (row ? getCrew(db, creator.id, row.id) : null)),
+  ]);
+  const listen = takes.length
+    ? {
+        tracks: takes.flatMap((t) => {
+          const url = mediaLink(t.storageObjectId);
+          return url ? [{ partId: t.partId, title: t.title, versionNumber: t.versionNumber, url, seconds: t.seconds, people: [] }] : [];
+        }),
+        mix: mix.tracks,
+      }
+    : null;
   const inCrew = !!crew && crew.me?.status === "active";
   // Work and Chat need a crew; Tasks works for any project.
   const tab: ProjectTab = asked === "tasks" || asked === "contributions" || asked === "rights" || (inCrew && asked !== "overview") ? asked : "overview";
@@ -183,7 +195,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         }
         contributions={ledger ? { manages: role === "owner" || role === "admin", entries: ledger, summary: contributionSummary(ledger), people } : null}
         rights={rights}
-        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt, listenable, agreement } : null}
+        parts={parts.length ? { parts: parts.map((x) => ({ ...x, href: x.artifact ? creationPath(x.artifact.id, x.artifact.type) : null })), timeline, manages, canClaim: canEdit || inCrew, excerpt, listen: listen?.tracks.length ? listen : null, agreement } : null}
         avatars={avatars}
         canEdit={canEdit}
         ownerName={owner.data?.display_name ?? "A creator"}
@@ -206,12 +218,18 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
 }
 
 /** The first lines of a writing part the viewer may read: the hero's glimpse of the work. */
-async function partExcerpt(db: Parameters<typeof listParts>[0], parts: Awaited<ReturnType<typeof listParts>>): Promise<{ partTitle: string; lines: string[] } | null> {
+async function partExcerpt(db: Parameters<typeof listParts>[0], parts: Awaited<ReturnType<typeof listParts>>): Promise<{ partTitle: string; lines: string[]; rest: string[] } | null> {
   const part = parts.find((x) => x.kind === "writing" && x.artifact);
   if (!part?.artifact) return null;
   const { data: a } = await db.from("artifacts").select("current_version_id").eq("id", part.artifact.id).maybeSingle();
   if (!a?.current_version_id) return null;
   const { data: v } = await db.from("artifact_versions").select("content").eq("id", a.current_version_id).maybeSingle();
-  const lines = (v?.content ?? "").split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 4);
-  return lines.length ? { partTitle: part.title, lines } : null;
+  // The first four lines lead the hero; the rest opens below them on "More" (owner, 6 Oct 2026), stanza breaks kept.
+  const all = (v?.content ?? "").split("\n").map((l) => l.trim());
+  const lines = all.filter(Boolean).slice(0, 4);
+  if (!lines.length) return null;
+  let seen = 0;
+  const cut = all.findIndex((l) => l && ++seen > 4);
+  const rest = cut < 0 ? [] : all.slice(cut, cut + 400).join("\n").replace(/\n{3,}/g, "\n\n").trim().split("\n");
+  return { partTitle: part.title, lines, rest };
 }

@@ -20,6 +20,9 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const { data } = await db.auth.getClaims();
   const userId = data?.claims?.sub as string | undefined;
   if (!userId) return null;
+  // The consent check (`needsConsent`, next in `requireSession`) needs only the client, so it starts now, alongside the
+  // creator lookup, instead of after it: one round trip to the database fewer before any page can begin its own work.
+  void consentsFor(db).catch(() => undefined);
   const creator = await db.from("creators").select("*").eq("user_id", userId).maybeSingle();
   if (!creator.data) return null;
   return { db, userId, creator: creator.data };

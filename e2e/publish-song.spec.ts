@@ -53,7 +53,7 @@ test.describe("Creative Room parts: publishing the song", () => {
     await expect(credits.getByRole("status")).toHaveText("Agreed by everyone");
 
     // Publish from Listen together.
-    await work.getByRole("link", { name: "Listen together" }).click();
+    await work.getByRole("link", { name: "Mix, notes and download" }).click();
     await expect(page).toHaveURL(/\/song$/);
     const ready = page.getByRole("region", { name: "Ready to publish" });
     await ready.getByRole("button", { name: "Publish the song" }).click();

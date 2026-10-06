@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { testimonialsOf } from "@wonder/creator-identity";
 import type { Db } from "@wonder/db";
 import { Avatar } from "@wonder/ui";
@@ -14,8 +15,12 @@ const ROWS = 3;
  * each, then a row for the ones waiting on them, then "All testimonials" (the Profile, where they decide). No counts
  * of anything but what waits; never ranked (docs/testimonials.md).
  */
+const testimonials = cache((db: Db, creatorId: string) => testimonialsOf(db, creatorId).catch(() => []));
+/** Starts the read early (Home streams; this section renders only once the rest of Home is in). */
+export const preloadHomeTestimonials = (db: Db, creatorId: string) => void testimonials(db, creatorId);
+
 export async function HomeTestimonials({ db, creator }: { db: Db; creator: { id: string; handle: string | null } }) {
-  const all = await testimonialsOf(db, creator.id).catch(() => []);
+  const all = await testimonials(db, creator.id);
   const shown = all.filter((t) => t.status === "shown").slice(0, ROWS);
   const waiting = all.filter((t) => t.status === "pending").length;
   const avatars = await avatarUrls(db, shown.map((t) => t.from.id)).catch(() => ({}) as Record<string, string>);

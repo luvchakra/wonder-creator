@@ -1,15 +1,13 @@
-import { Skeleton } from "@wonder/ui";
+import { LogoBloom } from "@wonder/ui";
 
+/**
+ * While a page is on its way: the logo, its petals opening (owner, 6 Oct 2026), centred a little above the middle of the
+ * canvas. Nothing else, and no text: the header and Palette stay where they are around it.
+ */
 export default function Loading() {
   return (
-    <div role="status" aria-label="Loading" className="space-y-6">
-      <Skeleton className="h-10 w-64" />
-      <Skeleton className="h-40 w-full" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-[4/3] w-full" />
-        ))}
-      </div>
+    <div className="flex min-h-[55dvh] items-center justify-center">
+      <LogoBloom size={72} />
     </div>
   );
 }

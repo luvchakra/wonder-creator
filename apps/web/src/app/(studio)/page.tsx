@@ -1,13 +1,15 @@
 import { greetingFor } from "@wonder/core";
 import { Avatar, BACKGROUNDS, Watercolor, buttonClasses, cn } from "@wonder/ui";
 import { ArrowRight, Check, ChevronRight, Heart, Link2, MessageCircle, Sparkles, Sun } from "lucide-react";
+import type { Db } from "@wonder/db";
 import Link from "next/link";
+import { Suspense } from "react";
 import { after } from "next/server";
 import { RelativeTime } from "@/components/client-time";
 import { PaletteScope } from "@/components/creative-palette";
 import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance";
 import { HomeCommunities } from "@/components/home/home-communities";
-import { HomeTestimonials } from "@/components/home/home-testimonials";
+import { HomeTestimonials, preloadHomeTestimonials } from "@/components/home/home-testimonials";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
@@ -39,43 +41,84 @@ export default async function HomePage() {
   preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
 
-  const [home, world] = await Promise.all([buildHomePayload(db, creator.id), flagOn("personal_sources_enabled") && sourcesHomeOn() ? homeWorld(db) : null]);
+  // Streaming (docs/performance.md, phase 2): the greeting, Quick Capture and My Scrapbook go out at once; what Home
+  // chooses to show needs its own queries, so it follows behind a calm placeholder instead of holding the whole page.
+  const homeP = buildHomePayload(db, creator.id);
+  const worldP = flagOn("personal_sources_enabled") && sourcesHomeOn() ? homeWorld(db) : Promise.resolve(null);
+  if (flagOn("testimonials_enabled")) preloadHomeTestimonials(db, creator.id);
+  const first = (creator.display_name || "Creator").split(" ")[0];
+
+  return (
+    <div id="home" className="mx-auto max-w-3xl space-y-3">
+      <header className="relative isolate">
+        {/* The supplied floral corner behind the welcome — decoration only, outside the layout. */}
+        <div aria-hidden className="pointer-events-none absolute -right-4 -top-3 -z-10 w-[8.5rem] sm:-right-2 sm:w-[11rem]">
+          <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="h-auto w-full opacity-80" />
+        </div>
+        <h1 className="pr-24 font-display text-[26px] leading-tight text-ink sm:text-[30px]">
+          {greetingFor(new Date())}, <span className="break-words">{first}</span>
+        </h1>
+        {/* One short truth, as in the navbar: "3 things changed", "Nothing needs your attention." Same height while it comes. */}
+        <Suspense fallback={<p aria-hidden className="mt-0.5 h-[19.5px]" />}>
+          <HomeLine home={homeP} />
+        </Suspense>
+      </header>
+
+      {/* Capture first (owner, 4 Oct 2026: "move the quick note, voice note above scrapbook"): note, voice, picture, video. */}
+      <QuickCapture />
+
+      {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
+      <Suspense fallback={<SectionFallback title="My Scrapbook" rows={2} />}>
+        <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
+      </Suspense>
+
+      <Suspense fallback={<SectionFallback title="Continue" rows={3} />}>
+        <HomeRest db={db} creator={{ id: creator.id, handle: creator.handle ?? null }} home={homeP} world={worldP} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function HomeLine({ home: homeP }: { home: Promise<HomePayload> }) {
+  const home = await homeP;
+  return <p className="mt-0.5 text-[13px] text-ink-muted">{home.mode === "quiet" ? "Nothing needs your attention." : home.contextLine}</p>;
+}
+
+/** A section on its way: its title, and quiet rows of the height it will have. No spinner, no motion. */
+function SectionFallback({ title, rows }: { title: string; rows: number }) {
+  return (
+    <section aria-hidden>
+      <p className="mb-1.5 px-0.5 font-display text-[16px] text-ink/60">{title}</p>
+      <div className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/70">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="flex min-h-12 items-center gap-2.5 px-3 py-1.5">
+            <span className="size-8 shrink-0 rounded-lg bg-surface-muted" />
+            <span className="h-3 w-2/5 rounded-full bg-surface-muted" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Everything Home chose to show (phase 02 §12), once its queries are in. */
+async function HomeRest({ db, creator, home: homeP, world: worldP }: { db: Db; creator: { id: string; handle: string | null }; home: Promise<HomePayload>; world: Promise<Awaited<ReturnType<typeof homeWorld>> | null> }) {
+  const [home, world] = await Promise.all([homeP, worldP]);
   scheduleDiscovery(db, creator.id);
   const modules = [home.whileAway, home.worldConnecting, home.dejavu, home.spark, home.worthHearing, home.couldHelp, home.community, home.rooms, home.communities].filter(Boolean).length;
   after(() => {
     track(db, "home_opened", creator.id);
     track(db, "home_mode_rendered", creator.id, { mode: home.mode, slots: modules });
   });
-  const first = (creator.display_name || "Creator").split(" ")[0];
-  const quiet = home.mode === "quiet";
 
   return (
-    <>
-      <PaletteScope
-        context={{
-          page: "home",
-          strip: { continueTitle: home.continue ? home.continue.title : null, homeLine: home.contextLine },
-        }}
-      />
-      <div id="home" className="mx-auto max-w-3xl space-y-3" data-home-mode={home.mode}>
-        <header className="relative isolate">
-          {/* The supplied floral corner behind the welcome — decoration only, outside the layout. */}
-          <div aria-hidden className="pointer-events-none absolute -right-4 -top-3 -z-10 w-[8.5rem] sm:-right-2 sm:w-[11rem]">
-            <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="h-auto w-full opacity-80" />
-          </div>
-          <h1 className="pr-24 font-display text-[26px] leading-tight text-ink sm:text-[30px]">
-            {greetingFor(new Date())}, <span className="break-words">{first}</span>
-          </h1>
-          {/* One short truth, as in the navbar: "3 things changed", "Nothing needs your attention." */}
-          <p className="mt-0.5 text-[13px] text-ink-muted">{quiet ? "Nothing needs your attention." : home.contextLine}</p>
-        </header>
-
-        {/* Capture first (owner, 4 Oct 2026: "move the quick note, voice note above scrapbook"): note, voice, picture, video. */}
-        <QuickCapture />
-
-        {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
-        <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
-
+    <div className="space-y-3" data-home-mode={home.mode}>
+        <PaletteScope
+          context={{
+            page: "home",
+            strip: { continueTitle: home.continue ? home.continue.title : null, homeLine: home.contextLine },
+          }}
+        />
         {/* The one dominant action: continue (thin rows of the work in progress), else something worth starting, else a calm beginning. */}
         {home.inProgress ? (
           <ContinueRows items={home.inProgress} />
@@ -215,7 +258,7 @@ export default async function HomePage() {
           <HomeCommunities mine={home.communities?.mine ?? null} hearing={home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null} />
         ) : null}
 
-        {flagOn("testimonials_enabled") ? <HomeTestimonials db={db} creator={{ id: creator.id, handle: creator.handle ?? null }} /> : null}
+        {flagOn("testimonials_enabled") ? <HomeTestimonials db={db} creator={creator} /> : null}
 
         {home.rooms ? <RoomsGlance items={home.rooms} avatars={home.avatars} /> : null}
 
@@ -235,8 +278,7 @@ export default async function HomePage() {
             </ul>
           </Module>
         ) : null}
-      </div>
-    </>
+    </div>
   );
 }
 

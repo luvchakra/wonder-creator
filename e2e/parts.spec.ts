@@ -188,4 +188,33 @@ test.describe("Creative Room parts", () => {
     await b.goto(`/creations/${artifactId}`);
     await expect(b.getByRole("region", { name: "Preview" })).toContainText(words);
   });
+  test("the work's words: four lines lead the hero, More opens the rest just below", async ({ page, creator }) => {
+    void creator;
+    await page.goto("/rooms?new=1");
+    const create = page.getByRole("dialog", { name: "New Creative Room" });
+    await create.getByLabel("Name").fill(`Platform 3 ${uid()}`);
+    await create.getByLabel(/^Song/).check();
+    await create.getByRole("button", { name: "Create Creative Room" }).click();
+    await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
+    const room = page.url();
+    const work = page.getByRole("region", { name: "The work" });
+    await work.getByRole("button", { name: "Lyrics actions" }).click();
+    await page.getByRole("menuitem", { name: "Join this part" }).click();
+    await work.getByRole("button", { name: "Lyrics actions" }).click();
+    await page.getByRole("menuitem", { name: "Start the Creation" }).click();
+    await expect(page).toHaveURL(/\/write$/);
+    const id = page.url().match(/creations\/([0-9a-f-]{36})/)![1];
+    const art = (await (await page.request.get(`/api/v1/artifacts/${id}`)).json()).artifact as { current_version_id: string };
+    const words = ["One", "Two", "Three", "Four", "", "Five, after a break", "Six at the end"].join("\n");
+    await page.request.post(`/api/v1/artifacts/${id}/versions`, { data: { content: words, baseVersionId: art.current_version_id, label: "Words" } });
+
+    await page.goto(room);
+    await expect(work.getByText("Four")).toBeVisible();
+    await expect(work.getByText("Six at the end")).toHaveCount(0);
+    await work.getByRole("button", { name: "More" }).click();
+    await expect(work.getByText("Five, after a break")).toBeVisible();
+    await expect(work.getByText("Six at the end")).toBeVisible();
+    await work.getByRole("button", { name: "Less" }).click();
+    await expect(work.getByText("Six at the end")).toHaveCount(0);
+  });
 });

@@ -69,7 +69,8 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     );
   }
 
-  const [versions, graph, rights, contributors, quality, owner, dejavus, part] = await Promise.all([
+  // Stage two (performance.md: at most three dependent stages): everything about the Creation that needs only its row.
+  const [versions, graph, rights, contributors, quality, owner, dejavus, part, refEdges, licenseRequests, commercialStance, covers, avatars] = await Promise.all([
     listVersions(db, id),
     lineageGraph(db, id),
     getRights(db, id),
@@ -79,23 +80,21 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
     entityDejaVus(db, "creation", id).catch(() => ({ momentId: null, dejavus: [] })),
     // A part of a Room's joint work: which Room, and where the other parts stand (creative-room-parts.md).
     partContextFor(db, id, creator.id).catch(() => null),
+    db.from("lineage_edges").select("source_id, relationship").eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material"),
+    listLicenseRequests(db, id).catch(() => []),
+    db.rpc("commercial_stance", { p_artifact: id }).then(({ data }) => (data?.[0] ? { commercialUse: data[0].commercial_use, commercialChannels: data[0].commercial_channels } : null)),
+    coverUrls(db, [artifact]),
+    avatarUrls(db, [artifact.creator_id]),
   ]);
   const workPath = creationPath(id, artifact.artifact_type);
   const workPage = (workPath.split("/").pop() ?? "studio") as "write" | "image" | "audio" | "studio";
 
+  // Stage three, only with Materials in the lineage: their rows, then their addresses.
   const materialIds = graph.nodes.filter((n) => n.type === "material").map((n) => n.id);
   const { data: mats } = materialIds.length
     ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", materialIds)
     : { data: [] };
-  const [matUrls, covers, avatars] = await Promise.all([
-    signedUrlsFor(
-      db,
-      (mats ?? []).map((m) => m.storage_object_id),
-    ),
-    coverUrls(db, [artifact]),
-    avatarUrls(db, [artifact.creator_id]),
-  ]);
-  const refEdges = await db.from("lineage_edges").select("source_id, relationship").eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material");
+  const matUrls = mats?.length ? await signedUrlsFor(db, mats.map((m) => m.storage_object_id)) : {};
   const referenceIds = new Set((refEdges.data ?? []).filter((e) => e.relationship === "references").map((e) => e.source_id));
 
   // The Palette follows this Creation's lifecycle and what the viewer may do with it (palette-spec §7, §11).
@@ -146,10 +145,8 @@ export default async function ArtifactPage({ params, searchParams }: { params: P
         graph={graph}
         materials={(mats ?? []).map((m) => ({ ...m, previewUrl: m.storage_object_id ? (matUrls[m.storage_object_id] ?? null) : null, isReference: referenceIds.has(m.id) }))}
         rights={rights}
-        licenseRequests={await listLicenseRequests(db, id).catch(() => [])}
-        commercialStance={await db
-          .rpc("commercial_stance", { p_artifact: id })
-          .then(({ data }) => (data?.[0] ? { commercialUse: data[0].commercial_use, commercialChannels: data[0].commercial_channels } : null))}
+        licenseRequests={licenseRequests}
+        commercialStance={commercialStance}
         rightsDisclaimer={RIGHTS_DISCLAIMER}
         contributors={(contributors.data ?? []).map((c) => ({
           role: c.role,

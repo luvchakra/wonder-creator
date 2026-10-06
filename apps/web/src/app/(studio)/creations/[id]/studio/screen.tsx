@@ -33,7 +33,8 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
     const q = new URLSearchParams(Object.entries(search).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
     return <ForwardTo href={q ? `${own}?${q}` : own} />;
   }
-  const [{ data: version }, { data: quality }, { data: pending }, { data: contributors }, covers, carousel, part] = await Promise.all([
+  // Stage two (performance.md: at most three dependent stages): everything about the Creation that needs only its row.
+  const [{ data: version }, { data: quality }, { data: pending }, { data: contributors }, covers, carousel, part, { data: pub }, { data: madeFrom }] = await Promise.all([
     a.current_version_id ? db.from("artifact_versions").select("*").eq("id", a.current_version_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("quality_reports").select("*").eq("artifact_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("ai_proposals").select("id, payload, created_at").eq("status", "pending").eq("action", "apply_revision").order("created_at", { ascending: false }).limit(10),
@@ -42,83 +43,82 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
     a.artifact_type === "carousel" ? carouselView({ db, service: serviceClient(), creatorId: creator.id }, id) : Promise.resolve(null),
     // A part of a Room's joint work (creative-room-parts.md, step 2): what it was made with, what moved on since.
     partContextFor(db, id, creator.id),
+    // Published and reachable (creation-pages.md): the live link shows under the title; Preview says when newer words exist.
+    db.from("published_works").select("slug, visibility, unpublished_at, current_revision_id").eq("artifact_id", id).maybeSingle(),
+    // Just made from another Creation (Change format): name it, so it's clear the original is untouched.
+    from && /^[0-9a-f-]{36}$/i.test(from) && from !== id ? db.from("artifacts").select("id, title").eq("id", from).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   // The Images page (creation-pages.md, step 2): the pictures and what was done to them, from the current version.
   const imageSet = at === "image" ? imageSetOf(version?.structured_content) : null;
+  // The Presentation page (creation-pages.md, step 4): the deck, or the slides its outline makes.
+  const deck = at === "deck" ? deckOf(version?.structured_content, version?.content ?? "") : null;
+  const slideImageIds = [...new Set((deck?.slides ?? []).map((x) => x.image).filter((x): x is string => !!x))];
+  // The Video page (creation-pages.md, step 5): the shots, and an address for each frame.
+  const storyboard = at === "video" ? storyboardOf(version?.structured_content, version?.content ?? "") : null;
+  const frameIds = [...new Set((storyboard?.shots ?? []).map((x) => x.frame).filter((x): x is string => !!x))];
+  // The Audio page (creation-pages.md, step 3): the kept take, its address and its transcript (or why there isn't one).
+  const take = at === "audio" ? audioSetOf(version?.structured_content).take : null;
+  const publishedLive = !!pub && !pub.unpublished_at && pub.visibility !== "private" && !!creator.handle;
+  const lyric = part && at === "audio" ? part.others.find((o) => o.kind === "writing" && o.current) : undefined;
+  const peopleIds = [creator.id, ...(contributors ?? []).map((c) => c.contributor_creator_id)];
+
+  // Stage three: what the page's kind needs, all at once — the pictures' rows, the published revision, the other parts'
+  // takes and words (play-along, creative-room-parts.md step 3), and the people's avatars.
+  const materialIds = imageSet?.items.length ? imageSet.items.map((i) => i.materialId) : slideImageIds.length ? slideImageIds : frameIds.length ? frameIds : take ? [take.materialId] : [];
+  const [{ data: mats }, { data: rev }, takes, text, avatars] = await Promise.all([
+    materialIds.length ? db.from("creative_materials").select("id, title, storage_object_id, extracted_text, metadata, processing_state").in("id", materialIds) : Promise.resolve({ data: [] as never[] }),
+    publishedLive && pub.current_revision_id ? db.from("published_revisions").select("version_id").eq("id", pub.current_revision_id).maybeSingle() : Promise.resolve({ data: null }),
+    part ? partTakes(db, part.project.id).catch(() => []) : Promise.resolve([]),
+    lyric ? partWords(db, lyric.partId).catch(() => null) : Promise.resolve(null),
+    avatarUrls(db, peopleIds),
+  ]);
+  type Mat = { id: string; title: string | null; storage_object_id: string | null; extracted_text: string | null; metadata: unknown; processing_state: string | null };
+  const rows = (mats ?? []) as Mat[];
+  // Stage four, only when there are pictures or a take: their addresses.
+  const urls = rows.length ? await signedUrlsFor(db, rows.map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>) : {};
+  const urlOf = (m: Mat) => (m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null);
+
   let pictures: Record<string, { url: string | null; width: number | null; height: number | null; title: string | null }> = {};
   if (imageSet?.items.length) {
-    const { data: mats } = await db.from("creative_materials").select("id, title, storage_object_id, metadata").in("id", imageSet.items.map((i) => i.materialId));
-    const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>);
     pictures = Object.fromEntries(
-      (mats ?? []).map((m) => {
+      rows.map((m) => {
         const meta = (m.metadata ?? {}) as { width?: unknown; height?: unknown };
-        return [m.id, { url: m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null, width: typeof meta.width === "number" ? meta.width : null, height: typeof meta.height === "number" ? meta.height : null, title: m.title }];
+        return [m.id, { url: urlOf(m), width: typeof meta.width === "number" ? meta.width : null, height: typeof meta.height === "number" ? meta.height : null, title: m.title }];
       }),
     );
   }
-  // The Presentation page (creation-pages.md, step 4): the deck, or the slides its outline makes.
-  const deck = at === "deck" ? deckOf(version?.structured_content, version?.content ?? "") : null;
   let slidePictures: Record<string, string | null> = {};
-  const slideImageIds = [...new Set((deck?.slides ?? []).map((x) => x.image).filter((x): x is string => !!x))];
-  if (slideImageIds.length) {
-    const { data: mats } = await db.from("creative_materials").select("id, storage_object_id").in("id", slideImageIds);
-    const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>);
-    slidePictures = Object.fromEntries((mats ?? []).map((m) => [m.id, m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null]));
-  }
-  // The Video page (creation-pages.md, step 5): the shots, and an address for each frame.
-  const storyboard = at === "video" ? storyboardOf(version?.structured_content, version?.content ?? "") : null;
+  if (slideImageIds.length) slidePictures = Object.fromEntries(rows.map((m) => [m.id, urlOf(m)]));
   let frames: Record<string, string | null> = {};
-  const frameIds = [...new Set((storyboard?.shots ?? []).map((x) => x.frame).filter((x): x is string => !!x))];
-  if (frameIds.length) {
-    const { data: mats } = await db.from("creative_materials").select("id, storage_object_id").in("id", frameIds);
-    const urls = await signedUrlsFor(db, (mats ?? []).map((m) => m.storage_object_id)).catch(() => ({}) as Record<string, string>);
-    frames = Object.fromEntries((mats ?? []).map((m) => [m.id, m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null]));
-  }
-  // The Audio page (creation-pages.md, step 3): the kept take, its address and its transcript (or why there isn't one).
+  if (frameIds.length) frames = Object.fromEntries(rows.map((m) => [m.id, urlOf(m)]));
   let audioTake: { materialId: string; url: string | null; seconds: number; transcript: string | null; note: string | null; done: boolean } | null = null;
-  const take = at === "audio" ? audioSetOf(version?.structured_content).take : null;
-  if (take) {
-    const { data: m } = await db.from("creative_materials").select("id, storage_object_id, extracted_text, metadata, processing_state").eq("id", take.materialId).maybeSingle();
-    if (m) {
-      const urls = await signedUrlsFor(db, [m.storage_object_id]).catch(() => ({}) as Record<string, string>);
-      const meta = (m.metadata ?? {}) as { processingNote?: string; durationSeconds?: number };
-      audioTake = {
-        materialId: m.id,
-        url: m.storage_object_id ? (urls[m.storage_object_id] ?? null) : null,
-        seconds: take.seconds || meta.durationSeconds || 0,
-        transcript: m.extracted_text?.trim() || null,
-        note: meta.processingNote ?? null,
-        done: ["ready", "understood", "failed"].includes(m.processing_state ?? ""),
-      };
-    }
+  const m = take ? rows.find((r) => r.id === take.materialId) : undefined;
+  if (take && m) {
+    const meta = (m.metadata ?? {}) as { processingNote?: string; durationSeconds?: number };
+    audioTake = {
+      materialId: m.id,
+      url: urlOf(m),
+      seconds: take.seconds || meta.durationSeconds || 0,
+      transcript: m.extracted_text?.trim() || null,
+      note: meta.processingNote ?? null,
+      done: ["ready", "understood", "failed"].includes(m.processing_state ?? ""),
+    };
   }
-  // Published and reachable (creation-pages.md): the live link shows under the title; Preview says when newer words exist.
-  const { data: pub } = await db.from("published_works").select("slug, visibility, unpublished_at, current_revision_id").eq("artifact_id", id).maybeSingle();
-  let published: { url: string; newer: boolean } | null = null;
-  if (pub && !pub.unpublished_at && pub.visibility !== "private" && creator.handle) {
-    const { data: rev } = pub.current_revision_id ? await db.from("published_revisions").select("version_id").eq("id", pub.current_revision_id).maybeSingle() : { data: null };
-    published = { url: `${await siteOrigin()}/p/${creator.handle}/${pub.slug}`, newer: !!rev && rev.version_id !== (a.current_version_id ?? null) };
-  }
-  // Play-along (creative-room-parts.md, step 3): the other parts' kept takes, and a writing part's words on the Audio page.
+  const published: { url: string; newer: boolean } | null = publishedLive ? { url: `${await siteOrigin()}/p/${creator.handle}/${pub.slug}`, newer: !!rev && rev.version_id !== (a.current_version_id ?? null) } : null;
   // part_takes returns only what this viewer may read; a short-lived media link is minted for exactly those.
   let playAlong: PlayAlong | null = null;
   if (part) {
-    const takes = (await partTakes(db, part.project.id).catch(() => [])).filter((t) => t.partId !== part.part.id);
-    const tracks = takes.flatMap((t) => {
-      const url = mediaLink(t.storageObjectId);
-      return url ? [{ partId: t.partId, title: t.title, versionNumber: t.versionNumber, url, seconds: t.seconds }] : [];
-    });
-    const lyric = at === "audio" ? part.others.find((o) => o.kind === "writing" && o.current) : undefined;
-    const text = lyric ? await partWords(db, lyric.partId).catch(() => null) : null;
+    const tracks = takes
+      .filter((t) => t.partId !== part.part.id)
+      .flatMap((t) => {
+        const url = mediaLink(t.storageObjectId);
+        return url ? [{ partId: t.partId, title: t.title, versionNumber: t.versionNumber, url, seconds: t.seconds }] : [];
+      });
     const words = lyric && text?.current.content.trim() ? { partId: lyric.partId, title: lyric.title, versionNumber: text.current.number, text: text.current.content } : null;
     playAlong = tracks.length || words ? { tracks, words } : null;
   }
-  const peopleIds = [creator.id, ...(contributors ?? []).map((c) => c.contributor_creator_id)];
-  const avatars = await avatarUrls(db, peopleIds);
   const proposal = (pending ?? []).find((p) => (p.payload as { artifactId?: string }).artifactId === id);
   const def = artifactType(a.artifact_type);
-  // Just made from another Creation (Change format): name it, so it's clear the original is untouched.
-  const { data: madeFrom } = from && /^[0-9a-f-]{36}$/i.test(from) && from !== id ? await db.from("artifacts").select("id, title").eq("id", from).maybeSingle() : { data: null };
   const safeAdd = add && /^(material|creation|collection|comment|huddle_moment|conversation|conversation_reply|scrapbook_entry):[0-9a-f-]{36}$/i.test(add) ? add : null;
   return (
     <>
