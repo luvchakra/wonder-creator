@@ -5,7 +5,7 @@ import { z } from "zod";
 import { artifactType } from "./artifact-types";
 import { lookOf, ornamentOf } from "./creation-pages";
 import { imageSetOf } from "./image-options";
-import { audioSetOf } from "./audio-options";
+import { audioSetOf, bedCredit } from "./audio-options";
 import { deckOf } from "./deck-options";
 import { outputModeOf } from "./working-set-options";
 import { DEFAULT_OVERLAY, DEFAULT_TRANSFORM, type ImageTransform, type SlideOverlay } from "./carousel";
@@ -95,7 +95,9 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
   const pictures = linked.filter((m) => (m.type === "image" || m.type === "sketch") && obj(m.storage_object_id));
   const video = linked.find((m) => m.type === "video" && obj(m.storage_object_id));
   // The Audio page's kept take plays first (creation-pages.md, step 3); otherwise the first linked recording.
-  const takeId = audioSetOf(v?.structured_content).take?.materialId;
+  // With background music (owner, 6 Oct 2026), the mix of the take and its music is what's published.
+  const audioSet = audioSetOf(v?.structured_content);
+  const takeId = audioSet.mix?.materialId ?? audioSet.take?.materialId;
   const kept = takeId ? linked.find((m) => m.id === takeId && obj(m.storage_object_id)) : undefined;
   const audio = kept ?? linked.find((m) => (m.type === "audio" || m.type === "voice") && obj(m.storage_object_id));
   const cover = a.cover_material_id ? byId.get(a.cover_material_id) : undefined;
@@ -132,7 +134,7 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
   }
   else if (cover && obj(cover.storage_object_id) && (cover.type === "image" || cover.type === "sketch")) snapshot.images = [{ objectId: cover.storage_object_id!, alt: cover.title?.trim() || "" }];
   if (video) snapshot.media = { kind: "video", objectId: video.storage_object_id!, title: video.title?.trim() || a.title, durationSeconds: durationOf(video), posterObjectId: coverObjectId, vertical: vertical(video) };
-  else if (audio && !isPoem(type)) snapshot.media = { kind: "audio", objectId: audio.storage_object_id!, title: audio.title?.trim() || a.title, durationSeconds: durationOf(audio) };
+  else if (audio && !isPoem(type)) snapshot.media = { kind: "audio", objectId: audio.storage_object_id!, title: kept && audioSet.mix ? a.title : audio.title?.trim() || a.title, durationSeconds: durationOf(audio) ?? (kept && audioSet.mix ? audioSet.mix.seconds : null) };
   else if (audio && type === "spoken_word") snapshot.media = { kind: "audio", objectId: audio.storage_object_id!, title: audio.title?.trim() || a.title, durationSeconds: durationOf(audio) };
   // A poem's reading is offered alongside the words, never instead of them (§7).
   if (audio && isPoem(type)) snapshot.voice = { objectId: audio.storage_object_id!, durationSeconds: durationOf(audio) };
@@ -172,12 +174,13 @@ export async function buildSnapshot(db: Db, artifactId: string, settings: Publis
 
 /** Rights as recorded (never inferred): the creator's rights record, their publishing choices, and credits that must travel with the work. */
 async function rightsFor(db: Db, artifactId: string, versionId: string | null, settings: PublishSettings): Promise<PublicRights> {
-  const [{ data: r }, { data: contributors }, { data: aiVersions }, { data: used }, { data: edges }] = await Promise.all([
+  const [{ data: r }, { data: contributors }, { data: aiVersions }, { data: used }, { data: edges }, { data: published }] = await Promise.all([
     db.from("rights_records").select("copyright_holder, attribution_required, derivatives_allowed, commercial_use").eq("artifact_id", artifactId).maybeSingle(),
     db.from("artifact_contributors").select("role, creators!artifact_contributors_contributor_creator_id_fkey(display_name)").eq("artifact_id", artifactId).limit(20),
     db.from("artifact_versions").select("id").eq("artifact_id", artifactId).eq("author_kind", "ai").limit(1),
     versionId ? db.from("artifact_version_sources").select("attribution, rights_state").eq("version_id", versionId) : Promise.resolve({ data: [] as Array<{ attribution: string | null; rights_state: string }> }),
     db.from("lineage_edges").select("source_id").eq("target_type", "artifact").eq("target_id", artifactId).eq("source_type", "material").limit(40),
+    versionId ? db.from("artifact_versions").select("structured_content").eq("id", versionId).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const matIds = (edges ?? []).map((e) => e.source_id);
   const { data: mats } = matIds.length ? await db.from("creative_materials").select("metadata, source_type").in("id", matIds) : { data: [] as Array<{ metadata: unknown; source_type: string | null }> };
@@ -186,12 +189,25 @@ async function rightsFor(db: Db, artifactId: string, versionId: string | null, s
     const name = (c.creators as unknown as { display_name: string } | null)?.display_name;
     if (name) credits.add(`${name}${c.role ? ` · ${c.role}` : ""}`);
   }
+  // Background music from the library travels with its credit and what was changed (CC BY asks for both).
+  const bed = audioSetOf(published?.structured_content).bed;
+  if (bed) credits.add(bedCredit(bed));
   // A Room's song (creative-room-parts.md, step 5b): the credits everyone agreed to, by part.
   const { data: song } = await db.from("project_songs").select("project_id").eq("artifact_id", artifactId).maybeSingle();
   if (song) {
     const { data: g } = await db.from("project_song_agreements").select("lines").eq("project_id", song.project_id).eq("status", "agreed").maybeSingle();
     for (const l of (Array.isArray(g?.lines) ? g.lines : []) as Array<{ name?: string; parts?: Array<{ title: string; credit: string }> }>) {
       if (l.name) credits.add(`${l.name} · ${(l.parts ?? []).map((x) => `${x.title} (${x.credit})`).join(", ")}`);
+    }
+    // Any part's background music is in the song too, so its credit travels with it.
+    const { data: parts } = await db.from("project_parts").select("artifact_id").eq("project_id", song.project_id).not("artifact_id", "is", null);
+    const partIds = (parts ?? []).map((p) => p.artifact_id!).filter(Boolean);
+    const { data: arts } = partIds.length ? await db.from("artifacts").select("current_version_id").in("id", partIds) : { data: [] };
+    const vids = (arts ?? []).map((x) => x.current_version_id).filter((x): x is string => !!x);
+    const { data: pvs } = vids.length ? await db.from("artifact_versions").select("structured_content").in("id", vids) : { data: [] };
+    for (const pv of pvs ?? []) {
+      const b = audioSetOf(pv.structured_content).bed;
+      if (b) credits.add(bedCredit(b));
     }
   }
   for (const m of mats ?? []) {

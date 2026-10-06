@@ -30,7 +30,7 @@ test.describe("Audio page", () => {
     // The take plays above the words; keeping it was a version carrying the words as they were.
     await expect(editor.getByRole("button", { name: "Play the recording" })).toBeEnabled();
     await expect(page.getByRole("link", { name: "Listen" })).toHaveAttribute("href", `/creations/${id}/preview`);
-    await expect(page.getByRole("link", { name: "Download" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toBeVisible();
     await expect(editor.getByRole("textbox")).toHaveValue("Platform 3, before the first train.");
 
     // Record again: a new take; the first stays a Material and in the versions.

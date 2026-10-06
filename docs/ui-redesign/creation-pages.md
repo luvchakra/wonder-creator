@@ -171,10 +171,33 @@ good… show the same to user as a prominent preview option so they understand w
 - Keeping uploads the take as a voice Material (Quick Capture's exactly-once endpoint; transcribed when the provider is
   live, honest when not) and makes a version naming it (`saveAudioTake`: the creator's own voice/audio Material only,
   stale saves refused, lineage recorded). Earlier takes stay Materials and come back by restoring a version.
-- The take plays above the words (play/pause, a seek bar, times). **Listen** (the readers' page) and **Download** (the
-  take) are the two secondaries, shown once there's a take. "Use the transcript as the words" appears while they
-  differ. More: Publish as link, Save version, Export, Share, Versions, Make a carousel, Rights.
-- Publishing carries the kept take as the page's audio.
+- The take plays above the words (play/pause, a seek bar, times). **Listen** (the readers' page) and **Publish** (its own
+  page and, if chosen, the Creator Page; owner, 6 Oct 2026) are the two secondaries, shown once there's a take. "Use the
+  transcript as the words" appears while they differ. More: Download (the take, or the mix), Publish the whole song (a
+  Room's part → Listen together), Save version, Export, Share, Versions, Make a carousel, Rights.
+- Publishing carries the kept take — or, with background music, the mix — as the page's audio.
+
+### Background music (owner, 6 Oct 2026)
+
+"Give option to add bg music, specifically from the music library of the inbuilt music player … increase or reduce the
+tempo, trim the music." One quiet row under the recording, **Add background music**, opens a sheet:
+
+- **Choose** a track from the CreativeRadio library (title, artist, moods, length).
+- **Shape it while hearing it under the take**: one Play runs the take and the music together, live — level, **tempo**
+  75–125% with the pitch kept (the browser's own time-stretch while previewing), and **trim** (Starts at / Ends at).
+  The music fades in briefly and out over 2.5 s at its end.
+- **Use this music** mixes the two on the device (decode, trim, WSOLA time-stretch with the pitch kept, level and fades,
+  never clipping; one WAV, a lower sample rate for long pieces to stay within the 50 MB upload limit), uploads it
+  straight to storage, and keeps a **new version** carrying the take, the music as chosen and the mix (`saveAudioMusic`;
+  `{ bed: null }` takes it away). The track's title, artist, license and credit come from the library on the server,
+  never from the browser. A new take keeps the music chosen and asks to mix it again ("Mix it with this take").
+- The mix is what plays on the page, downloads, is heard in the Room (`part_takes` prefers it, migration 092) and is
+  published — on its own page and the Creator Page, and inside a Room's song. Every published page carries the track's
+  credit and what was changed (`bedCredit`; the library is CC BY 4.0 / CC0, which allow this with attribution).
+- Implementation: `audio-options.ts` (`AudioBed`, `AudioMix`, `bedCredit`), `creation-audio.ts` (`saveAudioMusic`),
+  `/api/v1/artifacts/[id]/audio/music`, `…/studio/background-music.tsx`, `components/audio/time-stretch.ts`,
+  `components/audio/bed-mix.ts`, `creator-publish.ts` (media and credits). Tests: `time-stretch.test.ts` (pitch kept),
+  `audio-options.test.ts`, `tests/db/parts.test.ts` (the mix in the Room), `e2e/background-music.spec.ts`.
 - Implementation: `packages/creator-studio/src/audio-options.ts`, `creation-audio.ts`, `/api/v1/artifacts/[id]/audio`,
   `…/studio/audio-canvas.tsx`, `apps/web/src/components/audio/use-recorder.ts`. Tests: `audio-options.test.ts`,
   `e2e/audio-page.spec.ts`.

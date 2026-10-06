@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackLink } from "@/components/back-link";
-import { uploadRecording } from "@/components/audio/use-recorder";
+import { sendToCreator } from "@/lib/send";
 import { useMix } from "@/components/audio/use-mix";
 import { api, errorMessage } from "@/lib/client";
 
@@ -403,7 +403,6 @@ function PublishSong({ projectId, publish, render, duration }: { projectId: stri
   const [open, setOpen] = useState(false);
   const [visibility, setVisibility] = useState<"public" | "unlisted">("public");
   const [step, setStep] = useState<"idle" | "mixing" | "uploading" | "publishing">("idle");
-  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function go() {
@@ -413,7 +412,10 @@ function PublishSong({ projectId, publish, render, duration }: { projectId: stri
       const blob = await render();
       if (!blob) throw new Error("There's nothing to mix yet.");
       setStep("uploading");
-      const { materialId } = await uploadRecording({ blob, seconds: Math.round(duration) }, crypto.randomUUID(), setProgress);
+      // Straight to storage when it's big (a song's WAV is ~10 MB a minute; the host caps request bodies near 4.5 MB).
+      const sent = await sendToCreator({ files: [new File([blob], "Song — mix.wav", { type: "audio/wav" })] });
+      const materialId = sent.accepted[0]?.materialId ?? null;
+      if (!materialId && sent.rejected[0]) throw new Error(sent.rejected[0].message);
       if (!materialId) throw new Error("The mix couldn't be kept. Try again.");
       setStep("publishing");
       await api(`/api/v1/projects/${projectId}/song`, { method: "POST", json: { materialId, seconds: Math.round(duration), visibility } });
@@ -471,7 +473,7 @@ function PublishSong({ projectId, publish, render, duration }: { projectId: stri
           ) : null}
           <div className="mt-3 flex items-center justify-end gap-2">
             <span role="status" className="mr-auto text-[12.5px] text-ink-muted">
-              {step === "mixing" ? "Mixing…" : step === "uploading" ? `Uploading${progress != null ? ` ${progress}%` : "…"}` : step === "publishing" ? "Publishing…" : ""}
+              {step === "mixing" ? "Mixing…" : step === "uploading" ? "Uploading…" : step === "publishing" ? "Publishing…" : ""}
             </span>
             <Button variant="ghost" disabled={step !== "idle"} onClick={() => setOpen(false)}>
               Cancel
