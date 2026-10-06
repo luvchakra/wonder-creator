@@ -4690,6 +4690,9 @@ isOneToOne: false
               "account": string,"credit_minor": number,"currency": string,"debit_minor": number,"description": string,"journal_id": string,"memo": string,"order_id": string,"posted_at": string,"provider": string,"provider_payment_ref": string,"refund_id": string
             }[]
                            },
+"notifications_feed":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "open_conversation_can_add":
 { Args: { "p_conversation": string }; Returns: boolean
                            },
