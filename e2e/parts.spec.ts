@@ -140,4 +140,51 @@ test.describe("Creative Room parts", () => {
     await expect(started.getByRole("link", { name: new RegExp(`${title} · Tune`) })).toBeVisible();
     await expect(started).not.toContainText("Not started yet");
   });
+  test("words typed on a part reach the people on it without pressing Save — when the page is left", async ({ page, creator, openContext }) => {
+    void creator;
+    const title = `Platform 3 ${uid()}`;
+    await page.goto("/rooms?new=1");
+    const create = page.getByRole("dialog", { name: "New Creative Room" });
+    await create.getByLabel("Name").fill(title);
+    await create.getByLabel(/^Song/).check();
+    await create.getByRole("button", { name: "Create Creative Room" }).click();
+    await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
+    const room = page.url();
+    const work = page.getByRole("region", { name: "The work" });
+
+    // The owner takes Lyrics and writes — no Save.
+    await work.getByRole("button", { name: "Lyrics actions" }).click();
+    await page.getByRole("menuitem", { name: "Join this part" }).click();
+    await work.getByRole("button", { name: "Lyrics actions" }).click();
+    await page.getByRole("menuitem", { name: "Start the Creation" }).click();
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}\/write$/);
+    const artifactId = page.url().match(/creations\/([0-9a-f-]{36})/)![1];
+    const words = `Every Sunday my father waited ${uid()}`;
+    await page.getByRole("textbox").last().fill(words);
+    await page.waitForTimeout(1500); // the private draft autosaves; nothing has been saved as a version
+
+    // Leaving the page: what's on it is saved as a version, with no Save pressed.
+    await page.goto(room);
+
+    // A crew member on the same part.
+    await work.getByRole("button", { name: "Lyrics actions" }).click();
+    await page.getByRole("menuitem", { name: "Invite to this part…" }).click();
+    const { page: b } = await openContext("crew");
+    const mira = await newCreator(b, { name: `Mira ${uid()}` });
+    const invite = page.getByRole("dialog", { name: "Invite to Lyrics" });
+    await invite.getByLabel("Find a creator").fill(`@${mira.handle}`);
+    await invite.getByRole("button", { name: `Invite ${mira.name}` }).click();
+    await expect(invite).toBeHidden();
+    await b.goto(room);
+    await b.getByRole("button", { name: "Accept" }).click();
+
+    // Mira reads those words, not the first version.
+    await expect.poll(async () => {
+      const res = await b.request.get(`/api/v1/artifacts/${artifactId}/versions`);
+      const body = (await res.json()) as { versions?: Array<{ content: string }> };
+      return body.versions?.[0]?.content ?? "";
+    }, { timeout: 20_000 }).toContain(words);
+    await b.goto(`/creations/${artifactId}`);
+    await expect(b.getByRole("region", { name: "Preview" })).toContainText(words);
+  });
 });

@@ -220,6 +220,7 @@ Each format opens a page built for it (`docs/ui-redesign/creation-pages.md`), on
 | Make a new Creation: every format | Done | Owner, 5 Oct 2026: Video and Presentation are back in the sheet, each opening its own page |
 | Presentation: pictures on slides; published as slides | Done | Owner, 5 Oct 2026. A slide can hold one of your pictures — beside the words, or filling the slide behind the title when there are none (own pictures only when new, with lineage). Published, a presentation reads as its slides in their theme (words and pictures, never the notes) instead of text; one slide renderer for the page, Present, print and the public page |
 | Parts you are on show on Home | Done | Owner, 6 Oct 2026: accepting (or claiming) a part adds it to Home's Continue rows — "Tune · Song title" and "Not started yet" until someone starts it (the row opens the Room), then the part's own Creation, newest first within the same three rows. Room-mates' Creations you edit join too. No new button or section |
+| A part's words reach its crew | Done | Owner, 6 Oct 2026: on a Room part's Writing page the words were a private draft until Save, so the crew read an old version. Now they are also saved as a version after 30s at rest, when the tab is put away and when the page is left (labelled "Autosaved", so the Room's timeline and Versions show it). Other pages are unchanged |
 
 ## Creative Room parts (owner brief, 4 Oct 2026)
 

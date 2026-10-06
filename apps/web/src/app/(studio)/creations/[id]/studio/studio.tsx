@@ -199,11 +199,18 @@ export function Studio({
   // The last version saved from here, for the navbar's brief "Saved · vN".
   const [savedVersion, setSavedVersion] = useState<number | null>(null);
   const autosave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleVersion = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkpointRef = useRef<() => Promise<unknown>>(async () => undefined);
   const onType = (v: string) => {
     typed.current = true;
     setContent(v);
     if (!set) return;
     if (autosave.current) clearTimeout(autosave.current);
+    // A part's words reach its crew without a Save: after a pause, a version is made too (see "Shared words" below).
+    if (sharedWords) {
+      if (idleVersion.current) clearTimeout(idleVersion.current);
+      idleVersion.current = setTimeout(() => void checkpointRef.current(), IDLE_VERSION_MS);
+    }
     setSaving(true);
     autosave.current = setTimeout(async () => {
       try {
@@ -274,7 +281,11 @@ export function Studio({
   }
 
   /** Save as new version (board §12): the checkpoint that makes a durable version from the draft. */
-  async function saveVersion(opts: { name: string; keepUnused: boolean }): Promise<boolean> {
+  async function saveVersion(opts: { name: string; keepUnused: boolean; quiet?: boolean }): Promise<boolean> {
+    if (idleVersion.current) {
+      clearTimeout(idleVersion.current);
+      idleVersion.current = null;
+    }
     // The version supersedes any pending draft autosave, which would otherwise land afterwards and re-store the draft.
     if (autosave.current) {
       clearTimeout(autosave.current);
@@ -290,7 +301,7 @@ export function Studio({
           content,
           baseVersionId: base?.id,
           label: opts.name.trim().slice(0, 80) || "Revised",
-          changeSummary: `Saved in the Creative Studio${inUse ? ` with ${inUse} ${inUse === 1 ? "source" : "sources"} in use` : ""}.`,
+          changeSummary: opts.quiet ? "Saved automatically." : `Saved in the Creative Studio${inUse ? ` with ${inUse} ${inUse === 1 ? "source" : "sources"} in use` : ""}.`,
         },
       });
       setBase({ id: r.version.id, number: r.version.version_number, content: r.version.content });
@@ -308,7 +319,7 @@ export function Studio({
       // A version, not a draft: the label reads "Saved" and the navbar briefly says which version.
       setSavedAt(null);
       setSavedVersion(r.version.version_number);
-      setSheet(null);
+      if (!opts.quiet) setSheet(null);
       router.refresh();
       return true;
     } catch (e) {
@@ -319,6 +330,59 @@ export function Studio({
     }
   }
 
+  /* ------------------------------------------------------------ Shared words */
+  // A Room's part is made by several people, and the others read its latest *version* — a private draft is invisible to
+  // them (owner, 6 Oct 2026: "the crew sees an old version"). So on a part's Writing page the words are saved as a version
+  // after a pause, when the tab is put away, and on leaving; everyone else then sees them.
+  const sharedWords = !!part && writingCanvas;
+  const latest = useRef({ content, base, dirty, sharedWords, working, id: artifact.id, session: set?.sessionId ?? null });
+  useEffect(() => {
+    latest.current = { content, base, dirty, sharedWords, working, id: artifact.id, session: set?.sessionId ?? null };
+  });
+  useEffect(() => {
+    checkpointRef.current = async () => {
+      const l = latest.current;
+      if (!l.sharedWords || !l.dirty || l.working || !l.content.trim()) return;
+      await saveVersion({ name: "Autosaved", keepUnused: true, quiet: true });
+    };
+  });
+  useEffect(() => {
+    if (!sharedWords) return;
+    // Putting the tab away, closing it and leaving the page all save the words as a version, with a request that outlives
+    // the page (keepalive); the page itself is gone on a real navigation, so nothing here waits on React.
+    let sending: string | null = null;
+    const persist = async () => {
+      const l = latest.current;
+      if (!l.dirty || l.working || !l.content.trim() || !l.base || sending === l.content) return;
+      sending = l.content;
+      try {
+        const res = await fetch(`/api/v1/artifacts/${l.id}/versions`, {
+          method: "POST",
+          keepalive: true,
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ content: l.content, baseVersionId: l.base.id, label: "Autosaved", changeSummary: "Saved automatically." }),
+        });
+        if (!res.ok) return;
+        const { version: v } = (await res.json()) as { version: { id: string; version_number: number; content: string } };
+        if (l.session) void fetch(`/api/v1/studio-sessions/${l.session}`, { method: "PATCH", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ draft: null }) }).catch(() => undefined);
+        // Still here (the tab was only put away): the page now stands on the version just made.
+        setBase({ id: v.id, number: v.version_number, content: v.content });
+      } catch {
+        // The draft is still kept; the next time round tries again.
+      } finally {
+        sending = null;
+      }
+    };
+    const hide = () => document.visibilityState === "hidden" && void persist();
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", persist);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", persist);
+      if (idleVersion.current) clearTimeout(idleVersion.current);
+      void persist(); // an in-app move to another page
+    };
+  }, [sharedWords]);
   /**
    * Preview shows what readers would get — and what Publish publishes: the latest version. Words written since (the
    * autosaved draft) are saved as a version first, so Preview always has the latest (owner, 5 Oct 2026).
@@ -1519,6 +1583,8 @@ export function Studio({
   );
 }
 
+/** How long a part's words rest before they are saved as a version for the crew. */
+const IDLE_VERSION_MS = 30_000;
 const MODE_ICON: Record<string, keyof typeof KIT.iconChip> = { writing: "type", carousel: "layers", image: "image", video: "video", audio: "waveform", presentation: "file" };
 
 /** "Save as new version" (board §12): the one checkpoint that turns the draft into a durable version. */
