@@ -4,6 +4,7 @@ import { StartCommunityButton } from "@/components/community/community-actions";
 import { communityAvatars } from "@/lib/communities";
 import { EmptyState, KIT, cn } from "@wonder/ui";
 import Link from "next/link";
+import { Suspense } from "react";
 import { CommunityCardItem } from "@/components/community/cards";
 import { CommunitiesList } from "@/components/community/communities-list";
 import { NewConversationButton } from "@/components/community/new-conversation";
@@ -36,7 +37,10 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   if (communitiesOn && sp.filter === "communities") return <CommunitiesView query={sp.q} />;
   const filter: CommunityFilter = sp.filter && (COMMUNITY_FILTERS as readonly string[]).includes(sp.filter) ? (sp.filter as CommunityFilter) : "for_you";
   const { db, creator } = await requireSession();
-  const feed = await communityView(db, await communityFeed(db, creator.id, filter, { before: sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : null }));
+  // Streaming (docs/performance.md): the tabs, title and filters show at once; the feed follows behind a quiet placeholder.
+  const before = sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : null;
+  const feedP = communityFeed(db, creator.id, filter, { before }).then((f) => communityView(db, f));
+  void feedP.catch(() => undefined);
   return (
     <>
       <PaletteScope context={{ page: "explore" }} />
@@ -49,22 +53,44 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         <nav aria-label="Pulse" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
           <FilterChips current={filter} communities={communitiesOn} />
         </nav>
-        {feed.cards.length ? (
-          <ul className="space-y-2" aria-label={COMMUNITY_FILTER_LABEL[filter]}>
-            {feed.cards.map((c) => (
-              <CommunityCardItem key={`${c.kind}:${c.kind === "conversation" ? c.conversation.id : c.kind === "huddle" ? c.huddle.huddleId : c.kind === "person" ? c.person.id : c.id}`} card={c} />
-            ))}
-          </ul>
-        ) : (
-          <EmptyState title={EMPTY[filter].title} body={EMPTY[filter].body} action={filter === "people" ? undefined : <NewConversationButton />} />
-        )}
-        {feed.nextBefore ? (
-          <Link href={`/pulse?filter=${filter}&before=${encodeURIComponent(feed.nextBefore)}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
-            Show more
-          </Link>
-        ) : null}
+        <Suspense fallback={<FeedFallback />}>
+          <PulseFeed feed={feedP} filter={filter} />
+        </Suspense>
       </div>
     </>
+  );
+}
+
+async function PulseFeed({ feed: feedP, filter }: { feed: Promise<Awaited<ReturnType<typeof communityView>>>; filter: CommunityFilter }) {
+  const feed = await feedP;
+  return (
+    <>
+        {feed.cards.length ? (
+        <ul className="space-y-2" aria-label={COMMUNITY_FILTER_LABEL[filter]}>
+          {feed.cards.map((c) => (
+            <CommunityCardItem key={`${c.kind}:${c.kind === "conversation" ? c.conversation.id : c.kind === "huddle" ? c.huddle.huddleId : c.kind === "person" ? c.person.id : c.id}`} card={c} />
+          ))}
+        </ul>
+      ) : (
+        <EmptyState title={EMPTY[filter].title} body={EMPTY[filter].body} action={filter === "people" ? undefined : <NewConversationButton />} />
+      )}
+      {feed.nextBefore ? (
+        <Link href={`/pulse?filter=${filter}&before=${encodeURIComponent(feed.nextBefore)}`} className="inline-flex min-h-11 items-center text-[13.5px] font-medium text-accent-ink hover:underline">
+          Show more
+        </Link>
+      ) : null}
+    </>
+  );
+}
+
+/** The feed on its way: quiet cards of about its height. No spinner, no motion. */
+function FeedFallback() {
+  return (
+    <ul aria-hidden className="space-y-2">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <li key={i} className="h-28 rounded-2xl border border-border-soft bg-surface/70" />
+      ))}
+    </ul>
   );
 }
 
