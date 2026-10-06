@@ -59,6 +59,30 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
   const base = `/creators/${c.handle}`;
   const name = c.display_name || c.handle || "Creator";
 
+  // Everything below needs only the profile, so it all starts now and overlaps (docs/performance.md, phase 5); the
+  // awaits further down only collect it. It was seven stages in a row.
+  const testimonialsOn = flagOn("testimonials_enabled");
+  const testimonialsP = testimonialsOn
+    ? Promise.all([testimonialsOf(db, c.id).catch(() => []), isMe ? Promise.resolve(false) : canWriteTestimonial(db, me.id, c.id).catch(() => false)])
+    : Promise.resolve([[] as Awaited<ReturnType<typeof testimonialsOf>>, false] as const);
+  const albumP = tab === "overview" && flagOn("photo_album_enabled") ? albumOf(db, c.id, 5).catch(() => []) : Promise.resolve([]);
+  const overviewP =
+    tab === "overview"
+      ? Promise.all([
+          collaborationProfileOf(db, c.id).catch(() => null),
+          openToOf(db, [c.id])
+            .then((m) => m.get(c.id) ?? [])
+            .catch(() => []),
+          profileCreations(db, c.id, isMe, 24),
+          listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 12 }).catch(() => ({ posts: [] })),
+        ])
+      : null;
+  const creationsP = tab === "creations" ? profileCreations(db, c.id, isMe) : null;
+  const momentsP = tab === "moments" ? listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 30 }) : null;
+  void albumP.catch(() => undefined);
+  void creationsP?.catch(() => undefined);
+  void momentsP?.catch(() => undefined);
+
   const [live, myLive, follow, avatars, brand, messageable, counts] = await Promise.all([
     liveCards(db, { creatorId: c.id, limit: 3 }).catch(() => []),
     isMe ? Promise.resolve([]) : liveCards(db, { creatorId: me.id, limit: 1 }).catch(() => []),
@@ -70,30 +94,22 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
   ]);
 
   // Testimonials (docs/testimonials.md): what others wrote, once this creator chose to show it.
-  const testimonialsOn = flagOn("testimonials_enabled");
-  const [testimonials, canWrite] = testimonialsOn
-    ? await Promise.all([testimonialsOf(db, c.id).catch(() => []), isMe ? Promise.resolve(false) : canWriteTestimonial(db, me.id, c.id).catch(() => false)])
-    : [[], false];
-  const shared = canWrite || testimonials.some((t) => t.from.id === me.id) ? await sharedContexts(db, me.id, c.id).catch(() => []) : [];
-  const testimonialAvatars = testimonials.length ? await avatarUrls(db, testimonials.map((t) => t.from.id)).catch(() => ({}) as Record<string, string>) : {};
+  const [testimonials, canWrite] = await testimonialsP;
+  const [shared, testimonialAvatars] = await Promise.all([
+    canWrite || testimonials.some((t) => t.from.id === me.id) ? sharedContexts(db, me.id, c.id).catch(() => []) : Promise.resolve([]),
+    testimonials.length ? avatarUrls(db, testimonials.map((t) => t.from.id)).catch(() => ({}) as Record<string, string>) : Promise.resolve({} as Record<string, string>),
+  ]);
   const testimonialsBlock = testimonialsOn ? (
     <TestimonialsSection items={testimonials} isMe={isMe} viewerId={me.id} creator={{ id: c.id, name, handle: c.handle ?? handle }} avatars={testimonialAvatars} canWrite={canWrite} shared={shared} base={base} limit={tab === "overview" ? 2 : undefined} />
   ) : null;
 
   // Photo album (docs/photo-album.md): a glimpse on the Overview; the whole album has its own page.
-  const album = tab === "overview" && flagOn("photo_album_enabled") ? await albumOf(db, c.id, 5).catch(() => []) : [];
+  const album = await albumP;
   const albumBlock = tab === "overview" && flagOn("photo_album_enabled") ? <AlbumPreview photos={album} href={`${base}/album`} isMe={isMe} /> : null;
 
   let body: ReactNode = null;
   if (tab === "overview") {
-    const [collab, openTo, creations, scrap] = await Promise.all([
-      collaborationProfileOf(db, c.id).catch(() => null),
-      openToOf(db, [c.id])
-        .then((m) => m.get(c.id) ?? [])
-        .catch(() => []),
-      profileCreations(db, c.id, isMe, 24),
-      listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 12 }).catch(() => ({ posts: [] })),
-    ]);
+    const [collab, openTo, creations, scrap] = await overviewP!;
     const series = creations.filter((x) => x.shelf === "series");
     const glimpses = scrap.posts
       .map((p) => {
@@ -118,9 +134,9 @@ export default async function CreatorProfilePage({ params, searchParams }: { par
       />
     );
   } else if (tab === "creations") {
-    body = <CreationsTab base={base} shelf={shelf} items={await profileCreations(db, c.id, isMe)} isMe={isMe} />;
+    body = <CreationsTab base={base} shelf={shelf} items={await creationsP!} isMe={isMe} />;
   } else if (tab === "moments") {
-    const { posts } = await listPosts(db, me.id, { scope: "creator", authorId: c.id }, { limit: 30 });
+    const { posts } = await momentsP!;
     body = <MomentsTab posts={posts} isMe={isMe} />;
   } else {
     const [convs, page] = await Promise.all([listConversations(db, me.id, { authorId: c.id, limit: 8 }).catch(() => ({ cards: [] })), c.handle ? loadCreatorPage(c.handle).catch(() => null) : Promise.resolve(null)]);

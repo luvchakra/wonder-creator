@@ -51,7 +51,7 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                 {/* Your account (owner, 3 Oct 2026: match the rest of the app): who you are, then what's yours, then your work, then the
                     account itself. Destinations the Palette already offers (Home, Create, Materials, Huddles, Explore, Me) aren't repeated. */}
                 <MenuContent className="w-64">
-                  <Link href="/me" className="relative isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-2.5 py-2 hover:bg-surface-muted focus-visible:outline-2">
+                  <Link href={me.handle ? `/creators/${me.handle}` : "/me"} className="relative isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-2.5 py-2 hover:bg-surface-muted focus-visible:outline-2">
                     <KitArt art={KIT.painted.leafSprigSage} sizes="4rem" className="pointer-events-none absolute -right-2 -top-3 -z-10 h-12 w-auto opacity-50" />
                     <Avatar name={me.name} src={me.avatarUrl} size={36} />
                     <span className="min-w-0">
