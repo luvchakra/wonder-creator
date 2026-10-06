@@ -1,10 +1,10 @@
 import "server-only";
 import { log } from "@wonder/core";
-import { myConsents } from "@wonder/creator-identity";
 import { consentNeeded } from "@wonder/creator-identity/privacy-options";
 import type { Db, Tables } from "@wonder/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { consentsFor } from "./consents";
 import { mfaPending } from "./mfa";
 import { createClient } from "./supabase/server";
 
@@ -31,7 +31,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
  */
 export const needsConsent = cache(async (db: Db): Promise<boolean> => {
   try {
-    return consentNeeded(await myConsents(db));
+    return consentNeeded(await consentsFor(db));
   } catch (e) {
     log("warn", "consent.lookup_failed", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" });
     return false;

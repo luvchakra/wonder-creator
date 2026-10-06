@@ -12,7 +12,7 @@ import { communityAvatars } from "../communities";
 import { coverUrls } from "../covers";
 import { flags } from "../features";
 import { agoPhrase, pickSpark, splitHomeItems, SPARK_MIN_AGE_DAYS, type HomeItem } from "../home-sections";
-import { listNotifications } from "../notifications";
+import { listNotificationsForHome } from "../notifications";
 import { homeContextLine, homeMode, pickContinue, selectSlots, summarizeAway, type AwayItem, type HomeCandidateKind, type HomeMode, type HomeSlot, type HomeSummary } from "./ranking";
 
 /**
@@ -159,6 +159,39 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const lastVisit = (visit.data as string | null) ?? null;
   const since = lastVisit ?? new Date(now - 3 * DAY).toISOString();
 
+  // Everything that doesn't depend on the creator's own works starts now, in parallel with them (each is its own
+  // round trip to the database; started one after another they were most of Home's wait).
+  const f = flags();
+  const connectedP = Promise.all([
+    f.semantic_connections_enabled ? safe("semantic-connection", () => foundConnection(db, now)) : null,
+    f.dejavu_enabled ? safe("connections", () => connections(db, lastVisit, now)) : null,
+    safe("spark", () => sparkCard(db, creatorId, now)),
+  ]);
+  const communityP = f.community_enabled && f.community_home_cards_enabled ? safe("community", () => homeCommunitySignals(db, creatorId)) : null;
+  const myPartsP = safe("parts", myActiveParts(db, creatorId, 4));
+  const roomsP = safe("rooms", async () => {
+    const projects = (await listProjects(db, { status: "open", viewerId: creatorId })).slice(0, 6);
+    const recent = now - 14 * 86_400_000;
+    const lists = await Promise.all(
+      projects.map(async (p) =>
+        (await listSharedItems(db, p.id).catch(() => []))
+          .filter((i) => !i.mine && Date.parse(i.sharedAt) > recent)
+          .map((i) => ({ projectId: p.id, projectTitle: p.title, itemId: i.itemId, title: i.title, kind: i.kind, by: i.sharedBy, at: i.sharedAt })),
+      ),
+    );
+    return lists
+      .flat()
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 3);
+  });
+  const communitiesP = f.communities_enabled
+    ? safe("communities", async () => {
+        const mine = await myCommunities(db, 12);
+        const pictures = await communityAvatars(mine.map((c) => c.avatarObjectId));
+        return { mine: mine.map((c) => ({ id: c.id, title: c.title, privacy: c.privacy, isHost: c.isHost, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null })) };
+      })
+    : null;
+
   const { data: works, error } = await db
     .from("artifacts")
     .select("id, title, artifact_type, status, updated_at, cover_material_id, current_version_id")
@@ -186,7 +219,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
           ).data ?? [])
         : [],
     ),
-    safe("notifications", listNotifications(db, creatorId)),
+    safe("notifications", listNotificationsForHome(db, creatorId)),
     safe("visuals", async () =>
       (
         await db
@@ -205,8 +238,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     safe("feed", listPosts(db, creatorId, { scope: "following", creatorId }, { limit: 8 })),
     safe("materials", async () => (await db.from("creative_materials").select("id", { count: "exact", head: true }).eq("creator_id", creatorId)).count ?? 0),
   ]);
-  const f = flags();
-  const community = f.community_enabled && f.community_home_cards_enabled ? await safe("community", () => homeCommunitySignals(db, creatorId)) : null;
+  const community = communityP ? await communityP : null;
 
   /* ------------------------------------------------------------------ Continue */
   const titleOf = new Map((works ?? []).map((w) => [w.id, w.title]));
@@ -274,7 +306,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
 
   // Parts the creator is on in a Creative Room (owner, 6 Oct 2026: an accepted tune request should show on Home): a part's
   // Creation joins Continue even when a room-mate started it; a part nobody has started opens its Room.
-  const myParts = (await safe("parts", myActiveParts(db, creatorId, 4))) ?? [];
+  const myParts = (await myPartsP) ?? [];
   const partRows = myParts.flatMap((p): Array<HomeInProgressItem & { sort: string }> =>
     p.artifact
       ? inProgressRows.some((w) => w.id === p.artifact!.id)
@@ -313,11 +345,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const singleReady = awayItems.length === 1 && awayItems[0]!.kind === "visuals_ready" ? "Your visuals are ready" : null;
 
   /* ------------------------------------------------------------------ Connections, DejaVu, spark */
-  const [found, links, spark] = await Promise.all([
-    f.semantic_connections_enabled ? safe("semantic-connection", () => foundConnection(db, now)) : null,
-    f.dejavu_enabled ? safe("connections", () => connections(db, lastVisit, now)) : null,
-    safe("spark", () => sparkCard(db, creatorId, now)),
-  ]);
+  const [found, links, spark] = await connectedP;
   // CreativeMind's found connection leads "Your world is connecting"; the deterministic one stands in when there's none.
   if (found && links) links.connection = found;
 
@@ -412,29 +440,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       }
     : null;
   const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person || glance.catchUp || glance.week);
-  const rooms =
-    (await safe("rooms", async () => {
-      const projects = (await listProjects(db, { status: "open", viewerId: creatorId })).slice(0, 6);
-      const recent = now - 14 * 86_400_000;
-      const lists = await Promise.all(
-        projects.map(async (p) =>
-          (await listSharedItems(db, p.id).catch(() => []))
-            .filter((i) => !i.mine && Date.parse(i.sharedAt) > recent)
-            .map((i) => ({ projectId: p.id, projectTitle: p.title, itemId: i.itemId, title: i.title, kind: i.kind, by: i.sharedBy, at: i.sharedAt })),
-        ),
-      );
-      return lists
-        .flat()
-        .sort((a, b) => b.at.localeCompare(a.at))
-        .slice(0, 3);
-    })) ?? [];
-  const communities = f.communities_enabled
-    ? await safe("communities", async () => {
-        const mine = await myCommunities(db, 12);
-        const pictures = await communityAvatars(mine.map((c) => c.avatarObjectId));
-        return { mine: mine.map((c) => ({ id: c.id, title: c.title, privacy: c.privacy, isHost: c.isHost, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null })) };
-      })
-    : null;
+  const rooms = (await roomsP) ?? [];
+  const communities = communitiesP ? await communitiesP : null;
   const glanceCovers = hasGlance && glance!.creations.length ? ((await safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId }))))) ?? {}) : {};
 
   const avatars =

@@ -1,5 +1,5 @@
 import { log } from "@wonder/core";
-import { myConsents } from "@wonder/creator-identity";
+import { consentsFor } from "./consents";
 import type { Db } from "@wonder/db";
 
 /**
@@ -65,7 +65,7 @@ export function cleanProps(raw: unknown): TelemetryProps {
 
 /** Whether the signed-in creator currently allows usage measures (their latest choice; off when never asked). */
 export async function analyticsAllowed(db: Db): Promise<boolean> {
-  const consents = await myConsents(db).catch(() => []);
+  const consents = await consentsFor(db).catch(() => []);
   return consents.some((c) => c.purpose === "product_analytics" && c.granted);
 }
 

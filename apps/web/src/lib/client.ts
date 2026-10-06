@@ -10,9 +10,14 @@ export class ApiError extends Error {
   }
 }
 
+let wroteAt = 0;
+/** When this tab last changed something through `api` (the bell reads its list again after a change, never sooner). */
+export const lastWriteAt = () => wroteAt;
+
 /** Fetch helper for Client Components: JSON in, JSON out, creator-readable errors. */
 export async function api<T = unknown>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, headers, ...rest } = init;
+  if (rest.method && rest.method !== "GET" && rest.method !== "HEAD") wroteAt = Date.now();
   const res = await fetch(path, {
     ...rest,
     headers: { ...(json !== undefined ? { "content-type": "application/json" } : {}), ...headers },
