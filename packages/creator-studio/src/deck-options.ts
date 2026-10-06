@@ -1,4 +1,5 @@
-import { z } from "zod";
+// zod/mini: these modules are read in the browser too, where full zod was ~87 KB compressed (docs/performance.md).
+import * as z from "zod/mini";
 
 /**
  * The Presentation page (creation-pages.md, step 4): a deck is slides — a title, the words on it and speaker notes —
@@ -25,16 +26,16 @@ export interface Deck {
 }
 
 const slideSchema = z.object({
-  id: z.string().regex(/^[a-z0-9-]{4,40}$/i),
-  title: z.string().max(200),
-  body: z.string().max(2000),
-  notes: z.string().max(4000),
-  image: z.string().uuid().nullable().optional(),
+  id: z.string().check(z.regex(/^[a-z0-9-]{4,40}$/i)),
+  title: z.string().check(z.maxLength(200)),
+  body: z.string().check(z.maxLength(2000)),
+  notes: z.string().check(z.maxLength(4000)),
+  image: z.optional(z.nullable(z.uuid())),
 });
 export const deckSchema = z.object({
   kind: z.literal("deck"),
   theme: z.enum(DECK_THEMES),
-  slides: z.array(slideSchema).max(MAX_SLIDES),
+  slides: z.array(slideSchema).check(z.maxLength(MAX_SLIDES)),
 });
 
 let counter = 0;

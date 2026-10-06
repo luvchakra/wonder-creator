@@ -1,9 +1,10 @@
 "use client";
+import dynamic from "next/dynamic";
 import { RelativeTime } from "@/components/client-time";
 import { stepUpErrorMessage, useStepUp } from "@/components/step-up";
 import { COMMERCIAL_USE, commercialReadiness, commercialUseLabel, READINESS_NOTE } from "@wonder/creator-studio/commercial";
 import { EXPORT_FORMATS, exportFormatsFor } from "@wonder/creator-studio/exports";
-import { channelLabels } from "@wonder/creator-studio/licensing";
+import { channelLabels } from "@wonder/creator-studio/licensing-options";
 import { ARTIFACT_TYPES, actionsFor } from "@wonder/creator-studio/types";
 import type { OrnamentKey, WritingStyle } from "@wonder/creator-studio/pages";
 import type { PartContext } from "@wonder/creator-projects/parts-options";
@@ -44,7 +45,12 @@ import { MaterialGrid, type GraphNode } from "./context-parts";
 import { api, errorMessage } from "@/lib/client";
 import { diffLines } from "@/lib/diff";
 import { LicencePayment } from "@/components/payments/licence-payment";
-import { ChannelChips, CreateLicenseDialog, OwnerLicenseRequests, RequesterLicensing, type LicenseRequestView } from "./licensing";
+import type { LicenseRequestView } from "./licensing";
+// The licensing parts (and the license form's validation) load when the rights section shows them (docs/performance.md).
+const ChannelChips = dynamic(() => import("./licensing").then((m) => m.ChannelChips));
+const CreateLicenseDialog = dynamic(() => import("./licensing").then((m) => m.CreateLicenseDialog));
+const OwnerLicenseRequests = dynamic(() => import("./licensing").then((m) => m.OwnerLicenseRequests));
+const RequesterLicensing = dynamic(() => import("./licensing").then((m) => m.RequesterLicensing));
 import { forget } from "@/components/nav-memory";
 
 interface Version {

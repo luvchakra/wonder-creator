@@ -65,8 +65,8 @@ On a phone that is 0.3–0.6 s of parsing and running before anything is interac
 | 1b | Writing/Studio screen and the Creation page in three or four dependent stages (were 9 and 6); the Room page's parts data in one stage (was 5) | Done |
 | 2 | Home streams: greeting + Quick Capture at once, Scrapbook and the rest each behind a quiet placeholder; Pulse's two Home helpers (signals, glance) in parallel branches instead of ~13 sequential requests each; Home's chain shortened. Home first paint 420 → 300 ms, everything 2.1 → 1.1 s; Continue links straight to each Creation's page (no forwarding page load) | Done |
 | 3 | The bell: one database function (`notifications_waiting`) instead of ~20 queries; RLS kept by running as the caller | Next |
-| 4 | Less JavaScript: sheets and panels on demand; Studio canvases per page; measure the shared chunks | Next |
-| 5 | Remaining pages by weight: Pulse (50), Creations (34), Me (28) — same three-stage rule | After |
+| 4 | Less JavaScript (gzip): the Supabase browser client only for big uploads (it rode on every page); the Palette's meTalk and Create sheets on first open; the Studio's picture/deck/storyboard readers on `zod/mini`; the license vocabulary split from its form schemas, the license panels on demand. Home 335 → 269 KB, lists 326 → 258 KB, Creation page 461 → 302 KB, Writing page 497 → 368 KB | Done |
+| 5 | Profile (Me): every read starts after the profile lookup and overlaps (was seven stages in a row): 0.87 → 0.55 s with 60 ms per request; the avatar menu links to the profile directly (no `/me` redirect). Pulse (0.60 s) and Creations are next by weight | Profile done |
 | — | Owner settings, not code: **Vercel → Project → Settings → Functions → Fluid Compute** (one instance serves the page's concurrent calls; far fewer cold starts). If pages still queue after phases 1–4, the Supabase compute size (Micro → Small) is the next lever; measure first | Owner |
 
 ### Measured after phases 1–2 (local production build, 60 ms added to every database request)

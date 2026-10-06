@@ -2,8 +2,7 @@
 import { CanvasAtmosphere, type AtmosphereMood, KitCameraIcon, KitHomeIcon, KitImageIcon, KitLayersIcon, KitMicIcon, KitPencilIcon, KitPlusIcon, KitSearchIcon, KitSparklesIcon, KitUsersIcon, Palette, type PaletteGroup, type PaletteItem as LeafItem } from "@wonder/ui";
 import { ArrowLeft, Compass, CornerUpRight, MoreHorizontal, Music2, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { MeTalkSheet } from "./metalk-sheet";
-import { NewCreationSheet } from "./new-creation-sheet";
+import dynamic from "next/dynamic";
 import { useSoundtrack } from "./soundtrack/audio-provider";
 import { MOOD_LABEL } from "@wonder/creator-soundtrack";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -11,6 +10,10 @@ import { resolveContextStrip } from "@/lib/context-strip/resolve";
 import { PRIORITY, type StripItem, type StripModel } from "@/lib/context-strip/types";
 import { globalPalette, resolvePalette } from "@/lib/palette/resolve";
 import type { PaletteContext, PaletteIcon, PaletteItem, PaletteModel } from "@/lib/palette/types";
+
+// The sheets the Palette opens load the first time they're asked for, not with every page (docs/performance.md, phase 4).
+const MeTalkSheet = dynamic(() => import("./metalk-sheet").then((m) => m.MeTalkSheet), { ssr: false });
+const NewCreationSheet = dynamic(() => import("./new-creation-sheet").then((m) => m.NewCreationSheet), { ssr: false });
 
 /**
  * The context-aware Creative Palette (docs/ui-redesign/palette-spec.md). Each screen says where the creator is with
@@ -103,6 +106,11 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<PaletteContext | null>(null);
   const [talk, setTalk] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Mounted from the first open on (so closing can still animate), never before.
+  const [talkUsed, setTalkUsed] = useState(false);
+  const [createUsed, setCreateUsed] = useState(false);
+  if (talk && !talkUsed) setTalkUsed(true);
+  if (creating && !createUsed) setCreateUsed(true);
   const [signals, setSignals] = useState<StripItem[]>([]);
   const [online, setOnline] = useState(true);
   const value = useMemo(
@@ -162,8 +170,8 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
       <CanvasAtmosphere mood={moodFor(context?.page)} />
       <StripCtx.Provider value={strip}>{children}</StripCtx.Provider>
       <CreativePalette context={context} onMeTalk={() => setTalk(true)} onCreate={() => setCreating(true)} />
-      <NewCreationSheet open={creating} onOpenChange={setCreating} />
-      <MeTalkSheet open={talk} onOpenChange={setTalk} />
+      {createUsed ? <NewCreationSheet open={creating} onOpenChange={setCreating} /> : null}
+      {talkUsed ? <MeTalkSheet open={talk} onOpenChange={setTalk} /> : null}
     </Ctx.Provider>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 import { api } from "./client";
-import { createClient } from "./supabase/client";
 
 export interface SendResult {
   batchId: string;
@@ -22,6 +21,9 @@ export async function sendToCreator(input: { files?: File[]; urls?: string[]; te
       method: "POST",
       json: { files: big.map((f) => ({ name: f.name, size: f.size })) },
     });
+    // The storage client only for big files, loaded when needed: otherwise every page shipped the whole Supabase
+    // client (~65 KB compressed) for this one branch (docs/performance.md, phase 4).
+    const { createClient } = await import("./supabase/client");
     const storage = createClient().storage.from("creator-media");
     for (let i = 0; i < big.length; i++) {
       const u = uploads[i];

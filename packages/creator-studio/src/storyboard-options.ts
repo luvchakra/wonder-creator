@@ -1,4 +1,5 @@
-import { z } from "zod";
+// zod/mini: read in the browser too (docs/performance.md).
+import * as z from "zod/mini";
 
 /**
  * The Video page (creation-pages.md, step 5): a video is planned as shots — each a frame (a picture of the creator's,
@@ -23,13 +24,13 @@ export interface Storyboard {
 }
 
 const shotSchema = z.object({
-  id: z.string().regex(/^[a-z0-9-]{4,40}$/i),
-  frame: z.string().uuid().nullable(),
-  line: z.string().max(1000),
-  direction: z.string().max(500),
-  seconds: z.number().int().min(SHOT_SECONDS.min).max(SHOT_SECONDS.max),
+  id: z.string().check(z.regex(/^[a-z0-9-]{4,40}$/i)),
+  frame: z.nullable(z.uuid()),
+  line: z.string().check(z.maxLength(1000)),
+  direction: z.string().check(z.maxLength(500)),
+  seconds: z.int().check(z.gte(SHOT_SECONDS.min), z.lte(SHOT_SECONDS.max)),
 });
-export const storyboardSchema = z.object({ kind: z.literal("storyboard"), shots: z.array(shotSchema).max(MAX_SHOTS) });
+export const storyboardSchema = z.object({ kind: z.literal("storyboard"), shots: z.array(shotSchema).check(z.maxLength(MAX_SHOTS)) });
 
 let counter = 0;
 export function shotId(): string {
