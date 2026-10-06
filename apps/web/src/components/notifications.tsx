@@ -4,8 +4,8 @@ import { Popover, PopoverContent, PopoverTrigger, Spinner } from "@wonder/ui";
 import { AlertCircle, Bell, Brain, Loader, Scale, Share2, UserPlus, Users, UsersRound, MessageCircle, MessageCircleQuestion, FilePenLine, Quote, Signature } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { api, errorMessage } from "@/lib/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, errorMessage, lastWriteAt } from "@/lib/client";
 import { RelativeTime } from "./client-time";
 
 interface Item {
@@ -27,9 +27,11 @@ export function NotificationsButton() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const loadedAt = useRef(0);
+  const load = useCallback(async (opts: { fresh?: boolean } = {}) => {
     try {
-      const res = await api<{ notifications: Item[] }>("/api/v1/notifications");
+      const res = await api<{ notifications: Item[] }>(`/api/v1/notifications${opts.fresh ? "?fresh=1" : ""}`);
+      loadedAt.current = Date.now();
       setItems(res.notifications);
       setError(null);
     } catch (e) {
@@ -37,9 +39,10 @@ export function NotificationsButton() {
     }
   }, []);
 
-  // Refresh on navigation (resolving something usually means visiting it) and on a slow poll while visible.
+  // Refresh on navigation (resolving something usually means visiting it) — but not twice within a few seconds, each
+  // refresh being ~20 queries — and on a slow poll while visible. Opening the list always reads fresh.
   useEffect(() => {
-    const first = setTimeout(() => void load(), 0);
+    const first = setTimeout(() => (Date.now() - loadedAt.current > 15_000 || lastWriteAt() > loadedAt.current) && void load({ fresh: lastWriteAt() > loadedAt.current }), 0);
     const t = setInterval(() => document.visibilityState === "visible" && void load(), POLL_MS);
     return () => {
       clearTimeout(first);
@@ -55,7 +58,7 @@ export function NotificationsButton() {
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (o) void load();
+        if (o) void load({ fresh: true });
       }}
     >
       <PopoverTrigger className={navIconClass()} aria-label={label}>

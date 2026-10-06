@@ -8,6 +8,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { flagOn, requireFeature } from "./features";
 import { mfaPending } from "./mfa";
+import { forgetNotifications } from "./notifications";
 import { clientIp } from "./request-ip";
 import type { Flag } from "./flags";
 import { createClient } from "./supabase/server";
@@ -24,6 +25,24 @@ export interface ApiContext {
 let rateLimitDb: Db | null | undefined;
 /** Shared across instances via Postgres when the service key is configured; per-instance otherwise. */
 const limiter = createSharedRateLimiter(() => (rateLimitDb ??= serviceConfigured() ? serviceClient() : null));
+
+const readsSeen = new Map<string, { n: number; resetAt: number }>();
+/**
+ * Reads (GET) only go to the shared limiter once a key has used a quarter of its budget on this instance: the polls
+ * behind the bell, messages and soundtrack were paying a database write each, every time, to count to 120. Writes
+ * always go. An abuser spread over many instances gets at most a quarter of the budget from each before it counts.
+ */
+function readNeedsShared(key: string, limit: number): boolean {
+  const t = Date.now();
+  const hit = readsSeen.get(key);
+  if (!hit || hit.resetAt <= t) {
+    readsSeen.set(key, { n: 1, resetAt: t + 60_000 });
+    if (readsSeen.size > 10_000) for (const [k, v] of readsSeen) if (v.resetAt <= t) readsSeen.delete(k);
+    return false;
+  }
+  hit.n += 1;
+  return hit.n > limit / 4;
+}
 
 /** An extra, named budget inside a handler — e.g. cost-bearing image generation starts vs cheap lookups. */
 export async function checkBudget(key: string, limit: number, windowMs = 60 * 60_000) {
@@ -78,19 +97,29 @@ export function withApi<P = Record<string, string>>(
       const userId = (claims?.claims?.sub as string | undefined) ?? "";
       if (!userId && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
       let creatorId = "";
+      const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
+      // The creator lookup and the rate limit don't depend on each other: each is a round trip, so they go together.
+      const [creator] = await Promise.all([
+        userId ? db.from("creators").select("id").eq("user_id", userId).maybeSingle() : null,
+        (async () => {
+          const key = `${userId || clientIp(req)}:${req.nextUrl.pathname}:${req.method}`;
+          if ((req.method === "GET" || req.method === "HEAD") && !readNeedsShared(key, limit)) return;
+          await limiter.check(key, limit, 60_000);
+        })(),
+      ]);
       if (userId) {
-        const { data } = await db.from("creators").select("id").eq("user_id", userId).maybeSingle();
+        const data = creator?.data;
         if (!data && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
         creatorId = data?.id ?? "";
         // Two-step verification set up but not yet passed in this session: nothing proceeds until it is.
         if (!opts.allowPendingMfa && (await mfaPending(db))) throw new DomainError("unauthenticated", "Finish two-step verification to continue.");
       }
-      const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
-      await limiter.check(`${userId || clientIp(req)}:${req.nextUrl.pathname}:${req.method}`, limit, 60_000);
 
       const params = (await route.params) ?? ({} as P);
       const result = await handler({ db, userId, creatorId, requestId, req }, params);
       log("info", "api.ok", { requestId, route: req.nextUrl.pathname, method: req.method, ms: Date.now() - started });
+      // Something changed, so the short-lived notifications list for this creator is out of date.
+      if (creatorId && req.method !== "GET" && req.method !== "HEAD") forgetNotifications(creatorId);
       if (opts.reindex && creatorId && serviceConfigured()) {
         after(() =>
           indexStaleSubjects(serviceClient(), selectProvider(), { creatorId, limit: 10 }).catch((e) =>

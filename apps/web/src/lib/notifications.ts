@@ -34,6 +34,14 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
     .or(`and(to_creator_id.eq.${creatorId},status.eq.pending),and(from_creator_id.eq.${creatorId},status.eq.shown,decided_at.gte.${since})`)
     .order("created_at", { ascending: false })
     .limit(10);
+  // Credits and shares waiting for your sign-off (creative-room-parts.md, step 5a), asked alongside everything else.
+  const songsQuery = db
+    .from("project_song_agreements")
+    .select("id, project_id, created_at, projects(title)")
+    .eq("status", "open")
+    // jsonb containment needs the JSON itself (an array here would be sent as a Postgres array literal).
+    .filter("lines", "cs", JSON.stringify([{ creatorId }]))
+    .limit(10);
   const runSince = new Date(Date.now() - RUN_WINDOW_MS).toISOString();
   const [proposals, requests, invites, cards, failed, runs, licenseAsks, licenseAnswers, shared, crewInvites, crewThreads, toReview, decided, addedAs, claims, unread] = await Promise.all([
     db.from("ai_proposals").select("id, action, understood, conversation_id, created_at").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(10),
@@ -183,14 +191,7 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
       out.push({ id: `testimonial-shown:${t.id}`, kind: "testimonial_shown", title: `${receiver.display_name} is showing your testimonial`, detail: null, href: `/creators/${receiver.handle}`, at: t.decided_at ?? t.created_at });
     }
   }
-  // Credits and shares waiting for your sign-off (creative-room-parts.md, step 5a).
-  const { data: songs } = await db
-    .from("project_song_agreements")
-    .select("id, project_id, created_at, projects(title)")
-    .eq("status", "open")
-    // jsonb containment needs the JSON itself (an array here would be sent as a Postgres array literal).
-    .filter("lines", "cs", JSON.stringify([{ creatorId }]))
-    .limit(10);
+  const { data: songs } = await songsQuery;
   if (songs?.length) {
     const { data: mine } = await db.from("project_song_signoffs").select("agreement_id, decision").eq("creator_id", creatorId).in("agreement_id", songs.map((g) => g.id));
     for (const g of songs) {
@@ -215,3 +216,28 @@ export async function listNotifications(db: Db, creatorId: string): Promise<Noti
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
+
+const SHARED_MS = 8_000;
+const shared = new Map<string, { at: number; list: Promise<Notification[]> }>();
+/**
+ * Home builds this list on the server and the bell asks for it from the browser a moment later; each is ~20 queries.
+ * Home leaves its copy here, and the bell's next request takes it (once, and only while it is a few seconds old) —
+ * every other read, including every later poll, goes to the database. A creator's own list only, read through their own
+ * RLS-scoped client.
+ */
+export function listNotificationsForHome(db: Db, creatorId: string): Promise<Notification[]> {
+  const now = Date.now();
+  const list = listNotifications(db, creatorId);
+  shared.set(creatorId, { at: now, list });
+  list.catch(() => shared.get(creatorId)?.list === list && shared.delete(creatorId));
+  if (shared.size > 200) for (const [k, v] of shared) if (now - v.at >= SHARED_MS) shared.delete(k);
+  return list;
+}
+/** What Home just built, if it did so a moment ago — handed over once. */
+export function takeNotificationsFromHome(creatorId: string): Promise<Notification[]> | null {
+  const hit = shared.get(creatorId);
+  shared.delete(creatorId);
+  return hit && Date.now() - hit.at < SHARED_MS ? hit.list : null;
+}
+/** Something changed, so what Home left is out of date. */
+export const forgetNotifications = (creatorId: string) => void shared.delete(creatorId);
