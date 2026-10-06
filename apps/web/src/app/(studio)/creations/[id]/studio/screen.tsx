@@ -11,6 +11,7 @@ import { siteOrigin } from "@/lib/public-pages";
 import { requireSession } from "@/lib/session";
 import { serviceClient } from "@/lib/supabase/service";
 import { ForwardTo } from "./forward";
+import type { AudioTakeView } from "./audio-canvas";
 import { Studio } from "./studio";
 
 export type StudioSearch = { action?: string; add?: string; from?: string };
@@ -57,14 +58,15 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   const storyboard = at === "video" ? storyboardOf(version?.structured_content, version?.content ?? "") : null;
   const frameIds = [...new Set((storyboard?.shots ?? []).map((x) => x.frame).filter((x): x is string => !!x))];
   // The Audio page (creation-pages.md, step 3): the kept take, its address and its transcript (or why there isn't one).
-  const take = at === "audio" ? audioSetOf(version?.structured_content).take : null;
+  const audioSet = at === "audio" ? audioSetOf(version?.structured_content) : null;
+  const take = audioSet?.take ?? null;
   const publishedLive = !!pub && !pub.unpublished_at && pub.visibility !== "private" && !!creator.handle;
   const lyric = part && at === "audio" ? part.others.find((o) => o.kind === "writing" && o.current) : undefined;
   const peopleIds = [creator.id, ...(contributors ?? []).map((c) => c.contributor_creator_id)];
 
   // Stage three: what the page's kind needs, all at once — the pictures' rows, the published revision, the other parts'
   // takes and words (play-along, creative-room-parts.md step 3), and the people's avatars.
-  const materialIds = imageSet?.items.length ? imageSet.items.map((i) => i.materialId) : slideImageIds.length ? slideImageIds : frameIds.length ? frameIds : take ? [take.materialId] : [];
+  const materialIds = imageSet?.items.length ? imageSet.items.map((i) => i.materialId) : slideImageIds.length ? slideImageIds : frameIds.length ? frameIds : take ? [take.materialId, ...(audioSet?.mix ? [audioSet.mix.materialId] : [])] : [];
   const [{ data: mats }, { data: rev }, takes, text, avatars] = await Promise.all([
     materialIds.length ? db.from("creative_materials").select("id, title, storage_object_id, extracted_text, metadata, processing_state").in("id", materialIds) : Promise.resolve({ data: [] as never[] }),
     publishedLive && pub.current_revision_id ? db.from("published_revisions").select("version_id").eq("id", pub.current_revision_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -91,7 +93,7 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
   if (slideImageIds.length) slidePictures = Object.fromEntries(rows.map((m) => [m.id, urlOf(m)]));
   let frames: Record<string, string | null> = {};
   if (frameIds.length) frames = Object.fromEntries(rows.map((m) => [m.id, urlOf(m)]));
-  let audioTake: { materialId: string; url: string | null; seconds: number; transcript: string | null; note: string | null; done: boolean } | null = null;
+  let audioTake: AudioTakeView | null = null;
   const m = take ? rows.find((r) => r.id === take.materialId) : undefined;
   if (take && m) {
     const meta = (m.metadata ?? {}) as { processingNote?: string; durationSeconds?: number };
@@ -102,6 +104,8 @@ export async function StudioScreen({ id, search, at }: { id: string; search: Stu
       transcript: m.extracted_text?.trim() || null,
       note: meta.processingNote ?? null,
       done: ["ready", "understood", "failed"].includes(m.processing_state ?? ""),
+      bed: audioSet?.bed ?? null,
+      mix: audioSet?.mix ? { url: (() => { const x = rows.find((r) => r.id === audioSet.mix!.materialId); return x ? urlOf(x) : null; })(), seconds: audioSet.mix.seconds } : null,
     };
   }
   const published: { url: string; newer: boolean } | null = publishedLive ? { url: `${await siteOrigin()}/p/${creator.handle}/${pub.slug}`, newer: !!rev && rev.version_id !== (a.current_version_id ?? null) } : null;

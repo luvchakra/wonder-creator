@@ -252,6 +252,17 @@ describe("parts: who sees and does what", () => {
     await attachPartArtifact(db(owner), lyrics.id, lyricsArt);
     expectOk(await owner.client.rpc("create_artifact_version", { p_artifact_id: lyricsArt, p_content: "words", p_label: "Draft", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 1 } } }));
     expect((await partTakes(db(dee), p.id)).map((t) => t.partId)).not.toContain(lyrics.id);
+
+    // With background music (owner, 6 Oct 2026): the take mixed with its music is what the Room hears — same checks.
+    const mix = await take("clean");
+    const bed = { trackId: "carefree", title: "Carefree", artist: "Kevin MacLeod", license: "CC BY 4.0", attribution: null, from: 0, to: 30, tempo: 1.1, level: 0.4 };
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "", p_label: "Music added", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 42 }, bed, mix: { materialId: mix.mat, seconds: 44 } } }));
+    expect(await partTakes(db(owner), p.id)).toEqual([{ partId: tune.id, title: "Tune", artifactId: tuneArt, versionNumber: 3, storageObjectId: mix.obj, seconds: 44 }]);
+    expect(await partTakes(db(cy), p.id)).toEqual([]);
+    // A mix held for safety is never offered, even over a clean take.
+    const badMix = await take("quarantined");
+    expectOk(await ana.client.rpc("create_artifact_version", { p_artifact_id: tuneArt, p_content: "", p_label: "Music changed", p_author_kind: "creator", p_structured_content: { kind: "audio", take: { materialId: good.mat, seconds: 42 }, bed, mix: { materialId: badMix.mat, seconds: 44 } } }));
+    expect(await partTakes(db(owner), p.id)).toEqual([]);
   });
 
   it("listen together: the people making the work set the mix; whoever sees the Room reads it; nothing else rides along", async () => {

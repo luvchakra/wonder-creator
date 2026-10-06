@@ -4,7 +4,7 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation, Clapperboard } from "lucide-react";
+import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation, Clapperboard, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -783,13 +783,15 @@ export function Studio({
                 </span>
               </Link>
             ) : null}
+            {/* Publish the finished piece — the take, or the take with its music — on its own page and the Creator Page
+                (owner, 6 Oct 2026); Download moved to More. */}
             {take?.url ? (
-              <a href={take.url} download className="inline-flex min-h-11 items-center">
+              <button type="button" onClick={() => setSheet("publish")} className="inline-flex min-h-11 items-center">
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-soft bg-surface/90 px-3 text-[12.5px] font-medium text-ink hover:bg-surface">
-                  <Download className="size-4 text-ink-muted" aria-hidden />
-                  Download
+                  <Upload className="size-4 text-ink-muted" aria-hidden />
+                  Publish
                 </span>
-              </a>
+              </button>
             ) : null}
           </div>
         ) : videoPage ? (
@@ -1451,7 +1453,11 @@ export function Studio({
           <ul className="divide-y divide-border-soft rounded-2xl border border-border-soft">
             {(audioPage
               ? [
-                  ...(take ? [{ label: "Publish as link", hint: "Its own page — the recording, the words, your name", act: () => setSheet("publish") }] : []),
+                  ...(take?.url
+                    ? [{ label: take.mix ? "Download the mix" : "Download the recording", hint: take.mix ? "Your take with its music, as a WAV" : "The take as recorded", act: () => { const a = document.createElement("a"); a.href = take.mix?.url ?? take.url!; a.download = ""; a.click(); setSheet(null); } }]
+                    : []),
+                  // A Room's song (creative-room-parts.md, step 5b): every part together, credited as agreed, published from Listen together.
+                  ...(part ? [{ label: "Publish the whole song", hint: `Every part of ${part.project.title} together, once the credits are agreed`, act: () => router.push(`/rooms/${part.project.id}/song`) }] : []),
                   { label: "Save version", hint: `v${(base?.number ?? 0) + 1} – ${artifact.typeLabel} (${title || "Untitled"})`, act: () => setSheet("save") },
                   { label: "Export", hint: "The words as Markdown, text or a web page", act: () => setSheet("export") },
                   { label: "Share privately", hint: "Only people with the link", act: () => router.push(`/creations/${artifact.id}/share`) },
@@ -1552,6 +1558,8 @@ export function Studio({
         </DialogContent>
       </Dialog>
       {imagesPage || deckPage || videoPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={false} onSaveFirst={() => setSheet(null)} /> : null}
+      {/* The Audio page publishes the take (or the take with its music) — this sheet was never mounted here before. */}
+      {audioPage ? <PublishLinkSheet open={sheet === "publish"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} unsaved={dirty} onSaveFirst={() => setSheet("save")} /> : null}
       {/* Export on the Audio and Video pages (the Writing page has its own, below). */}
       {audioPage || videoPage ? <ExportSheet open={sheet === "export"} onOpenChange={(o) => !o && setSheet(null)} artifactId={artifact.id} type={artifact.type} unsaved={false} /> : null}
       {part ? (

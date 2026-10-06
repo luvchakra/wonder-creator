@@ -1,10 +1,11 @@
 "use client";
-import { clockOf } from "@wonder/creator-studio/audio";
+import { clockOf, type AudioBed } from "@wonder/creator-studio/audio";
 import { Button, Dialog, DialogContent, KIT, KitArt, cn } from "@wonder/ui";
 import { Mic, Pause, Play, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { PlayAlong, PlayAlongTrack } from "@wonder/creator-projects/parts-options";
+import { BackgroundMusicRow } from "./background-music";
 import { PlayAlongBar, PlayAlongWords } from "./play-along";
 import { clock, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { api, errorMessage } from "@/lib/client";
@@ -22,6 +23,9 @@ export interface AudioTakeView {
   /** Why there's no transcript, when there isn't one (not connected, no speech…), or null while it's still coming. */
   note: string | null;
   done: boolean;
+  /** Background music (owner, 6 Oct 2026): what was chosen, and the mix of it with this take — what plays, when there is one. */
+  bed: AudioBed | null;
+  mix: { url: string | null; seconds: number } | null;
 }
 export type AudioRequest = { kind: "record"; n: number } | null;
 
@@ -54,12 +58,14 @@ export function AudioPanel({
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
-  const [d, setD] = useState(take?.seconds ?? 0);
-  const [seenTake, setSeenTake] = useState(take?.materialId ?? null);
-  if ((take?.materialId ?? null) !== seenTake) {
-    setSeenTake(take?.materialId ?? null);
+  // With background music, the mix is what plays (and what's downloaded and published); the take alone otherwise.
+  const playUrl = take?.mix?.url ?? take?.url ?? null;
+  const [d, setD] = useState(take?.mix?.seconds ?? take?.seconds ?? 0);
+  const [seenTake, setSeenTake] = useState(playUrl);
+  if (playUrl !== seenTake) {
+    setSeenTake(playUrl);
     setT(0);
-    setD(take?.seconds ?? 0);
+    setD(take?.mix?.seconds ?? take?.seconds ?? 0);
     setPlaying(false);
   }
   // Record over a track: the first other part's take plays while recording (headphones keep it out of the take).
@@ -75,7 +81,7 @@ export function AudioPanel({
         <div className="flex items-center gap-3">
           <audio
             ref={audio}
-            src={take.url ?? undefined}
+            src={playUrl ?? undefined}
             preload="metadata"
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
@@ -85,9 +91,9 @@ export function AudioPanel({
           />
           <button
             type="button"
-            disabled={!take.url}
+            disabled={!playUrl}
             onClick={() => (audio.current?.paused ? void audio.current.play() : audio.current?.pause())}
-            aria-label={playing ? "Pause the recording" : "Play the recording"}
+            aria-label={playing ? "Pause the recording" : take.mix ? "Play the recording with its music" : "Play the recording"}
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-ink text-white shadow-[var(--shadow-card)] disabled:opacity-50"
           >
             {playing ? <Pause className="size-5" aria-hidden /> : <Play className="ml-0.5 size-5" aria-hidden />}
@@ -123,6 +129,7 @@ export function AudioPanel({
           </p>
         </div>
       )}
+      {take ? <BackgroundMusicRow artifactId={artifactId} baseVersionId={baseVersionId} take={{ url: take.url, seconds: take.seconds }} bed={take.bed} mixed={!!take.mix} onSaved={onKept} /> : null}
       {take && !take.transcript ? (
         <p className="mt-2 text-[12.5px] text-ink-subtle" role="status">
           {take.done ? (take.note ?? "No transcript for this take.") : "Transcribing when it can…"}
