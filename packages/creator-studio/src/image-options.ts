@@ -1,4 +1,5 @@
-import { z } from "zod";
+// zod/mini: read in the browser too (docs/performance.md). The full schema for saving lives in creation-images.ts.
+import * as z from "zod/mini";
 import { DEFAULT_OVERLAY, type SlideOverlay } from "./carousel";
 
 /**
@@ -75,41 +76,41 @@ export interface ImageSet {
 }
 export const MAX_IMAGES = 24;
 
-const editsSchema = z.object({
+export const editsSchema = z.object({
   aspect: z.enum(IMAGE_ASPECTS),
-  zoom: z.number().min(1).max(4),
-  focalX: z.number().min(0).max(1),
-  focalY: z.number().min(0).max(1),
+  zoom: z.number().check(z.gte(1), z.lte(4)),
+  focalX: z.number().check(z.gte(0), z.lte(1)),
+  focalY: z.number().check(z.gte(0), z.lte(1)),
   filter: z.enum(IMAGE_FILTERS),
-  brightness: z.number().min(0.5).max(1.5),
-  contrast: z.number().min(0.5).max(1.5),
+  brightness: z.number().check(z.gte(0.5), z.lte(1.5)),
+  contrast: z.number().check(z.gte(0.5), z.lte(1.5)),
   blurBehind: z.boolean(),
   frame: z.enum(IMAGE_FRAMES),
 });
-const textSchema = z.object({
-  id: z.string().min(1).max(40),
-  text: z.string().max(600),
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
-  width: z.number().min(0.2).max(1),
+export const textSchema = z.object({
+  id: z.string().check(z.minLength(1), z.maxLength(40)),
+  text: z.string().check(z.maxLength(600)),
+  x: z.number().check(z.gte(0), z.lte(1)),
+  y: z.number().check(z.gte(0), z.lte(1)),
+  width: z.number().check(z.gte(0.2), z.lte(1)),
   font: z.enum(["editorial", "serif", "modern", "handwritten"]),
-  size: z.number().min(0.02).max(0.3),
+  size: z.number().check(z.gte(0.02), z.lte(0.3)),
   align: z.enum(["left", "center", "right"]),
-  color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  color: z.string().check(z.regex(/^#[0-9a-f]{6}$/i)),
   shadow: z.boolean(),
   background: z.enum(["none", "shade", "band"]),
 });
 /** The older shape: one overlay, on or off. Still accepted, read as one box. */
-const wordsSchema = z.object({
+export const wordsSchema = z.object({
   enabled: z.boolean(),
-  text: z.string().max(600).nullish(),
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
-  width: z.number().min(0.2).max(1),
+  text: z.nullish(z.string().check(z.maxLength(600))),
+  x: z.number().check(z.gte(0), z.lte(1)),
+  y: z.number().check(z.gte(0), z.lte(1)),
+  width: z.number().check(z.gte(0.2), z.lte(1)),
   font: z.enum(["editorial", "serif", "modern", "handwritten"]),
-  size: z.number().min(0.02).max(0.2),
+  size: z.number().check(z.gte(0.02), z.lte(0.2)),
   align: z.enum(["left", "center", "right"]),
-  color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  color: z.string().check(z.regex(/^#[0-9a-f]{6}$/i)),
   shadow: z.boolean(),
   background: z.enum(["none", "shade", "band"]),
 });
@@ -130,23 +131,6 @@ export function textsOf(p: { texts?: unknown; words?: unknown } | null | undefin
   void _on;
   return [{ id: newTextId(), text: (text ?? "").slice(0, 600), ...rest }];
 }
-
-export const imageSetSchema = z.object({
-  kind: z.literal("images"),
-  items: z
-    .array(
-      z
-        .object({
-          materialId: z.string().uuid(),
-          caption: z.string().max(600),
-          edits: editsSchema,
-          texts: z.array(textSchema).max(MAX_TEXTS).optional(),
-          words: wordsSchema.optional(),
-        })
-        .transform(({ texts, words, ...o }) => ({ ...o, texts: textsOf({ texts, words }) })),
-    )
-    .max(MAX_IMAGES),
-});
 
 /** A version's pictures, tolerant of older or partial shapes (unknown values fall back to the defaults). */
 export function imageSetOf(structured: unknown): ImageSet {

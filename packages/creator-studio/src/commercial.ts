@@ -1,4 +1,4 @@
-import { channelLabels, LICENSE_USES } from "./licensing";
+import { channelLabels, LICENSE_USES } from "./licensing-options";
 
 /**
  * Commercial rights preparation (P1-17). Client-safe. Wonder Creator never concludes that something is "cleared" for

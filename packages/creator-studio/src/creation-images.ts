@@ -2,7 +2,7 @@ import { DomainError } from "@wonder/core";
 import type { Db } from "@wonder/db";
 import { z } from "zod";
 import { addLineage, createVersion, getArtifact, type ArtifactVersion } from "./artifacts";
-import { imageSetOf, imageSetSchema, type ImageSet } from "./image-options";
+import { editsSchema, imageSetOf, MAX_IMAGES, MAX_TEXTS, textSchema, textsOf, wordsSchema, type ImageSet } from "./image-options";
 
 export * from "./image-options";
 
@@ -12,6 +12,24 @@ export * from "./image-options";
  * or a collaborator with edit access); here, a picture that wasn't already in it must be the saver's own picture
  * Material, and it gains a lineage edge so publishing, "Used in" and rights see it.
  */
+/** A whole set as saved: the picture rules (shared with the browser's reader, in zod/mini) inside the full schema. */
+export const imageSetSchema = z.object({
+  kind: z.literal("images"),
+  items: z
+    .array(
+      z
+        .object({
+          materialId: z.string().uuid(),
+          caption: z.string().max(600),
+          edits: editsSchema,
+          texts: z.array(textSchema).max(MAX_TEXTS).optional(),
+          words: z.optional(wordsSchema),
+        })
+        .transform(({ texts, words, ...o }) => ({ ...o, texts: textsOf({ texts, words }) })),
+    )
+    .max(MAX_IMAGES),
+});
+
 const saveSchema = z.object({
   set: imageSetSchema,
   label: z.string().trim().max(80).optional(),

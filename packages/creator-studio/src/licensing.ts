@@ -5,45 +5,16 @@ import { z } from "zod";
  * counter-offers. Fees are terms on record; Wonder Creator doesn't take payments here.
  */
 
-export const LICENSE_MODES = [
-  { value: "free", label: "Free to use", note: "No license needed beyond attribution" },
-  { value: "free_license", label: "Free, with a license", note: "No fee, but the terms are recorded" },
-  { value: "paid_nonexclusive", label: "Paid, non-exclusive", note: "A fee; you can license it to others too" },
-  { value: "limited_edition", label: "Limited edition", note: "A set number of licenses" },
-  { value: "exclusive", label: "Exclusive", note: "Only this licensee may use it this way" },
-] as const;
-export type LicenseMode = (typeof LICENSE_MODES)[number]["value"];
+// The plain vocabulary lives in licensing-options (no zod): the browser reads it on every Creation page.
+export * from "./licensing-options";
+import { LICENSE_MODES, LICENSE_USES, USAGE_CHANNELS, channelLabels, type UsageChannel } from "./licensing-options";
 
-export const LICENSE_USES = [
-  { value: "personal", label: "Personal use", note: "For personal viewing" },
-  { value: "educational", label: "Educational use", note: "For non-commercial education" },
-  { value: "editorial", label: "Editorial use", note: "For media and press" },
-  { value: "promotional", label: "Promotional use", note: "To promote the work or creator" },
-  { value: "internal", label: "Internal use", note: "Within one organisation" },
-  { value: "commercial", label: "Commercial use", note: "For brand and commercial use" },
-] as const;
-
-/** Where licensed work may appear (P1-17). Recorded as terms, like everything else here. */
-export const USAGE_CHANNELS = [
-  { value: "social", label: "Social" },
-  { value: "web", label: "Web" },
-  { value: "print", label: "Print" },
-  { value: "broadcast", label: "Broadcast" },
-  { value: "streaming", label: "Streaming" },
-  { value: "advertising", label: "Advertising" },
-  { value: "packaging", label: "Packaging" },
-  { value: "merchandise", label: "Merchandise" },
-  { value: "events", label: "Events" },
-  { value: "internal", label: "Internal" },
-] as const;
-export type UsageChannel = (typeof USAGE_CHANNELS)[number]["value"];
 const CHANNEL_VALUES = USAGE_CHANNELS.map((c) => c.value) as [UsageChannel, ...UsageChannel[]];
 export const usageChannelsSchema = z
   .array(z.enum(CHANNEL_VALUES))
   .max(10)
   .default([])
   .transform((c) => [...new Set(c)]);
-export const channelLabels = (c: readonly string[]) => c.map((v) => USAGE_CHANNELS.find((x) => x.value === v)?.label ?? v);
 
 const date = z.string().date().or(z.literal("")).nullish().transform((v) => v || null);
 
