@@ -340,6 +340,48 @@ export async function myPartInvites(db: Db, creatorId: string): Promise<PartInvi
   });
 }
 
+export interface MyPart {
+  partId: string;
+  partTitle: string;
+  projectId: string;
+  projectTitle: string;
+  /** The part's Creation, once someone has started it (the viewer may be an editor, not the owner). */
+  artifact: { id: string; title: string; type: string; updatedAt: string } | null;
+  /** When the viewer joined the part. */
+  joinedAt: string;
+}
+/** Parts the creator is on (accepted, claimed or invited-and-joined) that aren't final yet, for Home's Continue rows. */
+export async function myActiveParts(db: Db, creatorId: string, limit = 6): Promise<MyPart[]> {
+  const { data, error } = await db
+    .from("project_part_members")
+    .select("part_id, joined_at, project_parts(id, title, status, project_id, artifact_id, projects(id, title, status))")
+    .eq("creator_id", creatorId)
+    .eq("status", "active")
+    .order("joined_at", { ascending: false })
+    .limit(limit * 2);
+  if (error) throw fromDbError(error);
+  type Row = { id: string; title: string; status: string; project_id: string; artifact_id: string | null; projects: { id: string; title: string; status: string } | null };
+  const rows = (data ?? []).flatMap((m) => {
+    const part = m.project_parts as Row | null;
+    if (!part?.projects || part.status === "final" || part.projects.status === "archived") return [];
+    return [{ part, joinedAt: m.joined_at ?? new Date(0).toISOString() }];
+  });
+  const ids = rows.map((r) => r.part.artifact_id).filter((x): x is string => !!x);
+  const { data: arts } = ids.length ? await db.from("artifacts").select("id, title, artifact_type, updated_at, status").in("id", ids) : { data: [] };
+  const byId = new Map((arts ?? []).map((a) => [a.id, a]));
+  return rows.slice(0, limit).map(({ part, joinedAt }) => {
+    const a = part.artifact_id ? byId.get(part.artifact_id) : undefined;
+    return {
+      partId: part.id,
+      partTitle: part.title,
+      projectId: part.project_id,
+      projectTitle: part.projects!.title,
+      artifact: a && a.status !== "archived" ? { id: a.id, title: a.title, type: a.artifact_type, updatedAt: a.updated_at } : null,
+      joinedAt,
+    };
+  });
+}
+
 export interface PartTake {
   partId: string;
   title: string;

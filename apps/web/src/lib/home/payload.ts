@@ -6,7 +6,7 @@ import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
 import { artifactType } from "@wonder/creator-studio/types";
 import type { Db } from "@wonder/db";
-import { listProjects, listSharedItems } from "@wonder/creator-projects";
+import { listProjects, listSharedItems, myActiveParts } from "@wonder/creator-projects";
 import { avatarUrls } from "../avatars";
 import { communityAvatars } from "../communities";
 import { coverUrls } from "../covers";
@@ -46,6 +46,8 @@ export interface HomeInProgressItem {
   coverUrl: string | null;
   /** "Unsaved changes", "Visuals are being created", "2 new comments", or null. Never a score. */
   hint: string | null;
+  /** Where the row goes when it isn't the Creation's own page (a part not started yet opens its Room). */
+  href?: string;
 }
 
 export interface HomeStart {
@@ -269,6 +271,21 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       hint: s?.draft && s.draft_saved_at && s.draft_saved_at > w.updated_at ? "Unsaved changes" : busy.has(w.id) ? "Visuals are being created" : n ? `${n} new ${n === 1 ? "comment" : "comments"}` : null,
     };
   });
+
+  // Parts the creator is on in a Creative Room (owner, 6 Oct 2026: an accepted tune request should show on Home): a part's
+  // Creation joins Continue even when a room-mate started it; a part nobody has started opens its Room.
+  const myParts = (await safe("parts", myActiveParts(db, creatorId, 4))) ?? [];
+  const partRows = myParts.flatMap((p): Array<HomeInProgressItem & { sort: string }> =>
+    p.artifact
+      ? inProgressRows.some((w) => w.id === p.artifact!.id)
+        ? []
+        : [{ id: p.artifact.id, title: p.artifact.title, typeLabel: artifactType(p.artifact.type).label, updatedAt: p.artifact.updatedAt, coverUrl: null, hint: `Your part in ${p.projectTitle}`, sort: p.artifact.updatedAt > p.joinedAt ? p.artifact.updatedAt : p.joinedAt }]
+      : [{ id: `part:${p.partId}`, title: `${p.partTitle} · ${p.projectTitle}`, typeLabel: "Your part", updatedAt: p.joinedAt, coverUrl: null, hint: "Not started yet", href: `/rooms/${p.projectId}`, sort: p.joinedAt }],
+  );
+  if (partRows.length) {
+    const merged = [...inProgress.map((w) => ({ ...w, sort: w.updatedAt })), ...partRows].sort((a, b) => b.sort.localeCompare(a.sort)).slice(0, 3);
+    inProgress.splice(0, inProgress.length, ...merged.map(({ sort: _sort, ...row }) => row));
+  }
 
   /* ------------------------------------------------------------------ While you were away */
   const { away, asks } = splitHomeItems(notifications ?? [], lastVisit, now);

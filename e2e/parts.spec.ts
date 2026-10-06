@@ -102,4 +102,42 @@ test.describe("Creative Room parts", () => {
     await expect(work.getByRole("list", { name: "What happened" }).getByRole("listitem").first()).toContainText(`${mira.name} suggested a change to Lyrics`);
     await expect(rows.nth(2)).toContainText("Lyrics moved on");
   });
+  test("a part you accept shows on Home under Continue — before it's started and after", async ({ page, creator, openContext }) => {
+    void creator;
+    const title = `Platform 3 ${uid()}`;
+    await page.goto("/rooms?new=1");
+    const create = page.getByRole("dialog", { name: "New Creative Room" });
+    await create.getByLabel("Name").fill(title);
+    await create.getByLabel(/^Song/).check();
+    await create.getByRole("button", { name: "Create Creative Room" }).click();
+    await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
+    const room = page.url();
+    const work = page.getByRole("region", { name: "The work" });
+
+    const { page: b } = await openContext("tune");
+    const mira = await newCreator(b, { name: `Mira ${uid()}` });
+    await work.getByRole("button", { name: "Tune actions" }).click();
+    await page.getByRole("menuitem", { name: "Invite to this part…" }).click();
+    const invite = page.getByRole("dialog", { name: "Invite to Tune" });
+    await invite.getByLabel("Find a creator").fill(`@${mira.handle}`);
+    await invite.getByRole("button", { name: `Invite ${mira.name}` }).click();
+
+    await b.goto(room);
+    await b.getByRole("button", { name: "Accept" }).click();
+
+    // Not started yet: Home still shows it, and the row opens the Room.
+    await b.goto("/");
+    const rows = b.getByRole("list", { name: "Creations in progress" });
+    await expect(rows.getByRole("link", { name: /Tune · / })).toContainText("Not started yet");
+    await rows.getByRole("link", { name: /Tune · / }).click();
+    await expect(b).toHaveURL(room);
+
+    // Started: the row becomes the part's own Creation (no longer "Not started yet").
+    await b.getByRole("region", { name: "The work" }).getByRole("button", { name: "Start Tune" }).click();
+    await expect(b).toHaveURL(/\/creations\/[0-9a-f-]{36}\/audio$/);
+    await b.goto("/");
+    const started = b.getByRole("list", { name: "Creations in progress" });
+    await expect(started.getByRole("link", { name: new RegExp(`${title} · Tune`) })).toBeVisible();
+    await expect(started).not.toContainText("Not started yet");
+  });
 });
