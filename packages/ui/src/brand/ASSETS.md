@@ -73,3 +73,7 @@ for full-bleed backgrounds on phones (their paint filters are costly to rasteris
   (#6B5B95), warm card fill #FFFDFA → #FBF5EE, 24 px card radius, pill buttons, inputs and segmented tabs.
 - The kit's UI-component files (buttons, cards, input, segmented tab, icon button) are specifications, implemented in
   code in `packages/ui`; they aren't served as images.
+- **Loading mark (`LogoBloom`, owner request 6 Oct 2026):** the supplied symbol (`wonder-creator-symbol.svg`) inlined
+  as-is — the same three petal paths, gradients, fills, opacities and angles, and the sparkle — with motion only: each
+  petal turns from upright to its own angle about its base, the sparkle appears, and the loop folds and repeats. The
+  open frame is the symbol exactly; nothing is redrawn or recoloured. Reduced motion shows the open symbol, still.

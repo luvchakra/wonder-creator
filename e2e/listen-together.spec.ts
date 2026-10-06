@@ -17,8 +17,8 @@ test.describe("Creative Room parts: listen together", () => {
     await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
     const projectId = page.url().split("/").pop()!;
     const work = page.getByRole("region", { name: "The work" });
-    // Nothing to hear yet: no way in.
-    await expect(work.getByRole("link", { name: "Listen together" })).toHaveCount(0);
+    // Nothing to hear yet: nothing to play.
+    await expect(work.getByRole("button", { name: "Play the work" })).toHaveCount(0);
 
     // A kept take on Tune.
     await work.getByRole("button", { name: "Claim a part" }).click();
@@ -44,9 +44,13 @@ test.describe("Creative Room parts: listen together", () => {
     const art = (await (await page.request.get(`/api/v1/artifacts/${lyricsId}`)).json()).artifact as { current_version_id: string };
     await page.request.post(`/api/v1/artifacts/${lyricsId}/versions`, { data: { content: "Every Sunday my father waited\nat Platform 3, coat folded.", baseVersionId: art.current_version_id, label: "First words" } });
 
-    // The Room's hero opens Listen together.
+    // The work plays right in the Room's hero (owner, 6 Oct 2026), and pauses; mixing lives on Listen together.
     await page.goto(`/rooms/${projectId}`);
-    await work.getByRole("link", { name: "Listen together" }).click();
+    await work.getByRole("button", { name: "Play the work" }).click();
+    await expect(work.getByRole("button", { name: "Pause" })).toBeVisible({ timeout: 20_000 });
+    await work.getByRole("button", { name: "Pause" }).click();
+    await expect(work.getByRole("button", { name: "Play the work" })).toBeVisible();
+    await work.getByRole("link", { name: "Mix, notes and download" }).click();
     await expect(page).toHaveURL(new RegExp(`/rooms/${projectId}/song$`));
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(page.getByRole("list", { name: "Where it stands" })).toContainText(/Tune v\d+/);

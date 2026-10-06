@@ -1,10 +1,11 @@
 import "server-only";
 import { log } from "@wonder/core";
-import { helpHeadline, homeCommunityGlance, homeCommunitySignals, knownCollaborators, myCommunities, type CommunityPrivacy, type HomeCommunityGlance } from "@wonder/creator-community";
+import { helpHeadline, homeCommunityGlanceData, homeCommunitySignals, pickHomeCommunityGlance, knownCollaborators, myCommunities, type CommunityPrivacy, type HomeCommunityGlance } from "@wonder/creator-community";
 import { liveCards } from "@wonder/creator-huddle";
 import { listPosts, signedUrlsFor } from "@wonder/creator-library";
 import { currentConnection, filterOf, momentHref } from "@wonder/creator-moments";
 import { artifactType } from "@wonder/creator-studio/types";
+import { creationPath } from "@wonder/creator-studio/pages";
 import type { Db } from "@wonder/db";
 import { listProjects, listSharedItems, myActiveParts } from "@wonder/creator-projects";
 import { avatarUrls } from "../avatars";
@@ -155,19 +156,18 @@ export async function buildHomePayload(db: Db, creatorId: string, now = Date.now
 }
 
 async function build(db: Db, creatorId: string, now: number): Promise<HomePayload> {
-  const visit = await db.rpc("mark_home_visit");
-  const lastVisit = (visit.data as string | null) ?? null;
-  const since = lastVisit ?? new Date(now - 3 * DAY).toISOString();
-
   // Everything that doesn't depend on the creator's own works starts now, in parallel with them (each is its own
-  // round trip to the database; started one after another they were most of Home's wait).
+  // round trip to the database; started one after another they were most of Home's wait — docs/performance.md).
   const f = flags();
+  const visitP = db.rpc("mark_home_visit").then((v) => (v.data as string | null) ?? null);
   const connectedP = Promise.all([
     f.semantic_connections_enabled ? safe("semantic-connection", () => foundConnection(db, now)) : null,
-    f.dejavu_enabled ? safe("connections", () => connections(db, lastVisit, now)) : null,
+    f.dejavu_enabled ? safe("connections", async () => connections(db, await visitP, now)) : null,
     safe("spark", () => sparkCard(db, creatorId, now)),
   ]);
   const communityP = f.community_enabled && f.community_home_cards_enabled ? safe("community", () => homeCommunitySignals(db, creatorId)) : null;
+  // "From the community" is read now too; what Home already shows above it is left out later, in memory.
+  const glanceP = f.community_enabled && f.community_home_cards_enabled ? safe("community_glance", () => homeCommunityGlanceData(db, creatorId)) : null;
   const myPartsP = safe("parts", myActiveParts(db, creatorId, 4));
   const roomsP = safe("rooms", async () => {
     const projects = (await listProjects(db, { status: "open", viewerId: creatorId })).slice(0, 6);
@@ -192,15 +192,21 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       })
     : null;
 
-  const { data: works, error } = await db
-    .from("artifacts")
-    .select("id, title, artifact_type, status, updated_at, cover_material_id, current_version_id")
-    .eq("creator_id", creatorId)
-    .neq("status", "archived")
-    .order("updated_at", { ascending: false })
-    .limit(10);
+  const [lastVisit, { data: works, error }] = await Promise.all([
+    visitP,
+    db
+      .from("artifacts")
+      .select("id, title, artifact_type, status, updated_at, cover_material_id, current_version_id")
+      .eq("creator_id", creatorId)
+      .neq("status", "archived")
+      .order("updated_at", { ascending: false })
+      .limit(10),
+  ]);
   if (error) throw error;
+  const since = lastVisit ?? new Date(now - 3 * DAY).toISOString();
   const workIds = (works ?? []).map((w) => w.id);
+  // The covers of the works in progress (Continue's rows and the one picked), started with everything else below.
+  const coversP = safe("covers", coverUrls(db, (works ?? []).filter((w) => w.status === "draft" || w.status === "in_review").slice(0, 3).concat((works ?? []).slice(0, 10))));
 
   const [sessions, generating, comments, notifications, visuals, failedPubs, live, feed, materialCount] = await Promise.all([
     safe("sessions", async () => (workIds.length ? (await db.from("studio_sessions").select("id, artifact_id, draft, draft_saved_at").in("artifact_id", workIds)).data ?? [] : [])),
@@ -264,7 +270,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     const type = artifactType(pick.artifact_type);
     const session = sessionOf.get(pick.id);
     const [covers, version, sources] = await Promise.all([
-      safe("cover", coverUrls(db, [pick])),
+      coversP,
       pick.current_version_id ? safe("version", async () => (await db.from("artifact_versions").select("version_number").eq("id", pick.current_version_id!).maybeSingle()).data?.version_number ?? null) : null,
       session ? safe("sources", async () => (await db.from("studio_sources").select("state").eq("session_id", session.id)).data ?? []) : null,
     ]);
@@ -290,7 +296,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
 
   // Continue rows (owner, 3 Oct 2026): the last three edited Creations still in progress (draft or in review).
   const inProgressRows = (works ?? []).filter((w) => w.status === "draft" || w.status === "in_review").slice(0, 3);
-  const rowCovers = inProgressRows.length ? ((await safe("row_covers", coverUrls(db, inProgressRows))) ?? {}) : {};
+  const rowCovers = (await coversP) ?? {};
   const inProgress: HomeInProgressItem[] = inProgressRows.map((w) => {
     const s = sessionOf.get(w.id);
     const n = commentsByWork.get(w.id) ?? 0;
@@ -299,6 +305,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       title: w.title,
       typeLabel: artifactType(w.artifact_type).label,
       updatedAt: w.updated_at,
+      // Straight to the page it's worked on: through /studio it was a whole extra page load just to be forwarded.
+      href: creationPath(w.id, w.artifact_type),
       coverUrl: rowCovers[w.id] ?? null,
       hint: s?.draft && s.draft_saved_at && s.draft_saved_at > w.updated_at ? "Unsaved changes" : busy.has(w.id) ? "Visuals are being created" : n ? `${n} new ${n === 1 ? "comment" : "comments"}` : null,
     };
@@ -311,7 +319,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     p.artifact
       ? inProgressRows.some((w) => w.id === p.artifact!.id)
         ? []
-        : [{ id: p.artifact.id, title: p.artifact.title, typeLabel: artifactType(p.artifact.type).label, updatedAt: p.artifact.updatedAt, coverUrl: null, hint: `Your part in ${p.projectTitle}`, sort: p.artifact.updatedAt > p.joinedAt ? p.artifact.updatedAt : p.joinedAt }]
+        : [{ id: p.artifact.id, title: p.artifact.title, typeLabel: artifactType(p.artifact.type).label, updatedAt: p.artifact.updatedAt, href: creationPath(p.artifact.id, p.artifact.type), coverUrl: null, hint: `Your part in ${p.projectTitle}`, sort: p.artifact.updatedAt > p.joinedAt ? p.artifact.updatedAt : p.joinedAt }]
       : [{ id: `part:${p.partId}`, title: `${p.partTitle} · ${p.projectTitle}`, typeLabel: "Your part", updatedAt: p.joinedAt, coverUrl: null, hint: "Not started yet", href: `/rooms/${p.projectId}`, sort: p.joinedAt }],
   );
   if (partRows.length) {
@@ -423,14 +431,12 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
 
   /* ------------------------------------------------------------------ From the community */
   const shownHearing = slots.has("worthHearing") ? worthHearing : undefined;
-  const rawGlance =
-    f.community_enabled && f.community_home_cards_enabled
-      ? await safe("community_glance", () =>
-          homeCommunityGlance(db, creatorId, {
-            excludeConversations: [...(slots.has("couldHelp") ? (community?.help ?? []).map((h) => h.id) : []), ...(shownHearing?.kind === "conversation" ? [shownHearing.conversationId] : [])],
-          }),
-        )
-      : null;
+  const glanceData = glanceP ? await glanceP : null;
+  const rawGlance = glanceData
+    ? pickHomeCommunityGlance(glanceData, creatorId, {
+        excludeConversations: [...(slots.has("couldHelp") ? (community?.help ?? []).map((h) => h.id) : []), ...(shownHearing?.kind === "conversation" ? [shownHearing.conversationId] : [])],
+      })
+    : null;
   // Never repeat what a row above already shows.
   const glance = rawGlance
     ? {
@@ -442,10 +448,10 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person || glance.catchUp || glance.week);
   const rooms = (await roomsP) ?? [];
   const communities = communitiesP ? await communitiesP : null;
-  const glanceCovers = hasGlance && glance!.creations.length ? ((await safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId }))))) ?? {}) : {};
-
-  const avatars =
-    (await safe(
+  // The glance's covers and everyone's avatars don't depend on each other: one stage, not two.
+  const [glanceCovers, avatars] = await Promise.all([
+    hasGlance && glance!.creations.length ? safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId })))).then((x) => x ?? {}) : Promise.resolve({} as Record<string, string>),
+    safe(
       "avatars",
       avatarUrls(
         db,
@@ -457,7 +463,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
           ...(hasGlance ? [...glance!.creations.map((c) => c.author.id), glance!.thought?.author.id ?? "", glance!.ask?.author.id ?? "", glance!.person?.person.id ?? ""] : []),
         ].filter(Boolean),
       ),
-    )) ?? {};
+    ).then((x) => x ?? {}),
+  ]);
 
   return {
     mode,

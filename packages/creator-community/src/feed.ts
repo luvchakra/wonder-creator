@@ -212,50 +212,29 @@ export interface HomeCommunitySignals {
 }
 
 export async function homeCommunitySignals(db: Db, viewerId: string): Promise<HomeCommunitySignals> {
-  const hidden = await hiddenCreators(db, viewerId);
-  // Your question: your open conversations with others' replies since you last read them.
-  const { data: own } = await db
-    .from("open_conversations")
-    .select("id, title, last_reply_at, created_at")
-    .eq("creator_id", viewerId)
-    .is("removed_at", null)
-    .not("last_reply_at", "is", null)
-    .order("last_reply_at", { ascending: false })
-    .limit(5);
-  let question: HomeCommunitySignals["question"] = null;
-  if (own?.length) {
-    const { data: reads } = await db
-      .from("open_conversation_reads")
-      .select("conversation_id, last_read_at")
-      .eq("creator_id", viewerId)
-      .in(
-        "conversation_id",
-        own.map((o) => o.id),
-      );
-    const readAt = new Map((reads ?? []).map((r) => [r.conversation_id, r.last_read_at]));
-    for (const o of own) {
-      const since = readAt.get(o.id) ?? o.created_at;
-      if (o.last_reply_at! <= since) continue;
-      const { data: fresh } = await db.from("open_conversation_replies").select("creator_id").eq("conversation_id", o.id).neq("creator_id", viewerId).gt("created_at", since).is("deleted_at", null).is("removed_at", null);
-      const n = (fresh ?? []).filter((r) => !hidden.has(r.creator_id));
-      if (n.length) {
-        question = { id: o.id, title: o.title, newReplies: n.length, newParticipants: new Set(n.map((r) => r.creator_id)).size, since: readAt.get(o.id) ?? null };
-        break;
-      }
-    }
-  }
-  // You could help: others' open requests that fit you, which you haven't answered.
-  const { cards } = await listConversations(db, viewerId, { help: true, limit: 12 });
-  const fresh = cards.filter((c) => c.conversation.creatorId !== viewerId && c.reason && c.reason !== "You're in this conversation" && Date.parse(c.conversation.createdAt) > Date.now() - 14 * 86_400_000);
-  const help = fresh.slice(0, 2).map((c) => ({ id: c.conversation.id, title: c.conversation.title, name: c.author.name, authorId: c.author.id, headlineIntent: c.conversation.intent, reason: c.reason }));
-  // Communities on Home (owner, 3 Oct 2026: "Worth hearing" became "Communities"): a lively topic in a community you're
-  // in comes first; else a conversation you joined with new replies, else one from someone you've worked with.
-  let hearing: HomeCommunitySignals["hearing"] = await recentCommunityTopic(db, viewerId, hidden, help.map((h) => h.id)).catch(() => null);
+  // Three independent questions, asked together (docs/performance.md): each was a chain of round trips, one after
+  // another, and Home waited for all of them in turn.
+  const hiddenP = hiddenCreators(db, viewerId);
+  const [question, help, lively, recent] = await Promise.all([
+    yourQuestion(db, viewerId, hiddenP),
+    // You could help: others' open requests that fit you, which you haven't answered.
+    listConversations(db, viewerId, { help: true, limit: 12 }).then(({ cards }) =>
+      cards
+        .filter((c) => c.conversation.creatorId !== viewerId && c.reason && c.reason !== "You're in this conversation" && Date.parse(c.conversation.createdAt) > Date.now() - 14 * 86_400_000)
+        .slice(0, 2)
+        .map((c) => ({ id: c.conversation.id, title: c.conversation.title, name: c.author.name, authorId: c.author.id, headlineIntent: c.conversation.intent, reason: c.reason })),
+    ),
+    // Communities on Home (owner, 3 Oct 2026: "Worth hearing" became "Communities"): lively topics in a community you're
+    // in come first; else a conversation you joined with new replies, else one from someone you've worked with.
+    hiddenP.then((hidden) => recentCommunityTopics(db, viewerId, hidden)).catch(() => []),
+    listConversations(db, viewerId, { limit: 20 }).then((r) => r.cards).catch(() => []),
+  ]);
+  let hearing: HomeCommunitySignals["hearing"] = lively.find((t) => !help.some((h) => h.id === t.id)) ?? null;
   if (!hearing) {
-    const recent = (await listConversations(db, viewerId, { limit: 20 })).cards.filter((c) => c.conversation.creatorId !== viewerId && !help.some((h) => h.id === c.conversation.id));
+    const others = recent.filter((c) => c.conversation.creatorId !== viewerId && !help.some((h) => h.id === c.conversation.id));
     const pick =
-      recent.find((c) => c.reason === "You're in this conversation" && c.conversation.lastReplyAt && Date.parse(c.conversation.lastReplyAt) > Date.now() - 3 * 86_400_000) ??
-      recent.find((c) => c.reason?.startsWith("You worked with"));
+      others.find((c) => c.reason === "You're in this conversation" && c.conversation.lastReplyAt && Date.parse(c.conversation.lastReplyAt) > Date.now() - 3 * 86_400_000) ??
+      others.find((c) => c.reason?.startsWith("You worked with"));
     hearing = pick
       ? { id: pick.conversation.id, title: pick.conversation.title, replyCount: pick.conversation.replyCount, participantCount: pick.conversation.participantCount, reason: pick.reason === "You're in this conversation" ? "New replies in a conversation you joined" : pick.reason! }
       : null;
@@ -267,29 +246,75 @@ export async function homeCommunitySignals(db: Db, viewerId: string): Promise<Ho
   return { question, help: helpNamed, hearing };
 }
 
+/** Your question: your open conversations with others' replies since you last read them (the newest that has some). */
+async function yourQuestion(db: Db, viewerId: string, hiddenP: Promise<Set<string>>): Promise<HomeCommunitySignals["question"]> {
+  const { data: own } = await db
+    .from("open_conversations")
+    .select("id, title, last_reply_at, created_at")
+    .eq("creator_id", viewerId)
+    .is("removed_at", null)
+    .not("last_reply_at", "is", null)
+    .order("last_reply_at", { ascending: false })
+    .limit(5);
+  if (!own?.length) return null;
+  const { data: reads } = await db
+    .from("open_conversation_reads")
+    .select("conversation_id, last_read_at")
+    .eq("creator_id", viewerId)
+    .in(
+      "conversation_id",
+      own.map((o) => o.id),
+    );
+  const readAt = new Map((reads ?? []).map((r) => [r.conversation_id, r.last_read_at]));
+  const moved = own.filter((o) => o.last_reply_at! > (readAt.get(o.id) ?? o.created_at));
+  // The candidates' new replies, all at once; the newest conversation with any wins, as before.
+  const [hidden, fresh] = await Promise.all([
+    hiddenP,
+    Promise.all(
+      moved.map((o) =>
+        db
+          .from("open_conversation_replies")
+          .select("creator_id")
+          .eq("conversation_id", o.id)
+          .neq("creator_id", viewerId)
+          .gt("created_at", readAt.get(o.id) ?? o.created_at)
+          .is("deleted_at", null)
+          .is("removed_at", null)
+          .then(({ data }) => data ?? []),
+      ),
+    ),
+  ]);
+  for (const [i, o] of moved.entries()) {
+    const n = fresh[i]!.filter((r) => !hidden.has(r.creator_id));
+    if (n.length) return { id: o.id, title: o.title, newReplies: n.length, newParticipants: new Set(n.map((r) => r.creator_id)).size, since: readAt.get(o.id) ?? null };
+  }
+  return null;
+}
+
 /** conversation id → the title of a community it's in (the first one the viewer can see). */
 async function communityNamesFor(db: Db, conversationIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!conversationIds.length) return out;
   const { data: links } = await db.from("open_conversation_links").select("conversation_id, project_id").in("conversation_id", conversationIds).eq("kind", "project");
-  const titles = new Map<string, string | null>();
+  const projects = [...new Set((links ?? []).map((l) => l.project_id).filter((x): x is string => !!x))];
+  const found = await Promise.all(projects.map((id) => getCommunity(db, id).catch(() => null)));
+  const titles = new Map(projects.map((id, i) => [id, found[i]?.title ?? null]));
   for (const l of links ?? []) {
     if (!l.project_id || out.has(l.conversation_id)) continue;
-    if (!titles.has(l.project_id)) titles.set(l.project_id, (await getCommunity(db, l.project_id).catch(() => null))?.title ?? null);
     const t = titles.get(l.project_id);
     if (t) out.set(l.conversation_id, t);
   }
   return out;
 }
 
-/** The most recently active topic (last 3 days) in a community the viewer belongs to, not their own. */
-async function recentCommunityTopic(db: Db, viewerId: string, hidden: Set<string>, skip: string[]): Promise<HomeCommunitySignals["hearing"]> {
+/** The most recently active topics (last 3 days) in communities the viewer belongs to, not their own, newest first. */
+async function recentCommunityTopics(db: Db, viewerId: string, hidden: Set<string>): Promise<NonNullable<HomeCommunitySignals["hearing"]>[]> {
   const { data: crews } = await db.from("crew_members").select("crews!inner(project_id)").eq("creator_id", viewerId).eq("status", "active").limit(50);
   const projectIds = [...new Set((crews ?? []).map((c) => (c.crews as { project_id: string } | null)?.project_id).filter((x): x is string => !!x))];
-  if (!projectIds.length) return null;
+  if (!projectIds.length) return [];
   const { data: links } = await db.from("open_conversation_links").select("conversation_id, project_id").in("project_id", projectIds).eq("kind", "project").limit(300);
-  const convIds = [...new Set((links ?? []).map((l) => l.conversation_id))].filter((id) => !skip.includes(id));
-  if (!convIds.length) return null;
+  const convIds = [...new Set((links ?? []).map((l) => l.conversation_id))];
+  if (!convIds.length) return [];
   const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const { data: convs } = await db
     .from("open_conversations")
@@ -300,12 +325,13 @@ async function recentCommunityTopic(db: Db, viewerId: string, hidden: Set<string
     .gt("last_reply_at", since)
     .order("last_reply_at", { ascending: false })
     .limit(5);
-  const c = (convs ?? []).find((x) => !hidden.has(x.creator_id));
-  if (!c) return null;
-  const projectId = (links ?? []).find((l) => l.conversation_id === c.id)?.project_id;
-  const community = projectId ? await getCommunity(db, projectId).catch(() => null) : null;
-  if (!community) return null;
-  return { id: c.id, title: c.title, replyCount: c.reply_count, participantCount: c.participant_count, reason: `New in ${community.title}` };
+  const lively = (convs ?? []).filter((x) => !hidden.has(x.creator_id));
+  const projectOf = (id: string) => (links ?? []).find((l) => l.conversation_id === id)?.project_id;
+  const communities = await Promise.all([...new Set(lively.map((c) => projectOf(c.id)).filter((x): x is string => !!x))].map((id) => getCommunity(db, id).catch(() => null)));
+  return lively.flatMap((c) => {
+    const community = communities.find((x) => x && x.id === projectOf(c.id));
+    return community ? [{ id: c.id, title: c.title, replyCount: c.reply_count, participantCount: c.participant_count, reason: `New in ${community.title}` }] : [];
+  });
 }
 
 /* ----------------------------------------------------------------------------------- Home: from the community */
@@ -335,10 +361,22 @@ export interface HomeCommunityGlance {
   week: string | null;
 }
 
-export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excludeConversations?: string[] } = {}): Promise<HomeCommunityGlance> {
+/**
+ * Everything the glance needs, read up front and without knowing yet what Home will show above it — so Home can ask
+ * for it at once, alongside everything else, and choose with `pickHomeCommunityGlance` later (docs/performance.md).
+ */
+export interface HomeCommunityGlanceData {
+  live: LiveCard | null;
+  picked: Array<CreationCard & { reason: string | null; excerpt: string | null }>;
+  thought: (ScrapbookCard & { reason: string | null }) | null;
+  asks: ConversationCard[];
+  person: PersonCard | null;
+  catchUp: CatchUpRow[];
+  week: string | null;
+}
+export async function homeCommunityGlanceData(db: Db, viewerId: string): Promise<HomeCommunityGlanceData> {
   const hidden = await hiddenCreators(db, viewerId);
-  const exclude = new Set(opts.excludeConversations ?? []);
-  const [live, creations, thoughts, asks, people, follows] = await Promise.all([
+  const [live, creations, thoughts, asks, people, follows, catchUp, week] = await Promise.all([
     liveCards(db, { limit: 3 })
       .then((l) => l.find((h) => !h.participantIds.some((id) => hidden.has(id)) && !h.participantIds.includes(viewerId)) ?? null)
       .catch(() => null),
@@ -352,28 +390,7 @@ export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excl
       .eq("follower_creator_id", viewerId)
       .limit(500)
       .then(({ data }) => new Set((data ?? []).map((r) => r.followed_creator_id))),
-  ]);
-  const authors = [...new Set([...creations.map((c) => c.author.id), ...thoughts.map((t) => t.author.id)])];
-  const known = await knownCollaborators(db, viewerId, authors).catch(() => new Set<string>());
-  const first = (n: string) => n.split(" ")[0] || n;
-  const why = (p: Person) => (known.has(p.id) ? `You've worked with ${first(p.name)}` : follows.has(p.id) ? `You follow ${first(p.name)}` : null);
-  const close = (p: Person) => (known.has(p.id) || follows.has(p.id) ? 1 : 0);
-  // Stable: people you know first, newest within each group (the inputs are already newest-first).
-  const byCloseness = <T extends { author: Person }>(xs: T[]) => xs.map((x, i) => ({ x, i })).sort((a, b) => close(b.x.author) - close(a.x.author) || a.i - b.i).map(({ x }) => x);
-
-  const picked = byCloseness(creations).slice(0, 4);
-  const excerpts = new Map<string, string>();
-  if (picked.length) {
-    const { data: cur } = await db.from("artifacts").select("id, current_version_id").in("id", picked.map((c) => c.id));
-    const vids = (cur ?? []).map((r) => r.current_version_id).filter((x): x is string => !!x);
-    const { data: vs } = vids.length ? await db.from("artifact_versions").select("id, artifact_id, content").in("id", vids) : { data: [] };
-    for (const v of vs ?? []) if (v.content?.trim()) excerpts.set(v.artifact_id, v.content.trim().slice(0, 200));
-  }
-  // Never the viewer's own scrap: those live in My Scrapbook above (owner, 3 Oct 2026: no duplicate sections).
-  const thought = byCloseness(thoughts).find((t) => t.author.id !== viewerId && (t.body.trim() || t.imageUrl)) ?? null;
-  const ask = asks.cards.find((c) => c.conversation.creatorId !== viewerId && !exclude.has(c.conversation.id) && !c.conversation.closedAt) ?? null;
-  const [catchUp, week] = await Promise.all([
-    conversationCatchUp(db, viewerId, exclude).catch(() => null),
+    conversationCatchUp(db, viewerId).catch(() => [] as CatchUpRow[]),
     (async () => {
       const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
       const [{ data: works }, { data: convs }] = await Promise.all([
@@ -388,24 +405,69 @@ export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excl
       });
     })().catch(() => null),
   ]);
+  const authors = [...new Set([...creations.map((c) => c.author.id), ...thoughts.map((t) => t.author.id)])];
+  const first = (n: string) => n.split(" ")[0] || n;
+  // Stable: people you know first, newest within each group (the inputs are already newest-first). Who the viewer has
+  // worked with, and the current words of the Creations most likely shown, are read together.
+  const [known, excerpts] = await Promise.all([
+    knownCollaborators(db, viewerId, authors).catch(() => new Set<string>()),
+    (async () => {
+      const out = new Map<string, string>();
+      const ids = creations.slice(0, 10).map((c) => c.id);
+      if (!ids.length) return out;
+      const { data: cur } = await db.from("artifacts").select("id, current_version_id").in("id", ids);
+      const vids = (cur ?? []).map((r) => r.current_version_id).filter((x): x is string => !!x);
+      const { data: vs } = vids.length ? await db.from("artifact_versions").select("id, artifact_id, content").in("id", vids) : { data: [] };
+      for (const v of vs ?? []) if (v.content?.trim()) out.set(v.artifact_id, v.content.trim().slice(0, 200));
+      return out;
+    })().catch(() => new Map<string, string>()),
+  ]);
+  const why = (p: Person) => (known.has(p.id) ? `You've worked with ${first(p.name)}` : follows.has(p.id) ? `You follow ${first(p.name)}` : null);
+  const close = (p: Person) => (known.has(p.id) || follows.has(p.id) ? 1 : 0);
+  const byCloseness = <T extends { author: Person }>(xs: T[]) => xs.map((x, i) => ({ x, i })).sort((a, b) => close(b.x.author) - close(a.x.author) || a.i - b.i).map(({ x }) => x);
+  const picked = byCloseness(creations).slice(0, 4);
+  // Never the viewer's own scrap: those live in My Scrapbook above (owner, 3 Oct 2026: no duplicate sections).
+  const thought = byCloseness(thoughts).find((t) => t.author.id !== viewerId && (t.body.trim() || t.imageUrl)) ?? null;
   return {
+    live,
+    picked: picked.map((c) => ({ ...c, reason: why(c.author), excerpt: excerpts.get(c.id) ?? null })),
+    thought: thought ? { ...thought, reason: why(thought.author) } : null,
+    asks: asks.cards,
+    person: people.find((p) => !follows.has(p.person.id)) ?? null,
     catchUp,
     week,
-    live,
-    creations: picked.map((c) => ({ ...c, reason: why(c.author), excerpt: excerpts.get(c.id) ?? null })),
-    thought: thought ? { ...thought, reason: why(thought.author) } : null,
-    ask,
-    person: people.find((p) => !follows.has(p.person.id)) ?? null,
   };
 }
 
-/** Conversations the viewer replied to (not their own) with others' replies since they last read or replied. */
-async function conversationCatchUp(db: Db, viewerId: string, exclude: Set<string>): Promise<HomeCommunityGlance["catchUp"]> {
+/** The glance, leaving out conversations Home already shows above it (nothing twice). */
+export function pickHomeCommunityGlance(d: HomeCommunityGlanceData, viewerId: string, opts: { excludeConversations?: string[] } = {}): HomeCommunityGlance {
+  const exclude = new Set(opts.excludeConversations ?? []);
+  const ask = d.asks.find((c) => c.conversation.creatorId !== viewerId && !exclude.has(c.conversation.id) && !c.conversation.closedAt) ?? null;
+  const moved = d.catchUp.filter((c) => !exclude.has(c.id));
+  const newReplies = moved.reduce((n, c) => n + c.newReplies, 0);
+  return {
+    catchUp: moved.length && newReplies ? { conversations: moved.length, newReplies, firstId: moved[0]!.id, title: moved[0]!.title } : null,
+    week: d.week,
+    live: d.live,
+    creations: d.picked,
+    thought: d.thought,
+    ask,
+    person: d.person,
+  };
+}
+
+export async function homeCommunityGlance(db: Db, viewerId: string, opts: { excludeConversations?: string[] } = {}): Promise<HomeCommunityGlance> {
+  return pickHomeCommunityGlance(await homeCommunityGlanceData(db, viewerId), viewerId, opts);
+}
+
+type CatchUpRow = { id: string; title: string; newReplies: number };
+/** Conversations the viewer replied to (not their own) with others' replies since they last read or replied, newest first. */
+async function conversationCatchUp(db: Db, viewerId: string): Promise<CatchUpRow[]> {
   const { data: mine } = await db.from("open_conversation_replies").select("conversation_id, created_at").eq("creator_id", viewerId).order("created_at", { ascending: false }).limit(100);
   const lastMine = new Map<string, string>();
   for (const r of mine ?? []) if (!lastMine.has(r.conversation_id)) lastMine.set(r.conversation_id, r.created_at);
-  const ids = [...lastMine.keys()].filter((id) => !exclude.has(id)).slice(0, 40);
-  if (!ids.length) return null;
+  const ids = [...lastMine.keys()].slice(0, 40);
+  if (!ids.length) return [];
   const [{ data: reads }, { data: convs }] = await Promise.all([
     db.from("open_conversation_reads").select("conversation_id, last_read_at").eq("creator_id", viewerId).in("conversation_id", ids),
     db.from("open_conversations").select("id, title, creator_id, last_reply_at").in("id", ids).is("removed_at", null),
@@ -413,7 +475,7 @@ async function conversationCatchUp(db: Db, viewerId: string, exclude: Set<string
   const readAt = new Map((reads ?? []).map((r) => [r.conversation_id, r.last_read_at]));
   const since = (id: string) => [readAt.get(id), lastMine.get(id)].filter((x): x is string => !!x).sort().at(-1)!;
   const moved = (convs ?? []).filter((c) => c.creator_id !== viewerId && c.last_reply_at && c.last_reply_at > since(c.id)).sort((a, b) => (b.last_reply_at! > a.last_reply_at! ? 1 : -1));
-  if (!moved.length) return null;
+  if (!moved.length) return [];
   const oldest = moved.map((c) => since(c.id)).sort()[0]!;
   const { data: replies } = await db
     .from("open_conversation_replies")
@@ -424,7 +486,7 @@ async function conversationCatchUp(db: Db, viewerId: string, exclude: Set<string
     .is("removed_at", null)
     .gt("created_at", oldest)
     .limit(500);
-  const newReplies = (replies ?? []).filter((r) => r.created_at > since(r.conversation_id)).length;
-  if (!newReplies) return null;
-  return { conversations: moved.length, newReplies, firstId: moved[0]!.id, title: moved[0]!.title };
+  const count = new Map<string, number>();
+  for (const r of replies ?? []) if (r.created_at > since(r.conversation_id)) count.set(r.conversation_id, (count.get(r.conversation_id) ?? 0) + 1);
+  return moved.filter((c) => count.get(c.id)).map((c) => ({ id: c.id, title: c.title, newReplies: count.get(c.id)! }));
 }

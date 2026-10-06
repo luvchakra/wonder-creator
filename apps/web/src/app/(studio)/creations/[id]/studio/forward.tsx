@@ -1,4 +1,5 @@
 "use client";
+import { LogoBloom } from "@wonder/ui";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -9,9 +10,10 @@ export function ForwardTo({ href }: { href: string }) {
   useEffect(() => {
     router.replace(`${href}${window.location.hash}`);
   }, [href, router]);
+  // The same quiet mark as every page on its way (loading.tsx), never "Opening…" (owner, 6 Oct 2026).
   return (
-    <p role="status" className="px-4 py-8 text-center text-[13px] text-ink-subtle">
-      Opening…
-    </p>
+    <div className="flex min-h-[55dvh] items-center justify-center">
+      <LogoBloom size={72} label="Opening" />
+    </div>
   );
 }

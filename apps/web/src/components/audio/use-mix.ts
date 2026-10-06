@@ -178,5 +178,5 @@ export function useMix(tracks: ListenTrack[], mix: Mix) {
     return new Blob([encodeWav([out.getChannelData(0), out.getChannelData(1)], RATE)], { type: "audio/wav" });
   }, [lengthNow, load, schedule]);
 
-  return { status, playing, at, duration, play, pause, seek, render };
+  return { status, playing, at, duration, play, pause, seek, render, prepare: load };
 }
