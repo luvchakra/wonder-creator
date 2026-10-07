@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Vercel "Ignored Build Step" (vercel.json › ignoreCommand, run from apps/web): exit 0 skips the build, exit 1 builds.
 #
-# A preview whose commit is a squash merge — "Title (#123)", which is how every PR lands on main — is a commit
-# production has already built from main; the work branch only points at it again after the merge. Building it twice
-# just holds the build slot (docs/performance.md › Build and deploy). Production builds and every other preview build.
+# No preview deployments (owner, 7 Oct 2026: "i dont want preview"): only production, from main, is built. Branches
+# other than main don't deploy at all (vercel.json › git.deploymentEnabled); this is the backstop for anything that
+# still arrives as a preview (a manual redeploy, a branch pattern that slips through). CI builds and tests every PR.
 set -u
-subject="$(printf '%s\n' "${VERCEL_GIT_COMMIT_MESSAGE:-}" | head -n 1)"
-if [ "${VERCEL_ENV:-}" = "preview" ] && [ "${VERCEL_GIT_COMMIT_REF:-}" != "main" ] && printf '%s\n' "$subject" | grep -qE '\(#[0-9]+\)$'; then
-  echo "Skipping: \"${subject}\" is already built for production from main."
-  exit 0
+if [ "${VERCEL_ENV:-}" = "production" ]; then
+  exit 1
 fi
-exit 1
+echo "Skipping: previews are off — only production (main) is built."
+exit 0

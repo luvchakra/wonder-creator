@@ -26,8 +26,8 @@ Production: app `https://wonder-creator.vercel.app`, Supabase project `dgyjzyyha
    (Leave "Skip nonce check" off.)
 2. **Authentication → URL Configuration**:
    - Site URL: `https://wonder-creator.vercel.app`
-   - Redirect URLs: `https://wonder-creator.vercel.app/auth/callback**` (add `https://*-<team>.vercel.app/auth/callback**`
-     too if you want Google sign-in on preview deployments). The trailing `**` matters for the email links, which come
+   - Redirect URLs: `https://wonder-creator.vercel.app/auth/callback**` (there are no preview deployments, so the
+     production address is the only one). The trailing `**` matters for the email links, which come
      back as `/auth/callback?next=…`; Google comes back to exactly `/auth/callback` (its destination waits in a
      10-minute `wc_oauth_next` cookie), so it matches with or without it.
    - If an address isn't on this list, Supabase sends the browser to the **Site URL** instead (`/?code=…`). The app
