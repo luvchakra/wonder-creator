@@ -126,6 +126,10 @@ Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/
 * **`/captures`**: all of them, by day in the viewer's own time zone ("Today", "Yesterday", "Monday 5 October").
   * One row of filters: All · Notes · Voice · Pictures · Videos (`?kind=`). Pictures and videos caught together sit
     together as frames; notes and voice notes are rows. "Show earlier" pages back 30 at a time.
+  * **Delete** (owner, 7 Oct 2026: "allow deleting a capture from the captures page"): a quiet bin on each capture (in a
+    44px target, named "Delete note: …"). It asks first — it can't be undone — then the capture leaves the list at once,
+    with its Material, file and Moment (`DELETE /api/v1/materials/:id?confirm=true`, RLS decides). Home's row stays
+    calm: no bins there.
   * Back returns to where the creator came from (Home by default). Nothing else to press.
 * **What counts as a capture**: a Material the creator caught in the moment — a typed note or idea, a voice note, a
   camera picture or video (`source_type` typed / voice / voice_transcript / camera). Uploads, links and imports aren't.

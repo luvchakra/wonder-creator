@@ -163,6 +163,37 @@ test.describe("Quick Capture", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
+  test("a capture can be deleted from My captures — asked first, then gone everywhere", async ({ page }) => {
+    const keep = `Keep: the porter's whistle ${uid()}`;
+    const drop = `Drop: a half-thought about tickets ${uid()}`;
+    for (const text of [keep, drop]) expect((await page.request.post("/api/v1/capture", { data: { kind: "note", clientId: crypto.randomUUID(), text } })).ok()).toBe(true);
+    await page.goto("/captures");
+    await expect(page.getByRole("link", { name: new RegExp(drop) })).toBeVisible();
+
+    // Asked first; Cancel keeps it.
+    const bin = page.getByRole("button", { name: /^Delete note: Drop: a half-thought/ });
+    await bin.click();
+    const ask = page.getByRole("dialog");
+    await expect(ask.getByRole("heading", { name: "Delete this note?" })).toBeVisible();
+    await ask.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("link", { name: new RegExp(drop) })).toBeVisible();
+
+    await bin.click();
+    await ask.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("link", { name: new RegExp(drop) })).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: "Note deleted." })).toBeAttached();
+    await expect(page.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
+
+    // Gone for good: not on reload, not on Home.
+    await page.reload();
+    await expect(page.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(drop) })).toHaveCount(0);
+    await page.goto("/");
+    const mine = page.getByRole("region", { name: "My captures" });
+    await expect(mine.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
+    await expect(mine.getByRole("link", { name: new RegExp(drop) })).toHaveCount(0);
+  });
+
   test("with the microphone refused, it says so and offers a quick note instead", async ({ page }) => {
     await fakeMicrophone(page, false);
     await page.goto("/");
