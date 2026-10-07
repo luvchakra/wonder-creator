@@ -104,7 +104,7 @@ Owner: "optimize the build and deploy time. it takes very long now." Measured on
 | CI › Lint, typecheck, unit, build | ~3.5 min | the build checked types again (41 s) after `npm run typecheck`, from a cold cache |
 | Vercel build | ~93 s to live | clone + cache 20 s · compile 14 s · **TypeScript 22 s** · pages 7 s · deploy 20 s |
 | Vercel after live | +82 s | saving a 1.49 GB build cache keeps the build slot busy, so a queued build waits |
-| Vercel per merge | 2 builds | production from `main`, plus a preview of the same commit when the work branch was reset and pushed |
+| Vercel per merge | 2 builds | production from `main`, plus a preview of the same commit when the work branch is reset and pushed |
 
 What changed:
 * **End-to-end in four parts at once** (`--shard=n/4`), each with its own database and app; tests within a part still
@@ -115,7 +115,8 @@ What changed:
   still checks.
 * **CI keeps the build cache** (`apps/web/.next/cache`: Turbopack's filesystem cache, on by default in Next 16):
   restored on every run, saved from `main`. An unchanged build compiles in ~2 s instead of ~20 s.
-* **One Vercel build per merge**: after merging, the work branch is reset locally and pushed with the next change, not
-  straight away (that push built the merged commit a second time).
+* **One Vercel build per merge**: after a merge the work branch is reset to `main` and pushed, which used to build the
+  merged commit a second time as a preview. Vercel now skips a preview whose commit is a squash merge ("Title (#123)")
+  — production already built it (`apps/web/scripts/vercel-ignore-build.sh`, `ignoreCommand` in `apps/web/vercel.json`).
 
 Not changed: the Vercel build cache upload happens after the deployment is live, so it delays only a queued build.
