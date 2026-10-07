@@ -10,7 +10,7 @@ export const metadata = { title: "My captures" };
 /**
  * My captures (owner, 7 Oct 2026: "an option to look back on quick notes, voice notes etc from home page itself"): what
  * was caught with Quick Capture, newest first, by day — notes to read, voice notes to play here, pictures and videos as
- * frames. Each opens its Material. One filter row; nothing else to press.
+ * frames. Each opens its Material, and each can be deleted here. One filter row; nothing else to press.
  */
 export default async function CapturesPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
   const { db, creator } = await requireSession();
@@ -35,16 +35,20 @@ export default async function CapturesPage({ searchParams }: { searchParams: Pro
           </Link>
         ))}
       </nav>
-      {items.length ? (
-        <CaptureDays key={kind ?? "all"} kind={kind} initial={items} next={next} />
-      ) : (
-        <p className="rounded-2xl border border-border-soft bg-surface/80 px-4 py-6 text-center text-[14px] text-ink-muted">
-          {kind ? `No ${CAPTURE_KIND_LABEL[kind].toLowerCase()} yet.` : "Nothing caught yet."}{" "}
-          <Link href="/" className="text-accent-ink underline underline-offset-2">
-            Catch something on Home
-          </Link>
-        </p>
-      )}
+      <CaptureDays
+        key={kind ?? "all"}
+        kind={kind}
+        initial={items}
+        next={next}
+        empty={
+          <p className="rounded-2xl border border-border-soft bg-surface/80 px-4 py-6 text-center text-[14px] text-ink-muted">
+            {kind ? `No ${CAPTURE_KIND_LABEL[kind].toLowerCase()} yet.` : "Nothing caught yet."}{" "}
+            <Link href="/" className="text-accent-ink underline underline-offset-2">
+              Catch something on Home
+            </Link>
+          </p>
+        }
+      />
     </div>
   );
 }
