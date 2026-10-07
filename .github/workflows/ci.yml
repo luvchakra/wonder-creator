@@ -24,6 +24,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Turbopack's build cache and TypeScript's incremental state (docs/performance.md › Build and deploy): restored
+      # on every run, saved from main, so a build compiles only what changed.
+      - uses: actions/cache/restore@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -32,6 +39,11 @@ jobs:
           # Placeholders so the build doesn't depend on real credentials.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
 
   db:
     name: Database security (RLS) tests
@@ -50,10 +62,16 @@ jobs:
           npx supabase gen types typescript --local > /tmp/types.ts
           diff -u packages/db/src/database.types.ts /tmp/types.ts
 
-  e2e:
-    name: End-to-end (Playwright)
+  # The end-to-end suite in four parts at once, each with its own database and app (docs/performance.md › Build and
+  # deploy). Tests within a part still run one at a time, as before.
+  e2e-shard:
+    name: End-to-end (Playwright) ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,6 +79,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Turbopack's build cache and TypeScript's incremental state (docs/performance.md › Build and deploy): restored
+      # on every run, saved from main, so a build compiles only what changed.
+      - uses: actions/cache/restore@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - run: npx supabase start
       - name: Configure app for the local stack
         run: |
@@ -83,14 +108,26 @@ jobs:
           (cd apps/web && npx next start -p 3000 > /tmp/next.log 2>&1 &)
           npx wait-on http://localhost:3000/sign-in --timeout 120000
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
         env:
           PLAYWRIGHT_CHROMIUM_PATH: ""
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             /tmp/next.log
           retention-days: 7
+
+  # One result under the check's usual name, so branch rules that require "End-to-end (Playwright)" keep working.
+  e2e:
+    name: End-to-end (Playwright)
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All parts passed
+        run: |
+          echo "Parts: ${{ needs.e2e-shard.result }}"
+          test "${{ needs.e2e-shard.result }}" = "success"

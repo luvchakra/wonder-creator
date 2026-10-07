@@ -47,6 +47,9 @@ const nextConfig: NextConfig = {
     "@wonder/creator-projects",
   ],
   serverExternalPackages: ["unpdf", "livekit-server-sdk"],
+  // Types are checked once, by CI's own `npm run typecheck` step, and nothing reaches main without it passing — so CI
+  // and Vercel builds don't check them a second time (about 40% of a build). Local `next build` still does.
+  typescript: { ignoreBuildErrors: Boolean(process.env.CI || process.env.VERCEL) },
   poweredByHeader: false,
   // Routes follow the design's names (owner, 2 Oct 2026). Old addresses keep working: notifications, bookmarks and
   // shared links land on the same page under its new name. APIs (/api/v1/*) and public pages (/p/*) are unchanged.
