@@ -94,8 +94,11 @@ test.describe("Carousel Composer", () => {
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: Second wind/ })).toBeVisible();
     // Shift + arrow moves a slide without a drag: the first (Second wind) goes right, so First light leads again.
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).focus();
+    // The new order shows at once and is saved just after: reload only once the save has landed.
+    const saved = page.waitForResponse((r) => r.url().endsWith(`/api/v1/carousels/${id}/order`) && r.request().method() === "POST");
     await page.keyboard.press("Shift+ArrowRight");
     await expect(editor.getByRole("link", { name: /^Edit slide 2 of 3: Second wind/ })).toBeVisible();
+    expect((await saved).ok()).toBe(true);
     await page.reload();
     await editor.getByRole("list", { name: "Slides" }).getByRole("button", { name: "Slide 1 of 3" }).click();
     await expect(editor.getByRole("link", { name: /^Edit slide 1 of 3: First light/ })).toBeVisible();
