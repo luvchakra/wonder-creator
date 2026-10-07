@@ -12,6 +12,7 @@ import { api, errorMessage } from "@/lib/client";
 import { OpenToEditor } from "@/components/community/open-to";
 import { PrivacyPanel } from "./privacy-panel";
 import { SecurityPanel } from "./security-panel";
+import { shrinkImage } from "@/lib/shrink-image";
 
 const SECTIONS = [
   { key: "profile", label: "Account & Profile", icon: UserRound },
@@ -176,9 +177,11 @@ function ProfileSection({ profile, avatarUrl, email }: Props) {
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
-                const fd = new FormData();
-                fd.append("file", f);
-                void avatar.save(() => api("/api/v1/creators/avatar", { method: "POST", body: fd }), "Photo updated.");
+                void avatar.save(async () => {
+                  const fd = new FormData();
+                  fd.append("file", await shrinkImage(f));
+                  return api("/api/v1/creators/avatar", { method: "POST", body: fd });
+                }, "Photo updated.");
               }}
             />
           </label>

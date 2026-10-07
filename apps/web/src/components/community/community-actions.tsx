@@ -5,6 +5,7 @@ import { Camera, Globe, Link2, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { shrinkImage } from "@/lib/shrink-image";
 
 /**
  * Community actions (docs/communities.md). Each is one clear step: start a community, join or leave one, start a topic,
@@ -50,7 +51,7 @@ function StartCommunityBody() {
           if (picture) {
             // The community exists either way; a picture that fails can be added from its page.
             const body = new FormData();
-            body.set("file", picture);
+            body.set("file", await shrinkImage(picture));
             await fetch(`/api/v1/communities/${r.id}/avatar`, { method: "POST", body }).catch(() => undefined);
           }
           router.push(`/communities/${r.id}`);

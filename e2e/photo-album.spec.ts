@@ -75,6 +75,22 @@ test.describe("Photo album", () => {
     await expect(b.getByText("Nets drying on the seawall")).toHaveCount(0);
   });
 
+  test("a full-size phone photo goes in: it's made small enough to send before it leaves the phone", async ({ page, creator }) => {
+    void creator;
+    // A phone-sized photo (4000 × 3000, fine detail, ~7 MB): over what the host accepts in one request (~4.5 MB).
+    const raw = Buffer.alloc(4000 * 3000 * 3);
+    for (let i = 0; i < raw.length; i++) raw[i] = (i * 2654435761) >>> 24;
+    const big = await sharp(raw, { raw: { width: 4000, height: 3000, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+    expect(big.length).toBeGreaterThan(5 * 1024 * 1024);
+    const sent: number[] = [];
+    page.on("request", (r) => r.url().endsWith("/api/v1/album") && r.method() === "POST" && sent.push(r.postDataBuffer()?.length ?? 0));
+    await page.goto(`/creators/${creator.handle}/album`);
+    await upload(page, [{ name: "1000164057.jpg", buffer: big }]);
+    await expect(page.getByRole("list", { name: /album/ }).getByRole("listitem")).toHaveCount(1, { timeout: 30_000 });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!).toBeLessThan(4 * 1024 * 1024);
+  });
+
   test("files that aren't pictures are refused", async ({ page, creator }) => {
     void creator;
     const res = await page.request.post("/api/v1/album", { multipart: { file: { name: "notes.txt", mimeType: "image/jpeg", buffer: Buffer.from("not really a picture") } } });

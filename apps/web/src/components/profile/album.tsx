@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { surface } from "./shared";
+import { shrinkImage, uploadError } from "@/lib/shrink-image";
 
 /**
  * Photo album (docs/photo-album.md): the pictures a creator chose to show, given room to breathe — an editorial mosaic
@@ -89,10 +90,11 @@ export function AlbumGallery({ photos: initial, isMe, name }: { photos: AlbumIte
     setAdding({ done: 0, total: list.length });
     for (const [i, f] of list.entries()) {
       try {
+        // Made small enough to send here first: phone photos are bigger than the host accepts in one request.
         const body = new FormData();
-        body.set("file", f);
+        body.set("file", await shrinkImage(f));
         const res = await fetch("/api/v1/album", { method: "POST", body });
-        if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: { message?: string } } | null)?.error?.message ?? "We couldn't add that photo.");
+        if (!res.ok) throw new Error(await uploadError(res, "We couldn't add that photo."));
       } catch (e) {
         setError(`${f.name}: ${errorMessage(e)}`);
       }
