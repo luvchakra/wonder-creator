@@ -43,7 +43,7 @@ const writeQueue = (q: Pending[]) => {
 /** A fetch that never reached the server (offline, dropped connection), as opposed to a refusal. */
 const unreachable = (e: unknown) => e instanceof TypeError || !navigator.onLine;
 
-type Saved = { kind: "note" | "voice" | "photo" | "video"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null };
+type Saved = { kind: "note" | "voice" | "photo" | "video"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null; count?: number; skipped?: number };
 
 /** Follows a saved capture quietly until it has settled (transcribed or not) and any suggestions are in. */
 function useCaptureStatus(materialId: string | null) {
@@ -135,10 +135,12 @@ export function QuickCapture() {
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
   };
 
-  // Quick Pic and Video Note open the phone's own camera with its own defaults (owner, 4 Oct 2026: "use phones default
-  // camera settings by default"): `capture` without a lens, so the camera app keeps its last lens, mode, HDR and
-  // resolution. The file arrives untouched (no re-encoding here) and goes straight to a Material (through CreatorSend, which
-  // checks the bytes and sends big files browser → storage directly). One tap to capture; no sheet in between.
+  // Quick Pic and Video Note (owner, 7 Oct 2026: "allow users to choose from the gallery"): the phone's own chooser —
+  // the camera, or pictures and videos already taken — in one tap. No `capture` attribute: with it the browser skips the
+  // chooser and asks for the camera's "take a photo for an app" mode, which phones keep to a few modes (the full camera
+  // app, with all its lenses and modes, can't hand a picture back to a web page; shooting with it and choosing from the
+  // gallery here can). Files arrive untouched and each goes straight to a Material (through CreatorSend, which checks
+  // the bytes and sends big files browser → storage directly). Several can be chosen from the gallery at once.
   const picRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const [media, setMedia] = useState<{ kind: "photo" | "video"; error?: string } | null>(null);
@@ -146,21 +148,23 @@ export function QuickCapture() {
     if (key === "text" || key === "voice") begin(key);
     else (key === "photo" ? picRef : videoRef).current?.click();
   }
-  async function captureMedia(kind: "photo" | "video", file: File | undefined) {
-    if (!file) return;
-    if (file.size > (kind === "video" ? 100 : 20) * 1024 * 1024) {
+  async function captureMedia(kind: "photo" | "video", list: FileList | null) {
+    const files = Array.from(list ?? []).slice(0, 10);
+    if (!files.length) return;
+    const limit = (kind === "video" ? 100 : 20) * 1024 * 1024;
+    const fits = files.filter((f) => f.size <= limit);
+    if (!fits.length) {
       setMedia({ kind, error: kind === "video" ? "That video is too long to save here — keep it under about two minutes." : "That picture is too large to save." });
       return;
     }
     setSaved(null);
     setMedia({ kind });
     try {
-      const r = await sendToCreator({ files: [file], kind: "camera" });
-      const materialId = r.accepted[0]?.materialId ?? null;
+      const r = await sendToCreator({ files: fits, kind: "camera" });
       if (!r.accepted.length) throw new Error(r.rejected[0]?.message ?? "We couldn't save it.");
       trackClient(kind === "photo" ? "quick_pic_saved" : "video_note_saved");
       setMedia(null);
-      setSaved({ kind, materialId });
+      setSaved({ kind, materialId: r.accepted.length === 1 ? (r.accepted[0]?.materialId ?? null) : null, count: r.accepted.length, skipped: files.length - r.accepted.length });
     } catch (e) {
       setMedia({ kind, error: `${errorMessage(e)} Try again.` });
     }
@@ -169,10 +173,8 @@ export function QuickCapture() {
   const savedLine = saved
     ? saved.offline
       ? "Note saved on this device. It'll sync when you're back online."
-      : saved.kind === "photo"
-        ? "Picture saved"
-        : saved.kind === "video"
-          ? "Video saved"
+      : saved.kind === "photo" || saved.kind === "video"
+        ? `${(saved.count ?? 1) > 1 ? `${saved.count} ${saved.kind === "photo" ? "pictures" : "videos"} saved to Materials` : saved.kind === "photo" ? "Picture saved" : "Video saved"}${saved.skipped ? ` · ${saved.skipped} too large to save` : ""}`
           : saved.kind === "voice" && status?.transcription === "unavailable"
         ? "Voice note saved · Transcription unavailable"
         : saved.kind === "voice"
@@ -205,8 +207,8 @@ export function QuickCapture() {
           );
         })}
       </div>
-      <input ref={picRef} type="file" accept="image/*" capture className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files?.[0]), (e.target.value = ""))} />
-      <input ref={videoRef} type="file" accept="video/*" capture className="sr-only" tabIndex={-1} aria-label="Record a video note" onChange={(e) => (void captureMedia("video", e.target.files?.[0]), (e.target.value = ""))} />
+      <input ref={picRef} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Take or choose a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
+      <input ref={videoRef} type="file" accept="video/*" multiple className="sr-only" tabIndex={-1} aria-label="Record or choose a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
       {media ? (
         <p role={media.error ? "alert" : "status"} className={cn("px-1 text-[13px]", media.error ? "text-danger" : "text-ink-muted")}>
           {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}

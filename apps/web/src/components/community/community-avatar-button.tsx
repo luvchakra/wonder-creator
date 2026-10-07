@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { errorMessage } from "@/lib/client";
+import { shrinkImage, uploadError } from "@/lib/shrink-image";
 
 /** Owner and moderators: change the community's profile picture (a small camera on the avatar). */
 export function CommunityAvatarButton({ communityId, className }: { communityId: string; className?: string }) {
@@ -17,9 +18,9 @@ export function CommunityAvatarButton({ communityId, className }: { communityId:
     setError(null);
     try {
       const body = new FormData();
-      body.set("file", file);
+      body.set("file", await shrinkImage(file));
       const res = await fetch(`/api/v1/communities/${communityId}/avatar`, { method: "POST", body });
-      if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: { message?: string } } | null)?.error?.message ?? "We couldn't save that picture.");
+      if (!res.ok) throw new Error(await uploadError(res, "We couldn't save that picture."));
       router.refresh();
     } catch (e) {
       setError(errorMessage(e));

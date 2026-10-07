@@ -15,6 +15,7 @@ import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { shrinkImage } from "@/lib/shrink-image";
 
 type Step = "welcome" | "about" | "identity" | "style" | "boundaries" | "ready";
 const STEPS: Array<{ key: Step; label: string }> = [
@@ -114,9 +115,9 @@ export function OnboardingWizard({ initialStep, initial }: { initialStep: Step; 
 
   async function uploadAvatar(file: File) {
     setAvatarState("uploading");
-    const fd = new FormData();
-    fd.append("file", file);
     try {
+      const fd = new FormData();
+      fd.append("file", await shrinkImage(file));
       await api("/api/v1/creators/avatar", { method: "POST", body: fd });
       setAvatarState("done");
     } catch (e) {

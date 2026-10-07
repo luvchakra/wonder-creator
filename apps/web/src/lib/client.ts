@@ -24,8 +24,8 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
   if (!res.ok) {
-    let msg = "Something went wrong. Please try again.";
-    let code = "internal";
+    let msg = res.status === 413 ? "That's too large to send. Try a smaller file." : "Something went wrong. Please try again.";
+    let code = res.status === 413 ? "payload_too_large" : "internal";
     try {
       const body = (await res.json()) as { error?: { message?: string; code?: string } };
       msg = body.error?.message ?? msg;

@@ -9,16 +9,26 @@ const capture = (page: Page) => page.getByRole("dialog", { name: "Quick Capture"
 test.describe("Quick Capture", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("sits above My Scrapbook with four ways in; a Quick Pic saves as a Material in one tap", async ({ page }) => {
+  test("sits above My Scrapbook with four ways in; Quick Pic takes or chooses pictures, each saved as a Material", async ({ page }) => {
     await page.goto("/");
     const quick = page.getByRole("region", { name: "Quick Capture" });
     await expect(quick.locator("button")).toHaveText(["Quick note", "Voice note", "Quick Pic", "Video Note"]);
     // Capture comes first, above the Scrapbook.
     const [q, s] = await Promise.all([quick.boundingBox(), page.getByRole("region", { name: "My Scrapbook" }).boundingBox()]);
     expect(q!.y).toBeLessThan(s!.y);
-    // The camera hands back a picture; it lands as a Material without another step.
-    const jpg = await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 230, g: 150, b: 90 } } }).jpeg().toBuffer();
-    await page.getByLabel("Take a picture").setInputFiles({ name: "harbour.jpg", mimeType: "image/jpeg", buffer: jpg });
+    // The phone's own chooser opens — camera or gallery (owner, 7 Oct 2026): nothing forces the camera's limited mode.
+    const pick = page.getByLabel("Take or choose a picture");
+    await expect(pick).not.toHaveAttribute("capture");
+    await expect(page.getByLabel("Record or choose a video")).not.toHaveAttribute("capture");
+    // Several pictures chosen from the gallery each land as a Material.
+    const jpg = (r: number) => sharp({ create: { width: 800, height: 600, channels: 3, background: { r, g: 150, b: 90 } } }).jpeg().toBuffer();
+    await pick.setInputFiles([
+      { name: "harbour.jpg", mimeType: "image/jpeg", buffer: await jpg(230) },
+      { name: "pier.jpg", mimeType: "image/jpeg", buffer: await jpg(120) },
+    ]);
+    await expect(quick.getByText("2 pictures saved to Materials")).toBeVisible({ timeout: 30_000 });
+    // One picture (from the camera, or the gallery) lands without another step, and opens.
+    await pick.setInputFiles({ name: "harbour.jpg", mimeType: "image/jpeg", buffer: await jpg(200) });
     await expect(quick.getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
     await quick.getByRole("link", { name: "Open" }).click();
     await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
