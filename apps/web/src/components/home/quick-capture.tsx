@@ -11,6 +11,7 @@ import { PRIORITY } from "@/lib/context-strip/types";
 import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { trackClient } from "@/lib/track";
+import { CAPTURED_EVENT } from "./my-captures";
 
 /**
  * Quick Capture (docs/phases/02-home-quick-capture.md §6–7, §17): a quick note or a voice note in seconds. Capture
@@ -102,6 +103,7 @@ export function QuickCapture() {
     if (!readQueue().length) strip("capture", null);
     if (sent) {
       setSynced(sent);
+      window.dispatchEvent(new Event(CAPTURED_EVENT));
       // The "saved on this device" line has done its job.
       setSaved((cur) => (cur?.offline ? null : cur));
     }
@@ -133,6 +135,7 @@ export function QuickCapture() {
     });
     setSavedInSheet(true);
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
+    else window.dispatchEvent(new Event(CAPTURED_EVENT));
   };
 
   // Quick Pic and Video Note (owner, 7 Oct 2026: "allow users to choose from the gallery"): the phone's own chooser —
@@ -164,6 +167,7 @@ export function QuickCapture() {
       if (!r.accepted.length) throw new Error(r.rejected[0]?.message ?? "We couldn't save it.");
       trackClient(kind === "photo" ? "quick_pic_saved" : "video_note_saved");
       setMedia(null);
+      window.dispatchEvent(new Event(CAPTURED_EVENT));
       setSaved({ kind, materialId: r.accepted.length === 1 ? (r.accepted[0]?.materialId ?? null) : null, count: r.accepted.length, skipped: files.length - r.accepted.length });
     } catch (e) {
       setMedia({ kind, error: `${errorMessage(e)} Try again.` });

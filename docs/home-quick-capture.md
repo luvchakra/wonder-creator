@@ -115,6 +115,24 @@ Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/
   * Nothing is attached without the creator.
 * `GET /api/v1/capture/:id` reports settled / transcription / suggestions for the quiet status line.
 
+## Looking back: My captures (owner, 7 Oct 2026)
+
+> "give me an option to look back on quick notes, voice notes etc from home page itself"
+
+* **On Home**, right under the four ways in: **My captures ›**, one quiet row of the last 10 captures, newest first.
+  * Notes show two lines in Playfair; voice notes play right there (one at a time); pictures and videos are small frames.
+  * Each tile opens its Material. A new capture appears at once (Quick Capture announces `wc:captured`), no reload.
+  * Nothing shows until something has been caught. The title is the link (no "See all").
+* **`/captures`**: all of them, by day in the viewer's own time zone ("Today", "Yesterday", "Monday 5 October").
+  * One row of filters: All · Notes · Voice · Pictures · Videos (`?kind=`). Pictures and videos caught together sit
+    together as frames; notes and voice notes are rows. "Show earlier" pages back 30 at a time.
+  * Back returns to where the creator came from (Home by default). Nothing else to press.
+* **What counts as a capture**: a Material the creator caught in the moment — a typed note or idea, a voice note, a
+  camera picture or video (`source_type` typed / voice / voice_transcript / camera). Uploads, links and imports aren't.
+* **Server**: `recentCaptures` (`apps/web/src/lib/captures.ts`) reads through the creator's own RLS-scoped client and
+  mints media addresses only for what that read returned; `GET /api/v1/captures?kind=&before=&limit=`.
+* Test: `e2e/home-capture.spec.ts` ("looking back").
+
 ## Telemetry
 
 `POST /api/v1/telemetry` plus `lib/telemetry.ts` and `lib/track.ts`.
