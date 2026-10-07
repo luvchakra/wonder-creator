@@ -93,3 +93,29 @@ Local: `npm run build -w @wonder/web`, start the app, then a Playwright probe th
 
 Live: Supabase → Logs, or the MCP `query_logs` on `edge_logs`: `response.origin_time` per `request.path`, and
 `response.headers.x_envoy_upstream_service_time` for PostgREST's own share.
+
+## Build and deploy (7 Oct 2026)
+
+Owner: "optimize the build and deploy time. it takes very long now." Measured on the merge of #161:
+
+| Step | Before | Where the time went |
+|---|---|---|
+| CI › End-to-end | 31–33 min | ~3 min setup, then 189 tests (86 files, 27 min) one after another on one machine |
+| CI › Lint, typecheck, unit, build | ~3.5 min | the build checked types again (41 s) after `npm run typecheck`, from a cold cache |
+| Vercel build | ~93 s to live | clone + cache 20 s · compile 14 s · **TypeScript 22 s** · pages 7 s · deploy 20 s |
+| Vercel after live | +82 s | saving a 1.49 GB build cache keeps the build slot busy, so a queued build waits |
+| Vercel per merge | 2 builds | production from `main`, plus a preview of the same commit when the work branch was reset and pushed |
+
+What changed:
+* **End-to-end in four parts at once** (`--shard=n/4`), each with its own database and app; tests within a part still
+  run one at a time. Each part is 6–8 min of tests + ~3 min setup, so the check takes ~11 min instead of ~31, for about
+  the same CI minutes. A summary job keeps the check name "End-to-end (Playwright)".
+* **Types are checked once.** `npm run typecheck` in CI is the gate (nothing merges without it), so `next build` skips
+  its own check when `CI` or `VERCEL` is set (`typescript.ignoreBuildErrors` in `next.config.ts`). Local `next build`
+  still checks.
+* **CI keeps the build cache** (`apps/web/.next/cache`: Turbopack's filesystem cache, on by default in Next 16):
+  restored on every run, saved from `main`. An unchanged build compiles in ~2 s instead of ~20 s.
+* **One Vercel build per merge**: after merging, the work branch is reset locally and pushed with the next change, not
+  straight away (that push built the merged commit a second time).
+
+Not changed: the Vercel build cache upload happens after the deployment is live, so it delays only a queued build.
