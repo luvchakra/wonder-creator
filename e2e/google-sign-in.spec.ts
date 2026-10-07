@@ -25,10 +25,14 @@ test.describe("Google sign-in", () => {
       expect(a.searchParams.get("provider")).toBe("google");
       expect(a.searchParams.get("code_challenge")).toBeTruthy();
       expect(a.searchParams.get("prompt")).toBe("select_account");
+      // Exactly our callback, nothing after it — so it matches the Redirect URLs list and Supabase doesn't fall back to
+      // the Site URL. Where to go next waits in a short-lived cookie.
       const back = new URL(a.searchParams.get("redirect_to")!);
       expect(back.pathname).toBe("/auth/callback");
-      expect(back.searchParams.get("via")).toBe("google");
-      expect(back.searchParams.get("next")).toBe("/");
+      expect(back.search).toBe("");
+      const kept = (await page.context().cookies()).find((c) => c.name === "wc_oauth_next");
+      expect(kept && decodeURIComponent(kept.value)).toBe("/");
+      expect(kept?.path).toBe("/auth");
       // Sign-up offers it too, and says the Terms come next.
       await page.goto("/sign-up");
       await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
@@ -40,6 +44,22 @@ test.describe("Google sign-in", () => {
     await expect(page.getByRole("alert").filter({ hasText: "Google sign-in didn't finish" })).toBeVisible();
     // A forged or reused code never signs anyone in.
     await page.goto("/auth/callback?via=google&code=not-a-real-code&next=//evil.example");
+    await expect(page).toHaveURL(/\/sign-in\?error=oauth$/);
+    // The stored destination is spent either way.
+    expect((await page.context().cookies()).some((c) => c.name === "wc_oauth_next")).toBe(false);
+  });
+
+  test("a code that lands on the home page (Supabase's Site URL fallback) still reaches the callback", async ({ browser }) => {
+    const page = await (await browser.newContext()).newPage();
+    await page.context().addCookies([{ name: "wc_oauth_next", value: encodeURIComponent("/creations"), url: new URL("/auth", test.info().project.use.baseURL ?? "http://localhost:3000").href }]);
+    const hops: string[] = [];
+    page.on("request", (r) => r.isNavigationRequest() && hops.push(new URL(r.url()).pathname));
+    await page.goto("/?code=not-a-real-code");
+    // Forwarded to the callback, which tried the code (a fake one is refused) — never left silently on the home page.
+    await expect(page).toHaveURL(/\/sign-in\?error=oauth$/);
+    expect(hops).toContain("/auth/callback");
+    // A provider error on the home page comes back readable too.
+    await page.goto("/?error=access_denied&error_description=The+user+denied");
     await expect(page).toHaveURL(/\/sign-in\?error=oauth$/);
   });
 });
