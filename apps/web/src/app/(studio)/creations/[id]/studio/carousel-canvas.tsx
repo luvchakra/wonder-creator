@@ -183,7 +183,9 @@ export function CarouselCanvas({
     return () => strip("carousel", null);
   }, [view.adding, strip]);
 
-  // Reorder (§9): a drag in the strip, or Shift + arrows. Never regenerates anything.
+  // Reorder (§9): a drag in the strip, or Shift + arrows. Never regenerates anything. The order shows at once; saves go
+  // one after another, so quick moves can't land out of order and leave an older order saved.
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
   const move = useCallback(
     async (from: number, to: number) => {
       const n = view.slides.length;
@@ -194,11 +196,12 @@ export function CarouselCanvas({
       setView((v) => ({ ...v, slides: order }));
       setCurrent(to);
       setNotice(`Slide moved to position ${to + 1} of ${n}`);
+      const save = saving.current
+        .catch(() => undefined)
+        .then(() => api(`/api/v1/carousels/${artifactId}/order`, { method: "POST", json: { slideIds: order.map((x) => x.id) } }));
+      saving.current = save;
       try {
-        await api(`/api/v1/carousels/${artifactId}/order`, {
-          method: "POST",
-          json: { slideIds: order.map((x) => x.id) },
-        });
+        await save;
       } catch (e) {
         setError(errorMessage(e));
         await refresh();

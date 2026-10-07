@@ -115,8 +115,9 @@ What changed:
   still checks.
 * **CI keeps the build cache** (`apps/web/.next/cache`: Turbopack's filesystem cache, on by default in Next 16):
   restored on every run, saved from `main`. An unchanged build compiles in ~2 s instead of ~20 s.
-* **One Vercel build per merge**: after a merge the work branch is reset to `main` and pushed, which used to build the
-  merged commit a second time as a preview. Vercel now skips a preview whose commit is a squash merge ("Title (#123)")
-  — production already built it (`apps/web/scripts/vercel-ignore-build.sh`, `ignoreCommand` in `apps/web/vercel.json`).
+* **No preview deployments** (owner, 7 Oct 2026: "i dont want preview"): Vercel builds production from `main` only.
+  Other branches don't deploy (`git.deploymentEnabled` in `apps/web/vercel.json`), and the Ignored Build Step skips
+  anything else that arrives as a preview (`apps/web/scripts/vercel-ignore-build.sh`). CI still builds and tests every
+  PR; a merge to `main` is the one build that deploys.
 
-Not changed: the Vercel build cache upload happens after the deployment is live, so it delays only a queued build.
+Not changed: the Vercel build cache upload happens after the deployment is live; with no previews nothing queues behind it.
