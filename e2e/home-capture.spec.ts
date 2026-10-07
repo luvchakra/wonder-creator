@@ -109,6 +109,60 @@ test.describe("Quick Capture", () => {
     await expect(sheet.getByRole("status").filter({ hasText: "Transcription unavailable" })).toBeVisible({ timeout: 30_000 });
   });
 
+  test("looking back: what was caught shows under Quick Capture at once, and all of it by day in My captures", async ({ page }) => {
+    await fakeMicrophone(page, true);
+    await page.goto("/");
+    const mine = page.getByRole("region", { name: "My captures" });
+    // Nothing caught yet: nothing to look back on, so nothing shows.
+    await expect(page.getByRole("region", { name: "Quick Capture" })).toBeVisible();
+    await expect(mine).toHaveCount(0);
+
+    const words = `The tea stall's kettle sings before the train ${uid()}`;
+    await page.getByRole("button", { name: "Quick note" }).click();
+    await capture(page).getByLabel("Quick note").fill(words);
+    await capture(page).getByRole("button", { name: /Save note/ }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
+    await capture(page).getByRole("button", { name: "Done" }).click();
+    // The note is there at once, without reloading Home.
+    await expect(mine.getByRole("link", { name: new RegExp(words) })).toBeVisible();
+
+    await page.getByRole("button", { name: "Voice note" }).click();
+    await expect(capture(page).getByRole("button", { name: "Stop" })).toBeEnabled();
+    await page.waitForTimeout(1200);
+    await capture(page).getByRole("button", { name: "Stop" }).click();
+    await capture(page).getByRole("button", { name: "Save" }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
+    await capture(page).getByRole("button", { name: "Done" }).click();
+    const jpg = await sharp({ create: { width: 640, height: 480, channels: 3, background: { r: 210, g: 160, b: 120 } } }).jpeg().toBuffer();
+    await page.getByLabel("Take or choose a picture").setInputFiles({ name: "kettle.jpg", mimeType: "image/jpeg", buffer: jpg });
+    await expect(page.getByRole("region", { name: "Quick Capture" }).getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
+
+    // Newest first: the picture, the voice note (playable right here), the note.
+    const strip = mine.getByRole("list", { name: "Recent captures" });
+    await expect(strip.getByRole("listitem")).toHaveCount(3);
+    await expect(strip.getByRole("listitem").first().getByRole("link", { name: /^Picture,/ })).toBeVisible();
+    await expect(strip.getByRole("button", { name: /^Play the voice note/ })).toBeEnabled();
+
+    // The title opens all of them, by day, with one row of filters.
+    await mine.getByRole("link", { name: "My captures" }).click();
+    await expect(page).toHaveURL(/\/captures$/);
+    await expect(page.getByRole("heading", { name: "My captures", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", level: 2 })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(words) })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Picture,/ })).toBeVisible();
+    const kinds = page.getByRole("navigation", { name: "Kind of capture" });
+    await expect(kinds.getByRole("link")).toHaveText(["All", "Notes", "Voice", "Pictures", "Videos"]);
+    await kinds.getByRole("link", { name: "Voice" }).click();
+    await expect(page).toHaveURL(/kind=voice/);
+    await expect(page.getByRole("button", { name: /^Play the voice note/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(words) })).toHaveCount(0);
+    await kinds.getByRole("link", { name: "Videos" }).click();
+    await expect(page.getByText("No videos yet.")).toBeVisible();
+    // Back goes to Home, where it came from.
+    await page.getByRole("link", { name: "Back to Home" }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test("with the microphone refused, it says so and offers a quick note instead", async ({ page }) => {
     await fakeMicrophone(page, false);
     await page.goto("/");

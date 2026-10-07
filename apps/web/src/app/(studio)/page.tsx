@@ -11,6 +11,7 @@ import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance
 import { HomeCommunities } from "@/components/home/home-communities";
 import { HomeTestimonials, preloadHomeTestimonials } from "@/components/home/home-testimonials";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
+import { MyCaptures } from "@/components/home/my-captures";
 import { QuickCapture } from "@/components/home/quick-capture";
 import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
 import { FromYourWorld } from "@/components/sources/from-your-world";
@@ -18,6 +19,7 @@ import { SectionTitle } from "@/components/home/section-title";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
+import { recentCaptures } from "@/lib/captures";
 import { buildHomePayload, type HomeInProgressItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
@@ -66,6 +68,10 @@ export default async function HomePage() {
 
       {/* Capture first (owner, 4 Oct 2026: "move the quick note, voice note above scrapbook"): note, voice, picture, video. */}
       <QuickCapture />
+      {/* Looking back on what was caught (owner, 7 Oct 2026): the last few, right under the four ways in. */}
+      <Suspense fallback={null}>
+        <HomeCaptures db={db} creatorId={creator.id} />
+      </Suspense>
 
       {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
       <Suspense fallback={<SectionFallback title="My Scrapbook" rows={2} />}>
@@ -77,6 +83,11 @@ export default async function HomePage() {
       </Suspense>
     </div>
   );
+}
+
+async function HomeCaptures({ db, creatorId }: { db: Db; creatorId: string }) {
+  const { items } = await recentCaptures(db, creatorId, { limit: 10 }).catch(() => ({ items: [] }));
+  return <MyCaptures initial={items} />;
 }
 
 async function HomeLine({ home: homeP }: { home: Promise<HomePayload> }) {
