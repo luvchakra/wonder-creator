@@ -122,23 +122,24 @@ What changed:
 
 Not changed: the Vercel build cache upload happens after the deployment is live; with no previews nothing queues behind it.
 
-### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime")
+### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime" · "skip e2e after merge too, only nightly")
 
 | Event | Lint · typecheck · unit · build | RLS tests | End-to-end |
 |---|---|---|---|
 | Pull request, code | ✓ | only if `supabase/`, `tests/db/` or `packages/db/` changed | only with the `e2e` label |
 | Pull request, docs/Markdown only | — | — | — |
-| Pull request changing `.github/workflows/ci.yml` | ✓ | ✓ | ✓ |
-| Merge to `main` | ✓ | if the database changed | ✓ after the merge (doesn't hold the deploy) |
-| Nightly (03:11 IST) and manual runs | ✓ | ✓ | ✓ |
+| Pull request changing `.github/workflows/ci.yml` | ✓ | ✓ | only with the `e2e` label |
+| Merge to `main` | ✓ | if the database changed | — |
+| Nightly (03:11 IST) and manual runs | ✓ | ✓ | ✓ — the only automatic end-to-end run |
 
 * A job that isn't needed is **skipped**, which counts as passing, so required checks keep working. If what changed
   can't be worked out, everything runs.
 * **End-to-end on demand:** add the `e2e` label to a PR (it's read on the next push), or Actions › CI › Run workflow on
   the branch. Use it for risky changes: sign-in, payments, rights, uploads, the Palette.
-* **When end-to-end fails on `main`** (after a merge or overnight), CI opens one issue, "End-to-end tests failing on
+* **When end-to-end fails on `main`** (overnight or a manual run), CI opens one issue, "End-to-end tests failing on
   main", and comments on it while it keeps failing. Fix forward, or roll back in Vercel (the previous production
   deployment stays a rollback candidate).
-* Typical change → live: ~2–2.5 min of CI + ~1 min Vercel, instead of ~12 + 1. The trade-off: a regression only
-  end-to-end would catch can reach production until the post-merge run reports it (~12 min).
+* Typical change → live: ~2–2.5 min of CI + under 1 min Vercel, instead of ~12 + 1. The trade-off: a regression only
+  end-to-end would catch can reach production until the nightly run reports it (up to a day) — use the `e2e` label
+  on risky changes.
 
