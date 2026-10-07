@@ -1,20 +1,27 @@
 "use client";
 import { useState } from "react";
+import { OAUTH_NEXT_COOKIE } from "@/lib/oauth-next";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * "Continue with Google" (Supabase OAuth, PKCE). Google's own multicolour "G" per its sign-in branding guidelines.
  * New accounts are asked to agree to the Terms and Privacy notice right after (the /consent gate), since they never
  * see the sign-up checkbox.
+ *
+ * The return address is exactly `/auth/callback`, with nothing after it: Supabase only honours an address that matches
+ * its Redirect URLs list, and otherwise sends the browser to the Site URL (`/?code=…`) where no session gets made. Where
+ * to go afterwards travels in a short-lived cookie the callback reads (and clears) instead of in the address.
  */
 export function GoogleButton({ next, onError }: { next: string; onError: (message: string) => void }) {
   const [busy, setBusy] = useState(false);
   async function go() {
     setBusy(true);
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${OAUTH_NEXT_COOKIE}=${encodeURIComponent(next)}; Path=/auth; Max-Age=600; SameSite=Lax${secure}`;
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?via=google&next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: { prompt: "select_account" },
       },
     });

@@ -4,6 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 // Refreshes the Supabase auth session on every request and keeps the
 // auth cookies in sync between the request and the response.
 export async function updateSession(request: NextRequest) {
+  // An auth code (or an auth error) that landed on the home page — Supabase's Site URL fallback when a return address
+  // isn't on its Redirect URLs list — goes to the callback, which makes the session. Without this it's silently lost.
+  const sp = request.nextUrl.searchParams;
+  if (request.nextUrl.pathname === "/" && (sp.has("code") || (sp.has("error") && sp.has("error_description")))) {
+    const callback = request.nextUrl.clone();
+    callback.pathname = "/auth/callback";
+    return NextResponse.redirect(callback);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

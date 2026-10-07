@@ -2,16 +2,28 @@ import { audit, log } from "@wonder/core";
 import { NextResponse, type NextRequest } from "next/server";
 import { describeRequest } from "@/lib/device";
 import { createClient } from "@/lib/supabase/server";
+import { OAUTH_NEXT_COOKIE } from "@/lib/oauth-next";
 
 /**
  * Where Supabase Auth sends the browser back to: email links (confirm, reset) and Google sign-in (OAuth, PKCE). The
  * code is exchanged for a session here; `next` is followed only when it's a same-site path. A first Google sign-in
- * creates the account — the consent gate then asks for the Terms and Privacy notice, and onboarding follows.
+ * creates the account — the consent gate then asks for the Terms and Privacy notice, and onboarding follows. Google's
+ * `next` comes in a short-lived cookie (see GoogleButton), so its return address stays exactly `/auth/callback`; a
+ * code that lands on `/` instead (Supabase's Site URL fallback) is forwarded here by the proxy.
  */
 export async function GET(req: NextRequest) {
+  const res = await handle(req);
+  // Single use: whatever happened, the stored destination is spent.
+  if (req.cookies.has(OAUTH_NEXT_COOKIE)) res.cookies.set(OAUTH_NEXT_COOKIE, "", { path: "/auth", maxAge: 0 });
+  return res;
+}
+
+async function handle(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
-  const nextParam = req.nextUrl.searchParams.get("next") ?? "/";
+  const stored = req.cookies.get(OAUTH_NEXT_COOKIE)?.value;
+  const nextParam = req.nextUrl.searchParams.get("next") ?? (stored ? safeDecode(stored) : null) ?? "/";
   const next = nextParam.startsWith("/") && !nextParam.startsWith("//") && !nextParam.startsWith("/\\") ? nextParam : "/";
+  const via = req.nextUrl.searchParams.get("via") ?? (stored ? "google" : null);
   // The provider declined or the person cancelled at Google.
   const providerError = req.nextUrl.searchParams.get("error");
   if (providerError) {
@@ -32,7 +44,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL(next, req.url));
     }
     log("warn", "auth.code_exchange_failed", { code: error.code ?? "unknown" });
-    return NextResponse.redirect(new URL(`/sign-in?error=${req.nextUrl.searchParams.get("via") === "google" ? "oauth" : "link"}`, req.url));
+    return NextResponse.redirect(new URL(`/sign-in?error=${via === "google" ? "oauth" : "link"}`, req.url));
   }
   return NextResponse.redirect(new URL("/sign-in?error=link", req.url));
+}
+
+function safeDecode(v: string): string | null {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return null;
+  }
 }
