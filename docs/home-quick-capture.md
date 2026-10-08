@@ -13,7 +13,8 @@ the page directly and to `GET /api/v1/home`, and it applies every priority rule 
 * Always: `mode`, `contextLine` and `quickCapture`.
 * Fixed sections (owner, 3 Oct 2026), always present and never repeated below: **My Scrapbook** (compose, the creator's
   own last three scraps as rows that open in place — one at a time, with Collapse — then All scraps), **Continue** (or
-  "Something worth starting", or the calm beginning), then after the dynamic rows **My Communities** and **My
+  "Something worth starting", or the begin card — which, once something is caught, turns it into a Creation; see
+  `docs/ui-redesign/start-small.md`), then after the dynamic rows **My Communities** and **My
   Testimonials** (the latest shown, the ones waiting, All testimonials). From Pulse never shows the viewer's own scrap.
 * Then these optional slots: `whileAway`, `worldConnecting`, `dejavu`, `spark`, `worthHearing` and `couldHelp`.
 
@@ -36,8 +37,9 @@ these rules rather than changing the page.
   * Empty modules never render.
 * **Continue** (`pickContinue`): prefers unsaved Studio work, then output being generated, then new comments from
   others, then work in progress over finished work, then recency. It shows a plain hint and "N sources · M unused".
-* **Something worth starting**: with no Creation, recent Materials that share a DejaVu (or simply wait) suggest a
-  start. Nothing is created until the creator acts.
+* **Something worth starting**: with no Creation, recent Materials that share a DejaVu suggest a start. Nothing is
+  created until the creator acts. (Materials that merely wait are the begin card's job: "Make something from your
+  note", 8 Oct 2026.)
 * **While you were away** (`summarizeAway`): a summary, not a list.
   * It draws on comments from others, finished visuals, failed publishes, and the existing update kinds.
   * Three items or fewer are named; more are grouped ("2 new comments"). It never runs past three lines.

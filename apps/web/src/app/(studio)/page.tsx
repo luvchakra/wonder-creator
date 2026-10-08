@@ -1,5 +1,5 @@
 import { greetingFor } from "@wonder/core";
-import { Avatar, BACKGROUNDS, Watercolor, buttonClasses, cn } from "@wonder/ui";
+import { Avatar, BACKGROUNDS, KIT, KitArt, Watercolor, buttonClasses, cn } from "@wonder/ui";
 import { ArrowRight, Check, ChevronRight, Heart, Link2, MessageCircle, Sparkles, Sun } from "lucide-react";
 import type { Db } from "@wonder/db";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import { SectionTitle } from "@/components/home/section-title";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
+import { journeyLine } from "@/lib/home/journey";
 import { recentCaptures } from "@/lib/captures";
 import { buildHomePayload, type HomeInProgressItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
@@ -92,7 +93,9 @@ async function HomeCaptures({ db, creatorId }: { db: Db; creatorId: string }) {
 
 async function HomeLine({ home: homeP }: { home: Promise<HomePayload> }) {
   const home = await homeP;
-  return <p className="mt-0.5 text-[13px] text-ink-muted">{home.mode === "quiet" ? "Nothing needs your attention." : home.contextLine}</p>;
+  // While the first steps are still ahead and nothing else needs the creator, the line invites the next one.
+  const line = home.mode === "quiet" ? (journeyLine(home.journey?.step ?? null) ?? "Nothing needs your attention.") : home.contextLine;
+  return <p className="mt-0.5 text-[13px] text-ink-muted">{line}</p>;
 }
 
 /** A section on its way: its title, and quiet rows of the height it will have. No spinner, no motion. */
@@ -144,8 +147,20 @@ async function HomeRest({ db, creator, home: homeP, world: worldP }: { db: Db; c
             </Link>
           </section>
         ) : (
-          <HomeBegin hasMaterials={home.beginning?.hasMaterials ?? false} />
+          <HomeBegin hasMaterials={home.beginning?.hasMaterials ?? false} latest={home.beginning?.latest ?? null} />
         )}
+
+        {/* The last small step (start-small.md): made something and found a community, but not yet made anything with someone. One quiet link, once. */}
+        {home.journey?.step === "collaborate" ? (
+          <TrackedLink event="home_together_opened" href="/rooms?new=1" className="flex min-h-14 items-center gap-3 rounded-2xl border border-border-soft bg-surface/90 px-3 py-2 shadow-[var(--shadow-card)] hover:bg-surface-muted">
+            <KitArt art={KIT.iconChip.users} sizes="2.25rem" className="size-9 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[16px] leading-snug text-ink">Make something with someone</span>
+              <span className="block text-[12.5px] text-ink-muted">Start a Creative Room and invite a friend</span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+          </TrackedLink>
+        ) : null}
 
 
         {/* Personal Sources (owner spec, 2 Oct 2026): one thing worth exploring from the creator's world, with a quiet Sync. */}

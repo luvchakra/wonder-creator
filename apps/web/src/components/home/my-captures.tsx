@@ -2,6 +2,7 @@
 import { cn } from "@wonder/ui";
 import { Mic, Pause, Play, Video } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { api } from "@/lib/client";
@@ -19,12 +20,24 @@ export const CAPTURED_EVENT = "wc:captured";
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 export function MyCaptures({ initial }: { initial: CaptureItem[] }) {
+  const router = useRouter();
   const [items, setItems] = useState(initial);
+  const hadNone = useRef(initial.length === 0);
   useEffect(() => {
-    const refresh = () => void api<{ items: CaptureItem[] }>("/api/v1/captures?limit=10").then((r) => setItems(r.items)).catch(() => undefined);
+    const refresh = () =>
+      void api<{ items: CaptureItem[] }>("/api/v1/captures?limit=10")
+        .then((r) => {
+          setItems(r.items);
+          // The first thing ever caught: Home's own card moves on from "begin" to "make something from it" (start-small.md).
+          if (hadNone.current && r.items.length) {
+            hadNone.current = false;
+            router.refresh();
+          }
+        })
+        .catch(() => undefined);
     window.addEventListener(CAPTURED_EVENT, refresh);
     return () => window.removeEventListener(CAPTURED_EVENT, refresh);
-  }, []);
+  }, [router]);
   const player = useVoice();
   if (!items.length) return null;
   return (
