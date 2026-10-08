@@ -304,7 +304,7 @@ export async function poemFromNote(page: Page, noteText = `The tide keeps our ol
 }
 
 /** Open the account menu in the top bar and pick an item. */
-export async function accountMenu(page: Page, item: "Profile" | "Creative Memory" | "Settings" | "Sign out") {
+export async function accountMenu(page: Page, item: "Profile" | "Creative Memory" | "Settings" | "Get help" | "Sign out") {
   await page.getByRole("button", { name: "Your account" }).click();
   await page.getByRole("menuitem", { name: item }).click();
 }

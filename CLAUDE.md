@@ -194,6 +194,14 @@ Pictures a creator chooses to show on their Profile: a glimpse on the Overview, 
 `/creators/[handle]/album`, a quiet full-screen viewer. Visible to whoever can see the profile; only the creator changes
 it; uploads are checked, resized server-side and stripped of metadata (location included). Contract: `docs/photo-album.md`.
 
+## Help (owner, 8 Oct 2026)
+
+`/help` is the product's help centre: searchable topics written from what the code does today, public, opened from the
+footer and the account menu's **Get help**. When you change a user-facing feature, change its topic in the same PR
+(`apps/web/src/lib/help/content.ts`; contract and rules in `docs/help.md`). Describe provider-gated features as "Not
+connected" the way the screens do; name no internal technology; invent no email address, reply time or promise; reach us only
+through Contact, the privacy request and the Security page.
+
 ## Carousel Composer UI (owner's standing instruction)
 
 The Wonder Creator Carousel experience is a compact composition workflow, not a generic image gallery or AI prompt UI.

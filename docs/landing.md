@@ -61,3 +61,9 @@ dominant action, **Start Creating** (`/sign-up`), plus a quiet "Explore Wonder C
     10 an hour) with a hidden bot-trap field (a bot is told it worked; nothing is kept).
 * Both share the public header and footer (`components/public/site-chrome.tsx`) with the landing page; the legal pages'
   navigation links to Contact. E2E: `e2e/about-contact.spec.ts`.
+
+## Help (owner, 8 Oct 2026)
+
+* `/help` — searchable guides to what the product does today, with a "something isn't working" section. Same public header and
+  footer; the footer's Wonder Creator column links to it, and signed in the account menu's **Get help** does too. Contract:
+  `docs/help.md`. E2E: `e2e/help.spec.ts`.
