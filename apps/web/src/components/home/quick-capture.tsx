@@ -1,9 +1,10 @@
 "use client";
-import { Button, Dialog, DialogContent, KIT, Textarea, cn } from "@wonder/ui";
+import { Button, Dialog, DialogContent, KIT, KitSparklesIcon, Textarea, cn } from "@wonder/ui";
 import type { DejaVu } from "@wonder/creator-moments/shared";
 import { ArrowRight, Camera, Check, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { CreationSource } from "@/components/new-creation-sheet";
 import { useStripSignal } from "@/components/creative-palette";
 import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
 import { api, errorMessage } from "@/lib/client";
@@ -12,6 +13,9 @@ import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { trackClient } from "@/lib/track";
 import { CAPTURED_EVENT } from "./my-captures";
+
+// The next screen after catching something is making something from it (start-small.md): the same sheet as Create.
+const NewCreationSheet = dynamic(() => import("@/components/new-creation-sheet").then((m) => m.NewCreationSheet), { ssr: false });
 
 /**
  * Quick Capture (docs/phases/02-home-quick-capture.md §6–7, §17): a quick note or a voice note in seconds. Capture
@@ -122,6 +126,22 @@ export function QuickCapture() {
   }, [flush, strip]);
 
   const { status } = useCaptureStatus(saved?.materialId ?? null);
+  // "Make something": the sheet opens with what was just caught — its words as the first draft, the Material as source.
+  const [making, setMaking] = useState<CreationSource | null>(null);
+  const [makeBusy, setMakeBusy] = useState(false);
+  async function makeFrom(materialId: string) {
+    if (makeBusy) return;
+    setMakeBusy(true);
+    try {
+      const r = await api<{ material: { text_content: string | null; extracted_text: string | null } }>(`/api/v1/materials/${materialId}`);
+      setOpen(false);
+      setMaking({ materialId, text: (r.material.text_content ?? r.material.extracted_text ?? "").trim() });
+    } catch (e) {
+      strip("capture", { text: errorMessage(e), tone: "warning", priority: PRIORITY.offline });
+    } finally {
+      setMakeBusy(false);
+    }
+  }
   const begin = (which: "text" | "voice") => {
     setTab(which);
     setSavedInSheet(false);
@@ -218,25 +238,26 @@ export function QuickCapture() {
           {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}
         </p>
       ) : null}
-      {/* After the sheet closes, a quiet line says it's safe. */}
+      {/* After the sheet closes, a quiet line says it's safe — and offers the next step (the Material itself is in My captures, just below). */}
       <p role="status" className="px-1 text-[13px] text-ink-muted">
         {!open && savedLine ? (
           <span className="flex items-center gap-1.5">
             <Check className="size-4 shrink-0 text-success" aria-hidden />
             <span className="min-w-0 flex-1">{savedLine}</span>
             {saved?.materialId ? (
-              <Link href={`/materials/${saved.materialId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
-                Open
-              </Link>
+              <button type="button" aria-haspopup="dialog" disabled={makeBusy} onClick={() => void makeFrom(saved.materialId!)} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline disabled:opacity-60">
+                Make something
+              </button>
             ) : null}
           </span>
         ) : null}
       </p>
+      {making ? <NewCreationSheet open onOpenChange={(o) => !o && setMaking(null)} from={making} /> : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Quick Capture" art={KIT.iconChip.pencil}>
           {!open ? null : savedInSheet && saved ? (
-            <SavedPanel saved={saved} line={savedLine ?? ""} onDone={() => setOpen(false)} onAnother={() => setSavedInSheet(false)} />
+            <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
           ) : (
             <div className="space-y-3">
               <div role="tablist" aria-label="Capture" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
@@ -268,7 +289,7 @@ export function QuickCapture() {
 }
 
 /** Saved: a quiet confirmation, then — only if they arrive — DejaVu suggestions to accept or ignore, and "+ Add". */
-function SavedPanel({ saved, line, onDone, onAnother }: { saved: Saved; line: string; onDone: () => void; onAnother: () => void }) {
+function SavedPanel({ saved, line, busy, onDone, onMake }: { saved: Saved; line: string; busy: boolean; onDone: () => void; onMake: (() => void) | null }) {
   const { status, drop } = useCaptureStatus(saved.materialId);
   const [attached, setAttached] = useState<DejaVu[]>([]);
   const [momentId, setMomentId] = useState<string | null>(null);
@@ -350,13 +371,16 @@ function SavedPanel({ saved, line, onDone, onAnother }: { saved: Saved; line: st
         </section>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2">
-        <Button type="button" variant="ghost" onClick={onAnother}>
-          Capture another
-        </Button>
-        <Button type="button" onClick={onDone}>
+      {/* The next step is making something from this (start-small.md); Done just closes. Capturing another is one tap away on Home. */}
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onDone}>
           Done
         </Button>
+        {onMake ? (
+          <Button type="button" loading={busy} aria-haspopup="dialog" onClick={onMake}>
+            <KitSparklesIcon size={16} /> Make something
+          </Button>
+        ) : null}
       </div>
     </div>
   );

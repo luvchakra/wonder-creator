@@ -75,6 +75,33 @@ on entering the studio, for a creator who had answered an older wizard), each st
 profile answers" in Creative Memory, where it can be edited or removed. A creator left partway through the old wizard
 sees the one screen, prefilled, and is in.
 
+## The next screen continues the activity (owner, 8 Oct 2026)
+
+> "the actions on a screen should always open next screen which can logically continue previous screens activity"
+
+Every primary action lands where the activity goes on — never back at a list, never at a dead end:
+
+| After… | The screen offers | Lands in |
+|---|---|---|
+| Quick Capture saved (note, voice, picture, video) | **Make something** (primary), Done | the Make a new Creation sheet with what was caught — words as the first draft, the Material as source; "Capture another" removed (the capture row is one tap away) |
+| Home, something caught, nothing made | **Make something** on the begin card | the same sheet |
+| Material page | **Use in creation** | the same sheet |
+| The sheet, a format chosen | — | that format's own page, the draft already there |
+| Sign-up | **Enter your studio** | Home, asking for one small thing |
+| Home, in a Community, no Room | **Make something with someone** | a new Creative Room, then the Room itself |
+| Contact, message sent | Done, Send another | — |
+
+Rule: a completed action's confirmation names the next step and opens it in one tap; viewing what was just made stays one
+tap away but is never the primary action.
+
+## The camera (owner, 8 Oct 2026: "any camera being opened should be the fully featured camera")
+
+No file input in the app forces the camera's limited "take a photo for an app" mode any more (Quick Pic, Video Note,
+the Scrapbook composer, CreatorSend's Camera, and the Images page's *Take or choose a picture*). Each opens the phone's
+own chooser: the camera, or pictures already taken. A web page cannot launch the full camera app and get the picture
+back — that is a platform limit, not a setting — so the fully featured camera is reached by shooting with it and
+choosing the picture here, which the chooser makes one step. Only a native app shell would change this.
+
 ## Deliberately not built
 
 * A "getting started" checklist, a tour, tooltips, empty-state illustrations for every page, notifications nagging

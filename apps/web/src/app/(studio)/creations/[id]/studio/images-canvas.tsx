@@ -323,7 +323,7 @@ function AddChoices({ artifactId, busy, onAdd, onError, expanded }: { artifactId
       <div className="flex flex-wrap justify-center gap-1.5">
         <button type="button" disabled={busy || taking} onClick={() => camera.current?.click()} className={pill}>
           <span className={face}>
-            <Camera className="size-4 text-accent" aria-hidden /> {taking ? "Saving…" : "Take a picture"}
+            <Camera className="size-4 text-accent" aria-hidden /> {taking ? "Saving…" : "Take or choose a picture"}
           </span>
         </button>
         <button type="button" aria-pressed={view === "mine"} onClick={() => setView(view === "mine" ? null : "mine")} className={pill}>
@@ -337,7 +337,7 @@ function AddChoices({ artifactId, busy, onAdd, onError, expanded }: { artifactId
           </span>
         </button>
       </div>
-      <input ref={camera} type="file" accept="image/*" capture className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void take(e.target.files?.[0]), (e.target.value = ""))} />
+      <input ref={camera} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-label="Take or choose a picture" onChange={(e) => (void take(e.target.files?.[0]), (e.target.value = ""))} />
       {view === "mine" ? <YourPictures busy={busy} onPick={(id) => void onAdd(id)} /> : null}
       {view === "make" ? <VisualDirections creationId={artifactId} purpose="explore" title="Made from this Creation" useLabel="Use this picture" onUse={(id) => onAdd(id)} className="text-left" /> : null}
     </div>

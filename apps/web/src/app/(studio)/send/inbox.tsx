@@ -117,7 +117,7 @@ export function SendInbox({ initial }: { initial: Item[] }) {
             accept="image/*,audio/*,video/*,application/pdf,.txt,.md,.docx"
             onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files) })}
           />
-          <input ref={cameraRef} type="file" hidden accept="image/*" capture onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files), kind: "camera" })} />
+          <input ref={cameraRef} type="file" hidden accept="image/*" onChange={(e) => e.target.files?.length && send({ files: Array.from(e.target.files), kind: "camera" })} />
         </div>
 
         <Card className="p-4">

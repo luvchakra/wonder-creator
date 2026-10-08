@@ -99,7 +99,8 @@ Home shows one calm glance — never a feed (`homeCommunityGlance`, `components/
   * If the microphone is refused, the sheet says so and offers a quick note.
 * **After saving**: "Note saved" or "Voice note saved · 0:42 ▶".
   * DejaVu suggestions appear only when they're ready, and each can be accepted or dismissed.
-  * "+ Add" opens the Add a DejaVu sheet. Done returns to Home, where a quiet line links to the Material.
+  * "+ Add" opens the Add a DejaVu sheet. **Make something** (primary) opens the Make a new Creation sheet with the
+    capture (start-small.md); Done returns to Home, where a quiet line offers the same next step.
 * **Offline**: a quick note is kept on the device (`localStorage`) and the navbar says "Offline · saved locally". It
   syncs on reconnect.
 

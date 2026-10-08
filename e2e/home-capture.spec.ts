@@ -27,11 +27,16 @@ test.describe("Quick Capture", () => {
       { name: "pier.jpg", mimeType: "image/jpeg", buffer: await jpg(120) },
     ]);
     await expect(quick.getByText("2 pictures saved to Materials")).toBeVisible({ timeout: 30_000 });
-    // One picture (from the camera, or the gallery) lands without another step, and opens.
+    // One picture (from the camera, or the gallery) lands without another step — and the next step is making something from it.
     await pick.setInputFiles({ name: "harbour.jpg", mimeType: "image/jpeg", buffer: await jpg(200) });
     await expect(quick.getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
-    await quick.getByRole("link", { name: "Open" }).click();
-    await expect(page).toHaveURL(/\/materials\/[0-9a-f-]{36}$/);
+    await quick.getByRole("button", { name: "Make something" }).click();
+    const make = page.getByRole("dialog", { name: "Make a new Creation" });
+    await expect(make.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveCount(6);
+    await expect(make).toContainText("This Material comes with it as its source.");
+    await page.keyboard.press("Escape");
+    // The picture itself is one tap away in My captures.
+    await expect(page.getByRole("list", { name: "Recent captures" }).getByRole("link", { name: /^Picture,/ }).first()).toBeVisible();
   });
 
   test("a quick note saves in seconds, once, as a Material with its Moment — and suggests a DejaVu it mentions", async ({ page }) => {
@@ -47,6 +52,9 @@ test.describe("Quick Capture", () => {
     await sheet.getByLabel("Quick note").fill(`The station should feel like waiting, not travelling — ${thread.toLowerCase()} ${tag}`);
     await sheet.getByRole("button", { name: /Save note/ }).click();
     await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
+    // The next step is right there: make something from it (no "capture another" — Home's row is one tap away).
+    await expect(sheet.getByRole("button", { name: "Make something" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Capture another" })).toHaveCount(0);
 
     // Suggestions arrive later, as suggestions; the creator says yes.
     const suggestion = sheet.getByRole("button", { name: `Add to ${thread}` });
@@ -55,10 +63,12 @@ test.describe("Quick Capture", () => {
     await expect(sheet.getByText(thread)).toBeVisible();
     await sheet.getByRole("button", { name: "Done" }).click();
 
-    // Back on Home: a quiet line, with the note one tap away. It's a Material with exactly one Moment, in the DejaVu.
+    // Back on Home: a quiet line offering the next step; the note itself sits in My captures. It's a Material with exactly one Moment, in the DejaVu.
     const line = page.getByRole("region", { name: "Quick Capture" }).getByRole("status");
     await expect(line).toContainText("Note saved");
-    const materialId = (await line.getByRole("link", { name: "Open" }).getAttribute("href"))!.split("/").pop()!;
+    await expect(line.getByRole("button", { name: "Make something" })).toBeVisible();
+    const tile = page.getByRole("list", { name: "Recent captures" }).getByRole("link").first();
+    const materialId = (await tile.getAttribute("href"))!.split("/").pop()!;
     const moment = await (await page.request.get(`/api/v1/moments/by-entity?entityType=material&entityId=${materialId}`)).json();
     expect(moment.momentId).toBeTruthy();
     expect(moment.dejavus.map((d: { name: string }) => d.name)).toEqual([thread]);
