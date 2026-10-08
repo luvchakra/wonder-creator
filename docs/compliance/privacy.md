@@ -49,6 +49,7 @@ reviewed by counsel before launch, and the controller details below must be comp
 | Security & audit | Creators | IP, device, sign-ins, actions | Security, fraud prevention, accountability | Legitimate interests / §7(i) | — | Immutable; de-linked on account deletion |
 | Product analytics | Creators who opted in | Named outcome events, counts, timings | Product improvement | Consent | Vercel logs | Log retention of the host |
 | Privacy requests | Creators | Request kind, details, outcome | Rights handling | Legal obligation | — | 3 years after closure |
+| Contact messages | Anyone who writes from /contact | Name, email, topic, message, page, browser | Answering them | Legitimate interests / §7(i) | Supabase, the operator's mailbox (GoDaddy, when connected) | 12 months |
 
 ## Retention schedule (`app.run_retention`)
 
@@ -63,8 +64,14 @@ reviewed by counsel before launch, and the controller details below must be comp
 | Capture receipts (idempotency) | 90 days |
 | Rate-limit counters | 1 day |
 | Privacy requests | 3 years after closure |
+| Contact messages (`contact_messages`) | 12 months after creation |
 | Payment/ledger records | Statutory period (handled by the financial controls, not this job) |
 | Backups (hosted) | Rolling, per Supabase plan (≤30 days) |
+
+## A message sent from Contact (operator)
+Messages from `/contact` are in `contact_messages` (service role only; not tied to an account, since the sender types their
+own address). To answer a request about one, find it by email (`select * from contact_messages where email = …`),
+export or delete the row, and set `handled_at` when answered. The daily retention run removes them after 12 months.
 
 ## Handling a privacy request (operator runbook)
 1. Requests appear in `privacy_requests` (status `received`, `due_at` set). Query open ones ordered by `due_at`.

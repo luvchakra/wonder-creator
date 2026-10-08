@@ -45,6 +45,7 @@ export default function PrivacyNoticePage() {
             <tr><td>Sign-in history, IP address, device, audit trail</td><td>Security, fraud prevention, accountability</td><td>Legitimate interests (GDPR 6(1)(f)); DPDP §7(i)</td></tr>
             <tr><td>Usage measures (counts and timings, never content)</td><td>Improving the product — only if you turn it on</td><td>Consent (GDPR 6(1)(a); DPDP §6)</td></tr>
             <tr><td>Product emails</td><td>News about features — only if you turn it on</td><td>Consent</td></tr>
+            <tr><td>A message you send us from the Contact page: your name, email address, what it&rsquo;s about and your words</td><td>Answering you</td><td>Legitimate interests (GDPR 6(1)(f)); DPDP §7(i)</td></tr>
           </tbody>
         </table>
       </div>
@@ -70,6 +71,7 @@ export default function PrivacyNoticePage() {
         <li>Payment and accounting records: as long as tax and company law require (typically 8 years in India, up to 10 in the EU), then deleted.</li>
         <li>Security and audit records: kept as evidence of what happened and can&rsquo;t be edited; once your account is deleted they no longer link to your name, email or profile.</li>
         <li>Privacy requests: kept for 3 years after they&rsquo;re closed, as proof they were handled.</li>
+        <li>Messages you send from the Contact page: 12 months, then deleted. Ask us to delete one sooner and we will.</li>
       </ul>
 
       <h2>Your rights</h2>

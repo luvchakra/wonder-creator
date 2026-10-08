@@ -10,5 +10,6 @@ export const SUBPROCESSORS = [
   { name: "LiveKit", purpose: "Huddle voice and video, when connected", data: "Live audio/video streams (not recorded by us), display name", where: "Global" },
   { name: "Stripe", purpose: "Card and international payments, when connected", data: "Payer name, email, payment details entered on Stripe's page", where: "United States / global" },
   { name: "Razorpay", purpose: "Payments in India (UPI, cards, netbanking), when connected", data: "Payer name, email, phone, payment details entered on Razorpay's page", where: "India" },
+  { name: "GoDaddy", purpose: "The mailbox that receives messages sent from the Contact page, when connected", data: "The name, email address and message of whoever writes to us", where: "Global" },
   { name: "VirusTotal (Google)", purpose: "Malware check of uploads, when connected", data: "A file fingerprint (SHA-256 hash) only — never the file", where: "Global" },
 ] as const;

@@ -730,6 +730,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"contact_messages": {
+                  Row: {
+                    "client_id": string,"created_at": string,"email": string,"handled_at": string | null,"id": string,"message": string,"name": string,"notified_at": string | null,"page": string | null,"topic": string,"user_agent": string | null
+                  }
+                  Insert: {
+                    "client_id": string,"created_at"?: string,"email": string,"handled_at"?: string | null,"id"?: string,"message": string,"name": string,"notified_at"?: string | null,"page"?: string | null,"topic"?: string,"user_agent"?: string | null
+                  }
+                  Update: {
+                    "client_id"?: string,"created_at"?: string,"email"?: string,"handled_at"?: string | null,"id"?: string,"message"?: string,"name"?: string,"notified_at"?: string | null,"page"?: string | null,"topic"?: string,"user_agent"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"context_candidates": {
                   Row: {
                     "counts": NonNullable<Json>,"created_at": string,"creator_id": string,"enriched_at": string | null,"enrichment_hash": string | null,"expires_at": string,"explanation": string,"id": string,"imported_material_ids": (string)[],"quote": string | null,"record_ids": (string)[],"score": number,"signature": string,"state": string,"suggested_format": string | null,"suggestion": string | null,"title": string,"updated_at": string
