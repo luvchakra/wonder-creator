@@ -135,16 +135,18 @@ export async function signInViaUi(page: Page, c: { email: string; password: stri
 
 /** Complete every onboarding step through the onboarding API (uses the page's session cookies). */
 export async function onboardViaApi(page: Page, c: { name: string; handle: string }, o: OnboardingOptions = {}) {
-  const steps: Array<[string, Record<string, unknown>]> = [
+  // Onboarding is one step (name and handle); the rest is what a creator fills in under Settings, done here the same way.
+  const r = await page.request.post("/api/v1/creators/onboarding/about", { data: { displayName: c.name, handle: c.handle } });
+  if (!r.ok()) throw new Error(`onboarding failed: ${r.status()} ${await r.text()}`);
+  const sections: Array<[string, Record<string, unknown>]> = [
     ["about", { displayName: c.name, handle: c.handle, bio: o.bio ?? "", location: "", showLocation: false, languages: o.languages ?? ["English"] }],
     ["identity", { disciplines: o.disciplines ?? ["Writing", "Poetry"], skills: [], interests: [] }],
     ["style", { tones: o.tones ?? ["Warm"], writingStyle: o.writingStyle === undefined ? "narrative" : o.writingStyle, formality: null, visualStyles: o.visualStyles ?? ["Cinematic"], experimentation: "balanced" }],
     ["boundaries", { preserve: o.preserve ?? ["My voice"], avoid: o.avoid ?? ["Clichés"], sensitive: [] }],
-    ["ready", {}],
   ];
-  for (const [step, body] of steps) {
-    const r = await page.request.post(`/api/v1/creators/onboarding/${step}`, { data: body });
-    if (!r.ok()) throw new Error(`onboarding ${step} failed: ${r.status()} ${await r.text()}`);
+  for (const [section, body] of sections) {
+    const s = await page.request.put(`/api/v1/creators/me/${section}`, { data: body });
+    if (!s.ok()) throw new Error(`settings ${section} failed: ${s.status()} ${await s.text()}`);
   }
 }
 

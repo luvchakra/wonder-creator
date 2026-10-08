@@ -12,10 +12,11 @@ export const handleSchema = z
 export const aboutSchema = z.object({
   displayName: z.string().trim().min(1, "Tell us what to call you.").max(80),
   handle: handleSchema,
-  bio: shortText(300).optional().default(""),
-  location: shortText(120).optional().default(""),
-  showLocation: z.boolean().optional().default(false),
-  languages: tagList(10).default([]),
+  // Optional and left alone when absent: onboarding sends only a name and a handle; Settings sends everything.
+  bio: shortText(300).optional(),
+  location: shortText(120).optional(),
+  showLocation: z.boolean().optional(),
+  languages: tagList(10).optional(),
 });
 
 export const identitySchema = z.object({
@@ -62,13 +63,16 @@ export type VoiceInput = z.infer<typeof voiceSchema>;
 export type BoundariesInput = z.infer<typeof boundariesSchema>;
 export type ProfileSettingsInput = z.infer<typeof profileSettingsSchema>;
 
+/**
+ * Onboarding is one screen (owner, 8 Oct 2026: "shorten the onboarding"; docs/ui-redesign/start-small.md): a name and a
+ * handle, then the studio. The other values stay as stored steps so older rows still read; a creator left on any of
+ * them is simply finished the next time they answer.
+ */
 export const ONBOARDING_STEPS = ["welcome", "about", "identity", "style", "boundaries", "ready"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 export function nextOnboardingStep(step: OnboardingStep | "complete"): OnboardingStep | "complete" {
-  if (step === "complete") return "complete";
-  const i = ONBOARDING_STEPS.indexOf(step);
-  return i === ONBOARDING_STEPS.length - 1 ? "complete" : ONBOARDING_STEPS[i + 1];
+  return step === "welcome" ? "about" : "complete";
 }
 
 /** Dedupe case-insensitively while preserving first spelling and order. */

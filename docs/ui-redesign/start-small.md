@@ -58,11 +58,25 @@ collaborate step counts only ordinary Rooms (`projects.community_privacy is null
   begin card now does that job better. (The DejaVu-thread suggestion, a different insight, stays.)
 * Two outcome events, only for creators who turned on usage measures: `home_make_from_latest`, `home_together_opened`.
 
+## Onboarding: one screen (owner, 8 Oct 2026: "yes, shorten the onboarding")
+
+The wizard was six screens (welcome, about, creative world, style & voice, preferences, all set) before a creator saw
+Home. It is now **one**: a name and a handle — the two things people need to find each other — and *Enter your studio*.
+Everything the other screens asked is still asked, but where it matters and when the creator gets to it:
+
+| Was asked in the wizard | Lives now |
+|---|---|
+| Photo, short description, location | Profile / Settings › Profile |
+| Disciplines, skills, interests, languages | Settings › Identity |
+| Tone, writing style, visual style, what to preserve and avoid | Settings › Preferences |
+
+CreativeMind still learns from those answers — `seedProfileMemories` runs after each of those Settings saves (and once
+on entering the studio, for a creator who had answered an older wizard), each statement landing once, labelled "Your
+profile answers" in Creative Memory, where it can be edited or removed. A creator left partway through the old wizard
+sees the one screen, prefilled, and is in.
+
 ## Deliberately not built
 
-* **A shorter onboarding.** Only name and handle are required today and the other steps skip; changing what the wizard
-  collects changes what CreativeMind learns, which is the owner's call. Recommendation: after name and handle, go
-  straight to Home and ask the rest (style, boundaries) where it matters, in Creative Memory.
 * A "getting started" checklist, a tour, tooltips, empty-state illustrations for every page, notifications nagging
   about steps, or a share step of its own (sharing lives in Scrapbook and on the Creation).
 

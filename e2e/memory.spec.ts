@@ -1,7 +1,7 @@
 import { accountMenu, expect, test, uid, type Page } from "./fixtures";
 
-// Default onboarding answers in fixtures.onboardViaApi produce these memories.
-const ONBOARDING_MEMORIES = [
+// The profile answers fixtures.onboardViaApi fills in under Settings produce these memories.
+const PROFILE_MEMORIES = [
   "You work across writing and poetry.",
   "You prefer warm tone and narrative writing.",
   "Your visual style leans cinematic.",
@@ -16,15 +16,15 @@ function memoryCard(page: Page, text: string) {
 test.describe("Creative Memory", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("onboarding memories are visible; add, edit and remove a memory", async ({ page }) => {
+  test("profile memories are visible; add, edit and remove a memory", async ({ page }) => {
     await accountMenu(page, "Creative Memory");
     await expect(page).toHaveURL(/\/memory$/);
     await expect(page.getByRole("heading", { name: "Creative Memory" })).toBeVisible();
-    for (const m of ONBOARDING_MEMORIES) {
+    for (const m of PROFILE_MEMORIES) {
       await expect(memoryCard(page, m)).toBeVisible();
-      await expect(memoryCard(page, m)).toContainText("Your onboarding answers");
+      await expect(memoryCard(page, m)).toContainText("Your profile answers");
     }
-    await expect(page.getByRole("tab", { name: `All (${ONBOARDING_MEMORIES.length})` })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: `All (${PROFILE_MEMORIES.length})` })).toHaveAttribute("aria-selected", "true");
 
     // Add
     const statement = `I always start from a single sound ${uid()}.`;
@@ -35,7 +35,7 @@ test.describe("Creative Memory", () => {
     await add.getByRole("button", { name: "Save" }).click();
     await expect(add).toBeHidden();
     await expect(memoryCard(page, statement)).toContainText("Added by you");
-    await expect(page.getByRole("tab", { name: `All (${ONBOARDING_MEMORIES.length + 1})` })).toBeVisible();
+    await expect(page.getByRole("tab", { name: `All (${PROFILE_MEMORIES.length + 1})` })).toBeVisible();
     // It is filed under About Me.
     await page.getByRole("tab", { name: "About Me" }).click();
     await expect(memoryCard(page, statement)).toBeVisible();
@@ -62,7 +62,7 @@ test.describe("Creative Memory", () => {
     await page.reload();
     await expect(memoryCard(page, edited)).toBeVisible();
     await expect(memoryCard(page, "Avoid: Clichés.")).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: `All (${ONBOARDING_MEMORIES.length})` })).toBeVisible();
+    await expect(page.getByRole("tab", { name: `All (${PROFILE_MEMORIES.length})` })).toBeVisible();
   });
 
   test("“That's not how I write.” in meTalk corrects Creative Memory", async ({ page }) => {
@@ -78,7 +78,7 @@ test.describe("Creative Memory", () => {
     await expect(correction).toBeVisible();
     await expect(correction).toContainText("Your correction in meTalk");
     // Style/voice memories CreatorBrain inferred were let go (two of them at most); facts stay.
-    const styleMemories = ONBOARDING_MEMORIES.slice(1);
+    const styleMemories = PROFILE_MEMORIES.slice(1);
     let remaining = 0;
     for (const m of styleMemories) remaining += await memoryCard(page, m).count();
     expect(remaining).toBe(styleMemories.length - 2);
