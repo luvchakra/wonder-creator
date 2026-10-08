@@ -289,9 +289,8 @@ export function artifactCard(page: Page) {
 export async function poemFromNote(page: Page, noteText = `The tide keeps our old names ${uid()}\nGrandmother's lantern on the jetty.`) {
   const materialId = await saveNote(page, noteText);
   const noteTitle = noteText.split("\n")[0];
-  await page.goto(`/materials/${materialId}`);
-  await page.getByRole("link", { name: "Use in creation" }).click();
-  await expect(page).toHaveURL(new RegExp(`/create\\?material=${materialId}`));
+  // meTalk with the note attached. ("Use in creation" on the Material page opens Make a new Creation instead.)
+  await page.goto(`/create?material=${materialId}`);
   const talk = page.getByRole("region", { name: "meTalk" });
   await expect(talk.getByText(noteTitle)).toBeVisible(); // attached chip
   await talk.getByLabel("What are you thinking about?").fill("Turn these notes into a poem.");
