@@ -3,6 +3,7 @@ import { Flag, LifeBuoy, Mail, ShieldCheck, UserRoundCheck } from "lucide-react"
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ContactForm } from "@/components/public/contact-form";
 import { SiteFooter, SiteHeader, contactLink } from "@/components/public/site-chrome";
 
 export const metadata: Metadata = {
@@ -13,18 +14,35 @@ export const metadata: Metadata = {
 /**
  * Contact (owner, 3 Oct 2026). Shows only channels that exist: inboxes configured for this deployment
  * (WONDERCREATOR_CONTACT_EMAIL, _PRIVACY_CONTACT, _SECURITY_CONTACT, _GRIEVANCE_OFFICER) and the routes every account
- * already has inside the product. Nothing is made up when an inbox isn't set.
+ * already has inside the product. Nothing is made up when an inbox isn't set. "Send us a message" (owner, 8 Oct 2026,
+ * like WonderJobs) is a form that saves the message and mails the team (lib/contact-mail.ts), so it needs no inbox.
  */
 export const dynamic = "force-dynamic";
 
-function Channel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+function Channel({ icon, title, children, stacked }: { icon: ReactNode; title: string; children: ReactNode; stacked?: boolean }) {
+  const mark = (
+    <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-ink">
+      {icon}
+    </span>
+  );
+  const heading = <h2 className="font-display text-[21px] leading-snug text-ink">{title}</h2>;
+  // A card holding a form: the heading sits beside its icon and the fields get the card's whole width (a phone has none to spare).
+  if (stacked) {
+    return (
+      <li className="rounded-[1.4rem] border border-white/80 bg-white/75 p-5 shadow-[0_24px_50px_-36px_rgb(76_60_120/0.45)] backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          {mark}
+          {heading}
+        </div>
+        <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-ink-muted">{children}</div>
+      </li>
+    );
+  }
   return (
     <li className="flex gap-4 rounded-[1.4rem] border border-white/80 bg-white/75 p-5 shadow-[0_24px_50px_-36px_rgb(76_60_120/0.45)] backdrop-blur-sm">
-      <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-ink">
-        {icon}
-      </span>
+      {mark}
       <div className="min-w-0">
-        <h2 className="font-display text-[21px] leading-snug text-ink">{title}</h2>
+        {heading}
         <div className="mt-1 space-y-1.5 text-[15px] leading-relaxed text-ink-muted">{children}</div>
       </div>
     </li>
@@ -59,13 +77,14 @@ export default function ContactPage() {
         <p className="mt-4 max-w-[34rem] text-[17px] leading-relaxed text-ink-muted">Questions, ideas, something that didn&rsquo;t work as it should — here&rsquo;s where to reach us.</p>
 
         <ul className="mt-10 space-y-4">
-          {general ? (
-            <Channel icon={<Mail className="size-5" />} title="Questions and feedback">
+          <Channel icon={<Mail className="size-5" />} title="Questions and feedback" stacked>
+            <ContactForm />
+            {general ? (
               <p>
-                Write to <Address to={general} />.
+                Or write to <Address to={general} />.
               </p>
-            </Channel>
-          ) : null}
+            ) : null}
+          </Channel>
           <Channel icon={<LifeBuoy className="size-5" />} title="Your data and privacy">
             <p>
               Signed in, the quickest way is{" "}

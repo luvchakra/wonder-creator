@@ -51,5 +51,13 @@ dominant action, **Start Creating** (`/sign-up`), plus a quiet "Explore Wonder C
   in Settings (plus `WONDERCREATOR_PRIVACY_CONTACT` and the Grievance Officer when set), security reports
   (`WONDERCREATOR_SECURITY_CONTACT` when set, and the Security page), and reporting, muting and blocking inside the
   product. Contacts may be `mailto:`, `https:` or a plain address (`contactLink`).
+  * **Send us a message** (owner, 8 Oct 2026: "implement similar to WonderJobs"): a form on `/contact` — name, email,
+    what it's about (question · help · feedback · working together · privacy · security), message — open to anyone.
+    `POST /api/v1/contact` saves it first (`contact_messages`: service role only, kept 12 months, one row per
+    `clientId` so a retry lands once), then emails the team after the response (`lib/contact-mail.ts`, SMTP through the
+    operator's own mailbox, Reply-To the sender). It goes to `CONTACT_NOTIFY_EMAILS` or, if unset,
+    `WONDERCREATOR_CONTACT_EMAIL`; without `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` it says so in the server log and the row
+    stays unmarked (`notified_at` empty) — the sender is never told it was emailed. Throttled per address (5 a minute,
+    10 an hour) with a hidden bot-trap field (a bot is told it worked; nothing is kept).
 * Both share the public header and footer (`components/public/site-chrome.tsx`) with the landing page; the legal pages'
   navigation links to Contact. E2E: `e2e/about-contact.spec.ts`.

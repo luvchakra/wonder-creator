@@ -462,6 +462,13 @@ export async function adminPatch(table: string, query: string, body: Record<stri
   if (!res.ok) throw new Error(`adminPatch ${table}: ${res.status} ${await res.text()}`);
 }
 
+/** Test checks only: read rows with the service key (tables the browser can't read, e.g. contact messages). */
+export async function adminSelect<T = Record<string, unknown>>(table: string, query: string): Promise<T[]> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}` } });
+  if (!res.ok) throw new Error(`adminSelect ${table}: ${res.status} ${await res.text()}`);
+  return (await res.json()) as T[];
+}
+
 /** Test setup only: the creator row id for an auth user. */
 export async function creatorIdOf(userId: string): Promise<string> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/creators?user_id=eq.${userId}&select=id`, { headers: { apikey: SUPABASE_SECRET, authorization: `Bearer ${SUPABASE_SECRET}` } });
