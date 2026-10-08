@@ -14,6 +14,7 @@ import { coverUrls } from "../covers";
 import { flags } from "../features";
 import { agoPhrase, pickSpark, splitHomeItems, SPARK_MIN_AGE_DAYS, type HomeItem } from "../home-sections";
 import { listNotificationsForHome } from "../notifications";
+import { journeyStep, type JourneyStep } from "./journey";
 import { homeContextLine, homeMode, pickContinue, selectSlots, summarizeAway, type AwayItem, type HomeCandidateKind, type HomeMode, type HomeSlot, type HomeSummary } from "./ranking";
 
 /**
@@ -104,8 +105,13 @@ export interface HomePayload {
   /** Continue rows (owner, 3 Oct 2026): the last three edited Creations in progress, then "All my creations". */
   inProgress?: HomeInProgressItem[];
   start?: HomeStart;
-  /** A brand-new creator with nothing yet: Home shows its calm beginning. */
-  beginning?: { hasMaterials: boolean };
+  /**
+   * A creator with no Creation yet: Home shows its calm beginning — and, once something has been caught, that latest
+   * Material, ready to be made into something (docs/ui-redesign/start-small.md).
+   */
+  beginning?: { hasMaterials: boolean; latest?: HomeLatestMaterial | null };
+  /** Where the creator is on the small steps into the ecosystem (journey.ts). Read from what they've done, never a score. */
+  journey?: { step: JourneyStep | null };
   quickCapture: { textEnabled: boolean; voiceEnabled: boolean };
   whileAway?: HomeSummary;
   worldConnecting?: HomeConnectionCard;
@@ -124,6 +130,14 @@ export interface HomePayload {
   recent?: Array<{ id: string; title: string; typeLabel: string }>;
   avatars: Record<string, string>;
   generatedAt: string;
+}
+
+/** The newest Material, for the "turn it into something" card: a short preview of its words (the full words load on demand). */
+export interface HomeLatestMaterial {
+  id: string;
+  /** idea, note, voice, image, video… as stored. */
+  kind: string;
+  preview: string | null;
 }
 
 const safe = async <T>(what: string, p: Promise<T> | (() => Promise<T>)): Promise<T | null> => {
@@ -184,6 +198,9 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
       .sort((a, b) => b.at.localeCompare(a.at))
       .slice(0, 3);
   });
+  // Has a Creative Room (their own, or one they were invited to) — an ordinary one: a Community is a Room opened as one,
+  // and joining it isn't making something together (journey.ts). Row security shows only rooms the creator belongs to.
+  const roomCountP = safe("room_count", async () => (await db.from("projects").select("id", { count: "exact", head: true }).is("community_privacy", null).neq("status", "archived")).count ?? 0);
   const communitiesP = f.communities_enabled
     ? safe("communities", async () => {
         const mine = await myCommunities(db, 12);
@@ -448,8 +465,18 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   const hasGlance = !!glance && !!(glance.live || glance.creations.length || glance.thought || glance.ask || glance.person || glance.catchUp || glance.week);
   const rooms = (await roomsP) ?? [];
   const communities = communitiesP ? await communitiesP : null;
+  // The small steps (journey.ts): only facts Home already has. Communities off or unreadable means nothing to ask for.
+  const journey = {
+    step: journeyStep({
+      caught: (materialCount ?? 0) > 0,
+      made: (works ?? []).length > 0,
+      connected: communities ? communities.mine.length > 0 : true,
+      together: ((await roomCountP) ?? 0) > 0,
+    }),
+  };
+  const beginningNow = !cont && !start;
   // The glance's covers and everyone's avatars don't depend on each other: one stage, not two.
-  const [glanceCovers, avatars] = await Promise.all([
+  const [glanceCovers, avatars, latest] = await Promise.all([
     hasGlance && glance!.creations.length ? safe("glance_covers", coverUrls(db, glance!.creations.map((c) => ({ id: c.id, cover_material_id: c.coverMaterialId })))).then((x) => x ?? {}) : Promise.resolve({} as Record<string, string>),
     safe(
       "avatars",
@@ -464,6 +491,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
         ].filter(Boolean),
       ),
     ).then((x) => x ?? {}),
+    // Only for a creator with nothing made yet who has caught something: the card that turns it into a Creation.
+    beginningNow && (materialCount ?? 0) > 0 ? safe("latest", latestMaterial(db, creatorId)) : Promise.resolve(null),
   ]);
 
   return {
@@ -481,7 +510,8 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     continue: cont,
     inProgress: inProgress.length ? inProgress : undefined,
     start,
-    beginning: !cont && !start ? { hasMaterials: (materialCount ?? 0) > 0 } : undefined,
+    beginning: beginningNow ? { hasMaterials: (materialCount ?? 0) > 0, latest: latest ?? null } : undefined,
+    journey,
     quickCapture: { textEnabled: true, voiceEnabled: flags().quick_capture_voice_enabled },
     whileAway: slots.has("whileAway") ? whileAway : undefined,
     worldConnecting: slots.has("worldConnecting") ? worldConnection! : undefined,
@@ -630,9 +660,24 @@ async function sparkCard(db: Db, creatorId: string, now: number): Promise<HomeMo
   return { materialId: pick.id, text, imageUrl: pick.storage_object_id ? (urls[pick.storage_object_id] ?? null) : null };
 }
 
+/** The newest active Material and a short preview of its words (a note's text, a transcript). */
+async function latestMaterial(db: Db, creatorId: string): Promise<HomeLatestMaterial | null> {
+  const { data } = await db
+    .from("creative_materials")
+    .select("id, type, text_content, extracted_text")
+    .eq("creator_id", creatorId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const words = (data.text_content ?? data.extracted_text ?? "").trim();
+  return { id: data.id, kind: data.type, preview: words ? words.slice(0, 400) : null };
+}
+
 /* ------------------------------------------------------------------------------------------ Something worth starting */
 
-/** No Creation yet (§5): recent Materials that already share a thread — or simply wait — suggest a start. Nothing is created. */
+/** No Creation yet (§5): recent Materials that already share a thread suggest a start. Nothing is created. */
 async function somethingToStart(db: Db, now: number): Promise<HomeStart | null> {
   const { data: recent } = await db.from("moment_references").select("id").eq("entity_type", "material").is("deleted_at", null).gt("occurred_at", new Date(now - 14 * DAY).toISOString()).limit(50);
   const ids = (recent ?? []).map((r) => r.id);
@@ -642,7 +687,7 @@ async function somethingToStart(db: Db, now: number): Promise<HomeStart | null> 
   for (const l of links ?? []) count.set(l.dejavu_id, { n: (count.get(l.dejavu_id)?.n ?? 0) + 1, name: (l.dejavus as unknown as { name: string }).name });
   const shared = [...count.entries()].filter(([, v]) => v.n >= 2).sort((a, b) => b[1].n - a[1].n)[0];
   if (shared) return { text: `${shared[1].n} recent Materials share “${shared[1].name}”.`, href: `/dejavu/${shared[0]}` };
-  if (ids.length >= 3) return { text: `${ids.length} recent Materials are waiting for a first Creation.`, href: "/materials?tab=ideas" };
+  // (Materials that merely wait for a first Creation are the begin card's job now — it shows the latest, ready to make.)
   return null;
 }
 

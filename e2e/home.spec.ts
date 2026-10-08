@@ -13,7 +13,12 @@ test.describe("Home Canvas", () => {
     await expect(page.getByRole("button", { name: "Open Creative Palette" }).locator('img[src*="/brand/kit/palette-button-master"]')).toHaveAttribute("alt", "");
     // One primary way to begin and one secondary (interaction minimalism); the rest is in the Palette.
     const begin = page.getByRole("region", { name: "What would you like to begin with?" });
-    await expect(begin.getByRole("link")).toHaveText([/New Creation/, /Bring Material/]);
+    await expect(begin.getByRole("button", { name: /New Creation/ })).toBeVisible();
+    await expect(begin.getByRole("link", { name: /Bring Material/ })).toBeVisible();
+    // New Creation opens the same sheet as the Palette's Create — one place to start.
+    await begin.getByRole("button", { name: /New Creation/ }).click();
+    await expect(page.getByRole("dialog", { name: "Make a new Creation" }).getByRole("list", { name: "Formats" }).getByRole("button")).toHaveCount(6);
+    await page.keyboard.press("Escape");
 
     // Creations in progress show as thin Continue rows (the last three edited); the "Continue ›" title opens them all.
     const title = `Harbour lights ${uid()}`;
@@ -77,5 +82,50 @@ test.describe("Home Canvas", () => {
     // Fixed sections, each once.
     for (const name of ["My Scrapbook", "My Communities", "My Testimonials"]) await expect(page.getByRole("region", { name })).toHaveCount(1);
     await expect(page.getByRole("region", { name: "My Testimonials" })).toContainText("Nobody has written one yet");
+  });
+
+  // Start small (owner, 8 Oct 2026; docs/ui-redesign/start-small.md): the next small step, read from what the creator has
+  // actually done — catch, make, connect, collaborate — one at a time, never a checklist.
+  test("start small: a line to begin, then the same line turned into a Creation, then a way to make it with someone", async ({ page, creator }) => {
+    void creator;
+    const tag = uid();
+    // 1. Nothing yet: the line under the greeting invites one small thing; the capture row is the way in.
+    await page.goto("/");
+    await expect(page.getByText("Begin with one small thing — a line is enough.")).toBeVisible();
+
+    // 2. Caught a note: Home moves on by itself, no reload — "make something from it", in the note's own words.
+    await page.getByRole("button", { name: "Quick note" }).click();
+    const sheet = page.getByRole("dialog", { name: "Quick Capture" });
+    await sheet.getByLabel("Quick note").fill(`Rain on the tin roof ${tag}\nThe sound arrives before the train.`);
+    await sheet.getByRole("button", { name: /Save note/ }).click();
+    await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
+    await sheet.getByRole("button", { name: "Done" }).click();
+    const begin = page.getByRole("region", { name: "Make something from your note" });
+    await expect(begin).toContainText(`Rain on the tin roof ${tag}`);
+    await expect(page.getByText("Turn something you caught into a Creation.")).toBeVisible();
+    // One action, and it opens the sheet with the words — here the same words, as the first draft.
+    await begin.getByRole("button", { name: "Make something" }).click();
+    const make = page.getByRole("dialog", { name: "Make a new Creation" });
+    await expect(make.getByText(new RegExp(`Rain on the tin roof ${tag}`))).toBeVisible();
+    await make.getByRole("button", { name: /^Writing/ }).click();
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}/);
+    const id = /\/creations\/([0-9a-f-]{36})/.exec(page.url())![1];
+    const { versions } = (await (await page.request.get(`/api/v1/artifacts/${id}/versions`)).json()) as { versions: Array<{ content: string }> };
+    expect(versions[0]!.content).toContain(`Rain on the tin roof ${tag}`);
+
+    // 3. Made something, in no community yet: no new card — the Communities section is the invitation already there.
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: /Make something with someone/ })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Make something from your note" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Find people who make what you make/ })).toBeVisible();
+
+    // 4. Joined a community: one quiet way to make something with someone — and it's gone once a Room exists.
+    expect((await page.request.post("/api/v1/communities", { data: { title: `Tin roof makers ${tag}` } })).ok()).toBe(true);
+    await page.goto("/");
+    const together = page.getByRole("link", { name: /Make something with someone/ });
+    await expect(together).toHaveAttribute("href", "/rooms?new=1");
+    expect((await page.request.post("/api/v1/projects", { data: { title: `Rain song ${tag}`, brief: "Together." } })).ok()).toBe(true);
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: /Make something with someone/ })).toHaveCount(0);
   });
 });

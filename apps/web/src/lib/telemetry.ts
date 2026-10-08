@@ -24,6 +24,10 @@ export const TELEMETRY_EVENTS = [
   "home_connection_opened",
   "home_dejavu_opened",
   "home_spark_opened",
+  // Start small (docs/ui-redesign/start-small.md): did the next small step get taken — a note turned into a Creation, a
+  // Room started from Home. Outcomes only.
+  "home_make_from_latest",
+  "home_together_opened",
   // Phase 05 §18 — suggestion and connection outcomes (accepted, dismissed, opened, used later), not engagement.
   "connection_opened",
   "connection_dismissed",
