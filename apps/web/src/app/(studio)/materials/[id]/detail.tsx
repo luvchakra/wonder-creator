@@ -2,6 +2,7 @@
 import { RelativeTime } from "@/components/client-time";
 import { Badge, Button, ConfirmDialog, Dialog, DialogContent, ErrorState, Field, Input, Select, TagInput, Textarea, buttonClasses } from "@wonder/ui";
 import { Archive, Download, ExternalLink, FolderPlus, Lock, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,6 +10,9 @@ import { api, errorMessage } from "@/lib/client";
 import { VisualDirections } from "@/components/visual-directions";
 import { BackLink } from "@/components/back-link";
 import { forget } from "@/components/nav-memory";
+
+// Loaded when "Use in creation" is first pressed, like the Palette's Create.
+const NewCreationSheet = dynamic(() => import("@/components/new-creation-sheet").then((m) => m.NewCreationSheet), { ssr: false });
 
 const ORIGIN: Record<string, string> = {
   upload: "Uploaded",
@@ -112,6 +116,7 @@ export function MaterialDetail({
   const router = useRouter();
   const [title, setTitle] = useState(m.title ?? "");
   const [text, setText] = useState(m.text ?? "");
+  const [creating, setCreating] = useState(false);
   const [description, setDescription] = useState(m.description ?? "");
   const [sourceNote, setSourceNote] = useState(m.sourceNote ?? "");
   const [collection, setCollection] = useState(collections.find((c) => !inCollections.includes(c.id))?.id ?? "");
@@ -259,9 +264,9 @@ export function MaterialDetail({
             Save
           </Button>
         ) : (
-          <Link href={`/create?material=${m.id}`} className={buttonClasses()}>
+          <Button aria-haspopup="dialog" onClick={() => setCreating(true)}>
             <Sparkles className="size-4" aria-hidden /> Use in creation
-          </Link>
+          </Button>
         )}
         <Button variant="secondary" aria-haspopup="dialog" onClick={() => setDetails(true)}>
           Details
@@ -273,6 +278,9 @@ export function MaterialDetail({
         </p>
       ) : null}
       {error && !details ? <ErrorState title="That didn't work" body={error} /> : null}
+
+      {/* Make a new Creation, starting from this Material: its words (a note's text, a transcript) are the first draft. */}
+      {creating ? <NewCreationSheet open onOpenChange={setCreating} from={{ materialId: m.id, text: editableText ? text : (m.extracted ?? "") }} /> : null}
 
       <Dialog open={details} onOpenChange={setDetails}>
         <DialogContent title="Details" description={`${kind} · private to you`}>

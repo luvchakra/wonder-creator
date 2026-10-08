@@ -143,6 +143,30 @@ test.describe("CreatorSend & material", () => {
     await expect(page.getByRole("heading", { name: "We couldn't find that" })).toBeVisible();
   });
 
+  test("Use in creation opens Make a new Creation with the note's words; the Creation starts with them and keeps the note as its source", async ({ page }) => {
+    const tag = uid();
+    const text = `Rain on the tin roof ${tag}\nThe sound arrives before the train.`;
+    const id = await saveNote(page, text);
+    await page.goto(`/materials/${id}`);
+    await page.getByRole("button", { name: "Use in creation" }).click();
+    // The same sheet as the Palette's Create, with the words above the formats.
+    const sheet = page.getByRole("dialog", { name: "Make a new Creation" });
+    await expect(sheet.getByText(new RegExp(`Rain on the tin roof ${tag}`))).toBeVisible();
+    await expect(sheet.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveCount(6);
+    // Only the formats: a Room or a new capture wouldn't carry the note.
+    await expect(sheet.getByRole("link", { name: /Collaborate with others/ })).toHaveCount(0);
+    await expect(sheet.getByRole("link", { name: /bring in Material/ })).toHaveCount(0);
+    await sheet.getByRole("button", { name: /^Writing/ }).click();
+    await expect(page).toHaveURL(/\/creations\/[0-9a-f-]{36}/);
+    const artifactId = /\/creations\/([0-9a-f-]{36})/.exec(page.url())![1];
+    // The first draft is the note's words, and the note is recorded as the source.
+    const { versions } = (await (await page.request.get(`/api/v1/artifacts/${artifactId}/versions`)).json()) as { versions: Array<{ content: string }> };
+    expect(versions[0]!.content).toContain(`Rain on the tin roof ${tag}`);
+    expect(versions[0]!.content).toContain("The sound arrives before the train.");
+    await page.goto(`/materials/${id}`);
+    await expect(page.getByText(/in 1 Creation/)).toBeVisible();
+  });
+
   test("edit a note's title, text and tags", async ({ page }) => {
     const text = `Harbour lights ${uid()}`;
     const id = await saveNote(page, text);
@@ -151,7 +175,7 @@ test.describe("CreatorSend & material", () => {
     await page.getByLabel("Text").fill(`${text}\nThe ferry horn at dusk.`);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Use in creation" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Use in creation" })).toBeVisible();
     // The title and tags are under Details.
     await page.getByRole("button", { name: "Details" }).click();
     const details = page.getByRole("dialog", { name: "Details" });
