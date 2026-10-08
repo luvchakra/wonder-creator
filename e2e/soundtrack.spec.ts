@@ -123,7 +123,8 @@ test.describe("CreativeRadio", () => {
     await expect(mini).toBeVisible();
     await page.waitForTimeout(400); // placement settles on the next frame
     const p = (await mini.boundingBox())!;
-    const cta = (await page.getByRole("link", { name: "New Creation" }).boundingBox())!;
+    // The begin card's primary action is a button since #172 (it opens the Make a new Creation sheet).
+    const cta = (await page.getByRole("button", { name: /New Creation/ }).boundingBox())!;
     const overlaps = p.x < cta.x + cta.width && p.x + p.width > cta.x && p.y < cta.y + cta.height && p.y + p.height > cta.y;
     expect(overlaps).toBe(false);
     const palette = (await page.getByRole("button", { name: "Open Creative Palette" }).boundingBox())!;
