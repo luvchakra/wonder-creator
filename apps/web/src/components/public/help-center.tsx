@@ -31,7 +31,7 @@ const card = "rounded-[1.4rem] border border-white/80 bg-white/75 shadow-[0_24px
 export function HelpCenter({ sections }: { sections: HelpSection[] }) {
   const [query, setQuery] = useState("");
   /** What the visitor chose to open or close; a topic they haven't touched follows the search. */
-  const [chosen, setChosen] = useState<Record<string, boolean>>({});
+  const [chosen, setChosen] = useState<ReadonlyMap<string, boolean>>(() => new Map());
 
   const bySlug = useMemo(() => new Map(sections.flatMap((s) => s.topics.map((t) => [t.slug, { topic: t, section: s }] as const))), [sections]);
   const searching = query.trim().length > 0;
@@ -41,15 +41,15 @@ export function HelpCenter({ sections }: { sections: HelpSection[] }) {
   useEffect(() => {
     const openFromHash = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
-      if (id && bySlug.has(id)) setChosen((c) => ({ ...c, [id]: true }));
+      if (id && bySlug.has(id)) setChosen((c) => new Map(c).set(id, true));
     };
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
     return () => window.removeEventListener("hashchange", openFromHash);
   }, [bySlug]);
 
-  const isOpen = (slug: string) => chosen[slug] ?? (searching && results.length <= 3);
-  const toggle = (slug: string, open: boolean) => setChosen((c) => (c[slug] === open ? c : { ...c, [slug]: open }));
+  const isOpen = (slug: string) => chosen.get(slug) ?? (searching && results.length <= 3);
+  const toggle = (slug: string, open: boolean) => setChosen((c) => (c.get(slug) === open ? c : new Map(c).set(slug, open)));
 
   const status = !searching ? "" : results.length ? `${results.length} ${results.length === 1 ? "topic matches" : "topics match"} “${query.trim()}”.` : `No topic matches “${query.trim()}”.`;
 
@@ -76,7 +76,7 @@ export function HelpCenter({ sections }: { sections: HelpSection[] }) {
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
-                setChosen({});
+                setChosen(new Map());
               }}
               autoComplete="off"
               enterKeyHint="search"
@@ -88,7 +88,7 @@ export function HelpCenter({ sections }: { sections: HelpSection[] }) {
                 type="button"
                 onClick={() => {
                   setQuery("");
-                  setChosen({});
+                  setChosen(new Map());
                   document.getElementById("help-search")?.focus();
                 }}
                 aria-label="Clear search"
