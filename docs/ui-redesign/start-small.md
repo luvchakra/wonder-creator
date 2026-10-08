@@ -94,13 +94,17 @@ Every primary action lands where the activity goes on — never back at a list, 
 Rule: a completed action's confirmation names the next step and opens it in one tap; viewing what was just made stays one
 tap away but is never the primary action.
 
-## The camera (owner, 8 Oct 2026: "any camera being opened should be the fully featured camera")
+## The camera (owner, 8 Oct 2026: "any camera being opened should be the fully featured camera"; "quick pic and video note should have camera option as well, full fledged camera")
 
-No file input in the app forces the camera's limited "take a photo for an app" mode any more (Quick Pic, Video Note,
-the Scrapbook composer, CreatorSend's Camera, and the Images page's *Take or choose a picture*). Each opens the phone's
-own chooser: the camera, or pictures already taken. A web page cannot launch the full camera app and get the picture
-back — that is a platform limit, not a setting — so the fully featured camera is reached by shooting with it and
-choosing the picture here, which the chooser makes one step. Only a native app shell would change this.
+* **Quick Pic and Video Note** open a small sheet with two ways: **Open the camera** and **Choose from gallery**.
+  * On Android, *Open the camera* launches the phone's own camera app — every lens and mode — through an Android
+    intent (`STILL_IMAGE_CAMERA` / `VIDEO_CAMERA`). A page can open that app but it cannot hand the shot back, so the
+    sheet waits; when the creator returns, it leads with *Choose the picture you just took*.
+  * On iPhone and desktop there is no door to the camera app, so *Open the camera* is the system's camera sheet
+    (the `capture` input) — the fullest the web gets there.
+* **Elsewhere** (the Scrapbook composer, CreatorSend's Camera, the Images page) no file input forces the limited
+  "take a photo for an app" mode any more; each opens the phone's chooser — camera or gallery.
+* Only a native app shell could return a picture straight from the camera app.
 
 ## Deliberately not built
 

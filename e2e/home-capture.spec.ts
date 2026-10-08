@@ -16,10 +16,17 @@ test.describe("Quick Capture", () => {
     // Capture comes first, above the Scrapbook.
     const [q, s] = await Promise.all([quick.boundingBox(), page.getByRole("region", { name: "My Scrapbook" }).boundingBox()]);
     expect(q!.y).toBeLessThan(s!.y);
-    // The phone's own chooser opens — camera or gallery (owner, 7 Oct 2026): nothing forces the camera's limited mode.
-    const pick = page.getByLabel("Take or choose a picture");
+    // Quick Pic offers two ways (owner, 8 Oct 2026): the camera — the phone's own camera app where there is one — or the gallery.
+    await quick.getByRole("button", { name: "Quick Pic" }).click();
+    const ways = page.getByRole("dialog", { name: "Quick Pic" });
+    await expect(ways.getByRole("button", { name: /Open the camera/ })).toBeVisible();
+    await expect(ways.getByRole("button", { name: /Choose from gallery/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // The gallery inputs never force the camera's limited mode; the camera inputs (where no camera app can be opened) do.
+    const pick = page.getByLabel("Choose a picture");
     await expect(pick).not.toHaveAttribute("capture");
-    await expect(page.getByLabel("Record or choose a video")).not.toHaveAttribute("capture");
+    await expect(page.getByLabel("Choose a video")).not.toHaveAttribute("capture");
+    await expect(page.getByLabel("Take a picture")).toHaveAttribute("capture", "environment");
     // Several pictures chosen from the gallery each land as a Material.
     const jpg = (r: number) => sharp({ create: { width: 800, height: 600, channels: 3, background: { r, g: 150, b: 90 } } }).jpeg().toBuffer();
     await pick.setInputFiles([
@@ -144,7 +151,7 @@ test.describe("Quick Capture", () => {
     await expect(capture(page).getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
     await capture(page).getByRole("button", { name: "Done" }).click();
     const jpg = await sharp({ create: { width: 640, height: 480, channels: 3, background: { r: 210, g: 160, b: 120 } } }).jpeg().toBuffer();
-    await page.getByLabel("Take or choose a picture").setInputFiles({ name: "kettle.jpg", mimeType: "image/jpeg", buffer: jpg });
+    await page.getByLabel("Choose a picture").setInputFiles({ name: "kettle.jpg", mimeType: "image/jpeg", buffer: jpg });
     await expect(page.getByRole("region", { name: "Quick Capture" }).getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
 
     // Newest first: the picture, the voice note (playable right here), the note.
