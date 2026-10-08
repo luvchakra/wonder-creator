@@ -58,11 +58,56 @@ collaborate step counts only ordinary Rooms (`projects.community_privacy is null
   begin card now does that job better. (The DejaVu-thread suggestion, a different insight, stays.)
 * Two outcome events, only for creators who turned on usage measures: `home_make_from_latest`, `home_together_opened`.
 
+## Onboarding: one screen (owner, 8 Oct 2026: "yes, shorten the onboarding")
+
+The wizard was six screens (welcome, about, creative world, style & voice, preferences, all set) before a creator saw
+Home. It is now **one**: a name and a handle — the two things people need to find each other — and *Enter your studio*.
+Everything the other screens asked is still asked, but where it matters and when the creator gets to it:
+
+| Was asked in the wizard | Lives now |
+|---|---|
+| Photo, short description, location | Profile / Settings › Profile |
+| Disciplines, skills, interests, languages | Settings › Identity |
+| Tone, writing style, visual style, what to preserve and avoid | Settings › Preferences |
+
+CreativeMind still learns from those answers — `seedProfileMemories` runs after each of those Settings saves (and once
+on entering the studio, for a creator who had answered an older wizard), each statement landing once, labelled "Your
+profile answers" in Creative Memory, where it can be edited or removed. A creator left partway through the old wizard
+sees the one screen, prefilled, and is in.
+
+## The next screen continues the activity (owner, 8 Oct 2026)
+
+> "the actions on a screen should always open next screen which can logically continue previous screens activity"
+
+Every primary action lands where the activity goes on — never back at a list, never at a dead end:
+
+| After… | The screen offers | Lands in |
+|---|---|---|
+| Quick Capture saved (note, voice, picture, video) | **Make something** (primary), Done | the Make a new Creation sheet with what was caught — words as the first draft, the Material as source; "Capture another" removed (the capture row is one tap away) |
+| Home, something caught, nothing made | **Make something** on the begin card | the same sheet |
+| Material page | **Use in creation** | the same sheet |
+| The sheet, a format chosen | — | that format's own page, the draft already there |
+| Sign-up | **Enter your studio** | Home, asking for one small thing |
+| Home, in a Community, no Room | **Make something with someone** | a new Creative Room, then the Room itself |
+| Contact, message sent | Done, Send another | — |
+
+Rule: a completed action's confirmation names the next step and opens it in one tap; viewing what was just made stays one
+tap away but is never the primary action.
+
+## The camera (owner, 8 Oct 2026: "any camera being opened should be the fully featured camera"; "quick pic and video note should have camera option as well, full fledged camera")
+
+* **Quick Pic and Video Note** open a small sheet with two ways: **Open the camera** and **Choose from gallery**.
+  * On Android, *Open the camera* launches the phone's own camera app — every lens and mode — through an Android
+    intent (`STILL_IMAGE_CAMERA` / `VIDEO_CAMERA`). A page can open that app but it cannot hand the shot back, so the
+    sheet waits; when the creator returns, it leads with *Choose the picture you just took*.
+  * On iPhone and desktop there is no door to the camera app, so *Open the camera* is the system's camera sheet
+    (the `capture` input) — the fullest the web gets there.
+* **Elsewhere** (the Scrapbook composer, CreatorSend's Camera, the Images page) no file input forces the limited
+  "take a photo for an app" mode any more; each opens the phone's chooser — camera or gallery.
+* Only a native app shell could return a picture straight from the camera app.
+
 ## Deliberately not built
 
-* **A shorter onboarding.** Only name and handle are required today and the other steps skip; changing what the wizard
-  collects changes what CreativeMind learns, which is the owner's call. Recommendation: after name and handle, go
-  straight to Home and ask the rest (style, boundaries) where it matters, in Creative Memory.
 * A "getting started" checklist, a tour, tooltips, empty-state illustrations for every page, notifications nagging
   about steps, or a share step of its own (sharing lives in Scrapbook and on the Creation).
 

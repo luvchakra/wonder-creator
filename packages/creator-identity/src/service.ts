@@ -87,13 +87,13 @@ export async function saveAbout(db: Db, creatorId: string, raw: unknown) {
     .update({
       display_name: input.displayName,
       handle: input.handle,
-      bio: input.bio || null,
-      location: input.location || null,
-      show_location: input.showLocation,
+      ...(input.bio !== undefined ? { bio: input.bio || null } : {}),
+      ...(input.location !== undefined ? { location: input.location || null } : {}),
+      ...(input.showLocation !== undefined ? { show_location: input.showLocation } : {}),
     })
     .eq("id", creatorId);
   if (res.error) throw fromDbError(res.error);
-  await replaceFacet(db, "creator_languages", creatorId, input.languages);
+  if (input.languages !== undefined) await replaceFacet(db, "creator_languages", creatorId, input.languages);
   await publishEvent(db, { type: "CreatorUpdated", aggregate: "creator", aggregateId: creatorId, payload: { section: "about" } });
 }
 

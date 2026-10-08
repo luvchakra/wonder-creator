@@ -1,9 +1,10 @@
 "use client";
-import { Button, Dialog, DialogContent, KIT, Textarea, cn } from "@wonder/ui";
+import { Button, Dialog, DialogContent, KIT, KitSparklesIcon, Textarea, cn } from "@wonder/ui";
 import type { DejaVu } from "@wonder/creator-moments/shared";
-import { ArrowRight, Camera, Check, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
-import Link from "next/link";
+import { ArrowRight, Camera, Check, Images, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { CreationSource } from "@/components/new-creation-sheet";
 import { useStripSignal } from "@/components/creative-palette";
 import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
 import { api, errorMessage } from "@/lib/client";
@@ -12,6 +13,9 @@ import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { trackClient } from "@/lib/track";
 import { CAPTURED_EVENT } from "./my-captures";
+
+// The next screen after catching something is making something from it (start-small.md): the same sheet as Create.
+const NewCreationSheet = dynamic(() => import("@/components/new-creation-sheet").then((m) => m.NewCreationSheet), { ssr: false });
 
 /**
  * Quick Capture (docs/phases/02-home-quick-capture.md §6–7, §17): a quick note or a voice note in seconds. Capture
@@ -122,6 +126,22 @@ export function QuickCapture() {
   }, [flush, strip]);
 
   const { status } = useCaptureStatus(saved?.materialId ?? null);
+  // "Make something": the sheet opens with what was just caught — its words as the first draft, the Material as source.
+  const [making, setMaking] = useState<CreationSource | null>(null);
+  const [makeBusy, setMakeBusy] = useState(false);
+  async function makeFrom(materialId: string) {
+    if (makeBusy) return;
+    setMakeBusy(true);
+    try {
+      const r = await api<{ material: { text_content: string | null; extracted_text: string | null } }>(`/api/v1/materials/${materialId}`);
+      setOpen(false);
+      setMaking({ materialId, text: (r.material.text_content ?? r.material.extracted_text ?? "").trim() });
+    } catch (e) {
+      strip("capture", { text: errorMessage(e), tone: "warning", priority: PRIORITY.offline });
+    } finally {
+      setMakeBusy(false);
+    }
+  }
   const begin = (which: "text" | "voice") => {
     setTab(which);
     setSavedInSheet(false);
@@ -146,14 +166,47 @@ export function QuickCapture() {
   // the bytes and sends big files browser → storage directly). Several can be chosen from the gallery at once.
   const picRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
+  const camPicRef = useRef<HTMLInputElement>(null);
+  const camVideoRef = useRef<HTMLInputElement>(null);
   const [media, setMedia] = useState<{ kind: "photo" | "video"; error?: string } | null>(null);
+  // Quick Pic / Video Note (owner, 8 Oct 2026: "should have camera option as well, full fledged camera"): a small sheet
+  // with two ways — the camera, or the gallery. On Android the camera is the phone's own camera app (every lens and
+  // mode), which a page can open but which can't hand the shot back: so the sheet waits, and when the creator returns
+  // it leads with "Choose what you just took". Elsewhere (iPhone, desktop) "the camera" is the system's camera sheet.
+  const [mediaSheet, setMediaSheet] = useState<{ kind: "photo" | "video"; back: boolean } | null>(null);
+  const awaitingCamera = useRef(false);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && awaitingCamera.current) {
+        awaitingCamera.current = false;
+        setMediaSheet((s) => (s ? { ...s, back: true } : s));
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+  function openCamera(kind: "photo" | "video") {
+    if (/android/i.test(navigator.userAgent)) {
+      awaitingCamera.current = true;
+      // The camera app itself (not the cut-down "take a photo for an app" mode); the picture lands in the gallery.
+      window.location.assign(kind === "photo" ? "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end" : "intent:#Intent;action=android.media.action.VIDEO_CAMERA;end");
+      return;
+    }
+    setMediaSheet(null);
+    (kind === "photo" ? camPicRef : camVideoRef).current?.click();
+  }
+  function openGallery(kind: "photo" | "video") {
+    setMediaSheet(null);
+    (kind === "photo" ? picRef : videoRef).current?.click();
+  }
   function start(key: "text" | "voice" | "photo" | "video") {
     if (key === "text" || key === "voice") begin(key);
-    else (key === "photo" ? picRef : videoRef).current?.click();
+    else setMediaSheet({ kind: key, back: false });
   }
   async function captureMedia(kind: "photo" | "video", list: FileList | null) {
     const files = Array.from(list ?? []).slice(0, 10);
     if (!files.length) return;
+    setMediaSheet(null);
     const limit = (kind === "video" ? 100 : 20) * 1024 * 1024;
     const fits = files.filter((f) => f.size <= limit);
     if (!fits.length) {
@@ -202,7 +255,7 @@ export function QuickCapture() {
         ).map(({ key, label, Icon }) => {
           const busy = media?.kind === key && !media.error;
           return (
-            <button key={key} type="button" onClick={() => start(key)} disabled={busy} aria-haspopup={key === "text" || key === "voice" ? "dialog" : undefined} className="group min-h-11">
+            <button key={key} type="button" onClick={() => start(key)} disabled={busy} aria-haspopup="dialog" className="group min-h-11">
               <span className="flex h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-surface/90 text-[12.5px] font-medium text-ink shadow-[var(--shadow-card)] transition-transform duration-150 group-hover:bg-surface group-active:scale-95 group-disabled:opacity-60 motion-reduce:transition-none">
                 <Icon className={cn("size-[18px] text-accent", busy && "animate-pulse motion-reduce:animate-none")} aria-hidden />
                 {label}
@@ -211,32 +264,67 @@ export function QuickCapture() {
           );
         })}
       </div>
-      <input ref={picRef} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Take or choose a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
-      <input ref={videoRef} type="file" accept="video/*" multiple className="sr-only" tabIndex={-1} aria-label="Record or choose a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
+      {/* Gallery (several at once) and, where the phone has no camera app to open, the system's camera sheet. */}
+      <input ref={picRef} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
+      <input ref={videoRef} type="file" accept="video/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
+      <input ref={camPicRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
+      <input ref={camVideoRef} type="file" accept="video/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Record a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
+      <Dialog open={!!mediaSheet} onOpenChange={(o) => !o && setMediaSheet(null)}>
+        <DialogContent title={mediaSheet?.kind === "video" ? "Video Note" : "Quick Pic"} art={mediaSheet?.kind === "video" ? KIT.iconChip.video : KIT.iconChip.camera}>
+          {mediaSheet ? (
+            <div className="space-y-2">
+              {mediaSheet.back ? (
+                <p role="status" className="px-1 text-[13.5px] text-ink-muted">
+                  Back from the camera? Choose what you just took.
+                </p>
+              ) : null}
+              {(mediaSheet.back ? (["gallery", "camera"] as const) : (["camera", "gallery"] as const)).map((way) => {
+                const camera = way === "camera";
+                const Icon = camera ? Camera : Images;
+                return (
+                  <button
+                    key={way}
+                    type="button"
+                    onClick={() => (camera ? openCamera(mediaSheet.kind) : openGallery(mediaSheet.kind))}
+                    className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border-soft bg-surface p-3 text-left hover:border-accent/50 hover:bg-accent-softer"
+                  >
+                    <Icon className="size-5 shrink-0 text-accent" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-medium text-ink">{camera ? "Open the camera" : mediaSheet.back ? (mediaSheet.kind === "video" ? "Choose the video you just took" : "Choose the picture you just took") : "Choose from gallery"}</span>
+                      <span className="block text-[12px] text-ink-subtle">{camera ? (mediaSheet.kind === "video" ? "Record with the phone\u2019s camera, then come back and choose it" : "Shoot with the phone\u2019s camera, then come back and choose it") : "Pictures and videos already on your phone"}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       {media ? (
         <p role={media.error ? "alert" : "status"} className={cn("px-1 text-[13px]", media.error ? "text-danger" : "text-ink-muted")}>
           {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}
         </p>
       ) : null}
-      {/* After the sheet closes, a quiet line says it's safe. */}
+      {/* After the sheet closes, a quiet line says it's safe — and offers the next step (the Material itself is in My captures, just below). */}
       <p role="status" className="px-1 text-[13px] text-ink-muted">
         {!open && savedLine ? (
           <span className="flex items-center gap-1.5">
             <Check className="size-4 shrink-0 text-success" aria-hidden />
             <span className="min-w-0 flex-1">{savedLine}</span>
             {saved?.materialId ? (
-              <Link href={`/materials/${saved.materialId}`} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline">
-                Open
-              </Link>
+              <button type="button" aria-haspopup="dialog" disabled={makeBusy} onClick={() => void makeFrom(saved.materialId!)} className="inline-flex min-h-11 items-center font-medium text-accent-ink hover:underline disabled:opacity-60">
+                Make something
+              </button>
             ) : null}
           </span>
         ) : null}
       </p>
+      {making ? <NewCreationSheet open onOpenChange={(o) => !o && setMaking(null)} from={making} /> : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Quick Capture" art={KIT.iconChip.pencil}>
           {!open ? null : savedInSheet && saved ? (
-            <SavedPanel saved={saved} line={savedLine ?? ""} onDone={() => setOpen(false)} onAnother={() => setSavedInSheet(false)} />
+            <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
           ) : (
             <div className="space-y-3">
               <div role="tablist" aria-label="Capture" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
@@ -268,7 +356,7 @@ export function QuickCapture() {
 }
 
 /** Saved: a quiet confirmation, then — only if they arrive — DejaVu suggestions to accept or ignore, and "+ Add". */
-function SavedPanel({ saved, line, onDone, onAnother }: { saved: Saved; line: string; onDone: () => void; onAnother: () => void }) {
+function SavedPanel({ saved, line, busy, onDone, onMake }: { saved: Saved; line: string; busy: boolean; onDone: () => void; onMake: (() => void) | null }) {
   const { status, drop } = useCaptureStatus(saved.materialId);
   const [attached, setAttached] = useState<DejaVu[]>([]);
   const [momentId, setMomentId] = useState<string | null>(null);
@@ -350,13 +438,16 @@ function SavedPanel({ saved, line, onDone, onAnother }: { saved: Saved; line: st
         </section>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2">
-        <Button type="button" variant="ghost" onClick={onAnother}>
-          Capture another
-        </Button>
-        <Button type="button" onClick={onDone}>
+      {/* The next step is making something from this (start-small.md); Done just closes. Capturing another is one tap away on Home. */}
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onDone}>
           Done
         </Button>
+        {onMake ? (
+          <Button type="button" loading={busy} aria-haspopup="dialog" onClick={onMake}>
+            <KitSparklesIcon size={16} /> Make something
+          </Button>
+        ) : null}
       </div>
     </div>
   );
