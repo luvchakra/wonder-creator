@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, ContextStrip, KIT, KitArt, Logo, cn, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@wonder/ui";
-import { Brain, FolderKanban, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings } from "lucide-react";
+import { Brain, FolderKanban, LifeBuoy, LogOut, Megaphone, Wallet, NotebookPen, Send, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -83,6 +83,9 @@ export function AppNav({ me }: { me: { name: string; handle: string | null; avat
                   <MenuSeparator />
                   <MenuItem onSelect={() => router.push("/settings")}>
                     <Settings className="size-4 text-ink-subtle" aria-hidden /> Settings
+                  </MenuItem>
+                  <MenuItem onSelect={() => router.push("/help")}>
+                    <LifeBuoy className="size-4 text-ink-subtle" aria-hidden /> Get help
                   </MenuItem>
                   <MenuItem onSelect={signOut}>
                     <LogOut className="size-4 text-ink-subtle" aria-hidden /> Sign out
