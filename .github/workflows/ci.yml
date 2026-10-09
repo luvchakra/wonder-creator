@@ -11,13 +11,16 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   schedule:
     - cron: "41 21 * * *" # 03:11 IST
   workflow_dispatch:
 
+# A new push to a PR cancels that PR's older run. Pushes to main are never cancelled (each merged commit keeps its
+# result and saves the caches), and the event name keeps a nightly run from cancelling a merge's run.
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege for the workflow token.
 permissions:
@@ -61,11 +64,15 @@ jobs:
           if has '^\.github/workflows/ci\.yml$'; then code=true; db=true; fi
           printf 'code=%s\ndb=%s\ne2e=%s\n' "$code" "$db" "$e2e" | tee -a "$GITHUB_OUTPUT"
 
-  check:
-    name: Lint, typecheck, unit tests, build
+  # The merge gate, as four jobs at once (learned from WonderJobs, docs/performance.md › Build and deploy): the gate takes
+  # as long as the slowest, not the sum. Each tool keeps its cache — restored on every run, saved from main — so a warm
+  # run is mostly `npm ci`.
+  lint:
+    name: Lint
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -73,16 +80,84 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Turbopack's build cache and TypeScript's incremental state (docs/performance.md › Build and deploy): restored
-      # on every run, saved from main, so a build compiles only what changed.
+      # ESLint's own cache, keyed on file content (a fresh checkout changes every mtime): unchanged files reuse their result.
+      - uses: actions/cache/restore@v4
+        with:
+          path: apps/web/.next/cache/eslint
+          key: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-
+      - run: npx eslint . --cache --cache-strategy content --cache-location apps/web/.next/cache/eslint/
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: apps/web/.next/cache/eslint
+          key: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-${{ github.sha }}
+
+  typecheck:
+    name: Typecheck
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # tsc's incremental state for both projects (packages + tests, and the app): file versions are content hashes,
+      # so it is safe across checkouts. This is the only type check: `next build` skips its own on CI and Vercel.
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            tsconfig.tsbuildinfo
+            apps/web/tsconfig.tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
+          restore-keys: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-
+      - run: npm run typecheck
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: |
+            tsconfig.tsbuildinfo
+            apps/web/tsconfig.tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
+
+  test:
+    name: Unit tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  build:
+    name: Build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Turbopack's build cache: restored on every run, saved from main, so a build compiles only what changed.
       - uses: actions/cache/restore@v4
         with:
           path: apps/web/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
           restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
       - run: npm run build
         env:
           # Placeholders so the build doesn't depend on real credentials.
@@ -93,6 +168,22 @@ jobs:
         with:
           path: apps/web/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+
+  # One result under the gate's long-standing name, so a branch rule that requires it keeps working: passes when the four
+  # passed, or weren't needed (skipped); fails on any failure or cancellation.
+  check:
+    name: Lint, typecheck, unit tests, build
+    needs: [lint, typecheck, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All passed (or not needed)
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Jobs: $RESULTS"
+          for r in $RESULTS; do case "$r" in success|skipped) ;; *) exit 1 ;; esac; done
 
   db:
     name: Database security (RLS) tests
