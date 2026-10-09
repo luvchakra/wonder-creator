@@ -154,7 +154,16 @@ What the caches are worth, measured on the same machine (one run cold, one run w
 | `tsc` root project (incremental) | 30 s | 4 s |
 | `tsc` apps/web (incremental) | 41 s | 4 s |
 
-Measured after on CI: filled in below once the first runs with saved caches are in.
+Measured after on CI (the gate is "What changed" starting → the summary job finishing):
+
+| Run | Lint | Typecheck | Unit tests | Build | **Gate** |
+|---|---|---|---|---|---|
+| PR #175 (nothing cached yet) | 76 s | 77 s | 28 s | 30 s | **1 min 30 s** |
+| Merge of #175 to `main` (Turbopack cache warm, ESLint/tsc cold) | 50 s | 53 s | 33 s | 48 s | **1 min 06 s** |
+
+Each job's time includes its own checkout and `npm ci` (about 20 s). `main` saved the ESLint and tsc caches on that
+merge, so the next code PR is the first run that restores them — WonderJobs lands at 46–54 s on the same shape. The
+production deploy for the merge went build start → live in 55 s.
 
 ### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime" · "skip e2e after merge too, only nightly")
 
