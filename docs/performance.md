@@ -122,6 +122,40 @@ What changed:
 
 Not changed: the Vercel build cache upload happens after the deployment is live; with no previews nothing queues behind it.
 
+### Learned from WonderJobs (owner, 9 Oct 2026: "the build and deploy time are really good for wonderjobs, learn from it")
+
+Compared on each project's latest merge. Vercel was already level — WonderJobs' production deploy went build start →
+live in 66 s, ours in 60 s (both skip the TypeScript pass; we build no previews at all). The difference was the CI gate:
+ours ran lint, typecheck, unit tests and build **one after another in one job**:
+
+| Our gate before (merge of #173) | |
+|---|---|
+| `npm ci` | 17 s |
+| lint | 41 s |
+| typecheck (`next typegen` + two `tsc`) | 51 s |
+| unit tests | 9 s |
+| build (Turbopack cache warm) | 8 s |
+| **Whole job** | **2 min 31 s** |
+
+WonderJobs runs those as four parallel jobs with a cache per tool and measures 46–54 s warm. Adopted the same:
+* **Four jobs at once** (Lint, Typecheck, Unit tests, Build); the gate takes as long as the slowest. A summary job keeps
+  the name "Lint, typecheck, unit tests, build" so any branch rule still finds it.
+* **ESLint's cache** (content strategy, `apps/web/.next/cache/eslint`) and **tsc's incremental state** for both
+  projects (`tsconfig.tsbuildinfo`, root `tsconfig.json` is `incremental` now), restored every run, saved from `main`.
+* **Concurrency:** a new push cancels only that PR's older run; merges to `main` never cancel each other.
+* **The `e2e` label starts its run at once** (`labeled` event), not on the next push.
+* **Vercel skips a production merge that changes only docs, CI files or tests** (`vercel-ignore-build.sh`).
+
+What the caches are worth, measured on the same machine (one run cold, one run with the cache in place):
+
+| Tool | Cold | Warm |
+|---|---|---|
+| ESLint (content cache) | 68 s | 2 s |
+| `tsc` root project (incremental) | 30 s | 4 s |
+| `tsc` apps/web (incremental) | 41 s | 4 s |
+
+Measured after on CI: filled in below once the first runs with saved caches are in.
+
 ### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime" · "skip e2e after merge too, only nightly")
 
 | Event | Lint · typecheck · unit · build | RLS tests | End-to-end |
@@ -134,7 +168,7 @@ Not changed: the Vercel build cache upload happens after the deployment is live;
 
 * A job that isn't needed is **skipped**, which counts as passing, so required checks keep working. If what changed
   can't be worked out, everything runs.
-* **End-to-end on demand:** add the `e2e` label to a PR (it's read on the next push), or Actions › CI › Run workflow on
+* **End-to-end on demand:** add the `e2e` label to a PR (its run starts at once), or Actions › CI › Run workflow on
   the branch. Use it for risky changes: sign-in, payments, rights, uploads, the Palette.
 * **When end-to-end fails on `main`** (overnight or a manual run), CI opens one issue, "End-to-end tests failing on
   main", and comments on it while it keeps failing. Fix forward, or roll back in Vercel (the previous production
