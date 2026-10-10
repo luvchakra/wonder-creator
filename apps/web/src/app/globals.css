@@ -47,6 +47,11 @@
   0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--tilt, 0deg)); }
   50% { transform: translate3d(0, -7px, 0) rotate(var(--tilt, 0deg)); }
 }
+/* Install banner: opens its own height at the top, pushing the page down rather than jumping it. */
+@keyframes install-in {
+  from { grid-template-rows: 0fr; opacity: 0; }
+  to { grid-template-rows: 1fr; opacity: 1; }
+}
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
