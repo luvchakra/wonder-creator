@@ -4,7 +4,8 @@ name: CI
 #   pull request   lint, typecheck, unit tests, build · RLS tests only when the database changes (or this file) ·
 #                  end-to-end only when the PR has the `e2e` label (read on each push) · nothing for docs-only changes
 #   push to main   the same, without end-to-end (owner, 7 Oct 2026: "skip e2e after merge too, only nightly")
-#   nightly        the full end-to-end and RLS suites — the only automatic end-to-end run
+#   nightly        the full end-to-end and RLS suites — the only automatic end-to-end run; skipped when main hasn't
+#                  changed since the last nightly (owner's build-slot budget, 10 Oct 2026)
 #   manual         everything, on any branch (Actions › CI › Run workflow) — end-to-end on demand
 # A job that doesn't need to run is skipped, which counts as passing for required checks.
 on:
@@ -25,6 +26,7 @@ concurrency:
 # Least privilege for the workflow token.
 permissions:
   contents: read
+  actions: read # the nightly reads which commit the last nightly ran on
 
 jobs:
   changes:
@@ -44,9 +46,22 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           E2E_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'e2e') }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           all() { echo "code=true"; echo "db=true"; echo "e2e=true"; }
+          none() { echo "code=false"; echo "db=false"; echo "e2e=false"; }
+          # Nightly: nothing to learn if main hasn't changed since the last nightly (green or not — a failure is
+          # looked into, never re-run hoping it passes). Manual runs always run everything.
+          if [ "$EVENT" = "schedule" ]; then
+            last="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?event=schedule&branch=main&status=completed&per_page=5" \
+                    --jq "[.workflow_runs[] | select(.id != $RUN_ID)][0].head_sha // empty" 2>/dev/null || true)"
+            if [ -n "$last" ] && [ "$last" = "$HEAD" ]; then
+              echo "main is still $HEAD, which the last nightly already ran on — skipping."
+              none >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          fi
           # Nightly, manual, or no usable base (a new branch): run everything.
           if [ "$EVENT" = "schedule" ] || [ "$EVENT" = "workflow_dispatch" ] || [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
              || ! files="$(git diff --name-only "$BASE...$HEAD")"; then

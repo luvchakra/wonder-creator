@@ -364,6 +364,31 @@ For every screen:
 11. Screenshot-test at 320/360/390/430/480px and a representative desktop viewport.
 12. Do not mark complete until density **and aesthetics** have been visually reviewed against the board.
 
+## Build-slot budget (owner's standing instruction, 10 Oct 2026)
+
+Vercel counts every deployment it **creates** against the plan's daily cap (100 on the free plan), including one the
+ignored build step cancels. Running out blocks production, so deployments are a budget, production first. Contract and
+the numbers: `docs/performance.md` › Build-slot budget.
+
+* **Create no deployment you don't need.** Only `main` deploys (`apps/web/vercel.json` › `git.deploymentEnabled`,
+  every other branch off at the platform level); no previews; never link a second Vercel project to the repository.
+  The ignore script is a backstop, not a saving — a skipped build still used a slot.
+* **One merge to `main` = one deployment, so merge in bigger pieces.** Squash-merge; docs, `docs/progress.md`, Help
+  topics and tests go in the same PR as the code they describe. **No docs-only PRs** — hold a doc change for the next
+  code PR that touches the area (a docs-only merge still creates and cancels a deployment).
+* **Tests never spend a slot.** End-to-end and RLS suites run on GitHub Actions against a local app, never against a
+  deployment. End-to-end before a merge only for security-sensitive changes (auth, permissions, database rules,
+  payments, integrations) via the `e2e` label; everything else waits for the nightly, which skips when `main` hasn't
+  changed since the last nightly. Never re-run a failed run hoping it passes; find the cause first.
+* **Verify before pushing so there are no fix-up pushes:** lint, typecheck, the touched unit tests and a local build;
+  push a branch once, when it's ready.
+* **Watch the budget.** Before deployment-heavy work count the last day's deployments: `git log origin/main
+  --since='24 hours ago' --oneline | wc -l` (each merge is one). Above ~70 of 100, stop docs-only merges and anything
+  that isn't production or a hotfix.
+* **When the cap is hit:** stop pushing to `main` (refused deployments are not queued), wait until the oldest counted
+  deployment is 24 hours old, redeploy only the latest `main`, once. A "rate limited" status is infrastructure, not a
+  test failure.
+
 ## Commands
 
 * `npm run dev` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run build`

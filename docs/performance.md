@@ -165,6 +165,23 @@ Each job's time includes its own checkout and `npm ci` (about 20 s). `main` save
 merge, so the next code PR is the first run that restores them — WonderJobs lands at 46–54 s on the same shape. The
 production deploy for the merge went build start → live in 55 s.
 
+### Build-slot budget (owner, 10 Oct 2026)
+
+Vercel counts every deployment it creates against the plan's daily cap — 100 a day on the free plan — including one the
+ignored build step cancels. The rules are in `CLAUDE.md` › Build-slot budget; this is where Wonder Creator stands.
+
+| | |
+|---|---|
+| Branches that deploy | `main` only (`vercel.json` › `git.deploymentEnabled`: `*` and `**` off, `main` on); no previews |
+| Deployments a merge creates | one (production), skipped by `vercel-ignore-build.sh` when only docs, CI files or tests changed — the slot is still spent |
+| Tests on the platform | none: unit, RLS and end-to-end all run on GitHub Actions against a local app |
+| Nightly suite | 03:11 IST; skipped when `main` is the commit the last nightly already ran on |
+| Merges to `main`, 3–10 Oct 2026 | 1 · 11 · 11 · 7 · 9 · 2 · 5 · 1 a day — the peak is 11 % of the cap |
+
+Counting: each merge to `main` is one deployment, so `git log origin/main --since='24 hours ago' --oneline | wc -l` is
+the day's count without opening Vercel. Lesson already paid for: #176 (docs only) created and cancelled a deployment —
+record numbers in the PR that produced them instead.
+
 ### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime" · "skip e2e after merge too, only nightly")
 
 | Event | Lint · typecheck · unit · build | RLS tests | End-to-end |
@@ -173,7 +190,7 @@ production deploy for the merge went build start → live in 55 s.
 | Pull request, docs/Markdown only | — | — | — |
 | Pull request changing `.github/workflows/ci.yml` | ✓ | ✓ | only with the `e2e` label |
 | Merge to `main` | ✓ | if the database changed | — |
-| Nightly (03:11 IST) and manual runs | ✓ | ✓ | ✓ — the only automatic end-to-end run |
+| Nightly (03:11 IST) and manual runs | ✓ | ✓ | ✓ — the only automatic end-to-end run; the nightly is skipped when `main` hasn't changed since the last one |
 
 * A job that isn't needed is **skipped**, which counts as passing, so required checks keep working. If what changed
   can't be worked out, everything runs.
