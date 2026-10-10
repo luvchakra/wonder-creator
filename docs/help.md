@@ -11,7 +11,7 @@ works from the keyboard and without scripts):
 
 | Section | Topics |
 | --- | --- |
-| Getting started | Your first five minutes · Signing in and account security · Finding your way around · Words we use |
+| Getting started | Your first five minutes · Signing in and account security · Finding your way around · Putting it on your home screen · Words we use |
 | Capturing and keeping | Quick Capture · Bringing in files, links and text · Finding and organising Materials · DejaVu · Scrapbook · Connecting your own sources · Creative Memory |
 | Making a Creation | Starting a Creation · The Working Table (sources, pins, Use together) · Writing · Carousels · Images · Audio · Video · Presentations · Versions · Changing format |
 | CreativeMind and AI | What it does · You decide what it may do (autonomy and approvals) · Using your own AI key |

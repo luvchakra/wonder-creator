@@ -114,6 +114,24 @@ export const HELP_SECTIONS: HelpSection[] = [
         ],
       },
       {
+        slug: "home-screen",
+        title: "Putting Wonder Creator on your home screen",
+        summary: "On a phone or tablet, install it so it opens full screen from its own icon, one tap away.",
+        keywords: ["install", "app", "home screen", "add to home screen", "icon", "phone", "tablet", "iphone", "ipad", "android", "shortcut", "full screen"],
+        body: [
+          "On a phone or tablet, a small band at the top of the page offers to install Wonder Creator when your browser can. It opens from its own icon, full screen, straight to Home, so a quick note is a tap away.",
+          "It still needs a connection, as it does in the browser. Your work is the same wherever you open it.",
+        ],
+        steps: [
+          "On Android (Chrome, Edge, Samsung Internet and others), choose Install in the band, then confirm. You can also use your browser’s menu: Install app or Add to Home screen.",
+          "On iPhone or iPad, choose How to in the band: tap Share (in Safari it may be under •••), then Add to Home Screen. Choose I’ve added it once it’s there.",
+        ],
+        notes: [
+          "Not now hides the band for two weeks. Once it’s installed, the band doesn’t come back on that browser.",
+          "The band never appears on a computer, inside another app’s built-in browser, or once you’re using the installed app.",
+        ],
+      },
+      {
         slug: "words-we-use",
         title: "Words we use",
         summary: "Materials, Creations, CreativeMind, Pulse and the rest, in a line each.",
