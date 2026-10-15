@@ -1,7 +1,7 @@
 import "server-only";
 import { mediaLink } from "@wonder/core/server";
 import { normalizeSections, resolveTemplateId, type CreatorPageTemplateId } from "@wonder/creator-studio/creator-page";
-import { previewPublication } from "@wonder/creator-studio";
+import { previewPublication, savedPublishedWork } from "@wonder/creator-studio";
 import type { PublicRights, PublicationManifest, PublicationVisibility, PublishSettings, PublishedSnapshot } from "@wonder/creator-studio/publish";
 import { headers } from "next/headers";
 import { createClient } from "./supabase/server";
@@ -143,6 +143,20 @@ export async function loadPublicWork(handle: string, slug: string): Promise<Publ
     },
     true,
   );
+}
+
+/**
+ * Who is reading a published work, when that matters (§21): a signed-in creator who isn't its author, with what they
+ * already saved from it. Signed out, or the author themself → null, and the page offers nothing extra.
+ */
+export async function publicVisitor(work: PublicWorkView): Promise<{ savedId: string | null } | null> {
+  if (work.preview) return null;
+  const db = await createClient();
+  const { data: claims } = await db.auth.getClaims();
+  if (!claims?.claims?.sub) return null;
+  const { data: me } = await db.from("creators").select("id, handle").eq("user_id", claims.claims.sub as string).maybeSingle();
+  if (!me || me.handle === work.creator.handle) return null;
+  return { savedId: await savedPublishedWork(db, me.id, work.workId).catch(() => null) };
 }
 
 export interface PublicCreatorPage {

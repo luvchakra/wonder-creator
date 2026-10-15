@@ -535,7 +535,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         slug: "publish-a-page",
         title: "Publishing a Creation as a page",
         summary: "Publish a Creation as a page of its own, shown on your Creator Page or only to people with the link.",
-        keywords: ["publish", "publish as link", "published", "public", "visibility", "unpublish", "take it down", "address", "slug", "update", "treatment", "cover", "preview", "handle"],
+        keywords: ["publish", "publish as link", "published", "public", "visibility", "unpublish", "take it down", "address", "slug", "update", "treatment", "cover", "preview", "handle", "save", "save reference", "bookmark"],
         steps: [
           "Open the Creation and choose Preview to see it as readers will, then Publish as link. The longer Publish page has more choices.",
           "Decide where it shows: Private, Anyone with the link, or Public on my page. “Show on my Creator Page” is off until you turn it on.",
@@ -548,6 +548,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "A link shows the latest saved version. If you see “You have unsaved words”, choose Save a version first.",
           "Published pages show no counts — no likes, followers or views.",
           "Rights stay as you set them. Being public doesn’t give anyone the right to reuse the work.",
+          "Signed in and reading someone else’s published work? Choose Save beside Share to keep it in your Materials as a link to their page, with their name on it. It stays their work: you can bring it into the Studio as a reference, but it isn’t copied into what you make. They aren’t told, and nothing is counted.",
         ],
         links: [{ label: "Publishing", href: "/publishing" }],
       },

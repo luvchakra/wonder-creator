@@ -102,3 +102,13 @@ describe("Working Set rules", () => {
     expect(o.map((x) => x.intent)).toEqual(["constraint", "mood", "reference"]);
   });
 });
+
+describe("rights of a saved published work", () => {
+  it("someone else's published work, saved from its page, is reference only and keeps its credit", async () => {
+    const { materialRights } = await import("./working-set");
+    const saved = { creator_id: "me", type: "url", source_type: "published_work", metadata: { published: { creatorName: "Maya Rao" } } };
+    expect(materialRights(saved, "me")).toEqual({ rights: "reference_only", attribution: "By Maya Rao · Wonder Creator" });
+    // A link the creator saved themself is still reference only, with no credit invented.
+    expect(materialRights({ creator_id: "me", type: "url", source_type: "web", metadata: {} }, "me")).toEqual({ rights: "reference_only" });
+  });
+});
