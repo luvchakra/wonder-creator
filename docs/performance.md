@@ -172,7 +172,7 @@ ignored build step cancels. The rules are in `CLAUDE.md` › Build-slot budget; 
 
 | | |
 |---|---|
-| When `main` changes | only when the owner says "merge now" or "build now" — every green Claude PR waiting at that moment is merged then, and not before (`CLAUDE.md` › Build-slot budget › Merging waits for the owner, 10 Oct 2026) |
+| When `main` changes | when a Claude PR is green and conflict-free it is squash-merged automatically, one per finished piece of work (`CLAUDE.md` › Build-slot budget › Merge automatically when green, owner, 15 Oct 2026; replaces the "merge now" / "build now" gate of 10 Oct) |
 | Branches that deploy | `main` only (`vercel.json` › `git.deploymentEnabled`: `*` and `**` off, `main` on); no previews |
 | Deployments a merge creates | one (production), skipped by `vercel-ignore-build.sh` when only docs, CI files or tests changed — the slot is still spent |
 | Tests on the platform | none: unit, RLS and end-to-end all run on GitHub Actions against a local app |
