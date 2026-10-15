@@ -328,10 +328,11 @@ export const HELP_SECTIONS: HelpSection[] = [
         slug: "writing",
         title: "Writing",
         summary: "Write on the page, hear it read back, refine it with suggestions, and save versions when you’re ready.",
-        keywords: ["writing", "write", "poem", "story", "article", "essay", "script", "draft", "autosave", "cover", "ornament", "read aloud", "export", "markdown", "save version", "refine"],
+        keywords: ["writing", "write", "poem", "story", "article", "essay", "script", "draft", "autosave", "cover", "ornament", "read aloud", "export", "markdown", "save version", "refine", "undo", "redo"],
         steps: [
           "Open a Writing Creation and choose Write to start typing. Choose Done to set the words back on their paper.",
           "Your words are saved as a draft while you write; the top bar says “Autosaved”.",
+          "Changed your mind? Undo and Redo sit beside Done while you write (or press Ctrl+Z and Ctrl+Shift+Z, ⌘ on a Mac). They also take back a revision you kept or a draft that was brought back; versions you saved stay as they are.",
           "Choose More for the rest: Read it on its own, Publish as link, Refine with CreativeMind, Export, Share privately, Save version, Versions, Change format and Rights.",
           "Poems, lyrics, stories and scripts each get tools of their own, such as lines and stanzas for a poem, and a cover and a Roman-style ornament to dress the page. For written pieces you can also have it read aloud by your device.",
           "Export gives you the words as Markdown, plain text or a web page. Screenplays can also be exported in Fountain.",
