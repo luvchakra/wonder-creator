@@ -80,6 +80,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
         ? [{ id: "related", label: "Find related", icon: "search", class: "context", target: route(`/explore?q=${encodeURIComponent(f.related)}`), score: 85 }]
         : [];
       const collect: PaletteItem = { id: "collect", label: "Add to Collection", icon: "images", class: "context", target: route(`/materials/${m}#collections`), score: 80 };
+      const room: PaletteItem = { id: "room", label: "Add to a Creative Room", icon: "people", class: "collaboration", target: route(`/materials/${m}#rooms`), score: 40, requires: "edit" };
       const explore: PaletteItem = { id: "explore", label: "Explore possibilities", icon: "compass", class: "create", target: route(`/create/discover?material=${m}`), score: 75 };
       const byKind: PaletteItem[] =
         ctx.entityType === "audio"
@@ -88,7 +89,7 @@ export function rulesFor(ctx: PaletteContext): Rules {
             ? [{ ...explore, id: "ideas", label: "Extract ideas", score: 90 }]
             : [];
       // Fewer buttons (owner, 4 Oct 2026): the page shows Use in creation and Details, so neither is repeated here.
-      return { title: "This Material", items: [...byKind, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), ...related, collect] };
+      return { title: "This Material", items: [...byKind, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), ...related, collect, room] };
     }
 
     case "collection":
@@ -432,7 +433,7 @@ function creationItems(ctx: PaletteContext, a: string): PaletteItem[] {
       score: 46,
       requires: "edit",
     },
-    context: { id: "context", label: "Context", hint: "Materials, people, related", icon: "compass", class: "context", target: route(`${a}/context`), score: 42 },
+    context: { id: "context", label: "Context", hint: "Materials, people, related, Creative Rooms", icon: "compass", class: "context", target: route(`${a}/context`), score: 42 },
     share: { id: "share", label: "Share", class: "share", target: route(`${a}/share`), score: 40, requires: "publish" },
     rights: { id: "rights", label: "Rights", class: "rights", target: route(`${a}?tab=rights`), score: 35 },
     publish: { id: "publish", label: "Publish", class: "publish", target: route(`${a}/publish`), score: 30, requires: "publish" },

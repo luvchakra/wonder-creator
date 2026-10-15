@@ -288,6 +288,20 @@ export async function projectsWith(db: Db, kind: ProjectItemKind, itemId: string
   return (data ?? []).map((r) => r.project_id);
 }
 
+/**
+ * "Add to a Creative Room" from a Material or Creation page: the open Rooms the creator can add to (their own, and the
+ * ones they're on the crew of — RLS decides) and which of them already hold the item. In a Room they don't own, their
+ * work goes in shared with the crew, as the database requires.
+ */
+export async function roomChoices(db: Db, creatorId: string, kind: "material" | "artifact", itemId: string): Promise<{ rooms: Array<{ id: string; title: string; own: boolean; community: boolean }>; inRooms: string[] }> {
+  const [{ data, error }, inRooms] = await Promise.all([
+    db.from("projects").select("id, title, creator_id, visibility").neq("status", "archived").order("updated_at", { ascending: false }).limit(100),
+    projectsWith(db, kind, itemId),
+  ]);
+  if (error) throw fromDbError(error);
+  return { rooms: (data ?? []).map((r) => ({ id: r.id, title: r.title, own: r.creator_id === creatorId, community: r.visibility === "discoverable" })), inRooms };
+}
+
 /** Conversations that belong to a project: started from it, or linked to it. */
 export async function projectConversationIds(db: Db, projectId: string): Promise<string[]> {
   const [started, linked] = await Promise.all([

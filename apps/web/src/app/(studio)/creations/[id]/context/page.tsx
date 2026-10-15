@@ -1,4 +1,5 @@
 import { signedUrlsFor } from "@wonder/creator-library";
+import { roomChoices } from "@wonder/creator-projects";
 import { lineageGraph } from "@wonder/creator-studio";
 import { Avatar, cn, chipBase } from "@wonder/ui";
 import Link from "next/link";
@@ -8,6 +9,7 @@ import { requireSession } from "@/lib/session";
 import { Lineage, MaterialGrid } from "../context-parts";
 import { PaletteScope } from "@/components/creative-palette";
 import { BackLink } from "@/components/back-link";
+import { AddToRoom } from "@/components/rooms/add-to-room";
 
 export const metadata = { title: "Context" };
 
@@ -16,13 +18,14 @@ const SECTIONS = [
   ["references", "References"],
   ["people", "People"],
   ["related", "Related"],
+  ["rooms", "Creative Rooms"],
 ] as const;
 type Section = (typeof SECTIONS)[number][0];
 
 /**
  * The Context view (UI redesign §16): what surrounds a Creation — the Materials it came from (notes and voice included),
- * its references, the people on it and the Creations it's related to. Reached from the Creation, its Palette and its
- * Creative Room; four sections, no permanent inspector.
+ * its references, the people on it, the Creations it's related to and the Creative Rooms it's in (where the creator can
+ * add it to another). Reached from the Creation, its Palette and its Creative Room; no permanent inspector.
  */
 export default async function ContextPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
@@ -33,11 +36,14 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
   const { data: a } = await db.from("artifacts").select("id, title, creator_id").eq("id", id).maybeSingle();
   if (!a) notFound();
 
-  const [graph, contributors, owner, refEdges] = await Promise.all([
+  const own = a.creator_id === creator.id;
+  const [graph, contributors, owner, refEdges, rooms] = await Promise.all([
     lineageGraph(db, id),
     db.from("artifact_contributors").select("role, contributor_creator_id, creators!artifact_contributors_contributor_creator_id_fkey(display_name, handle)").eq("artifact_id", id),
     db.from("creators").select("id, display_name, handle").eq("id", a.creator_id).maybeSingle(),
     db.from("lineage_edges").select("source_id, relationship").eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material"),
+    // Only the creator's own Creation goes into a Room from here.
+    own ? roomChoices(db, creator.id, "artifact", id).catch(() => null) : Promise.resolve(null),
   ]);
   const materialIds = graph.nodes.filter((n) => n.type === "material").map((n) => n.id);
   const { data: mats } = materialIds.length ? await db.from("creative_materials").select("id, type, title, text_content, storage_object_id, metadata, source_url, created_at").in("id", materialIds) : { data: [] };
@@ -60,11 +66,12 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
   const createdFrom = withPreview.filter((m) => !referenceIds.has(m.id));
   const references = withPreview.filter((m) => referenceIds.has(m.id));
   const related = graph.nodes.filter((n) => n.type === "artifact" && n.depth !== 0);
-  const counts: Record<Section, number | null> = { materials: createdFrom.length, references: references.length, people: people.length, related: related.length };
+  const counts: Record<Section, number | null> = { materials: createdFrom.length, references: references.length, people: people.length, related: related.length, rooms: rooms?.inRooms.length ?? null };
+  const sections = SECTIONS.filter(([k]) => k !== "rooms" || rooms);
 
   return (
     <>
-      <PaletteScope context={{ page: "context", permissions: a.creator_id === creator.id ? ["edit", "collaborate"] : [], ids: { artifactId: id } }} />
+      <PaletteScope context={{ page: "context", permissions: own ? ["edit", "collaborate"] : [], ids: { artifactId: id } }} />
       <div className="mx-auto max-w-3xl space-y-5">
         <BackLink home={`/creations/${a.id}`} homeLabel={a.title} />
         <header>
@@ -72,7 +79,7 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
           <p className="mt-1 text-[15px] text-ink-muted">Everything around “{a.title}”.</p>
         </header>
         <nav aria-label="Context sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
-          {SECTIONS.map(([k, label]) => (
+          {sections.map(([k, label]) => (
             <Link
               key={k}
               href={`/creations/${a.id}/context?tab=${k}`}
@@ -115,6 +122,10 @@ export default async function ContextPage({ params, searchParams }: { params: Pr
                 </li>
               ))}
             </ul>
+          </section>
+        ) : section === "rooms" && rooms ? (
+          <section aria-label="Creative Rooms">
+            <AddToRoom kind="artifact" itemId={id} rooms={rooms.rooms} inRooms={rooms.inRooms} />
           </section>
         ) : (
           <section aria-label="Related">

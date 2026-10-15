@@ -1,6 +1,6 @@
 "use client";
 import { LiveBadge, Spinner, cn } from "@wonder/ui";
-import { ArrowRight, FileText, Layers, MessageCircle, Search, Sparkles, UserRound, X } from "lucide-react";
+import { ArrowRight, FileText, Layers, MessageCircle, Search, Sparkles, UserRound, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ interface Results {
   conversations: Array<{ id: string; conversationId: string; title: string; snippet: string }>;
   huddles: Array<{ huddleId: string; topic: string | null; participantNames: string[] }>;
   collections: Array<{ id: string; name: string; description: string | null }>;
+  rooms: Array<{ id: string; title: string; community: boolean }>;
 }
 
 /**
@@ -64,7 +65,7 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
   };
   const term = q.trim();
   const shown = term.length >= 2 ? res : null;
-  const empty = shown && !shown.materials.length && !shown.artifacts.length && !shown.creators.length && !shown.conversations.length && !shown.huddles.length && !shown.collections.length;
+  const empty = shown && !shown.materials.length && !shown.artifacts.length && !shown.creators.length && !shown.conversations.length && !shown.huddles.length && !shown.collections.length && !shown.rooms.length;
 
   if (!open) {
     return (
@@ -137,6 +138,7 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
               <>
                 <Group title="Your creations" items={shown.artifacts.map((a) => ({ href: `/creations/${a.id}`, label: a.title, sub: a.related ? "Related in meaning" : undefined, icon: <Sparkles className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Your material" items={shown.materials.map((m) => ({ href: `/materials/${m.id}`, label: m.title || "Untitled", sub: m.related ? "Related in meaning" : undefined, icon: <FileText className="size-4" /> }))} onPick={() => close(false)} />
+                <Group title="Creative Rooms" items={shown.rooms.map((r) => ({ href: r.community ? `/communities/${r.id}` : `/rooms/${r.id}`, label: r.title, sub: r.community ? "Community" : undefined, icon: <UsersRound className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Collections" items={shown.collections.map((c) => ({ href: `/materials/collections/${c.id}`, label: c.name, sub: c.description ?? undefined, icon: <Layers className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Conversations" items={shown.conversations.map((c) => ({ href: `/create?c=${c.conversationId}`, label: c.title, sub: c.snippet, icon: <MessageCircle className="size-4" /> }))} onPick={() => close(false)} />
                 <Group title="Creators" items={shown.creators.map((c) => ({ href: `/creators/${c.handle}`, label: c.display_name, sub: `@${c.handle}`, icon: <UserRound className="size-4" /> }))} onPick={() => close(false)} />

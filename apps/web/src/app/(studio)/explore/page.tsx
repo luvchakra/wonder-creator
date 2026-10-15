@@ -1,7 +1,7 @@
 import { signedUrlsFor } from "@wonder/creator-library";
 import { artifactType } from "@wonder/creator-studio/types";
 import { BACKGROUNDS, EmptyState, Input, LiveBadge, PageTitle, buttonClasses, cn, KIT, chipBase } from "@wonder/ui";
-import { BookMarked, Layers, MessageCircle, Search, Sparkles, UserRound } from "lucide-react";
+import { BookMarked, Layers, MessageCircle, Search, Sparkles, UserRound, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { MaterialCard } from "@/components/cards";
 import { EMPTY_RESULTS, isSearchable, MATERIAL_KINDS, parseSearch, SEARCH_WHEN, topTags, unifiedSearch, type SearchTab, type SearchWhen } from "@/lib/search";
@@ -15,6 +15,7 @@ const TAB_LABEL: Record<SearchTab, string> = {
   all: "All",
   material: "Material",
   creations: "Creations",
+  rooms: "Creative Rooms",
   collections: "Collections",
   references: "References",
   conversations: "Conversations",
@@ -49,7 +50,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <PaletteScope context={{ page: "search", strip: searchable ? { count: [total, "result", "results"] } : undefined }} />
       <div>
         <ExploreNav current={s.tab === "material" ? "materials" : "ideas"} />
-        <PageTitle art={KIT.painted.blossomSprig} title="Search" subtitle="Your material, creations, collections and conversations — and creators and Huddles you can see." />
+        <PageTitle art={KIT.painted.blossomSprig} title="Search" subtitle="Your material, creations, Creative Rooms, collections and conversations — and creators and Huddles you can see." />
 
         <form action="/explore" role="search" className="relative">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
@@ -163,6 +164,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   label: a.title,
                   sub: [artifactType(a.artifact_type).label, a.creator_id === creator.id ? "Yours" : "By another creator", a.related ? "Related in meaning" : null].filter(Boolean).join(" · "),
                   icon: <Sparkles className="size-4" aria-hidden />,
+                }))}
+              />
+              <ResultList
+                id="r-rooms"
+                title="Creative Rooms"
+                more={s.tab === "all" ? href({ type: "rooms" }) : null}
+                items={res.rooms.map((r) => ({
+                  key: r.id,
+                  href: r.community ? `/communities/${r.id}` : `/rooms/${r.id}`,
+                  label: r.title,
+                  sub: [r.community ? "Community" : "Creative Room", r.own ? "Yours" : "You’re on the crew", r.brief].filter(Boolean).join(" · "),
+                  icon: <UsersRound className="size-4" aria-hidden />,
                 }))}
               />
               <ResultList

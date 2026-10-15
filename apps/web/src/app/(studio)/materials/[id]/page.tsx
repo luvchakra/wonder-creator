@@ -1,7 +1,9 @@
 import { getMaterial, listCollections, signedUrlFor, signedUrlsFor, similarMaterials } from "@wonder/creator-library";
 import { entityDejaVus } from "@wonder/creator-moments";
 import { notFound } from "next/navigation";
+import { roomChoices } from "@wonder/creator-projects";
 import { DejaVuChips } from "@/components/dejavu/dejavu-chips";
+import { AddToRoom } from "@/components/rooms/add-to-room";
 import { PaletteScope } from "@/components/creative-palette";
 import { requireSession } from "@/lib/session";
 import { MaterialDetail } from "./detail";
@@ -40,7 +42,11 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
     db.from("material_collection_items").select("collection_id").eq("material_id", id),
     similarMaterials(db, id).catch(() => []),
   ]);
-  const dejavus = await entityDejaVus(db, "material", id).catch(() => ({ momentId: null, dejavus: [] }));
+  const [dejavus, rooms] = await Promise.all([
+    entityDejaVus(db, "material", id).catch(() => ({ momentId: null, dejavus: [] })),
+    // Only your own Material can go into a Room (the database refuses anything else).
+    m.creator_id === creator.id ? roomChoices(db, creator.id, "material", id).catch(() => null) : Promise.resolve(null),
+  ]);
   const thumbs = await signedUrlsFor(
     db,
     similar.filter((s) => s.type === "image" || s.type === "sketch").map((s) => s.storage_object_id),
@@ -82,6 +88,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
       />
       <MaterialDetail
         dejavu={<DejaVuChips entityType="material" entityId={id} initial={dejavus} />}
+        rooms={rooms ? <AddToRoom kind="material" itemId={id} rooms={rooms.rooms} inRooms={rooms.inRooms} /> : null}
         canGenerate={m.creator_id === creator.id}
         m={{
           id: m.id,

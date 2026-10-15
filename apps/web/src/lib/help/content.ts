@@ -106,7 +106,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "Your account menu (your picture, top right) holds your profile, Scrapbook, Creative Memory, Creative Rooms, Publishing, Campaigns, Business, Settings, Get help and Sign out.",
         ],
         notes: [
-          "Search looks across your own world — your Materials, Creations, Collections and references — and the conversations and people you can already see. Someone else’s private work never appears in your results.",
+          "Search looks across your own world — your Materials, Creations, Creative Rooms (yours and the ones you’re on the crew of), Collections and references — and the conversations and people you can already see. Someone else’s private work never appears in your results.",
         ],
         links: [
           { label: "Explore", href: "/explore" },
@@ -652,15 +652,19 @@ export const HELP_SECTIONS: HelpSection[] = [
         slug: "creative-rooms",
         title: "Creative Rooms and making one thing together",
         summary: "A shared space around one piece of work, with parts for each person.",
-        keywords: ["creative room", "room", "crew", "invite", "parts", "song", "lyrics", "tune", "voice", "podcast", "together", "collaborate", "team", "project"],
+        keywords: ["creative room", "room", "crew", "invite", "parts", "song", "lyrics", "tune", "voice", "podcast", "together", "collaborate", "team", "project", "add to room", "add to project"],
         steps: [
           "Choose Create, then Collaborate with others, or open Creative Rooms from your account menu and start a room. You’ll be its owner.",
           "Invite people. They choose whether to join.",
           "For a joint piece, say what it’s made of. Templates include Song (Lyrics, Tune, Voice), Podcast episode (Script, Host, Edit) and Illustrated story (Words, Pictures), or start with just a room.",
           "Each person claims a part, which is a Creation of its own made on that format’s page. Several people can share a part, and someone can be invited to just one part without joining the whole room.",
           "The room shows the work first, each part as a row, and a timeline of what happened.",
+          "To bring something you already have into a room, open the Material and choose Details › Creative Rooms, or open a Creation’s Context › Creative Rooms, then pick the room and choose Add.",
         ],
-        notes: ["A part is final when the people on it say so, and it can go back into rounds."],
+        notes: [
+          "A part is final when the people on it say so, and it can go back into rounds.",
+          "Only your own Materials and Creations can go into a room. In a room someone else owns, what you add is shared with its crew to read; it stays yours. To take something out, remove it in the room.",
+        ],
         links: [{ label: "Creative Rooms", href: "/rooms" }],
       },
       {

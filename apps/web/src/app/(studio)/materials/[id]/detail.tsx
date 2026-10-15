@@ -54,6 +54,7 @@ const META_LABEL: Record<string, string> = {
 export function MaterialDetail({
   m,
   dejavu,
+  rooms,
   url,
   file,
   intake,
@@ -103,6 +104,8 @@ export function MaterialDetail({
   intake: { id: string; state: string; error_message: string | null } | null;
   /** DejaVu chips (docs/moments-dejavu.md §10). */
   dejavu?: React.ReactNode;
+  /** "Add to a Creative Room" (the creator's own Material only). */
+  rooms?: React.ReactNode;
   usedIn: Array<{ id: string; title: string; artifact_type: string }>;
   collections: Array<{ id: string; name: string }>;
   inCollections: string[];
@@ -207,7 +210,7 @@ export function MaterialDetail({
   const [details, setDetails] = useState(false);
   useEffect(() => {
     const open = () => {
-      if (window.location.hash === "#details" || window.location.hash === "#collections") {
+      if (["#details", "#collections", "#rooms"].includes(window.location.hash)) {
         setDetails(true);
         history.replaceState(history.state, "", window.location.pathname + window.location.search);
       }
@@ -391,6 +394,15 @@ export function MaterialDetail({
                 </Link>
               )}
             </section>
+
+            {rooms ? (
+              <section id="rooms" aria-labelledby="m-rooms" className="space-y-2 border-t border-border-soft pt-4">
+                <h3 id="m-rooms" className="text-[13px] font-semibold text-ink">
+                  Creative Rooms
+                </h3>
+                {rooms}
+              </section>
+            ) : null}
 
             <section aria-labelledby="m-used" className="space-y-1 border-t border-border-soft pt-4">
               <h3 id="m-used" className="text-[13px] font-semibold text-ink">
