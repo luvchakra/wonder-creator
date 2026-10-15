@@ -827,6 +827,93 @@ export async function slideUsage(db: Db, sessionId: string): Promise<Record<stri
   return out;
 }
 
+/** Text sources on a Working Set (Materials, passages, Creations) that contain these words — the same test as slideUsage. */
+async function wordSources(db: Db, sessionId: string, words: string): Promise<SlideSource[]> {
+  const norm = (t: string | null | undefined) => (t ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  const needle = norm(words).slice(0, 80);
+  if (needle.length < 12) return [];
+  const { data: rows } = await db.from("studio_sources").select("source_type, source_id, fragment").eq("session_id", sessionId).in("source_type", ["material", "creation"]);
+  if (!rows?.length) return [];
+  const materialIds = rows.filter((r) => r.source_type === "material").map((r) => r.source_id);
+  const creationIds = rows.filter((r) => r.source_type === "creation").map((r) => r.source_id);
+  const [{ data: mats }, { data: arts }] = await Promise.all([
+    materialIds.length ? db.from("creative_materials").select("id, title, type, text_content, extracted_text").in("id", materialIds).eq("status", "active") : Promise.resolve({ data: [] as Array<{ id: string; title: string | null; type: string; text_content: string | null; extracted_text: string | null }> }),
+    creationIds.length ? db.from("artifacts").select("id, title, current_version_id").in("id", creationIds) : Promise.resolve({ data: [] as Array<{ id: string; title: string; current_version_id: string | null }> }),
+  ]);
+  const versionIds = (arts ?? []).map((x) => x.current_version_id).filter((x): x is string => !!x);
+  const { data: versions } = versionIds.length ? await db.from("artifact_versions").select("id, content").in("id", versionIds) : { data: [] as Array<{ id: string; content: string }> };
+  const out: SlideSource[] = [];
+  for (const r of rows) {
+    const passage = (r.fragment as { text?: string; label?: string } | null) ?? null;
+    if (r.source_type === "material") {
+      const m = (mats ?? []).find((x) => x.id === r.source_id);
+      if (!m) continue;
+      const hay = passage?.text ? norm(passage.text) : norm(`${m.text_content ?? ""}\n${m.extracted_text ?? ""}`);
+      if (hay.includes(needle)) out.push({ part: "words", label: m.title || MATERIAL_KIND[m.type] || "Material", detail: passage?.label ? `${passage.label} · its words are in here` : "Its words are in here", href: `/materials/${m.id}` });
+    } else {
+      const c = (arts ?? []).find((x) => x.id === r.source_id);
+      if (!c) continue;
+      const hay = passage?.text ? norm(passage.text) : norm((versions ?? []).find((v) => v.id === c.current_version_id)?.content);
+      if (hay.includes(needle)) out.push({ part: "words", label: c.title, detail: "A Creation its words are in", href: `/creations/${c.id}` });
+    }
+  }
+  return out;
+}
+
+/** One line of a slide's "Made from" (§39): what it is, a short detail, and where to open it when the viewer can. */
+export interface SlideSource {
+  part: "picture" | "words";
+  label: string;
+  detail: string | null;
+  href: string | null;
+}
+
+/**
+ * Made from, for one Carousel slide (creative-studio-working-set.md §39 — on demand, hidden by default). Derived only from
+ * what is recorded, never guessed: the picture is the creator's own Material when one was placed on the slide
+ * (`image_generation_assets.source_material_id`), otherwise an image made for this Carousel, with the Materials that
+ * generation was made from; the words come from this Carousel's own text (its source version), and from any text source
+ * on the viewer's own Working Set for this Creation that contains them. Read under the viewer's access: what they can't open is named as such,
+ * never shown.
+ */
+export async function slideMadeFrom(db: Db, slideId: string): Promise<SlideSource[]> {
+  const { data: slide } = await db.from("carousel_slides").select("id, artifact_id, asset_id, source_text").eq("id", slideId).maybeSingle();
+  if (!slide) throw new DomainError("not_found", "That slide isn't available.");
+  const [{ data: asset }, { data: carousel }, { data: session }] = await Promise.all([
+    slide.asset_id ? db.from("image_generation_assets").select("id, generation_id, direction_label, source_material_id").eq("id", slide.asset_id).maybeSingle() : Promise.resolve({ data: null }),
+    db.from("carousels").select("source_version").eq("artifact_id", slide.artifact_id).maybeSingle(),
+    db.from("studio_sessions").select("id").eq("artifact_id", slide.artifact_id).limit(1).maybeSingle(),
+  ]);
+  const out: SlideSource[] = [];
+  const materialLine = async (ids: string[], part: SlideSource["part"], detail: string): Promise<SlideSource[]> => {
+    if (!ids.length) return [];
+    const { data } = await db.from("creative_materials").select("id, title, type").in("id", ids).eq("status", "active");
+    const seen = new Map((data ?? []).map((m) => [m.id, m]));
+    return ids.map((id) => {
+      const m = seen.get(id);
+      return m ? { part, label: m.title || MATERIAL_KIND[m.type] || "Material", detail, href: `/materials/${m.id}` } : { part, label: "A Material you can't open", detail, href: null };
+    });
+  };
+
+  // The picture.
+  if (asset?.source_material_id) out.push(...(await materialLine([asset.source_material_id], "picture", "Your photo, placed on this slide")));
+  else if (asset) {
+    const { data: g } = await db.from("image_generations").select("source_material_ids").eq("id", asset.generation_id).maybeSingle();
+    out.push({ part: "picture", label: asset.direction_label && asset.direction_label !== "Your photo" ? asset.direction_label : "An image made for this Carousel", detail: "Generated", href: null });
+    out.push(...(await materialLine((g?.source_material_ids ?? []).slice(0, 4), "picture", "Shaped the images")));
+  }
+
+  // The words.
+  const words = (slide.source_text ?? "").replace(/\s+/g, " ").trim();
+  if (words) {
+    out.push({ part: "words", label: "This Carousel's text", detail: carousel?.source_version ? `From v${carousel.source_version}` : null, href: null });
+    if (session) out.push(...(await wordSources(db, session.id, words)));
+  }
+  // One line per thing, in order.
+  const key = (x: SlideSource) => `${x.part}:${x.href ?? x.label}`;
+  return [...new Map(out.map((x) => [key(x), x])).values()];
+}
+
 /**
  * Made from (Phase 05 §10, Scenario C; creative-studio-working-set.md §38): when a version is saved in the Studio, the
  * sources actually in use or pinned are recorded against it — with their roles, how they were used and the rights and

@@ -1,6 +1,7 @@
 "use client";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import type { CarouselView, SlideView } from "@wonder/creator-brain";
+import type { SlideSource } from "@wonder/creator-studio";
 import { DEFAULT_TRANSFORM, OVERLAY_COLORS, OVERLAY_FONTS, SNAP_POINTS, snapPosition, type ImageTransform, type SlideOverlay } from "@wonder/creator-studio/carousel";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, Switch, Textarea, chipBase, cn } from "@wonder/ui";
 import {
@@ -13,6 +14,7 @@ import {
   Copy,
   Download,
   Expand,
+  GitBranch,
   Image as ImageIcon,
   MoreHorizontal,
   Palette,
@@ -57,6 +59,18 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
   const [tool, setTool] = useState<Tool>(null);
   const [error, setError] = useState<string | null>(null);
   const [regen, setRegen] = useState(false);
+  // Made from (creative-studio-working-set.md §39): hidden until asked for, then read once for this slide.
+  const [madeFrom, setMadeFrom] = useState<SlideSource[] | "loading" | null>(null);
+  const showMadeFrom = async () => {
+    setTool(null);
+    setMadeFrom("loading");
+    try {
+      setMadeFrom((await api<{ sources: SlideSource[] }>(`/api/v1/carousel-slides/${slideId}/made-from`)).sources);
+    } catch (e) {
+      setMadeFrom(null);
+      setError(errorMessage(e));
+    }
+  };
   const [full, setFull] = useState(false);
   const [preview, setPreview] = useState<"current" | "new">("new");
   const aspect = view.settings?.aspectRatio ?? "4:5";
@@ -270,6 +284,9 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
             <MenuItem onSelect={() => setFull(true)}>
               <Expand className="size-4" aria-hidden /> View full screen
             </MenuItem>
+            <MenuItem onSelect={showMadeFrom}>
+              <GitBranch className="size-4" aria-hidden /> Made from
+            </MenuItem>
             {slide.image ? (
               <>
                 <MenuItem onSelect={saveMaterial}>
@@ -426,6 +443,8 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
         </p>
       ) : null}
 
+      {madeFrom ? <MadeFrom sources={madeFrom} onClose={() => setMadeFrom(null)} /> : null}
+
       {/* The one open tool's controls (§13: advanced controls only after a tool is chosen). */}
       {tool && view.canEdit ? (
         <div className="mb-2 rounded-2xl bg-surface p-3 text-ink">
@@ -510,7 +529,11 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
               key={t}
               type="button"
               aria-pressed={tool === t}
-              onClick={() => setTool((cur) => (cur === t ? null : t))}
+              onClick={() => {
+                // One panel at a time: choosing a tool closes Made from.
+                setMadeFrom(null);
+                setTool((cur) => (cur === t ? null : t));
+              }}
               className={cn("flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px]", tool === t ? "bg-white/15" : "hover:bg-white/10")}
             >
               <Icon className="size-5" aria-hidden />
@@ -844,5 +867,59 @@ function StyleTool({ overlay, setOverlay }: { overlay: SlideOverlay; setOverlay:
         </div>
       </div>
     </div>
+  );
+}
+
+/** What this slide's picture and words came from — on demand, one quiet list, closed with ×. */
+function MadeFrom({ sources, onClose }: { sources: SlideSource[] | "loading"; onClose: () => void }) {
+  const parts: Array<[SlideSource["part"], string]> = [
+    ["picture", "Picture"],
+    ["words", "Words"],
+  ];
+  return (
+    <section aria-labelledby="made-from-title" className="mb-2 rounded-2xl bg-surface p-3 text-ink">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 id="made-from-title" className="text-[15px] font-semibold">
+          Made from
+        </h2>
+        <button type="button" aria-label="Close Made from" onClick={onClose} className="-mr-2 inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-black/5">
+          <X className="size-4" aria-hidden />
+        </button>
+      </div>
+      {sources === "loading" ? (
+        <p role="status" className="text-[13px] text-ink-muted">
+          Looking…
+        </p>
+      ) : sources.length ? (
+        <div className="space-y-2">
+          {parts.map(([part, title]) => {
+            const list = sources.filter((x) => x.part === part);
+            return list.length ? (
+              <div key={part}>
+                <h3 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">{title}</h3>
+                <ul className="divide-y divide-border-soft">
+                  {list.map((x, k) => (
+                    <li key={`${x.href ?? x.label}-${k}`} className="flex min-h-11 items-center justify-between gap-2 py-1">
+                      <span className="min-w-0">
+                        {x.href ? (
+                          <Link href={x.href} className="block truncate text-[14px] font-medium hover:underline">
+                            {x.label}
+                          </Link>
+                        ) : (
+                          <span className="block truncate text-[14px] font-medium">{x.label}</span>
+                        )}
+                        {x.detail ? <span className="block truncate text-[12.5px] text-ink-muted">{x.detail}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null;
+          })}
+        </div>
+      ) : (
+        <p className="text-[13px] text-ink-muted">Nothing is recorded for this slide yet.</p>
+      )}
+    </section>
   );
 }

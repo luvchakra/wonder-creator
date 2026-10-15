@@ -10,6 +10,7 @@ import {
   reorderCarousel as reorderCarouselSlides,
   runImageGeneration,
   runImageRevision,
+  slideImageFromMaterial,
   splitCarouselSlide,
   startCarousel,
   suggestSlideChunks,
@@ -18,7 +19,8 @@ import {
   type ImageProvider,
 } from "@wonder/creator-brain";
 import { DomainError } from "@wonder/core";
-import { addCollaborator, createArtifact } from "@wonder/creator-studio";
+import { createMaterial } from "@wonder/creator-library";
+import { addCollaborator, createArtifact, slideMadeFrom } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, cleanupTestCreators, createTestCreator, expectOk, loose, type TestCreator } from "./helpers";
 
@@ -194,5 +196,30 @@ describe("Carousel Composer", () => {
     expect(alts).not.toContain(after.slides[0]!.displayText);
     const { data: art } = await admin.from("artifacts").select("current_version_id").eq("id", piece).single();
     expect(expectOk(await admin.from("artifact_versions").select("content").eq("id", art!.current_version_id!).single()).content).toBe(poem);
+  });
+
+  it("Made from (§39): a photo placed on a slide names its Material; the words name the Carousel's text; others see no more than they may", async () => {
+    const path = `${owner.creatorId}/photos/station-${Date.now()}.png`;
+    const up = await admin.storage.from("creator-media").upload(path, png, { contentType: "image/png" });
+    expect(up.error).toBeNull();
+    const obj = expectOk(await admin.from("storage_objects").insert({ creator_id: owner.creatorId, bucket: "creator-media", path, mime_type: "image/png", size_bytes: png.byteLength, sha256: "a".repeat(64), security_status: "clean" }).select("id").single());
+    const photo = await createMaterial(db(owner), owner.creatorId, { type: "image", title: "Station photograph", storageObjectId: obj.id, provenance: { origin: "upload" } });
+
+    const first = (await carouselView(deps(owner), piece)).slides[0]!;
+    await slideImageFromMaterial(deps(owner), first.id, photo.id);
+    const { data: slideRow } = await admin.from("carousel_slides").select("asset_id").eq("id", first.id).single();
+    expect(expectOk(await admin.from("image_generation_assets").select("source_material_id").eq("id", slideRow!.asset_id!).single()).source_material_id).toBe(photo.id);
+
+    const mine = await slideMadeFrom(db(owner), first.id);
+    expect(mine[0]).toEqual({ part: "picture", label: "Station photograph", detail: "Your photo, placed on this slide", href: `/materials/${photo.id}` });
+    expect(mine.some((x) => x.part === "words" && x.label === "This Carousel's text")).toBe(true);
+
+    // An editor reads the slide, but the owner's Material isn't theirs to open: it's named as such, never shown.
+    const theirs = await slideMadeFrom(db(editor), first.id);
+    expect(theirs[0]).toMatchObject({ part: "picture", label: "A Material you can't open", href: null });
+    // Someone with no access to the Creation learns nothing.
+    await expect(slideMadeFrom(db(out), first.id)).rejects.toThrow(/isn't available/);
+    // The link is the server's to write.
+    expect((await loose(editor.client).from("image_generation_assets").update({ source_material_id: null }).eq("id", slideRow!.asset_id!).select("id")).data ?? []).toEqual([]);
   });
 });
