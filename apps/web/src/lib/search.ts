@@ -4,7 +4,7 @@ import { toTsQuery } from "@wonder/creator-library";
 import { liveCards } from "@wonder/creator-huddle";
 import type { Db, Enums } from "@wonder/db";
 
-export const SEARCH_TABS = ["all", "material", "creations", "collections", "references", "conversations", "creators", "huddles"] as const;
+export const SEARCH_TABS = ["all", "material", "creations", "rooms", "collections", "references", "conversations", "creators", "huddles"] as const;
 export type SearchTab = (typeof SEARCH_TABS)[number];
 
 export const SEARCH_WHEN = { any: null, day: 1, week: 7, month: 30, year: 365 } as const;
@@ -38,6 +38,8 @@ export function parseSearch(p: { get(k: string): string | null }): SearchInput {
 export interface SearchResults {
   materials: Array<{ id: string; title: string | null; type: string; created_at: string; storage_object_id: string | null; related?: boolean }>;
   artifacts: Array<{ id: string; title: string; artifact_type: string; status: string; creator_id: string; updated_at: string; related?: boolean }>;
+  /** Creative Rooms (and Communities) the caller can read — owned or crewed (`projects` RLS). */
+  rooms: Array<{ id: string; title: string; brief: string | null; status: string; community: boolean; own: boolean }>;
   collections: Array<{ id: string; name: string; description: string | null; created_at: string }>;
   references: Array<{ id: string; materialId: string; title: string | null; type: string; shelf: string | null; note: string | null }>;
   conversations: Array<{ id: string; conversationId: string; title: string; snippet: string }>;
@@ -45,7 +47,7 @@ export interface SearchResults {
   huddles: Array<{ huddleId: string; topic: string | null; participantNames: string[] }>;
 }
 
-export const EMPTY_RESULTS: SearchResults = { materials: [], artifacts: [], collections: [], references: [], conversations: [], creators: [], huddles: [] };
+export const EMPTY_RESULTS: SearchResults = { materials: [], artifacts: [], rooms: [], collections: [], references: [], conversations: [], creators: [], huddles: [] };
 
 /** A search needs a query of 2+ characters, or a tag to browse by. */
 export function isSearchable(s: SearchInput): boolean {
@@ -53,7 +55,7 @@ export function isSearchable(s: SearchInput): boolean {
 }
 
 /**
- * Unified search over what the caller may see. Every query runs through the caller's RLS-scoped client,
+ * Unified search over what the caller may see (Creative Rooms included: the ones they own or are crew on). Every query runs through the caller's RLS-scoped client,
  * so other creators' private work never appears, not even in counts. The caller's own material,
  * collections, references and conversations are additionally scoped by creator id. Keyword matches come
  * first; when the provider can embed and no filters narrow the search, the caller's own material and
@@ -87,13 +89,20 @@ export async function unifiedSearch(db: Db, creatorId: string, s: SearchInput): 
     return q.then((r) => (r.data ?? []) as unknown as SearchResults["materials"]);
   };
 
-  const [materials, refMaterials, artifacts, collections, references, conversations, creators, huddles, semantic] = await Promise.all([
+  const [materials, refMaterials, artifacts, rooms, collections, references, conversations, creators, huddles, semantic] = await Promise.all([
     want("material") ? materialQuery(limit) : [],
     // Materials behind reference matches (up to 60), found with the same filters.
     want("references") ? materialQuery(60) : [],
     want("creations") && !materialOnly && hasQ
       ? (() => {
           let q = db.from("artifacts").select("id, title, artifact_type, status, creator_id, updated_at").neq("status", "archived").textSearch("search", ts, { config: "simple" }).order("updated_at", { ascending: false }).limit(limit);
+          if (since) q = q.gte("updated_at", since);
+          return q.then((r) => r.data ?? []);
+        })()
+      : [],
+    want("rooms") && !materialOnly && hasQ
+      ? (() => {
+          let q = db.from("projects").select("id, title, brief, status, visibility, creator_id").neq("status", "archived").or(`title.ilike.${like},brief.ilike.${like}`).order("updated_at", { ascending: false }).limit(limit);
           if (since) q = q.gte("updated_at", since);
           return q.then((r) => r.data ?? []);
         })()
@@ -145,6 +154,7 @@ export async function unifiedSearch(db: Db, creatorId: string, s: SearchInput): 
   return {
     materials: want("material") ? [...materials, ...related.materials] : [],
     artifacts: want("creations") ? [...artifacts, ...related.artifacts] : [],
+    rooms: rooms.map((r) => ({ id: r.id, title: r.title, brief: r.brief, status: r.status, community: r.visibility === "discoverable", own: r.creator_id === creatorId })),
     collections,
     references: [...refs.values()].slice(0, limit),
     conversations: conversations.map((m) => ({ id: m.id, conversationId: m.conversation_id, title: (m.conversations as { title: string } | null)?.title ?? "Conversation", snippet: m.content.slice(0, 140) })),

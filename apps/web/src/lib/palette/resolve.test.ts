@@ -45,6 +45,11 @@ describe("context-aware Palette", () => {
     expect(m("photo")).toEqual(["Find related", "Add to Collection", "Explore possibilities"]);
     expect(m("audio")).toEqual(["Use the words", "Find related", "Add to Collection"]);
     expect(m("note")).toEqual(["Extract ideas", "Find related", "Add to Collection"]);
+    // Adding it to a Creative Room waits under More…, and only for the creator's own Material.
+    const own = resolvePalette({ page: "material", entityType: "photo", permissions: OWNER, ids: { materialId: "m1" }, facts: { related: "tide" } });
+    expect(own.more.map((x) => x.label)).toContain("Add to a Creative Room");
+    const theirs = resolvePalette({ page: "material", entityType: "photo", permissions: [], ids: { materialId: "m1" } });
+    expect([...theirs.primary, ...theirs.more].map((x) => x.id)).not.toContain("room");
   });
 
   it("respects permissions (§11, §31): a viewer never sees edit, publish or rights changes", () => {
