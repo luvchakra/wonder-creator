@@ -580,6 +580,8 @@ async function copyMaterialIntoSet(deps: Pick<ImageDeps, "db" | "service" | "cre
       height: derived.height,
       sequence: seq,
       direction_label: "Your photo",
+      // Made from, per slide: which Material this copy is.
+      source_material_id: materialId,
       revision_of: revisionOf,
       replaced_by: null,
     })

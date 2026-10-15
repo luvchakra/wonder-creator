@@ -342,13 +342,14 @@ export const HELP_SECTIONS: HelpSection[] = [
         slug: "carousel",
         title: "Carousels",
         summary: "Choose how many images, review the slides, add one more, rearrange, and edit each slide.",
-        keywords: ["carousel", "slides", "images", "generate", "social", "arrange", "reorder", "overlay", "text on image", "regenerate", "add slide", "duplicate"],
+        keywords: ["carousel", "slides", "images", "generate", "social", "arrange", "reorder", "overlay", "text on image", "regenerate", "add slide", "duplicate", "made from", "source", "where it came from"],
         steps: [
           "On a new Carousel, choose How many images? (3, 4, 5, 6 or Custom), then Generate. Your words are matched to each image.",
           "When the slides appear, choose Continue Creating to open the first slide, or use Generate one more to add exactly one new image at the end. A Carousel can hold up to 12 slides.",
           "Choose Arrange to reorder the slides. Reordering never regenerates anything.",
           "Open a slide to edit it: its words, and any words placed on the image.",
           "A slide’s menu has Regenerate this image, Duplicate slide and Remove slide. A new image waits for you to choose Use new or Keep current — nothing is replaced until you decide.",
+          "To see what a slide came from, open its menu (•••) and choose Made from: the photo you placed on it (or that its image was made for this Carousel, and the Materials that shaped the images), and where its words are — this Carousel’s text, and any of your sources in the Studio that hold the same words.",
         ],
         notes: [
           "Slide words stay real, editable text; they’re never flattened into the picture.",
