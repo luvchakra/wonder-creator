@@ -4,13 +4,14 @@ import { OUTPUT_MODES, outputModeOf, unusedNudge, workingSetSummary, type Materi
 import type { StudioAction } from "@wonder/creator-studio/types";
 import { creationPath, writingStyleOf, type CreationLook, type OrnamentKey } from "@wonder/creator-studio/pages";
 import { Avatar, BACKGROUNDS, Button, Dialog, DialogContent, ErrorState, Input, KIT, KitArt, Segmented, Switch, buttonClasses, cn } from "@wonder/ui";
-import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation, Clapperboard, Upload } from "lucide-react";
+import { Check, Copy, Eye, ChevronDown, ChevronUp, ImageIcon, Maximize2, MoreHorizontal, PenLine, Sparkles, Wand2, X, Download, Headphones, ImagePlus, Mic, SlidersHorizontal, Type, Plus, Presentation, Clapperboard, Upload, Undo2, Redo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
 import { useMiniPlayerConstraint } from "@/components/soundtrack/audio-provider";
 import { api, errorMessage } from "@/lib/client";
+import { useTextHistory } from "@/lib/text-history";
 import { diffLines } from "@/lib/diff";
 import { useFeature } from "@/components/features";
 import { BackLink } from "@/components/back-link";
@@ -100,6 +101,8 @@ export function Studio({
   const [wsError, setWsError] = useState<string | null>(null);
   const typed = useRef(false);
   const [content, setContent] = useState(version?.content ?? "");
+  // Undo / redo for the words (palette-spec §9.16): typing grouped, every change from code its own step.
+  const wordsHistory = useTextHistory(version?.content ?? "");
   const [base, setBase] = useState(version);
   const [title, setTitle] = useState(artifact.title);
   // The Audio page has no reading view: the recording sits above the words, which are always editable.
@@ -131,6 +134,7 @@ export function Studio({
         const d = r.workingSet.draft;
         if (d && !typed.current && d.baseVersionId === (version?.id ?? null) && d.text !== (version?.content ?? "")) {
           setContent(d.text);
+          wordsHistory.set(d.text);
           setSavedAt(d.savedAt);
         }
       } catch (e) {
@@ -201,6 +205,14 @@ export function Studio({
   const autosave = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleVersion = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkpointRef = useRef<() => Promise<unknown>>(async () => undefined);
+  const undoWords = () => {
+    const t = wordsHistory.undo();
+    if (t !== null) onType(t);
+  };
+  const redoWords = () => {
+    const t = wordsHistory.redo();
+    if (t !== null) onType(t);
+  };
   const onType = (v: string) => {
     typed.current = true;
     setContent(v);
@@ -525,6 +537,7 @@ export function Studio({
       const r = await api<{ versionId?: string; versionNumber?: number }>(`/api/v1/brain/proposals/${proposal.id}`, { method: "POST", json: { decision } });
       if (decision === "approve" && r.versionId) {
         setContent(proposal.preview);
+        wordsHistory.set(proposal.preview);
         setBase({ id: r.versionId, number: r.versionNumber ?? (base?.number ?? 0) + 1, content: proposal.preview });
         setKept({ versionNumber: r.versionNumber ?? (base?.number ?? 0) + 1, titles: proposal.quality?.titles ?? [] });
       } else setKept(null);
@@ -1117,7 +1130,10 @@ export function Studio({
                     setBase({ id: v.id, number: v.version_number, content: v.content });
                     setSavedVersion(v.version_number);
                   }}
-                  onUseTranscript={(text) => onType(text)}
+                  onUseTranscript={(text) => {
+                    wordsHistory.set(text);
+                    onType(text);
+                  }}
                   playAlong={playAlong}
                 />
               ) : null}
@@ -1131,7 +1147,20 @@ export function Studio({
               <textarea
                 id="editor"
                 value={content}
-                onChange={(e) => onType(e.target.value)}
+                onChange={(e) => {
+                  wordsHistory.set(e.target.value, { typing: true });
+                  onType(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  // The Studio's own undo, so a kept revision or restored draft can be undone too.
+                  const k = e.key.toLowerCase();
+                  if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+                  if (k === "z" || (k === "y" && e.ctrlKey && !e.metaKey)) {
+                    e.preventDefault();
+                    if (k === "z" && !e.shiftKey) undoWords();
+                    else redoWords();
+                  }
+                }}
                 onSelect={(e) => setSelection(e.currentTarget.value.slice(e.currentTarget.selectionStart, e.currentTarget.selectionEnd).trim().slice(0, 600))}
                 onBlur={() => setTimeout(() => setSelection(""), 200)}
                 autoFocus={!!version?.content}
@@ -1336,6 +1365,17 @@ export function Studio({
           >
             <PenLine className="size-4" aria-hidden />
           </button>
+        ) : null}
+        {!isCarousel && !videoPage && !deckPage && !imagesPage && (mode === "edit" || audioPage) && !proposal ? (
+          // Undo / redo stay in the editor (palette-spec §9.16): quiet, beside the page's one action.
+          <div className="pointer-events-auto flex shrink-0 items-center rounded-full border border-border-soft bg-surface/95 shadow-[var(--shadow-card)] backdrop-blur" role="group" aria-label="Undo and redo">
+            <button type="button" onClick={undoWords} disabled={!wordsHistory.canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-black/5 disabled:text-ink-subtle disabled:opacity-50">
+              <Undo2 className="size-4" aria-hidden />
+            </button>
+            <button type="button" onClick={redoWords} disabled={!wordsHistory.canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-black/5 disabled:text-ink-subtle disabled:opacity-50">
+              <Redo2 className="size-4" aria-hidden />
+            </button>
+          </div>
         ) : null}
         {/* The Working Table bar (owner board "Working Table Redesign", 29 Sep 2026): pulls the table up. It stops short
             of the corner so the Palette never covers it. */}
