@@ -355,6 +355,9 @@ export function materialRights(m: { creator_id: string; type: string; source_typ
   // Someone else's words saved from Community ("Save thought") stay theirs.
   const said = (m.metadata as { community?: { authorId?: string; authorName?: string } } | null)?.community;
   if (said?.authorId && said.authorId !== viewer) return { rights: "reference_only", attribution: said.authorName ? `By ${said.authorName} · Pulse` : null };
+  // Someone's published work saved from its public page ("Save reference") stays theirs.
+  const pub = (m.metadata as { published?: { creatorName?: string } } | null)?.published;
+  if (pub) return { rights: "reference_only", attribution: pub.creatorName ? `By ${pub.creatorName} · Wonder Creator` : null };
   const lic = (m.metadata as { license?: { name?: string; creator?: string | null; provider?: string | null } } | null)?.license;
   if (m.source_type === "external" || lic) return { rights: licenseRights(lic?.name), attribution: attributionLine({ creator: lic?.creator, license: lic?.name, provider: lic?.provider }) };
   if (m.type === "url" || m.source_type === "web" || m.source_type === "youtube") return { rights: "reference_only" };

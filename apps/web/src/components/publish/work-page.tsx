@@ -4,7 +4,7 @@ import { KIT, Ornament, cn } from "@wonder/ui";
 import { ArrowLeft, Lock, MessagesSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { PublicCard, PublicWorkView } from "@/lib/public-pages";
-import { ShareButton, ViewBeacon } from "./beacons";
+import { SaveReferenceButton, ShareButton, ViewBeacon } from "./beacons";
 import { ListenRenderer, ViewRenderer, VoiceChip, WatchRenderer } from "./media";
 import { SwipeRenderer } from "./swipe";
 import { textsOf } from "@wonder/creator-studio/images";
@@ -24,7 +24,10 @@ const THEME: Record<string, string> = {
   cinematic: "bg-[#0f0c12] text-white",
 };
 
-export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: string }) {
+/** A signed-in visitor who isn't the creator: they may keep the work as a reference (§21). */
+export type PublicVisitor = { savedId: string | null } | null;
+
+export function PublishedWorkPage({ work, url, visitor = null }: { work: PublicWorkView; url: string; visitor?: PublicVisitor }) {
   const { manifest: m, snapshot: s } = work;
   const dark = m.theme === "dark" || m.theme === "cinematic";
   const media = (id: string | null | undefined) => (id ? (work.media[id] ?? null) : null);
@@ -59,6 +62,7 @@ export function PublishedWorkPage({ work, url }: { work: PublicWorkView; url: st
           <span className="text-[13.5px] font-medium opacity-80">{work.creator.name}</span>
         )}
         <span className="flex-1" />
+        {visitor && !work.preview ? <SaveReferenceButton handle={work.creator.handle} slug={work.slug} savedId={visitor.savedId} tone={dark ? "dark" : "light"} /> : null}
         {work.rights.allowSharing && work.visibility !== "private" ? <ShareButton workId={work.workId} title={s.title} url={url} tone={dark ? "dark" : "light"} /> : null}
       </header>
       {work.preview && !work.livePreview ? (

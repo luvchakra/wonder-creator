@@ -1,5 +1,6 @@
 import { DomainError, fromDbError, must } from "@wonder/core";
 import type { Db } from "@wonder/db";
+import { createMaterial } from "@wonder/creator-library";
 import { licenseRights } from "@wonder/creator-library/source-rights";
 import { z } from "zod";
 import { artifactType } from "./artifact-types";
@@ -516,4 +517,76 @@ export async function saveCreatorPage(db: Db, creatorId: string, raw: unknown): 
   const res = await db.from("creator_pages").upsert(row, { onConflict: "creator_id" }).select("creator_id");
   if (res.error) throw res.error.code === "42501" ? new DomainError("forbidden", "Only your own DejaVus and Scrapbook entries can go on your page.") : fromDbError(res.error);
   return getCreatorPage(db, creatorId);
+}
+
+/* ------------------------------------------------------------------------------------- Visitor actions (§21) */
+
+/** What a saved published work remembers about where it came from (`creative_materials.metadata.published`). */
+export interface SavedPublishedWork {
+  workId: string;
+  handle: string;
+  slug: string;
+  creatorName: string;
+  descriptor: string;
+  revision: number;
+}
+
+/** The Material a signed-in visitor already saved from this published work, if any (their own rows, under RLS). */
+export async function savedPublishedWork(db: Db, creatorId: string, workId: string): Promise<string | null> {
+  const { data, error } = await db
+    .from("creative_materials")
+    .select("id")
+    .eq("creator_id", creatorId)
+    .eq("status", "active")
+    .eq("metadata->published->>workId", workId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw fromDbError(error);
+  return data?.id ?? null;
+}
+
+/**
+ * "Save reference" (§21): a signed-in visitor keeps someone's published work in their Materials — a link back to its
+ * stable address, titled and credited. It stays the creator's work: nothing of it is copied (no media, no text beyond
+ * the opening words), and the Studio treats it as reference only. Read through the publication-safe `public_work`
+ * function, so only what any reader may see can be saved; saving twice returns the first save.
+ */
+export async function savePublishedWork(db: Db, creatorId: string, raw: unknown, origin: string): Promise<{ materialId: string; already: boolean }> {
+  const { handle, slug } = z.object({ handle: z.string().trim().min(1).max(60), slug: z.string().trim().min(1).max(120) }).parse(raw);
+  const { data, error } = await db.rpc("public_work", { p_handle: handle, p_slug: slug });
+  if (error) throw fromDbError(error);
+  const work = data as unknown as {
+    workId: string;
+    slug: string;
+    manifest: { descriptor: string };
+    snapshot: { title: string; description?: string | null; content?: string | null };
+    revision: { number: number };
+    creator: { handle: string; name: string };
+  } | null;
+  if (!work) throw new DomainError("not_found", "That work isn't available.");
+  const me = must(await db.from("creators").select("handle").eq("id", creatorId).maybeSingle(), "We couldn't find your profile.");
+  if (me.handle && me.handle === work.creator.handle) throw new DomainError("validation", "This is your own work — it's already in your Creations.");
+  const existing = await savedPublishedWork(db, creatorId, work.workId);
+  if (existing) return { materialId: existing, already: true };
+
+  const url = `${origin.replace(/\/$/, "")}/p/${work.creator.handle}/${work.slug}`;
+  const opening = (work.snapshot.description?.trim() || (work.snapshot.content ?? "").replace(/\s+/g, " ").trim()).slice(0, 280);
+  const published: SavedPublishedWork = {
+    workId: work.workId,
+    handle: work.creator.handle,
+    slug: work.slug,
+    creatorName: work.creator.name,
+    descriptor: work.manifest.descriptor,
+    revision: work.revision.number,
+  };
+  const material = await createMaterial(db, creatorId, {
+    type: "url",
+    title: `${work.snapshot.title} — ${work.creator.name}`,
+    textContent: [`${work.manifest.descriptor} by ${work.creator.name}`, opening].filter(Boolean).join("\n\n"),
+    sourceUrl: url,
+    sourceType: "published_work",
+    metadata: { published, siteName: `${work.creator.name} on Wonder Creator` },
+    provenance: { origin: "import", sourceUrl: url, details: { published: { workId: work.workId, revision: work.revision.number } } },
+  });
+  return { materialId: material.id, already: false };
 }

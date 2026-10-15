@@ -72,6 +72,19 @@ attribution-licensed sources, the creator's sharing/attribution/remix statement,
 versions or imagery were AI-made, and "published version N (from vN)". Never inferred by CreativeMind.
 **Open a conversation about this** is off by default; when opened it links an Open Conversation from the work's page.
 
+## Visitor actions (§21, Phase D)
+
+- **Save** sits beside Share for a signed-in creator reading someone else's work (never for the author, never on a
+  preview, never signed out). It keeps the work in their Materials as a `url` Material (`source_type`
+  `published_work`): the stable address, the title with the author's name, the descriptor and the opening words, and
+  `metadata.published` (work, handle, slug, author name, revision). No media or full text is copied. It is read through
+  `public_work`, so only what any reader may see can be saved; saving twice returns the first save; once saved the
+  button reads **Saved** and opens the Material. `POST /api/v1/public-works/save` (`savePublishedWork`).
+- In the Studio it is **reference only**, credited "By <name> · Wonder Creator" (`materialRights`). Bring in finds it like
+  any Material, so there is no separate "Bring to Studio" button on the public page.
+- **Huddle handoff** runs through the work's Open Conversation: *Join the conversation* → *Start Huddle about this*.
+- The author isn't told and nothing is counted; telemetry records only that a save happened (`published_work_saved`).
+
 ## Share previews, analytics (§28, §38)
 
 - `generateMetadata` gives each work a canonical URL, Open Graph type (article / video / music) and a description built
@@ -82,8 +95,8 @@ versions or imagery were AI-made, and "published version N (from vN)". Never inf
 
 ## Not yet
 
-Custom domains, password-protected works, "View earlier version", public Projects, signed-in visitor actions (Save
-reference / Bring to Studio from a public page), chapters and synchronized transcripts, and social share connectors.
+Custom domains, password-protected works, "View earlier version", public Projects, chapters and synchronized
+transcripts, and social share connectors.
 
 ## Tests
 

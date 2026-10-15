@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMaterial } from "@wonder/creator-library";
-import { createArtifact, getCreatorPage, publishCreation, saveCreatorPage, saveCreatorVersion, unpublishCreation, updatePublishedWork, type PublishedSnapshot } from "@wonder/creator-studio";
+import { createArtifact, getCreatorPage, publishCreation, savePublishedWork, savedPublishedWork, saveCreatorPage, saveCreatorVersion, unpublishCreation, updatePublishedWork, type PublishedSnapshot } from "@wonder/creator-studio";
 import type { Db as AppDb } from "@wonder/db";
 import { adminClient, anonClient, cleanupTestCreators, createTestCreator, expectDenied, expectOk, loose, registerStorageObject, type TestCreator } from "./helpers";
 
@@ -181,5 +181,29 @@ describe("Creator Page templates", () => {
     const preview = (await b.client.rpc("creator_page_preview")).data as { headline: string; isPublished: boolean; creator: { id: string } };
     expect(preview).toMatchObject({ headline: "Not yet public", isPublished: false, creator: { id: b.creatorId } });
     expectDenied(await anon.rpc("creator_page_preview"));
+  });
+});
+
+describe("visitor actions (§21)", () => {
+  it("a signed-in visitor saves a published work as a credited link — once, only what readers may see, never their own", async () => {
+    const piece = await createArtifact(db(a), a.creatorId, { artifactType: "essay", title: "Platform Three", content: "The train was late, and so was I.", authorKind: "creator", provenance: { origin: "typed" } });
+    await publishCreation(db(a), a.creatorId, piece.id, { visibility: "unlisted" });
+
+    const saved = await savePublishedWork(db(b), b.creatorId, { handle, slug: "platform-three" }, "https://wonder.example");
+    expect(saved.already).toBe(false);
+    const m = expectOk(await b.client.from("creative_materials").select("creator_id, type, source_url, title, storage_object_id, metadata").eq("id", saved.materialId).single());
+    expect(m).toMatchObject({ creator_id: b.creatorId, type: "url", source_url: `https://wonder.example/p/${handle}/platform-three`, storage_object_id: null });
+    expect(m.title).toContain("Platform Three");
+    // Saving again returns the first save.
+    expect(await savePublishedWork(db(b), b.creatorId, { handle, slug: "platform-three" }, "https://wonder.example")).toEqual({ materialId: saved.materialId, already: true });
+    // The saver's Material is theirs alone; the author never sees it.
+    expect(expectOk(await a.client.from("creative_materials").select("id").eq("id", saved.materialId))).toEqual([]);
+    const pubId = (m.metadata as { published: { workId: string } }).published.workId;
+    expect(await savedPublishedWork(db(a), a.creatorId, pubId)).toBeNull();
+
+    // The author can't save their own work, and a private work can't be saved by anyone else.
+    await expect(savePublishedWork(db(a), a.creatorId, { handle, slug: "platform-three" }, "https://wonder.example")).rejects.toThrow();
+    await updatePublishedWork(db(a), piece.id, { visibility: "private" });
+    await expect(savePublishedWork(db(b), b.creatorId, { handle, slug: "platform-three" }, "https://wonder.example")).rejects.toThrow(/isn't available/);
   });
 });

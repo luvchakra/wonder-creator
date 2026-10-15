@@ -47,6 +47,8 @@ export const TELEMETRY_EVENTS = [
   "album_photo_added",
   "community_topic_started",
   "ask_community_sent",
+  // CreatorPublish §21 — a signed-in visitor kept a published work as a reference.
+  "published_work_saved",
 ] as const;
 export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];
 export const isTelemetryEvent = (e: unknown): e is TelemetryEvent => typeof e === "string" && (TELEMETRY_EVENTS as readonly string[]).includes(e);

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublishedWorkPage } from "@/components/publish/work-page";
-import { loadPublicWork, siteOrigin } from "@/lib/public-pages";
+import { loadPublicWork, publicVisitor, siteOrigin } from "@/lib/public-pages";
 
 type Params = { params: Promise<{ handle: string; slug: string }> };
 
@@ -36,6 +36,6 @@ export default async function PublishedWork({ params }: Params) {
   const { handle, slug } = await params;
   const work = await loadPublicWork(handle, slug);
   if (!work) notFound();
-  const origin = await siteOrigin();
-  return <PublishedWorkPage work={work} url={`${origin}/p/${work.creator.handle}/${work.slug}`} />;
+  const [origin, visitor] = await Promise.all([siteOrigin(), publicVisitor(work)]);
+  return <PublishedWorkPage work={work} url={`${origin}/p/${work.creator.handle}/${work.slug}`} visitor={visitor} />;
 }
