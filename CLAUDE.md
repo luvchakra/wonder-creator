@@ -9,11 +9,10 @@ Product contract, UI contract and P0 scope: the Wonder Creator specs the owner s
 
 * Continue with the remaining items without stopping; don't ask unless it's important (a decision only the owner can make, credentials, or something destructive or irreversible).
 * **Always notify the owner when a task is done** (owner, 4 Oct 2026): send a push notification (`PushNotification`)
-  when each requested task finishes — green and waiting to merge, merged, or blocked on something only the owner can
-  do — in one line that says what's done and anything they need to act on. Also notify when a decision of theirs is
+  when each requested task finishes — merged, or blocked on something only the owner can do — in one line that says what's done and anything they need to act on. Also notify when a decision of theirs is
   blocking work.
-* Ship through PRs: open a PR for each piece of work and get CI green — but **merge only when the owner says "merge
-  now" or "build now"** (Build-slot budget › Merging waits for the owner, 10 Oct 2026). Until then keep working.
+* Ship through PRs: open a PR for each piece of work, get CI green, then **merge it yourself** — no need to wait for
+  the owner (Build-slot budget › Merge automatically when green, 15 Oct 2026). Then keep working.
 * Backlog: `docs/plan-p0.1-p1.md` (P0.1 then P1, in its §51/§52 order). Status lives in `docs/progress.md`; keep it current.
 * UI direction: `docs/ui-redesign/spec.md` (owner-supplied, 27 Sep 2026) with reference boards in `docs/ui-redesign/boards/`. It supersedes the navigation rules in the mobile guidelines: the creator works on a Canvas, there is no bottom navigation or module tab bar, and destinations/actions live in the corner Creative Palette. CreativeMind (CreatorBrain) appears only contextually; meTalk (CreatorTalk) is a transient mode, not a chat product.
 * UI terms (Creation, Creative Studio, CreativeMind, meTalk, Creative Room, Palette, CreativeRadio — the mood music player, `soundtrack` in code; Pulse — the open space for conversations, asks and people, `community` in code; Community — the Orkut-style communities) change in the presentation layer and in page routes (owner override, 2 Oct 2026: routes follow the design — `/creations`, `/rooms`, `/pulse`, `/materials`, `/explore`, `/people`, `/me`, with permanent redirects from the old paths in `next.config.ts`) — never rename tables, packages, events or APIs for it. Boards are references, never runtime assets. Redesign phases (UI-A → UI-D) are tracked in `docs/ui-redesign/README.md`.
@@ -372,15 +371,12 @@ Vercel counts every deployment it **creates** against the plan's daily cap (100 
 ignored build step cancels. Running out blocks production, so deployments are a budget, production first. Contract and
 the numbers: `docs/performance.md` › Build-slot budget.
 
-* **Merging waits for the owner (owner, 10 Oct 2026).** Nothing is merged to `main` — so nothing is built on Vercel —
-  until a message from the owner says **"merge now"** or **"build now"**. Until then: open the PR (or add the next piece
-  of work as further commits to the PR already open on the working branch, updating its description), get CI green,
-  notify the owner that it is ready and waiting, and carry on with the next item. When the phrase comes, merge
-  **every** Claude PR that is green and waiting at that moment — this session's and any other open on the repository —
-  oldest first, after a fresh look at CI and conflicts, then reset the working branch and notify. The phrase covers only
-  what is waiting when it arrives; work finished afterwards waits for the next one. Dependabot PRs are not waiting on
-  the phrase and are merged only when the owner names them. Prefer one open PR per session that accumulates commits:
-  one squash-merge is one deployment, each extra waiting PR is one more.
+* **Merge automatically when green (owner, 15 Oct 2026; replaces "merge now" / "build now" of 10 Oct).** Open the PR,
+  get CI green on the current head with no merge conflict and no open blocking review finding, then squash-merge it
+  yourself, reset the working branch from `main` and notify the owner. No "merge now" is needed. Still batch: prefer one
+  PR per finished piece of work (one squash-merge is one deployment), not a merge per small commit; check the day's
+  count first and, above ~70 of 100, hold everything that isn't production or a hotfix. Dependabot PRs are still merged
+  only when the owner names them.
 * **Create no deployment you don't need.** Only `main` deploys (`apps/web/vercel.json` › `git.deploymentEnabled`,
   every other branch off at the platform level); no previews; never link a second Vercel project to the repository.
   The ignore script is a backstop, not a saving — a skipped build still used a slot.
