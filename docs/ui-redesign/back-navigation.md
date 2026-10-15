@@ -43,6 +43,9 @@ Back on page **P** goes to the first of these that exists:
 
 * `NavMemory` (app shell, `sessionStorage`, per tab) records every page as its path and query, newest last, last 20.
   Private mode without storage simply means rule 1 never matches.
+* The newest entry follows its page's query while the creator stays on it (`QuerySync`, `useSearchParams` behind its
+  own Suspense boundary): a filter, tab or search changed on the Library is kept, so Back from a Material opened there
+  returns to the list as it was left. Earlier entries are never rewritten.
 * **Pages that only forward never enter the trail**: the Studio address forwarding writing to `/write`, a Carousel's
   Creation page forwarding to its Studio, old addresses redirecting. A forwarder leaves no entry, so Back can never
   bounce between a page and its forwarder. (`ForwardTo` and route redirects use `replace`, so the browser's own Back

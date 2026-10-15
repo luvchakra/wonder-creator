@@ -1,6 +1,6 @@
 "use client";
-import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 
 /**
  * The per-tab trail behind every Back (docs/ui-redesign/back-navigation.md): the pages this tab visited, newest last, as
@@ -145,10 +145,30 @@ function wasForwardedFrom(pathname: string): string | null {
   }
 }
 
+/**
+ * The current page's entry follows its query as it changes on the same path (filters, tabs, a search typed on the page),
+ * so Back from a page opened there returns to the list as it was left — the Library with its filters, not as it first
+ * opened. Only the newest entry changes, and only while it is this path; leaving the page records nothing here.
+ */
+export function syncCurrentQuery(here: string) {
+  const list = read();
+  const last = list[list.length - 1];
+  if (!last || pathOf(last.p) !== pathOf(here) || last.p === here) return;
+  write([...list.slice(0, -1), { ...last, p: here }]);
+}
+
+function QuerySync({ pathname }: { pathname: string }) {
+  const query = useSearchParams().toString();
+  useEffect(() => {
+    if (window.location.pathname === pathname) syncCurrentQuery(`${pathname}${query ? `?${query}` : ""}`);
+  }, [pathname, query]);
+  return null;
+}
+
 /** Records each page this tab visits (mounted once in the app shell). */
 export function NavMemory() {
-  // The path drives it; the query is read as it is at that moment. (No useSearchParams: it would need a Suspense
-  // boundary around the whole app shell, which splits every page's streaming.)
+  // The path drives the trail; the query is read as it is at that moment, and QuerySync keeps it current afterwards. Its
+  // useSearchParams sits behind its own small Suspense boundary, so the app shell around it still streams as before.
   const pathname = usePathname();
   useEffect(() => {
     watchInput();
@@ -177,10 +197,14 @@ export function NavMemory() {
       const t = pageTitle();
       const list = read();
       const last = list[list.length - 1];
-      if (last && last.p === here && last.t !== t) write([...list.slice(0, -1), { p: here, t }]);
+      if (last && pathOf(last.p) === pathname && last.t !== t) write([...list.slice(0, -1), { ...last, t }]);
     });
     obs.observe(head, { subtree: true, childList: true, characterData: true });
     return () => obs.disconnect();
   }, [pathname]);
-  return null;
+  return (
+    <Suspense fallback={null}>
+      <QuerySync pathname={pathname} />
+    </Suspense>
+  );
 }
