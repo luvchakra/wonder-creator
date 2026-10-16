@@ -137,7 +137,7 @@ jobs:
         run: |
           if [ -f e2e-results/results.json ]; then node scripts/e2e/summary.mjs e2e-results/results.json >> "$GITHUB_STEP_SUMMARY";
           else echo "### Part ${{ matrix.part }}: no report — it stopped before Playwright finished. See the log." >> "$GITHUB_STEP_SUMMARY"; fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-part-${{ matrix.part }}
@@ -207,7 +207,7 @@ jobs:
             const seconds = JSON.parse(fs.readFileSync("timings.json", "utf8"));
             const about = "Measured seconds per spec file (sum of its tests, both projects), from the nightly end-to-end run. Used by scripts/e2e/plan.mjs to balance parts by time. Refresh: download the nightly e2e-timings artifact and replace this file.";
             fs.writeFileSync("e2e-timings.json", JSON.stringify({ _about: about, measuredFrom: `CI run ${process.env.RUN} (${process.env.SHA.slice(0, 7)})`, seconds }, null, 2) + "\n");'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: needs.plan.outputs.full == 'true'
         with:
           name: e2e-timings
