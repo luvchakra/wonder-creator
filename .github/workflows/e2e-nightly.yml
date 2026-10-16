@@ -1,0 +1,251 @@
+name: Nightly end-to-end
+
+# The full end-to-end suite, every night and by hand (docs/testing.md › Nightly). Never on pull requests or merges.
+#
+#   Schedule   03:11 IST. Skipped when main is still the commit the last scheduled run tested (nothing new to learn;
+#              a failure is root-caused, never re-run hoping it passes).
+#   By hand    Actions › Nightly end-to-end › Run workflow. Optional "specs": a space-separated list of spec files
+#              (e.g. "e2e/auth.spec.ts e2e/payments.spec.ts"); empty runs the whole suite.
+#
+# Each run builds the app fresh from the commit, starts a fresh local Supabase stack per part (never production data),
+# and splits the suite into parts balanced by measured time (scripts/e2e/plan.mjs, e2e/timings.json). Each part has a
+# time budget: when it's spent the run stops cleanly and says what didn't run. One retry; a test that passes only on
+# retry is reported as flaky. Reports and traces are kept as artifacts. A red nightly opens (or comments on) an issue,
+# and is fixed before other work merges.
+on:
+  schedule:
+    - cron: "41 21 * * *" # 03:11 IST
+  workflow_dispatch:
+    inputs:
+      specs:
+        description: 'Spec files to run, space-separated (e.g. "e2e/auth.spec.ts e2e/payments.spec.ts"). Empty = the whole suite.'
+        required: false
+        default: ""
+
+concurrency:
+  group: e2e-nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Minutes of tests per part before the run is split further, and each part's budget (well above its measured ~7 min).
+  E2E_TARGET_MINUTES: "8"
+  E2E_BUDGET_MINUTES: "25"
+
+jobs:
+  plan:
+    name: Plan the parts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # the schedule reads which commit the last scheduled run tested
+    outputs:
+      run: ${{ steps.skip.outputs.run }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      parts: ${{ steps.plan.outputs.parts }}
+      full: ${{ steps.plan.outputs.full }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: skip
+        env:
+          EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "schedule" ]; then
+            last="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/e2e-nightly.yml/runs?event=schedule&branch=main&status=completed&per_page=5" \
+                    --jq "[.workflow_runs[] | select(.id != $RUN_ID)][0].head_sha // empty" 2>/dev/null || true)"
+            if [ -n "$last" ] && [ "$last" = "$HEAD" ]; then
+              echo "main is still $HEAD, which the last scheduled run already tested — skipping." | tee -a "$GITHUB_STEP_SUMMARY"
+              echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+      - id: plan
+        if: steps.skip.outputs.run == 'true'
+        env:
+          SPECS: ${{ github.event.inputs.specs }}
+        run: |
+          set -euo pipefail
+          matrix="$(node scripts/e2e/plan.mjs --specs "$SPECS" --target-minutes "$E2E_TARGET_MINUTES")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "parts=$(jq '.include | length' <<<"$matrix")" >> "$GITHUB_OUTPUT"
+          echo "full=$([ -z "${SPECS// /}" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Parts (balanced by measured time)"
+            jq -r '.include[] | "- Part \(.part)/\(.of): ~\(.minutes) min, \(.files | split(" ") | length) spec files"' <<<"$matrix"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  e2e:
+    name: End-to-end part ${{ matrix.part }}/${{ matrix.of }}
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    # A backstop only: the part's own budget (E2E_BUDGET_MINUTES) ends it cleanly first, with reports written.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      CI: "true"
+      E2E_JSON_REPORT: e2e-results/results.json
+      PLAYWRIGHT_CHROMIUM_PATH: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # A fresh local database for this part: nothing from another run or part, and never production data.
+      - run: npx supabase start
+      - name: Configure app for the local stack
+        run: |
+          npx supabase status -o json > /tmp/sb.json
+          node -e '
+            const d = require("/tmp/sb.json");
+            require("fs").writeFileSync("apps/web/.env.local", [
+              `NEXT_PUBLIC_SUPABASE_URL=${d.API_URL}`,
+              `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${d.PUBLISHABLE_KEY}`,
+              `SUPABASE_SECRET_KEY=${d.SECRET_KEY}`,
+              "CRON_SECRET=ci-cron-secret-0000000000000000",
+              "WONDERCREATOR_AI_PROVIDER=offline",
+              // Payments e2e: a key Stripe refuses (checkout fails honestly) and a test-only webhook secret.
+              "STRIPE_SECRET_KEY=e2e-not-a-real-key",
+              "STRIPE_WEBHOOK_SECRET=e2e-webhook-secret",
+            ].join("\n"));'
+      # A fresh build of this commit (no build cache): the suite tests exactly what main is.
+      - run: npm run build
+      - name: Start app
+        run: |
+          mkdir -p e2e-results
+          (cd apps/web && npx next start -p 3000 > ../../e2e-results/next.log 2>&1 &)
+          npx wait-on http://localhost:3000/sign-in --timeout 120000
+      - run: npx playwright install --with-deps chromium
+      - name: Run part ${{ matrix.part }}/${{ matrix.of }} (~${{ matrix.minutes }} min measured)
+        env:
+          FILES: ${{ matrix.files }}
+        run: |
+          # The planner only emits spec files that exist; xargs passes them without the shell interpreting them.
+          tr ' ' '\n' <<<"$FILES" | xargs -d '\n' npx playwright test
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f e2e-results/results.json ]; then node scripts/e2e/summary.mjs e2e-results/results.json >> "$GITHUB_STEP_SUMMARY";
+          else echo "### Part ${{ matrix.part }}: no report — it stopped before Playwright finished. See the log." >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-part-${{ matrix.part }}
+          # The HTML report, traces/screenshots of failed attempts (flaky ones included), the JSON results and the app log.
+          path: |
+            playwright-report/
+            test-results/
+            e2e-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # The whole RLS suite with the nightly (on pull requests it runs only when the database changes).
+  db:
+    name: Database security (RLS) tests
+    needs: plan
+    if: needs.plan.outputs.run == 'true' && needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start
+      - run: npm run test:db
+      - name: Generated types are up to date
+        run: |
+          npx supabase gen types typescript --local > /tmp/types.ts
+          diff -u packages/db/src/database.types.ts /tmp/types.ts
+
+  report:
+    name: Report
+    needs: [plan, e2e, db]
+    if: always() && needs.plan.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-part-*
+          path: parts
+      - id: sum
+        env:
+          E2E_PARTS: ${{ needs.plan.outputs.parts }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          reports=(parts/*/e2e-results/results.json)
+          node scripts/e2e/summary.mjs --json summary.json --timings timings.json "${reports[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "ok=$(jq -r .ok summary.json)" >> "$GITHUB_OUTPUT"
+          echo "flaky=$(jq -r '.flaky | length' summary.json)" >> "$GITHUB_OUTPUT"
+      # Fresh per-file timings from a full run, for e2e/timings.json (download and commit when the balance drifts).
+      - name: Timings for the planner
+        if: needs.plan.outputs.full == 'true'
+        env:
+          RUN: ${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const seconds = JSON.parse(fs.readFileSync("timings.json", "utf8"));
+            const about = "Measured seconds per spec file (sum of its tests, both projects), from the nightly end-to-end run. Used by scripts/e2e/plan.mjs to balance parts by time. Refresh: download the nightly e2e-timings artifact and replace this file.";
+            fs.writeFileSync("e2e-timings.json", JSON.stringify({ _about: about, measuredFrom: `CI run ${process.env.RUN} (${process.env.SHA.slice(0, 7)})`, seconds }, null, 2) + "\n");'
+      - uses: actions/upload-artifact@v4
+        if: needs.plan.outputs.full == 'true'
+        with:
+          name: e2e-timings
+          path: e2e-timings.json
+          retention-days: 30
+      - name: Overall result
+        env:
+          E2E: ${{ needs.e2e.result }}
+          DB: ${{ needs.db.result }}
+          OK: ${{ steps.sum.outputs.ok }}
+        run: |
+          echo "End-to-end parts: $E2E · RLS: $DB · summary ok: $OK"
+          case "$E2E" in success) ;; *) exit 1 ;; esac
+          case "$DB" in success|skipped) ;; *) exit 1 ;; esac
+          [ "$OK" = "true" ]
+      # The repo's alerting: one open issue per kind, commented on again while it keeps happening. Main only — a manual
+      # run on a branch reports in its own summary.
+      - name: Alert on failure
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          title="End-to-end tests failing on main"
+          body="$(printf 'Nightly end-to-end failed (%s) on %s: %s\n\nA red nightly is fixed before other work merges. Find the root cause; "flaky" is not one.\n\n%s' "$EVENT" "$SHA" "$RUN" "$(node scripts/e2e/summary.mjs parts/*/e2e-results/results.json 2>/dev/null | head -60)")"
+          n="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+      - name: Report flaky tests
+        if: success() && steps.sum.outputs.flaky != '0' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Flaky end-to-end tests"
+          body="$(printf 'These tests failed and then passed on retry in %s. Each needs a root cause.\n\n%s' "$RUN" "$(jq -r '.flaky[] | "- `\(.)`"' summary.json)")"
+          n="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi

@@ -1,32 +1,29 @@
 name: CI
 
-# What runs when (docs/performance.md › Build and deploy):
-#   pull request   lint, typecheck, unit tests, build · RLS tests only when the database changes (or this file) ·
-#                  end-to-end only when the PR has the `e2e` label (read on each push) · nothing for docs-only changes
-#   push to main   the same, without end-to-end (owner, 7 Oct 2026: "skip e2e after merge too, only nightly")
-#   nightly        the full end-to-end and RLS suites — the only automatic end-to-end run; skipped when main hasn't
-#                  changed since the last nightly (owner's build-slot budget, 10 Oct 2026)
-#   manual         everything, on any branch (Actions › CI › Run workflow) — end-to-end on demand
+# What runs where, and why: docs/testing.md. In short —
+#   pull request   fast checks only, in parallel: typecheck · lint on the changed files · unit tests related to the changed
+#                  files · build. A change to dependencies, TypeScript/lint/test/build config or CI runs the whole lint and
+#                  every unit test. RLS tests only when the database changes. No end-to-end. Docs-only changes run nothing.
+#   push to main   the whole lint and every unit test (plus typecheck and build); RLS tests when the database changed.
+#                  No end-to-end.
+#   end-to-end     nightly and by hand: .github/workflows/e2e-nightly.yml.
+#   manual         Actions › CI › Run workflow: the main-branch checks on any branch.
 # A job that doesn't need to run is skipped, which counts as passing for required checks.
 on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
-  schedule:
-    - cron: "41 21 * * *" # 03:11 IST
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
-# A new push to a PR cancels that PR's older run. Pushes to main are never cancelled (each merged commit keeps its
-# result and saves the caches), and the event name keeps a nightly run from cancelling a merge's run.
+# A new push to a PR cancels that PR's older run. Pushes to main are never cancelled (each merged commit keeps its result
+# and saves the caches).
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Least privilege for the workflow token.
 permissions:
   contents: read
-  actions: read # the nightly reads which commit the last nightly ran on
 
 jobs:
   changes:
@@ -35,7 +32,8 @@ jobs:
     outputs:
       code: ${{ steps.c.outputs.code }}
       db: ${{ steps.c.outputs.db }}
-      e2e: ${{ steps.c.outputs.e2e }}
+      full: ${{ steps.c.outputs.full }}
+      files: ${{ steps.c.outputs.files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,43 +43,67 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-          E2E_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'e2e') }}
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          all() { echo "code=true"; echo "db=true"; echo "e2e=true"; }
-          none() { echo "code=false"; echo "db=false"; echo "e2e=false"; }
-          # Nightly: nothing to learn if main hasn't changed since the last nightly (green or not — a failure is
-          # looked into, never re-run hoping it passes). Manual runs always run everything.
-          if [ "$EVENT" = "schedule" ]; then
-            last="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?event=schedule&branch=main&status=completed&per_page=5" \
-                    --jq "[.workflow_runs[] | select(.id != $RUN_ID)][0].head_sha // empty" 2>/dev/null || true)"
-            if [ -n "$last" ] && [ "$last" = "$HEAD" ]; then
-              echo "main is still $HEAD, which the last nightly already ran on — skipping."
-              none >> "$GITHUB_OUTPUT"; exit 0
-            fi
+          # Everything the PR touches that still exists (deleted files can't be linted or have tests related to them).
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! all="$(git diff --name-only "$BASE...$HEAD")" || ! present="$(git diff --name-only --diff-filter=d "$BASE...$HEAD")"; then
+            all=""; present=""; nobase=true
+          else
+            nobase=false
           fi
-          # Nightly, manual, or no usable base (a new branch): run everything.
-          if [ "$EVENT" = "schedule" ] || [ "$EVENT" = "workflow_dispatch" ] || [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
-             || ! files="$(git diff --name-only "$BASE...$HEAD")"; then
-            all >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          echo "$files"
-          has() { grep -qE "$1" <<<"$files"; }
-          code=true; db=false; e2e=false
+          printf '%s\n' "$all"
+          code=true; db=false; full=false
           # Docs and Markdown only: nothing to build or test.
-          if ! grep -qvE '^docs/|\.md$' <<<"$files"; then code=false; fi
-          if has '^(supabase/|tests/db/|packages/db/)'; then db=true; fi
-          # End-to-end runs nightly; on a PR only when asked for with the `e2e` label.
-          if [ "$code" = true ] && [ "$EVENT" = "pull_request" ] && [ "$E2E_LABEL" = "true" ]; then e2e=true; fi
-          # A change to CI itself builds and runs the RLS tests (end-to-end only with the label).
-          if has '^\.github/workflows/ci\.yml$'; then code=true; db=true; fi
-          printf 'code=%s\ndb=%s\ne2e=%s\n' "$code" "$db" "$e2e" | tee -a "$GITHUB_OUTPUT"
+          if [ "$nobase" = false ] && ! grep -qvE '^docs/|\.md$' <<<"$all"; then code=false; fi
+          if grep -qE '^(supabase/|tests/db/|packages/db/)' <<<"$all"; then db=true; fi
+          # Whole lint and every unit test: on main, by hand, without a usable base, or when the PR changes what every
+          # check depends on — dependencies, TypeScript, lint, test or build config, the test stubs, or CI itself.
+          if [ "$EVENT" != "pull_request" ] || [ "$nobase" = true ] || grep -qE \
+             '^(package(-lock)?\.json|(apps|packages)/[^/]+/package\.json|tsconfig[^/]*\.json|apps/web/tsconfig[^/]*\.json|vitest\.config\.[cm]?[jt]s|eslint\.config\.[cm]?js|apps/web/eslint\.config\.[cm]?js|apps/web/next\.config\.[cm]?[jt]s|playwright\.config\.ts|tests/stubs/|\.github/)' <<<"$all"; then
+            full=true
+          fi
+          # A change to CI itself also runs the RLS tests.
+          if grep -qE '^\.github/workflows/ci\.yml$' <<<"$all"; then code=true; db=true; fi
+          files="$(printf '%s\n' "$present" | jq -R . | jq -cs 'map(select(length > 0))')"
+          printf 'code=%s\ndb=%s\nfull=%s\nfiles=%s\n' "$code" "$db" "$full" "$files" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo "### What runs"
+            echo "- Scope: **$([ "$full" = true ] && echo 'everything (whole lint, every unit test)' || echo 'the changed files (lint) and the unit tests related to them')**"
+            echo "- Code checks: $code · RLS tests: $db · End-to-end: nightly (e2e-nightly.yml)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-  # The merge gate, as four jobs at once (learned from WonderJobs, docs/performance.md › Build and deploy): the gate takes
-  # as long as the slowest, not the sum. Each tool keeps its cache — restored on every run, saved from main — so a warm
-  # run is mostly `npm ci`.
+  typecheck:
+    name: Typecheck
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # tsc's incremental state for both projects (packages + tests, and the app): file versions are content hashes, so
+      # it is safe across checkouts. Types can't be checked per file, so this is always the whole project.
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            tsconfig.tsbuildinfo
+            apps/web/tsconfig.tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
+          restore-keys: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-
+      - run: npm run typecheck
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: |
+            tsconfig.tsbuildinfo
+            apps/web/tsconfig.tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
+
   lint:
     name: Lint
     needs: changes
@@ -101,43 +123,24 @@ jobs:
           path: apps/web/.next/cache/eslint
           key: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-${{ github.sha }}
           restore-keys: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-
-      - run: npx eslint . --cache --cache-strategy content --cache-location apps/web/.next/cache/eslint/
+      - name: Lint (whole repository)
+        if: needs.changes.outputs.full == 'true'
+        run: npx eslint . --cache --cache-strategy content --cache-location apps/web/.next/cache/eslint/
+      - name: Lint (changed files)
+        if: needs.changes.outputs.full != 'true'
+        env:
+          FILES: ${{ needs.changes.outputs.files }}
+        run: |
+          # File names go through xargs, never the shell, so route folders like (studio)/[id] stay literal.
+          jq -r '.[] | select(test("\\.(c|m)?(j|t)sx?$"))' <<<"$FILES" > /tmp/lint-files
+          if [ ! -s /tmp/lint-files ]; then echo "No JavaScript or TypeScript files changed."; exit 0; fi
+          cat /tmp/lint-files
+          xargs -d '\n' -a /tmp/lint-files npx eslint --no-warn-ignored --cache --cache-strategy content --cache-location apps/web/.next/cache/eslint/
       - uses: actions/cache/save@v4
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           path: apps/web/.next/cache/eslint
           key: eslint-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.mjs') }}-${{ github.sha }}
-
-  typecheck:
-    name: Typecheck
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # tsc's incremental state for both projects (packages + tests, and the app): file versions are content hashes,
-      # so it is safe across checkouts. This is the only type check: `next build` skips its own on CI and Vercel.
-      - uses: actions/cache/restore@v4
-        with:
-          path: |
-            tsconfig.tsbuildinfo
-            apps/web/tsconfig.tsbuildinfo
-          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
-          restore-keys: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-
-      - run: npm run typecheck
-      - uses: actions/cache/save@v4
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          path: |
-            tsconfig.tsbuildinfo
-            apps/web/tsconfig.tsbuildinfo
-          key: tsc-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'apps/web/tsconfig.json') }}-${{ github.sha }}
 
   test:
     name: Unit tests
@@ -152,8 +155,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      - name: Unit tests (all)
+        if: needs.changes.outputs.full == 'true'
+        run: npm test
+      - name: Unit tests (related to the changed files)
+        if: needs.changes.outputs.full != 'true'
+        env:
+          FILES: ${{ needs.changes.outputs.files }}
+        run: |
+          # Vitest follows the import graph from each changed file to the tests that reach it, across packages.
+          jq -r '.[]' <<<"$FILES" > /tmp/changed-files
+          if [ ! -s /tmp/changed-files ]; then echo "Nothing changed that tests could relate to."; exit 0; fi
+          xargs -d '\n' -a /tmp/changed-files npx vitest related --run --project unit --passWithNoTests
 
+  # The production build stays on pull requests: a merge to main deploys at once, and this is the only check that catches
+  # a build break before it does. It runs beside the others (~45 s with its cache), so it doesn't lengthen the gate.
   build:
     name: Build
     needs: changes
@@ -200,11 +216,14 @@ jobs:
           echo "Jobs: $RESULTS"
           for r in $RESULTS; do case "$r" in success|skipped) ;; *) exit 1 ;; esac; done
 
+  # Only when the database changes: migrations are applied to production by the Database migrations workflow on merge,
+  # so a broken policy or migration has to be caught here, before it ships. The whole suite also runs nightly.
   db:
     name: Database security (RLS) tests
     needs: changes
     if: needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -219,97 +238,11 @@ jobs:
           npx supabase gen types typescript --local > /tmp/types.ts
           diff -u packages/db/src/database.types.ts /tmp/types.ts
 
-  # The end-to-end suite in four parts at once, each with its own database and app (docs/performance.md › Build and
-  # deploy). Tests within a part still run one at a time, as before.
-  e2e-shard:
-    name: End-to-end (Playwright) ${{ matrix.shard }}/4
-    needs: changes
-    if: needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Turbopack's build cache and TypeScript's incremental state (docs/performance.md › Build and deploy): restored
-      # on every run, saved from main, so a build compiles only what changed.
-      - uses: actions/cache/restore@v4
-        with:
-          path: apps/web/.next/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-      - run: npx supabase start
-      - name: Configure app for the local stack
-        run: |
-          npx supabase status -o json > /tmp/sb.json
-          node -e '
-            const d = require("/tmp/sb.json");
-            require("fs").writeFileSync("apps/web/.env.local", [
-              `NEXT_PUBLIC_SUPABASE_URL=${d.API_URL}`,
-              `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${d.PUBLISHABLE_KEY}`,
-              `SUPABASE_SECRET_KEY=${d.SECRET_KEY}`,
-              "CRON_SECRET=ci-cron-secret-0000000000000000",
-              "WONDERCREATOR_AI_PROVIDER=offline",
-              // Payments e2e: a key Stripe refuses (checkout fails honestly) and a test-only webhook secret.
-              "STRIPE_SECRET_KEY=e2e-not-a-real-key",
-              "STRIPE_WEBHOOK_SECRET=e2e-webhook-secret",
-            ].join("\n"));'
-      - run: npm run build
-      - name: Start app
-        run: |
-          (cd apps/web && npx next start -p 3000 > /tmp/next.log 2>&1 &)
-          npx wait-on http://localhost:3000/sign-in --timeout 120000
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
-        env:
-          PLAYWRIGHT_CHROMIUM_PATH: ""
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report-${{ matrix.shard }}
-          path: |
-            playwright-report/
-            /tmp/next.log
-          retention-days: 7
-
-  # One result under the check's usual name, so branch rules that require "End-to-end (Playwright)" keep working: passes
-  # when every part passed, or when end-to-end wasn't needed for this change (skipped).
+  # Kept under its long-standing name so a branch rule that requires it keeps working. End-to-end no longer runs on pull
+  # requests or merges; it runs nightly (e2e-nightly.yml), and risky changes run their specs locally first (docs/testing.md).
   e2e:
     name: End-to-end (Playwright)
-    needs: e2e-shard
-    if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
-      - name: All parts passed (or not needed)
-        run: |
-          echo "Parts: ${{ needs.e2e-shard.result }}"
-          case "${{ needs.e2e-shard.result }}" in success|skipped) ;; *) exit 1 ;; esac
-
-  # End-to-end runs nightly (or by hand), not on pull requests or merges, so a failure is raised where it's seen: one open
-  # issue, commented on again while it keeps failing.
-  e2e-alert:
-    name: Report an end-to-end failure on main
-    needs: e2e-shard
-    if: failure() && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SHA: ${{ github.sha }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          title="End-to-end tests failing on main"
-          body="End-to-end failed ($EVENT) on $SHA: $RUN"
-          n="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
-          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+      - run: echo "End-to-end runs nightly (.github/workflows/e2e-nightly.yml), not on pull requests. See docs/testing.md."

@@ -64,9 +64,16 @@ itself as not connected.
 | `npm run typecheck` | Route types + `tsc` for packages and the app |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:db` | Database security tests (needs `supabase start`) |
-| `npm run test:e2e` | Playwright E2E (needs the app running on :3000) |
+| `npm run test:e2e` | Playwright E2E against an app you already run on :3000 |
+| `npm run e2e:local -- <specs>` | Build against the local Supabase stack, start it and run the chosen E2E specs (see `docs/testing.md`) |
+| `npm run e2e:plan` | Show how the nightly splits the E2E suite into parts by measured time |
 | `npm run db:reset` | Re-apply migrations locally |
 | `npm run db:types` | Regenerate `packages/db/src/database.types.ts` |
+
+## Testing
+
+What runs on a pull request, on `main` and every night, and why: [`docs/testing.md`](docs/testing.md). Pull requests
+run fast checks only (typecheck, lint and unit tests for what changed, build); the full end-to-end suite runs nightly.
 
 ## Configuration
 
