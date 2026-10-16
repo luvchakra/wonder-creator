@@ -383,10 +383,13 @@ the numbers: `docs/performance.md` › Build-slot budget.
 * **One merge to `main` = one deployment, so merge in bigger pieces.** Squash-merge; docs, `docs/progress.md`, Help
   topics and tests go in the same PR as the code they describe. **No docs-only PRs** — hold a doc change for the next
   code PR that touches the area (a docs-only merge still creates and cancels a deployment).
-* **Tests never spend a slot.** End-to-end and RLS suites run on GitHub Actions against a local app, never against a
-  deployment. End-to-end before a merge only for security-sensitive changes (auth, permissions, database rules,
-  payments, integrations) via the `e2e` label; everything else waits for the nightly, which skips when `main` hasn't
-  changed since the last nightly. Never re-run a failed run hoping it passes; find the cause first.
+* **Tests never spend a slot.** End-to-end and RLS suites run on GitHub Actions or locally against a local app, never
+  against a deployment. Pull requests run fast checks only (typecheck, lint on changed files, related unit tests,
+  build; RLS when the database changes); end-to-end runs **nightly** (`e2e-nightly.yml`), never on PRs or merges. Before
+  merging something risky (sign-in, permissions, database migrations, payments, a new cross-feature flow) run the
+  affected specs locally: `npm run e2e:local -- e2e/<spec>.spec.ts`. **A red nightly is fixed before other work
+  merges**; find the root cause ("flaky" is not one). Never skip, disable or delete a test to make CI green, and never
+  re-run a failed run hoping it passes. What runs where: `docs/testing.md`.
 * **Verify before pushing so there are no fix-up pushes:** lint, typecheck, the touched unit tests and a local build;
   push a branch once, when it's ready.
 * **Watch the budget.** Before deployment-heavy work count the last day's deployments: `git log origin/main
@@ -399,7 +402,7 @@ the numbers: `docs/performance.md` › Build-slot budget.
 ## Commands
 
 * `npm run dev` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run build`
-* `npx supabase start` then `npm run test:db` (RLS/security suite) and `npm run test:e2e` (app on :3000)
+* `npx supabase start` then `npm run test:db` (RLS/security suite) and `npm run e2e:local -- <spec files>` (builds and runs E2E against the local stack; `docs/testing.md`)
 * Run lint, typecheck, unit tests and build before pushing. Run `test:db` after any migration change.
 
 ## Layout

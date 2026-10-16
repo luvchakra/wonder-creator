@@ -143,7 +143,6 @@ WonderJobs runs those as four parallel jobs with a cache per tool and measures 4
 * **ESLint's cache** (content strategy, `apps/web/.next/cache/eslint`) and **tsc's incremental state** for both
   projects (`tsconfig.tsbuildinfo`, root `tsconfig.json` is `incremental` now), restored every run, saved from `main`.
 * **Concurrency:** a new push cancels only that PR's older run; merges to `main` never cancel each other.
-* **The `e2e` label starts its run at once** (`labeled` event), not on the next push.
 * **Vercel skips a production merge that changes only docs, CI files or tests** (`vercel-ignore-build.sh`).
 
 What the caches are worth, measured on the same machine (one run cold, one run with the cache in place):
@@ -176,31 +175,16 @@ ignored build step cancels. The rules are in `CLAUDE.md` › Build-slot budget; 
 | Branches that deploy | `main` only (`vercel.json` › `git.deploymentEnabled`: `*` and `**` off, `main` on); no previews |
 | Deployments a merge creates | one (production), skipped by `vercel-ignore-build.sh` when only docs, CI files or tests changed — the slot is still spent |
 | Tests on the platform | none: unit, RLS and end-to-end all run on GitHub Actions against a local app |
-| Nightly suite | 03:11 IST; skipped when `main` is the commit the last nightly already ran on |
+| Nightly suite | 03:11 IST (`e2e-nightly.yml`); skipped when `main` is the commit the last scheduled run already tested (`docs/testing.md`) |
 | Merges to `main`, 3–10 Oct 2026 | 1 · 11 · 11 · 7 · 9 · 2 · 5 · 1 a day — the peak is 11 % of the cap |
 
 Counting: each merge to `main` is one deployment, so `git log origin/main --since='24 hours ago' --oneline | wc -l` is
 the day's count without opening Vercel. Lesson already paid for: #176 (docs only) created and cancelled a deployment —
 record numbers in the PR that produced them instead.
 
-### What runs when (owner, 7 Oct 2026: "i don't need e2e tests everytime" · "skip e2e after merge too, only nightly")
+### What runs when
 
-| Event | Lint · typecheck · unit · build | RLS tests | End-to-end |
-|---|---|---|---|
-| Pull request, code | ✓ | only if `supabase/`, `tests/db/` or `packages/db/` changed | only with the `e2e` label |
-| Pull request, docs/Markdown only | — | — | — |
-| Pull request changing `.github/workflows/ci.yml` | ✓ | ✓ | only with the `e2e` label |
-| Merge to `main` | ✓ | if the database changed | — |
-| Nightly (03:11 IST) and manual runs | ✓ | ✓ | ✓ — the only automatic end-to-end run; the nightly is skipped when `main` hasn't changed since the last one |
-
-* A job that isn't needed is **skipped**, which counts as passing, so required checks keep working. If what changed
-  can't be worked out, everything runs.
-* **End-to-end on demand:** add the `e2e` label to a PR (its run starts at once), or Actions › CI › Run workflow on
-  the branch. Use it for risky changes: sign-in, payments, rights, uploads, the Palette.
-* **When end-to-end fails on `main`** (overnight or a manual run), CI opens one issue, "End-to-end tests failing on
-  main", and comments on it while it keeps failing. Fix forward, or roll back in Vercel (the previous production
-  deployment stays a rollback candidate).
-* Typical change → live: ~2–2.5 min of CI + under 1 min Vercel, instead of ~12 + 1. The trade-off: a regression only
-  end-to-end would catch can reach production until the nightly run reports it (up to a day) — use the `e2e` label
-  on risky changes.
-
+Moved to **[`docs/testing.md`](testing.md)** (owner, 16 Oct 2026: fast pull requests, end-to-end nightly). In short: a pull
+request runs typecheck, lint on the changed files, the unit tests related to them, and build — about a minute; `main` runs
+the whole lint and every unit test; the full end-to-end suite runs every night (`e2e-nightly.yml`), never on PRs or merges,
+and risky changes run their specs locally first (`npm run e2e:local`). The earlier `e2e` label is gone.
