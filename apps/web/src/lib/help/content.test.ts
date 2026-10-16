@@ -1,9 +1,12 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { HELP_SECTIONS, allTopics, type HelpTopic } from "./content";
-import { searchHelp, stem, tokenize } from "./search";
+import { PUBLIC_HELP_SLUGS, PUBLIC_PATHS, isPublicPath, publicHelpTopics } from "./public";
+import { searchHelp as search, stem, tokenize } from "./search";
+
+const searchHelp = (q: string) => search(q, HELP_SECTIONS);
 
 /**
  * The Help page's content is data, so its mistakes are findable: duplicate anchors, empty topics, links to pages that
@@ -11,6 +14,16 @@ import { searchHelp, stem, tokenize } from "./search";
  */
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../app");
+const SRC_DIR = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** Every source file under src (no tests), for checks that look at how help is linked and imported. */
+function sourceFiles(dir = SRC_DIR): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) return sourceFiles(full);
+    return /\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) ? [full] : [];
+  });
+}
 
 /** Does a page exist for this path? Route groups "(x)" add nothing to a path; "[x]" matches any one segment. */
 function pageExists(pathname: string, dir = APP_DIR, segments = pathname.split("/").filter(Boolean)): boolean {
@@ -24,6 +37,8 @@ function pageExists(pathname: string, dir = APP_DIR, segments = pathname.split("
   }
   return false;
 }
+
+const anchors = () => [...HELP_SECTIONS.map((s) => s.id), ...allTopics().map((t) => t.topic.slug)];
 
 const text = (t: HelpTopic) => [t.title, t.summary, ...(t.body ?? []), ...(t.steps ?? []), ...(t.notes ?? []), ...(t.terms ?? []).flatMap((x) => [x.term, x.text]), ...(t.links ?? []).map((l) => l.label)].join("\n");
 
@@ -77,16 +92,21 @@ describe("help content", () => {
       for (const link of topic.links ?? []) {
         count++;
         expect(link.label.length, `${topic.slug} link label`).toBeGreaterThan(2);
-        expect(link.href, `${topic.slug}: ${link.label}`).toMatch(/^\/[a-z0-9\-/]*(\?[a-z0-9=&_-]+)?$/i);
-        const path = link.href.split("?")[0]!;
+        expect(link.href, `${topic.slug}: ${link.label}`).toMatch(/^\/[a-z0-9\-/]*(\?[a-z0-9=&_-]+)?(#[a-z0-9-]+)?$/i);
+        const path = link.href.split(/[?#]/)[0]!;
         expect(pageExists(path), `${topic.slug} links to ${link.href}, which has no page`).toBe(true);
+        const anchor = link.href.split("#")[1];
+        if (anchor) {
+          expect(path, `${topic.slug}: only Help's own anchors can be checked, so only /help may carry one`).toBe("/help");
+          expect(anchors(), `${topic.slug} links to /help#${anchor}, which isn't a section or topic`).toContain(anchor);
+        }
       }
     }
     expect(count).toBeGreaterThan(20);
   });
 
   it("gives every public destination a real page", () => {
-    for (const path of ["/", "/help", "/contact", "/legal/privacy", "/legal/security", "/sign-in", "/settings/audit", "/materials", "/dejavu"]) expect(pageExists(path), path).toBe(true);
+    for (const path of ["/", "/help", "/contact", "/legal/privacy", "/legal/security", "/sign-in", "/settings/audit", "/materials", "/dejavu", ...PUBLIC_PATHS]) expect(pageExists(path), path).toBe(true);
     expect(pageExists("/definitely/not/a/page")).toBe(false);
   });
 
@@ -108,6 +128,60 @@ describe("help content", () => {
     const all = topics.map(({ topic }) => text(topic)).join("\n");
     expect(all).toMatch(/no likes/i);
     expect(all).not.toMatch(/\b(viral|leaderboard|top creators|go viral|followers? count)\b/i);
+  });
+});
+
+describe("keeping help current (docs/help.md)", () => {
+  it("says when each section was last checked against the app", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const s of HELP_SECTIONS) {
+      expect(s.updated, s.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Number.isNaN(Date.parse(s.updated)), s.id).toBe(false);
+      expect(s.updated <= today, `${s.id} is dated in the future`).toBe(true);
+    }
+  });
+
+  it("links into Help only at anchors that exist, from anywhere in the app", () => {
+    const known = new Set(anchors());
+    let found = 0;
+    for (const file of sourceFiles()) {
+      // Code only: a comment may show the shape (`/help#slug`) without being a link.
+      const code = readFileSync(file, "utf8").split("\n").filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l)).join("\n");
+      for (const m of code.matchAll(/["'`]\/help#([a-z0-9-]+)/g)) {
+        found++;
+        expect(known.has(m[1]!), `${file.replace(SRC_DIR, "src")} links to /help#${m[1]}, which isn't a section or topic`).toBe(true);
+      }
+    }
+    expect(found).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("help behind sign-in (docs/help.md › Who can read it)", () => {
+  it("keeps the content server-only, so no browser bundle carries it", () => {
+    expect(readFileSync(join(SRC_DIR, "lib/help/content.ts"), "utf8")).toMatch(/^import "server-only";/m);
+    expect(readFileSync(join(SRC_DIR, "lib/help/public.ts"), "utf8")).toMatch(/^import "server-only";/m);
+    // A client component may use Help's types, never its words.
+    for (const file of sourceFiles()) {
+      const src = readFileSync(file, "utf8");
+      if (!/^["']use client["'];?/.test(src.trimStart()) && !file.endsWith("lib/help/search.ts")) continue;
+      for (const m of src.matchAll(/^import\s+(type\s+)?[^;]*from\s+["']([^"']*help\/(content|public)|\.\/(content|public))["']/gm)) {
+        expect(m[1], `${file.replace(SRC_DIR, "src")} imports help content into the browser`).toBe("type ");
+      }
+    }
+  });
+
+  it("has no help API: the words reach a browser only through the signed-in /help page", () => {
+    expect(existsSync(join(APP_DIR, "api/v1/help")), "a help API would need its own session check and 401").toBe(false);
+  });
+
+  it("keeps public only what someone needs before signing in, and links it only to public pages", () => {
+    const slugs = allTopics().map((t) => t.topic.slug);
+    for (const slug of PUBLIC_HELP_SLUGS) expect(slugs, slug).toContain(slug);
+    const topics = publicHelpTopics();
+    expect(topics.map((t) => t.slug)).toEqual([...PUBLIC_HELP_SLUGS]);
+    for (const t of topics) for (const l of t.links ?? []) expect(isPublicPath(l.href), `${t.slug} → ${l.href}`).toBe(true);
+    expect(isPublicPath("/help")).toBe(false);
+    expect(isPublicPath("/settings?section=privacy")).toBe(false);
   });
 });
 

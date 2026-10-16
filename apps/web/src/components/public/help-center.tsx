@@ -3,7 +3,7 @@ import { KIT, KitArt, buttonClasses, cn } from "@wonder/ui";
 import { ArrowRight, ChevronDown, Compass, LifeBuoy, Mail, PenLine, Scale, Search, Send, ShieldCheck, Sparkles, Users, Wand2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { type HelpSection, type HelpTopic } from "@/lib/help/content";
+import type { HelpSection, HelpTopic } from "@/lib/help/types";
 import { searchHelp } from "@/lib/help/search";
 
 /**
@@ -149,6 +149,9 @@ export function HelpCenter({ sections }: { sections: HelpSection[] }) {
                         {s.title}
                       </h2>
                       <p className="text-[15px] leading-snug text-ink-muted">{s.blurb}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-subtle">
+                        Last updated <time dateTime={s.updated}>{formatUpdated(s.updated)}</time>
+                      </p>
                     </div>
                   </div>
                   <ul className="mt-4 space-y-3">
@@ -250,4 +253,9 @@ function TopicCard({ topic, kicker, open, onToggle }: { topic: HelpTopic; kicker
       </div>
     </details>
   );
+}
+
+/** "16 Oct 2026" — fixed to UTC so the server and the browser agree. */
+function formatUpdated(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }

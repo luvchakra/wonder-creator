@@ -12,7 +12,7 @@ in about a minute; the full end-to-end suite runs every night instead of on ever
 | Pull request that changes the database (`supabase/`, `tests/db/`, `packages/db/`, or `ci.yml`) | Also the **RLS tests** and the generated-types check (~5 min) | Migrations go to production on merge, so a broken policy has to be caught first |
 | Pull request, docs/Markdown only | Nothing | Nothing to build or test |
 | **Push to `main`** | Whole lint, every unit test, typecheck, build; RLS tests if the database changed | Catches anything a partial PR run could have missed |
-| **Every night** (`e2e-nightly.yml`, 03:11 IST) | The **whole end-to-end suite** against a fresh build, in parts, plus the whole RLS suite | Too slow (~28 min of tests) to run on every merge |
+| **Every night** (`e2e-nightly.yml`, 03:00 IST) | The **whole end-to-end suite** against a fresh build, in parts, plus the whole RLS suite | Too slow (~28 min of tests) to run on every merge |
 | **By hand** | The nightly with an optional list of spec files | Check a fix, or a risky change |
 | **Your machine** | `npm run e2e:local -- <spec files>` | Before merging anything risky (see below) |
 
@@ -41,7 +41,7 @@ matter most as the codebase grows: the whole lint is 68 s cold and the whole uni
 
 `.github/workflows/e2e-nightly.yml`:
 
-* **When:** every night at 03:11 IST (21:41 UTC). It's skipped when `main` is still the commit the last scheduled run tested,
+* **When:** every night at 03:00 IST (21:30 UTC; owner, 16 Oct 2026). It's skipped when `main` is still the commit the last scheduled run tested,
   because there is nothing new to learn; a failure is root-caused, never re-run hoping it passes. **By hand:** Actions ›
   **Nightly end-to-end** › **Run workflow**, choose the branch, and optionally fill in **specs**. Leave it empty for the whole
   suite, or give a space-separated list (`e2e/auth.spec.ts e2e/payments.spec.ts`).
@@ -69,6 +69,12 @@ matter most as the codebase grows: the whole lint is 68 s cold and the whole uni
 **A red nightly is fixed before other work merges.** Find the root cause from the report, traces and app log; "flaky" is
 not a root cause. Fix forward, or roll back in Vercel (the previous production deployment stays a rollback candidate).
 Never skip, disable or delete a test to make it green.
+
+### Before launch: test freely (owner, 16 Oct 2026)
+
+The app isn't live yet, so the nightly and local runs may run the whole suite, create as many throwaway test accounts and
+as much test data as they need, on the local stack. This doesn't relax **Never production** below: once the app is live,
+the same suite keeps running against local stacks only.
 
 ## Keeping runs repeatable
 

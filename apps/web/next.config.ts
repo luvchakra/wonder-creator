@@ -91,6 +91,12 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        // Help is behind sign-in (docs/help.md): never indexed. It's rendered per request with the session, so Next sends
+        // it as private, no-store — no CDN or shared cache keeps a copy (checked in e2e/help-access.spec.ts).
+        source: "/help",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
         // Everything except embeds: never framed.
         source: "/:path((?!embed/).*)",
         headers: [

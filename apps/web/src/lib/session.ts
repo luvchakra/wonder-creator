@@ -45,9 +45,10 @@ export const needsConsent = cache(async (db: Db): Promise<boolean> => {
  * For studio pages: signed in, verified, agreed to the current notice, and onboarded (onboarding is progressive, not a
  * gate on creating).
  */
-export async function requireSession(opts: { allowOnboarding?: boolean; allowConsent?: boolean } = {}): Promise<Session> {
+export async function requireSession(opts: { allowOnboarding?: boolean; allowConsent?: boolean; returnTo?: string } = {}): Promise<Session> {
   const s = await getSession();
-  if (!s) redirect("/sign-in");
+  // Signed out: sign in, then come back to the page that was asked for (a same-site path only; sign-in checks it again).
+  if (!s) redirect(opts.returnTo?.startsWith("/") && !opts.returnTo.startsWith("//") ? `/sign-in?next=${encodeURIComponent(opts.returnTo)}` : "/sign-in");
   // Two-step verification set up but not passed in this session (password only so far).
   if (await mfaPending(s.db)) redirect("/sign-in/verify");
   // GDPR Art. 7 / DPDP §6: proof of notice and consent before the service is used; asked again when the notice changes.

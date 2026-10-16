@@ -197,9 +197,12 @@ it; uploads are checked, resized server-side and stripped of metadata (location 
 
 ## Help (owner, 8 Oct 2026)
 
-`/help` is the product's help centre: searchable topics written from what the code does today, public, opened from the
-footer and the account menu's **Get help**. When you change a user-facing feature, change its topic in the same PR
-(`apps/web/src/lib/help/content.ts`; contract and rules in `docs/help.md`). Describe provider-gated features as "Not
+`/help` is the product's help centre: searchable topics written from what the code does today, **for signed-in creators
+only** (owner, 16 Oct 2026): signed out it redirects to sign-in and back, it's never publicly cached or indexed, and its
+content is server-only (never imported by a client component; CI checks the build). Public: `/account-help` (sign-in,
+sign-up and password help), Contact, About and the legal pages. Opened from the signed-in footer and the account menu's
+**Get help**. **A change that adds, removes or renames a user-facing feature updates the help content in the same pull
+request** (`apps/web/src/lib/help/content.ts`, with its section's `updated` date; contract and rules in `docs/help.md`). Describe provider-gated features as "Not
 connected" the way the screens do; name no internal technology; invent no email address, reply time or promise; reach us only
 through Contact, the privacy request and the Security page.
 
@@ -371,7 +374,8 @@ Vercel counts every deployment it **creates** against the plan's daily cap (100 
 ignored build step cancels. Running out blocks production, so deployments are a budget, production first. Contract and
 the numbers: `docs/performance.md` › Build-slot budget.
 
-* **Merge automatically when green (owner, 15 Oct 2026; replaces "merge now" / "build now" of 10 Oct).** Open the PR,
+* **Merge automatically when green (owner, 15 Oct 2026, reaffirmed 16 Oct; replaces "merge now" / "build now" of 10
+  Oct).** Every normal build goes through a PR — never a direct push to `main` — and is merged without asking. Open the PR,
   get CI green on the current head with no merge conflict and no open blocking review finding, then squash-merge it
   yourself, reset the working branch from `main` and notify the owner. No "merge now" is needed. Still batch: prefer one
   PR per finished piece of work (one squash-merge is one deployment), not a merge per small commit; check the day's
@@ -385,7 +389,9 @@ the numbers: `docs/performance.md` › Build-slot budget.
   code PR that touches the area (a docs-only merge still creates and cancels a deployment).
 * **Tests never spend a slot.** End-to-end and RLS suites run on GitHub Actions or locally against a local app, never
   against a deployment. Pull requests run fast checks only (typecheck, lint on changed files, related unit tests,
-  build; RLS when the database changes); end-to-end runs **nightly** (`e2e-nightly.yml`), never on PRs or merges. Before
+  build; RLS when the database changes); end-to-end runs **nightly at 03:00 IST** (`e2e-nightly.yml`; owner, 16 Oct
+  2026), never on PRs or merges. Until launch the owner allows the whole suite and any number of throwaway test users and
+  test data on local stacks (never production). Before
   merging something risky (sign-in, permissions, database migrations, payments, a new cross-feature flow) run the
   affected specs locally: `npm run e2e:local -- e2e/<spec>.spec.ts`. **A red nightly is fixed before other work
   merges**; find the root cause ("flaky" is not one). Never skip, disable or delete a test to make CI green, and never
