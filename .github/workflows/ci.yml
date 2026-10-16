@@ -194,6 +194,9 @@ jobs:
           # Placeholders so the build doesn't depend on real credentials.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
+      # Help is for signed-in creators (docs/help.md): none of its text may land in a public file of the build.
+      - name: No signed-in help text in public build files
+        run: node scripts/check-help-private.mjs
       - uses: actions/cache/save@v4
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:

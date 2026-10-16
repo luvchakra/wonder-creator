@@ -1,4 +1,4 @@
-import { HELP_SECTIONS, type HelpSection, type HelpTopic } from "./content";
+import type { HelpSection, HelpTopic } from "./types";
 
 /**
  * Searching the Help page in the browser. Deliberately plain: lower-case words, a light stem so “recording” finds
@@ -70,7 +70,7 @@ export interface HelpHit {
  * narrows the list. A hit in the title or the keywords outweighs one in the prose, and a title that is just what was
  * asked for ranks first. An empty question (or only filler words) returns nothing — callers show everything instead.
  */
-export function searchHelp(query: string, sections: HelpSection[] = HELP_SECTIONS): HelpHit[] {
+export function searchHelp(query: string, sections: HelpSection[]): HelpHit[] {
   const q = [...new Set(terms(query))];
   if (!q.length) return [];
   const hits: Array<HelpHit & { matched: number }> = [];

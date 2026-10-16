@@ -1,7 +1,11 @@
+import "server-only";
+
 /**
  * The Help page, as data (owner, 8 Oct 2026: "update the get help page for each app — match the latest features").
  *
- * Rendered by /help (`components/public/help-center.tsx`) and searched in the browser (`./search.ts`). Content rule:
+ * Rendered by /help (`components/public/help-center.tsx`) for signed-in creators only, and searched in the browser
+ * (`./search.ts`) over the sections that page hands it. Server-only: importing this from a client component would put
+ * every word in a public JavaScript file, which is how help was readable signed out before 16 Oct 2026. Content rule:
  * describe only what the product does today, in the words the screens use — where something depends on a service that
  * may not be switched on (AI, images, video, voice and video in Huddles, licence payments, other networks), say so the
  * way the product does ("Not connected"). Nothing here promises a reply time, names the technology behind the product,
@@ -9,63 +13,49 @@
  * change its topic in the same pull request (docs/help.md).
  */
 
-export interface HelpLink {
-  label: string;
-  /** A page of this app, with an optional query. Checked against the real routes by `content.test.ts`. */
-  href: string;
-}
-
-export interface HelpTopic {
-  /** The topic's anchor (`/help#slug`) and its key. Unique across the whole page, sections included. */
-  slug: string;
-  title: string;
-  /** One sentence, shown on the closed topic and read by search. */
-  summary: string;
-  /** Words a person might type that the prose doesn't contain. */
-  keywords: string[];
-  /** Short paragraphs. */
-  body?: string[];
-  /** Numbered how-to steps. */
-  steps?: string[];
-  /** Words with a line each, shown as a list. */
-  terms?: Array<{ term: string; text: string }>;
-  /** "Good to know". */
-  notes?: string[];
-  /** "Open" links to the places the topic is about. */
-  links?: HelpLink[];
-}
-
-export interface HelpSection {
-  /** The section's anchor. */
-  id: string;
-  title: string;
-  blurb: string;
-  topics: HelpTopic[];
-}
+export type { HelpLink, HelpSection, HelpTopic } from "./types";
+import type { HelpSection, HelpTopic } from "./types";
 
 export const HELP_SECTIONS: HelpSection[] = [
   /* ------------------------------------------------------------------------------------------------ Getting started */
   {
     id: "getting-started",
+    updated: "2026-10-16",
     title: "Getting started",
     blurb: "Your first five minutes, and how to find your way around.",
     topics: [
       {
+        slug: "creating-an-account",
+        title: "Creating an account",
+        summary: "Your name, your email and a password — or Google, where it’s offered — then a name and a handle, and you’re in.",
+        keywords: ["sign up", "create account", "register", "join", "new account", "start creating", "confirm email", "handle", "username"],
+        steps: [
+          "Choose Start Creating. Add your name, your email and a password of at least 10 characters with letters and numbers, tick the box to say you’re 18 or older and agree to the Terms and Privacy notice, then choose Let’s begin. Where it’s switched on, Continue with Google works too.",
+          "If you’re asked to confirm your email, open the message we sent, then come back and sign in.",
+          "On the welcome screen, give your name and a handle, then choose Enter your studio. Your handle becomes part of your public address: 3 to 30 lowercase letters, numbers or underscores.",
+        ],
+        notes: ["Everything else about you — a photo, a bio, your disciplines, languages, tone and style — is asked later, in Settings, when it matters. Nothing else is required to begin."],
+        links: [
+          { label: "Start Creating", href: "/sign-up" },
+          { label: "Sign in", href: "/sign-in" },
+        ],
+      },
+      {
         slug: "first-five-minutes",
         title: "Your first five minutes",
-        summary: "Make an account, say a little about your creative world, keep one small thing, and turn it into a Creation.",
-        keywords: ["start", "begin", "sign up", "create account", "register", "onboarding", "new", "first time", "welcome", "handle"],
+        summary: "Keep one small thing, and turn it into your first Creation.",
+        keywords: ["start", "begin", "onboarding", "new", "first time", "welcome", "first creation", "make something"],
         steps: [
-          "Choose Start Creating. Add your name, your email and a password of at least 10 characters with letters and numbers, tick the box to say you’re 18 or older and agree to the Terms and Privacy notice, then choose Let’s begin. If you’re asked to confirm your email, open the message, then come back and sign in.",
-          "Answer the welcome steps: About you, Your creative world, Style & voice and Preferences. Only your name and handle are required. Everything else can be skipped and changed later in Settings. Your handle becomes part of your public address, so choose one you like — lowercase letters, numbers and underscores, at least three characters.",
+          "Create your account and choose a name and handle (see “Creating an account”).",
           "On Home, choose Quick note or Voice note and keep one small thing. A line is enough. It’s saved as a Material and stays private to you.",
-          "Open it (Open, beside the saved message, or Materials from the Palette) and choose Use in creation. Pick a format, and the note’s words become your first draft.",
+          "When it’s saved, choose Make something. Pick a format, and the note’s words become your first draft, with the note kept as its source.",
           "Write a little. Your words are saved as a draft while you write. When you like where it is, choose More, then Save version, to keep a checkpoint you can come back to.",
         ],
         notes: [
           "Nothing is shared until you choose to share it. Materials and Creations are private by default.",
           "Home offers one gentle next step at a time, such as “Begin with one small thing — a line is enough.” It is never a checklist, and there is nothing to complete.",
           "If we update the Terms or Privacy notice, you’re asked to confirm them again before you continue. Two optional choices — usage measures and occasional emails — stay off unless you turn them on.",
+          "Your photo, bio, disciplines and style are set in Settings › Account & Profile, Creative Identity and Creative Preferences.",
         ],
         links: [
           { label: "Home", href: "/" },
@@ -103,6 +93,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "The Palette is the painted button in the corner. Open it to see what you can do next on the page you’re on, then More… for the rest or Go to… for other places. Away from Home, the places include Home, Create, Materials, Explore and Me.",
           "Drag the Palette to either side and it stays where you leave it on this device. From the keyboard, hold Shift and use the arrow keys to move it.",
           "Back arrows return you to the page you came from, even after a few steps, rather than to a fixed parent page.",
+          "Explore opens onto Ideas, Materials, People, Pulse and Huddles.",
           "Your account menu (your picture, top right) holds your profile, Scrapbook, Creative Memory, Creative Rooms, Publishing, Campaigns, Business, Settings, Get help and Sign out.",
         ],
         notes: [
@@ -132,6 +123,21 @@ export const HELP_SECTIONS: HelpSection[] = [
         ],
       },
       {
+        slug: "creativeradio",
+        title: "Music while you work",
+        summary: "CreativeRadio plays licensed music by mood, and keeps playing as you move around.",
+        keywords: ["music", "creativeradio", "radio", "mood", "soundtrack", "player", "song", "background", "play", "stop"],
+        steps: [
+          "Open the Palette and choose Set the mood, then pick a mood. Up next fills with songs of that mood.",
+          "The player docks as a small tab at the side of the screen. Tap it to open previous, play or pause, and next; More has Up next, Change mood, Song details and Stop playback.",
+          "Drag the tab to either side and it stays there on this device. Closing the player never stops the music; Stop playback does.",
+        ],
+        notes: [
+          "Music pauses by itself when you join a Huddle or play something else on the page, and says why.",
+          "Every song is licensed for this use; Song details names who made it and how it may be used.",
+        ],
+      },
+      {
         slug: "words-we-use",
         title: "Words we use",
         summary: "Materials, Creations, CreativeMind, Pulse and the rest, in a line each.",
@@ -150,6 +156,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { term: "Community", text: "A lasting place for people who share an interest, with a Forum of topics and posts." },
           { term: "Huddle", text: "A small live conversation that ends when the last person leaves." },
           { term: "Creator Page", text: "Your public home, showing only what you choose." },
+          { term: "CreativeRadio", text: "Music to work to, chosen by mood. It keeps playing as you move around." },
         ],
       },
     ],
@@ -158,6 +165,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ----------------------------------------------------------------------------------------- Capturing and keeping */
   {
     id: "capturing",
+    updated: "2026-10-16",
     title: "Capturing and keeping",
     blurb: "Get ordinary moments in quickly, and find them again.",
     topics: [
@@ -167,17 +175,32 @@ export const HELP_SECTIONS: HelpSection[] = [
         summary: "A note, a voice note, a picture or a short video in a few seconds.",
         keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea"],
         steps: [
-          "On Home, choose Quick note, Voice note, Quick Pic or Video Note.",
+          "On Home, under Quick Capture, choose Quick note, Voice note, Quick Pic or Video Note.",
           "For a note, write anything — a line, an idea, something you noticed — and save it. Ctrl or ⌘ with Enter saves too.",
           "For a voice note, recording starts as soon as the sheet opens. Stop when you’re done, listen back if you like, then choose Save. A recording stops by itself at 20 minutes.",
-          "For a picture or a video, take one or choose one from your device.",
-          "Once it’s saved you can add it to a DejaVu (suggested ones appear when there are any), capture another, or choose Open to see it as a Material.",
+          "Quick Pic and Video Note offer two ways in: Open the camera, or Choose from gallery. You can pick several from the gallery; each becomes its own Material.",
+          "Once it’s saved, add it to a DejaVu if you like (suggested ones appear when there are any). Then choose Make something to start a Creation from it, or Done.",
         ],
         notes: [
           "A note written while you’re offline is kept on your device and sent when you’re back online. Each note keeps its own identity, so nothing lands twice.",
-          "What you capture is private to you.",
+          "What you capture is private to you. It appears at once under My captures on Home.",
         ],
-        links: [{ label: "Home", href: "/" }],
+        links: [
+          { label: "Home", href: "/" },
+          { label: "My captures", href: "/captures" },
+        ],
+      },
+      {
+        slug: "my-captures",
+        title: "Looking back at what you caught",
+        summary: "Your notes, voice notes, pictures and videos, newest first — on Home and day by day.",
+        keywords: ["my captures", "captures", "look back", "recent", "notes", "voice notes", "pictures", "videos", "history", "delete capture"],
+        steps: [
+          "On Home, My captures (under Quick Capture) shows the last 10 things you caught, newest first. Voice notes play in place.",
+          "Choose the title, My captures, to see everything by day. Filter by All, Notes, Voice, Pictures or Videos.",
+          "Open one to see it as a Material. To delete one, use its bin; you’re asked first, and it’s removed everywhere.",
+        ],
+        links: [{ label: "My captures", href: "/captures" }],
       },
       {
         slug: "bring-in",
@@ -205,7 +228,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Open Materials from the Palette. The tabs are All, Ideas & Material, In Progress, Created, Shared and Collections. Search sits at the top.",
           "In Ideas & Material you can filter by Notes, Photos, Audio, Video, Documents, Links or Archived.",
-          "Open a Material to read it, or to edit a note’s words and Save. Choose Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection, see which Creations use it, download the original, archive it or delete it.",
+          "Open a Material to read it, or to edit a note’s words and Save. Choose Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
           "To make a Collection, open the Collections tab and choose New collection. Add Materials to it from a Material’s Details.",
         ],
         notes: [
@@ -286,6 +309,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ----------------------------------------------------------------------------------------------- Making Creations */
   {
     id: "creating",
+    updated: "2026-10-16",
     title: "Making a Creation",
     blurb: "Pick a format, shape it on the canvas, and keep every version.",
     topics: [
@@ -444,6 +468,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ------------------------------------------------------------------------------------------------------------ AI */
   {
     id: "ai",
+    updated: "2026-10-16",
     title: "CreativeMind and AI",
     blurb: "What it suggests, how you stay in charge, and using your own key.",
     topics: [
@@ -514,6 +539,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ----------------------------------------------------------------------------------------- Publishing and sharing */
   {
     id: "publishing",
+    updated: "2026-10-16",
     title: "Publishing and sharing",
     blurb: "Share privately, publish a page, and keep a Creator Page of your own.",
     topics: [
@@ -594,6 +620,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* -------------------------------------------------------------------------------------------------------- Together */
   {
     id: "together",
+    updated: "2026-10-16",
     title: "Together",
     blurb: "Feedback, conversation and making things with other people.",
     topics: [
@@ -609,7 +636,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "To ask about a part of your own work, select the text in the Studio and choose More › Ask Pulse. Only that part is shared.",
         ],
         notes: [
-          "Lists follow time, not popularity. There are no likes, follower counts or trending.",
+          "Lists follow time, not popularity. There are no likes, rankings or trending lists.",
           "On your profile, you can say what you’re open to — giving feedback, Huddles, collaborating, sharing references, mentoring or being asked a question. It is always your choice.",
         ],
         links: [{ label: "Pulse", href: "/pulse" }],
@@ -658,7 +685,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Choose Create, then Collaborate with others, or open Creative Rooms from your account menu and start a room. You’ll be its owner.",
           "Invite people. They choose whether to join.",
-          "For a joint piece, say what it’s made of. Templates include Song (Lyrics, Tune, Voice), Podcast episode (Script, Host, Edit) and Illustrated story (Words, Pictures), or start with just a room.",
+          "For a joint piece, say what it’s made of: Song (Lyrics, Tune, Voice), Podcast episode (Script, Host, Edit) or Illustrated story (Words, Pictures). Or choose Just a Room and add parts later, or none.",
           "Each person claims a part, which is a Creation of its own made on that format’s page. Several people can share a part, and someone can be invited to just one part without joining the whole room.",
           "The room shows the work first, each part as a row, and a timeline of what happened.",
           "To bring something you already have into a room, open the Material and choose Details › Creative Rooms, or open a Creation’s Context › Creative Rooms, then pick the room and choose Add.",
@@ -668,6 +695,66 @@ export const HELP_SECTIONS: HelpSection[] = [
           "Only your own Materials and Creations can go into a room. In a room someone else owns, what you add is shared with its crew to read; it stays yours. To take something out, remove it in the room.",
         ],
         links: [{ label: "Creative Rooms", href: "/rooms" }],
+      },
+      {
+        slug: "room-song",
+        title: "Hearing the work together, crediting it and publishing it",
+        summary: "Play every part’s take as one, leave notes at a moment, agree the credits, and publish the song.",
+        keywords: ["listen together", "play the work", "mix", "download the mix", "note this moment", "credits", "shares", "sign off", "publish the song", "song", "wav"],
+        steps: [
+          "Once a part has a kept take, choose Play the work on the Room, or open Mix, notes and download. Listen together plays every take you may hear as one.",
+          "The people making the work can set each take’s start and level, and choose Note this moment to leave a note at that point in the song, for the whole song or one part.",
+          "Download the mix makes a WAV on your device.",
+          "Once every part is final, the Room’s owner chooses Propose credits: how each part is credited, and the shares — equal for everyone unless changed. Everyone named chooses Sign off, or Would change something. It’s agreed when everyone has signed off.",
+          "When the credits are agreed, the owner can Publish the song on their page, Public or Unlisted, with the words and the agreed credits.",
+        ],
+        notes: ["No melodies, lyrics or arrangements are made by AI here. Everything in the mix is what the people on the parts recorded."],
+        links: [{ label: "Creative Rooms", href: "/rooms" }],
+      },
+      {
+        slug: "find-people",
+        title: "Finding people to work with",
+        summary: "Search by discipline or skill, see why each person is shown, and keep a private shortlist.",
+        keywords: ["people", "find collaborators", "discover", "search people", "shortlist", "discipline", "skills", "availability", "location", "network"],
+        steps: [
+          "Open Explore, then People.",
+          "Under Who are you looking for?, search by disciplines or skills. Filter by availability, location or interest if you like.",
+          "Each person shows why they’re here. Choose Shortlist to keep them in mind; your shortlist is private to you.",
+          "Ask CreativeMind for ideas about who might fit. Its suggestions are only suggestions.",
+        ],
+        notes: ["Only people whose profiles you can already see appear. Nothing is ranked by popularity."],
+        links: [{ label: "People", href: "/people" }],
+      },
+      {
+        slug: "messages",
+        title: "Messages and notifications",
+        summary: "Write to someone directly, and see what’s waiting for you.",
+        keywords: ["messages", "message", "direct message", "dm", "inbox", "notifications", "bell", "write to", "draft with creativemind"],
+        steps: [
+          "Open Messages from the top bar to see your conversations.",
+          "To start one, open someone’s profile and choose Message. It’s there when they’re open to collaborating, or when you already work together — a shared crew, a Creation you’ve made together, or someone you’re connected with.",
+          "In a message, Draft with CreativeMind writes a draft for you to change or delete. Nothing is sent until you send it, and a message you send from a draft shows Drafted with CreativeMind.",
+          "The bell in the top bar shows what’s waiting for you, such as a request to join your Huddle.",
+        ],
+        notes: ["You can’t message someone who has blocked you or whom you’ve blocked."],
+        links: [{ label: "Messages", href: "/messages" }],
+      },
+      {
+        slug: "profile",
+        title: "Your profile, album and testimonials",
+        summary: "What others see when they visit you in Wonder Creator, and the parts you choose to show.",
+        keywords: ["profile", "me", "album", "photos", "testimonials", "follow", "followers", "following", "overview", "moments", "write a testimonial"],
+        steps: [
+          "Open Me from the Palette to see your profile: Overview, Creations, Moments and Pulse.",
+          "Album: choose Add photos to show pictures on your profile, then add a caption to each and put them in order. Location and other hidden details are removed from the stored copy.",
+          "Testimonials: someone who knows your work can choose Write a testimonial. It appears only after you choose Show on my profile; Keep private hides it, and you can change your mind any time. The writer can rewrite or Withdraw it.",
+          "Choose Follow on someone’s profile to see their new work first on Home. Your profile shows how many people follow you and whom you follow, and the lists open from there.",
+        ],
+        notes: [
+          "Who may write you a testimonial is set in Settings › Privacy & Security: anyone who can see your profile, only people you’ve worked with, or nobody for now.",
+          "Your public Creator Page is separate: it shows only what you choose there, with no follower counts.",
+        ],
+        links: [{ label: "Settings", href: "/settings?section=privacy" }],
       },
       {
         slug: "collaborators",
@@ -692,7 +779,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         keywords: ["report", "mute", "block", "unblock", "abuse", "harassment", "moderation", "safety", "feedback"],
         steps: [
           "To report a post, reply or conversation, open its More menu and choose Report. Reports go to the moderators, and the person isn’t told who reported.",
-          "To mute or block someone, use their profile, or a conversation’s menu. Blocking means you won’t see each other’s conversations or replies.",
+          "To block someone, open their profile and choose More › Block. To mute someone, use the menu on one of their posts in a conversation. Blocking means you won’t see each other’s conversations or replies, and they can’t find or join your Huddles.",
           "To see who you’ve blocked, or to unblock, go to Settings, then Privacy & Security.",
         ],
         notes: ["Feedback here is asked for and offered, not counted. There are no likes, trending lists or rankings."],
@@ -701,9 +788,56 @@ export const HELP_SECTIONS: HelpSection[] = [
     ],
   },
 
+  /* -------------------------------------------------------------------------------------- Brand work and business */
+  {
+    id: "business",
+    updated: "2026-10-16",
+    title: "Brand work and business",
+    blurb: "Campaigns with brands, and a private record of what came in and went out.",
+    topics: [
+      {
+        slug: "campaigns",
+        title: "Campaigns",
+        summary: "A brand collaboration from brief to approval: who’s in, what’s delivered and agreed.",
+        keywords: ["campaign", "brand", "sponsorship", "brief", "deliverable", "invite", "approve", "ask for changes", "usage rights", "brand work"],
+        steps: [
+          "Open Campaigns from your account menu and choose New campaign. Give it a title, the brief, the usage rights needed and any channels.",
+          "Choose Invite by @handle to invite a creator. They choose Accept or Decline.",
+          "Once a creator has accepted, either of you can propose a deliverable: under Propose a deliverable, say what it is, its format and when it’s due, then choose Propose. The other side chooses Agree.",
+          "The creator chooses one of their Creations and Submit. The campaign’s owner chooses Approve, or Ask for changes with a note saying what should change.",
+        ],
+        notes: [
+          "To be found for brand work, turn it on in Settings › Brand work. Others see only a short summary.",
+          "Usage rights in a campaign are a written term, not a license. A license is made from the Creation’s Rights tab.",
+        ],
+        links: [
+          { label: "Campaigns", href: "/campaigns" },
+          { label: "Brand work settings", href: "/settings?section=brand" },
+        ],
+      },
+      {
+        slug: "business-records",
+        title: "Business records",
+        summary: "Income, costs and payouts by currency, in a record only you can see.",
+        keywords: ["business", "income", "costs", "payout", "records", "money", "currency", "totals", "received", "paid", "accounts"],
+        steps: [
+          "Open Business from your account menu.",
+          "Choose Add record. Say what it is (for example Brand income, Sale, License income, Collaboration pay, Tools & providers or Payout), the amount, currency and date, and who it’s from or to.",
+          "When money you were expecting arrives or goes out, choose Mark received or Mark paid. Totals are kept per currency.",
+        ],
+        notes: [
+          "Only you can see your records. You can remove the ones you added yourself; records that come from elsewhere in Wonder Creator, such as a license, stay as the record of what happened.",
+          "This is a record for you, not accounting or tax advice, and it doesn’t move money.",
+        ],
+        links: [{ label: "Business", href: "/business" }],
+      },
+    ],
+  },
+
   /* ------------------------------------------------------------------------------------------ Rights and licensing */
   {
     id: "rights",
+    updated: "2026-10-16",
     title: "Rights and licensing",
     blurb: "A plain-language guide to the records Wonder Creator keeps. This is not legal advice.",
     topics: [
@@ -769,6 +903,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ------------------------------------------------------------------------------------- Your data and your privacy */
   {
     id: "privacy",
+    updated: "2026-10-16",
     title: "Your data and privacy",
     blurb: "What you control, and where to find it.",
     topics: [
@@ -839,6 +974,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* -------------------------------------------------------------------------------------------------- Troubleshooting */
   {
     id: "troubleshooting",
+    updated: "2026-10-16",
     title: "When something isn’t working",
     blurb: "Start with the checklist, then look for the one that sounds like yours.",
     topics: [
@@ -956,6 +1092,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* --------------------------------------------------------------------------------------------------- Reaching us */
   {
     id: "contact",
+    updated: "2026-10-16",
     title: "Reaching us",
     blurb: "The ways to get in touch are the ones that already exist in the product.",
     topics: [

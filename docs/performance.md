@@ -175,7 +175,7 @@ ignored build step cancels. The rules are in `CLAUDE.md` › Build-slot budget; 
 | Branches that deploy | `main` only (`vercel.json` › `git.deploymentEnabled`: `*` and `**` off, `main` on); no previews |
 | Deployments a merge creates | one (production), skipped by `vercel-ignore-build.sh` when only docs, CI files or tests changed — the slot is still spent |
 | Tests on the platform | none: unit, RLS and end-to-end all run on GitHub Actions against a local app |
-| Nightly suite | 03:11 IST (`e2e-nightly.yml`); skipped when `main` is the commit the last scheduled run already tested (`docs/testing.md`) |
+| Nightly suite | 03:00 IST (`e2e-nightly.yml`); skipped when `main` is the commit the last scheduled run already tested (`docs/testing.md`) |
 | Merges to `main`, 3–10 Oct 2026 | 1 · 11 · 11 · 7 · 9 · 2 · 5 · 1 a day — the peak is 11 % of the cap |
 
 Counting: each merge to `main` is one deployment, so `git log origin/main --since='24 hours ago' --oneline | wc -l` is

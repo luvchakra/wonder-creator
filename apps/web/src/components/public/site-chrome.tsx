@@ -2,9 +2,10 @@ import { Logo } from "@wonder/ui";
 import Link from "next/link";
 
 /**
- * The public site's header and footer (landing, About, Contact, Help). Signed-out pages: one quiet Sign in in the
- * header, and a compact footer whose links go to real pages only. Help is also opened from the account menu, so it
- * passes `signedIn` and the header offers a way back into the studio instead.
+ * The public site's header and footer (landing, About, Contact, legal pages, and Help for signed-in creators). Signed-out
+ * pages: one quiet Sign in in the header, and a compact footer whose links go only to pages a visitor can open — Account
+ * help, not Help, which is behind sign-in (docs/help.md). Help passes `signedIn`, so the header offers a way back into the
+ * studio and the footer links to Help itself.
  */
 export function SiteHeader({ signedIn = false }: { signedIn?: boolean }) {
   return (
@@ -35,7 +36,7 @@ const COLUMNS: Array<{ label: string; title: string; links: Array<[string, strin
       ["/sign-up", "Start Creating"],
       ["/sign-in", "Sign in"],
       ["/about", "About"],
-      ["/help", "Help"],
+      ["/account-help", "Account help"],
       ["/contact", "Contact"],
     ],
   },
@@ -51,7 +52,7 @@ const COLUMNS: Array<{ label: string; title: string; links: Array<[string, strin
   },
 ];
 
-export function SiteFooter() {
+export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <footer className="relative z-10 border-t border-border-soft/80 bg-cream">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
@@ -63,7 +64,7 @@ export function SiteFooter() {
           <nav key={c.label} aria-label={c.label} className="text-[13px]">
             <p className="font-medium text-ink">{c.title}</p>
             <ul className="mt-1">
-              {c.links.map(([href, label]) => (
+              {c.links.map(([h, l]) => (signedIn && h === "/account-help" ? ["/help", "Help"] : [h, l])).map(([href, label]) => (
                 <li key={href}>
                   <Link href={href} className="inline-flex min-h-9 items-center text-ink-muted hover:text-ink hover:underline">
                     {label}

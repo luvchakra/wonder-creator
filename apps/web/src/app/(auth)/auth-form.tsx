@@ -109,7 +109,10 @@ export function AuthForm({ mode, google = false }: { mode: "sign-in" | "sign-up"
         </label>
       ) : null}
       {mode === "sign-in" ? (
-        <p className="-mt-2 text-right text-sm">
+        <p className="-mt-2 flex flex-wrap justify-end gap-x-4 text-sm">
+          <Link href="/account-help" className="inline-flex min-h-11 items-center text-ink-muted underline-offset-4 hover:underline">
+            Trouble signing in?
+          </Link>
           <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline">
             Forgot your password?
           </Link>

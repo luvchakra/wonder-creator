@@ -2,7 +2,7 @@ name: Nightly end-to-end
 
 # The full end-to-end suite, every night and by hand (docs/testing.md › Nightly). Never on pull requests or merges.
 #
-#   Schedule   03:11 IST. Skipped when main is still the commit the last scheduled run tested (nothing new to learn;
+#   Schedule   03:00 IST. Skipped when main is still the commit the last scheduled run tested (nothing new to learn;
 #              a failure is root-caused, never re-run hoping it passes).
 #   By hand    Actions › Nightly end-to-end › Run workflow. Optional "specs": a space-separated list of spec files
 #              (e.g. "e2e/auth.spec.ts e2e/payments.spec.ts"); empty runs the whole suite.
@@ -14,7 +14,7 @@ name: Nightly end-to-end
 # and is fixed before other work merges.
 on:
   schedule:
-    - cron: "41 21 * * *" # 03:11 IST
+    - cron: "30 21 * * *" # 03:00 IST (owner, 16 Oct 2026)
   workflow_dispatch:
     inputs:
       specs:

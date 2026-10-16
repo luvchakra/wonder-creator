@@ -4,24 +4,24 @@ import { accountMenu, expect, test } from "./fixtures";
 
 const axeSource = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 
-// Help (owner, 8 Oct 2026: "update the get help page for each app — match the latest features"): a public page, opened
-// from the landing footer and, signed in, from the account menu. Its words are data (lib/help/content.ts, covered by
-// unit tests); this checks the page works: sections, search, deep links, the one way to reach us, and every size.
+// Help (docs/help.md): for signed-in creators (owner, 16 Oct 2026), opened from the account menu's Get help. Its words
+// are data (lib/help/content.ts, covered by unit tests); this checks the page works: sections, search, deep links, the one
+// way to reach us, and every size. Who may read it — and what stays public — is e2e/help-access.spec.ts.
 test.describe("Help", () => {
-  test("a visitor finds it in the footer, browses and searches it, and can always reach us", async ({ browser }) => {
-    const visitor = await (await browser.newContext()).newPage();
-    await visitor.goto("/");
-    await visitor.getByRole("navigation", { name: "Wonder Creator" }).getByRole("link", { name: "Help" }).click();
+  test("a creator browses and searches it, and can always reach us", async ({ page: visitor, creator: _creator }) => {
+    await visitor.goto("/help");
     await expect(visitor).toHaveURL(/\/help$/);
     await expect(visitor.getByRole("heading", { level: 1 })).toContainText("A little help along the way.");
 
     // Every section is there, as a heading and a chip that jumps to it.
-    const sections = ["Getting started", "Capturing and keeping", "Making a Creation", "CreativeMind and AI", "Publishing and sharing", "Together", "Rights and licensing", "Your data and privacy", "When something isn’t working", "Reaching us"];
+    const sections = ["Getting started", "Capturing and keeping", "Making a Creation", "CreativeMind and AI", "Publishing and sharing", "Together", "Brand work and business", "Rights and licensing", "Your data and privacy", "When something isn’t working", "Reaching us"];
     const chips = visitor.getByRole("navigation", { name: "Help sections" });
     for (const s of sections) {
       await expect(visitor.getByRole("heading", { level: 2, name: s })).toBeVisible();
       await expect(chips.getByRole("link", { name: s })).toBeVisible();
     }
+    // Each section says when it was last checked against the app.
+    await expect(visitor.getByText(/^Last updated \d{1,2} [A-Z][a-z]{2} \d{4}$/)).toHaveCount(sections.length);
     // Nothing promised that the product doesn't do: no email address, no reply time.
     await expect(visitor.getByText(/@[a-z0-9-]+\.[a-z]{2,}|within \d+ (hours|days)|24\/7/i)).toHaveCount(0);
 
@@ -66,12 +66,11 @@ test.describe("Help", () => {
       const res = await visitor.request.get(href);
       expect(res.status(), href).toBe(200);
     }
-    // Signed out, the header offers Sign in.
-    await expect(visitor.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
+    // Signed in, the footer links to Help itself, not the public Account help.
+    await expect(visitor.getByRole("contentinfo").getByRole("link", { name: "Help", exact: true })).toBeVisible();
   });
 
-  test("reads well at phone and desktop widths, with motion on or off, and is accessible", async ({ browser }) => {
-    const visitor = await (await browser.newContext()).newPage();
+  test("reads well at phone and desktop widths, with motion on or off, and is accessible", async ({ page: visitor, creator: _creator }) => {
     for (const size of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       await visitor.setViewportSize(size);
       await visitor.goto("/help");

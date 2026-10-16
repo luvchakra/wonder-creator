@@ -1,12 +1,33 @@
 # Help
 
 Owner, 8 Oct 2026: "update the get help page for each app — match the latest features." Wonder Creator had no help page;
-`/help` is it. Public like About and Contact (no sign-in), so it opens from the landing footer and, signed in, from the
-account menu's **Get help**.
+`/help` is it. Since 16 Oct 2026 (owner: "put the help documentation behind sign-in") it is for signed-in creators
+only, opened from the account menu's **Get help** and the signed-in footer.
+
+## Who can read it
+
+| What | Who | How it's enforced |
+| --- | --- | --- |
+| `/help` (every section and topic, search, deep links) | Signed-in creators (onboarding not required) | `requireSession({ returnTo: "/help" })` on the server: signed out it redirects to `/sign-in?next=%2Fhelp` and, after signing in, back to `/help`. Rendered per request (`force-dynamic`), so Next sends `Cache-Control: private, no-cache, no-store`; `X-Robots-Tag: noindex, nofollow` (`next.config.ts`) and a `noindex` robots meta |
+| Help content (`lib/help/content.ts`, `public.ts`) | Server only | `import "server-only"`; the page passes the sections to the client component as props, and search takes them as an argument. Types live in `lib/help/types.ts`, the only help module the browser may import |
+| Help API or search endpoint | — | There is none; search runs in the browser over what the signed-in page sent. A unit test fails if `app/api/v1/help` appears |
+| Sitemap, robots file, service worker | — | None exist, so nothing lists or caches help |
+
+**What stays public, and why:**
+
+* `/account-help` — the three topics a visitor needs *before* they can sign in: Creating an account, Signing in and
+  account security, I can't sign in. Links inside them are filtered to public pages (`lib/help/public.ts`).
+* `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` — the way in and the password reset.
+* `/contact` — the one way to reach us without an account.
+* `/about` and `/legal/privacy`, `/legal/terms`, `/legal/security`, `/legal/subprocessors` — notices the law and the
+  sign-up consent require to be readable before agreeing.
+
+The public footer links to **Account help**; signed in, the same footer slot is **Help**. The sign-in form has
+**Trouble signing in?** next to **Forgot your password?**.
 
 ## What's on it
 
-A search box, ten sections as chips, and every topic as a closed card that opens in place (a native disclosure, so it
+A search box, eleven sections as chips, and every topic as a closed card that opens in place (a native disclosure, so it
 works from the keyboard and without scripts):
 
 | Section | Topics |
@@ -17,6 +38,7 @@ works from the keyboard and without scripts):
 | CreativeMind and AI | What it does · You decide what it may do (autonomy and approvals) · Using your own AI key |
 | Publishing and sharing | Sharing privately · Publishing as a page · Your Creator Page · Other destinations and webhooks |
 | Together | Pulse · Communities · Huddles · Creative Rooms · Working with people on a Creation · Feedback, reporting, muting and blocking |
+| Brand work and business | Campaigns · Business records |
 | Rights and licensing | The Rights tab · Licenses · Fees and payments · Using other people's material (plain language, not legal advice) |
 | Your data and privacy | Who can see what · Download your data or delete your account · Privacy requests and choices · Security & activity |
 | When something isn't working | The checklist · Can't sign in · A file or link won't come in · The microphone · "Not connected" · Can't publish · Huddle without voice or video · Can't find my Creation |
@@ -51,6 +73,9 @@ works from the keyboard and without scripts):
 * Entry points: the landing/About/Contact footer (*Help*), and the account menu (*Get help*, `components/app-nav.tsx`).
   Help is not in the Palette (adding a global destination needs the owner).
 
+Each section carries `updated` (YYYY-MM-DD), shown as **Last updated** under its heading: the day its topics were last
+checked against the app. Change it when you change a topic in that section.
+
 ## Tests
 
 * `apps/web/src/lib/help/content.test.ts` (unit): unique anchors; no empty topics or repeated lines; every internal link
@@ -59,3 +84,10 @@ works from the keyboard and without scripts):
 * `e2e/help.spec.ts`: the footer link, every section, opening a topic from the keyboard, search and its empty state,
   a deep link, the way to Contact, no sideways scrolling at 360/390/1280, 44px targets, axe with motion on and off, and
   (signed in) the account menu's *Get help* and the way back.
+* `e2e/help-access.spec.ts`: signed out `/help` is a 307 to sign-in with `no-store` and `noindex` and none of its text;
+  signing in from there returns to `/help`; signed in it's a private 200; there is no help API (404); every public page
+  loads signed out without signed-in help text or a `/help` link; Account help's links are public only.
+* `scripts/check-help-private.mjs` (CI, after the build): fails if the summary of any signed-in topic appears in a public
+  file under `.next/static`.
+* `content.test.ts` also checks: `server-only` on the content, no client component importing it, every `/help#anchor`
+  in the source resolves, "Last updated" dates are real and not in the future, and public topics link to public pages only.
