@@ -2,6 +2,7 @@
 import { Button, IconButton, cn } from "@wonder/ui";
 import { ArrowRight, Camera, FileText, Link2, Mic, MicOff, Paperclip, PenLine, Square, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useDictation } from "@/components/audio/use-dictation";
 
 export interface ComposerPayload {
   message: string;
@@ -10,23 +11,6 @@ export interface ComposerPayload {
   voiceNotes: File[];
   photos: File[];
   inputMode: "text" | "voice";
-}
-
-type SpeechRecognitionLike = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { resultIndex: number; results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
-  onend: (() => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-};
-
-function getSpeech(): (new () => SpeechRecognitionLike) | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 /**
@@ -65,18 +49,17 @@ export function Composer({
   const [voiceNotes, setVoiceNotes] = useState<File[]>([]);
   const [urls, setUrls] = useState<string[]>([]);
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
-  const [dictating, setDictating] = useState(false);
   const [recording, setRecording] = useState(false);
   const [voiceUsed, setVoiceUsed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const uid = useId();
   const ids = { text: `composer-text-${uid}`, files: `composer-files-${uid}`, camera: `composer-camera-${uid}` };
-  const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictation = useDictation(setText);
+  const dictating = dictation.listening;
   const mediaRef = useRef<MediaRecorder | null>(null);
 
   useEffect(
     () => () => {
-      recRef.current?.stop();
       mediaRef.current?.stop();
     },
     [],
@@ -95,6 +78,7 @@ export function Composer({
   async function submit() {
     if (!canSend) return;
     const payload: ComposerPayload = { message: text.trim(), files, urls, voiceNotes, photos, inputMode: voiceUsed ? "voice" : "text" };
+    dictation.stop();
     await onSubmit(payload);
     setText("");
     setFiles([]);
@@ -105,35 +89,11 @@ export function Composer({
   }
 
   function toggleDictation() {
-    const Speech = getSpeech();
-    if (!Speech) {
-      setNotice("Live dictation isn't available in this browser. You can record a voice note instead.");
-      return;
+    if (!dictating) {
+      setNotice(null);
+      setVoiceUsed(true);
     }
-    if (dictating) {
-      recRef.current?.stop();
-      return;
-    }
-    const rec = new Speech();
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.lang = navigator.language || "en-US";
-    const base = text ? `${text.trimEnd()} ` : "";
-    let finalText = "";
-    rec.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      setText(base + finalText.trim());
-    };
-    rec.onend = () => setDictating(false);
-    rec.onerror = (e) => {
-      setDictating(false);
-      if (e.error === "not-allowed") setNotice("Microphone access was blocked. You can allow it in your browser settings.");
-    };
-    recRef.current = rec;
-    rec.start();
-    setDictating(true);
-    setVoiceUsed(true);
-    setNotice("Listening… (your browser turns speech into text)");
+    dictation.toggle(text);
   }
 
   async function toggleRecording() {
@@ -208,7 +168,10 @@ export function Composer({
         id={ids.text}
         value={text}
         autoFocus={autoFocus}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          if (dictating) dictation.stop();
+          setText(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
@@ -260,9 +223,9 @@ export function Composer({
           </Button>
         </div>
       ) : null}
-      {notice ? (
+      {dictation.notice ?? notice ? (
         <p className="px-5 pb-1 text-sm text-ink-muted" role="status">
-          {notice}
+          {dictation.notice ?? notice}
         </p>
       ) : null}
       <div className="flex items-center gap-1 px-2 pb-2 pt-1 sm:px-3">

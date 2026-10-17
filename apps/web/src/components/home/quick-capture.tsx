@@ -1,5 +1,5 @@
 "use client";
-import { Button, Dialog, DialogContent, KIT, KitSparklesIcon, Textarea, cn } from "@wonder/ui";
+import { Button, Dialog, DialogContent, IconButton, KIT, KitSparklesIcon, Textarea, cn } from "@wonder/ui";
 import type { DejaVu } from "@wonder/creator-moments/shared";
 import { ArrowRight, Camera, Check, Images, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -11,6 +11,7 @@ import { api, errorMessage } from "@/lib/client";
 import { PRIORITY } from "@/lib/context-strip/types";
 import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
+import { useDictation } from "@/components/audio/use-dictation";
 import { trackClient } from "@/lib/track";
 import { CAPTURED_EVENT } from "./my-captures";
 
@@ -461,9 +462,12 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
   const [error, setError] = useState<string | null>(null);
   // One id per note, made when it's first saved, so a retry is the same note.
   const clientId = useRef<string | null>(null);
+  // Type, or tap the mic and say it: the browser's dictation writes into the same note.
+  const dictation = useDictation(setText);
   async function save() {
     const body = text.trim();
     if (!body || busy) return;
+    dictation.stop();
     clientId.current ??= crypto.randomUUID();
     const keepLocally = () => {
       writeQueue([...readQueue().filter((p) => p.clientId !== clientId.current), { clientId: clientId.current!, text: body, at: new Date().toISOString() }]);
@@ -493,21 +497,41 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
       <label htmlFor="quick-note" className="sr-only">
         Quick note
       </label>
-      <Textarea
-        id="quick-note"
-        autoFocus
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            void save();
-          }
-        }}
-        placeholder="Anything — a line, an idea, something you noticed…"
-        className="min-h-36 font-display text-[16px]"
-        maxLength={200000}
-      />
+      <div className="relative">
+        <Textarea
+          id="quick-note"
+          autoFocus
+          value={text}
+          onChange={(e) => {
+            // Typing takes over from dictation, so what's typed is never written over.
+            if (dictation.listening) dictation.stop();
+            setText(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              void save();
+            }
+          }}
+          placeholder={dictation.listening ? "Listening…" : "Type, or tap the mic and say it…"}
+          className="min-h-36 pb-12 font-display text-[16px]"
+          maxLength={200000}
+        />
+        <IconButton
+          label={dictation.listening ? "Stop dictating" : "Dictate"}
+          aria-pressed={dictation.listening}
+          variant={dictation.listening ? "soft" : "ghost"}
+          onClick={() => dictation.toggle(text)}
+          className="absolute bottom-1 right-1"
+        >
+          {dictation.listening ? <Square className="size-4 fill-current" aria-hidden /> : <Mic className="size-[18px]" aria-hidden />}
+        </IconButton>
+      </div>
+      {dictation.notice ? (
+        <p role="status" className="text-[13px] text-ink-muted">
+          {dictation.notice}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}

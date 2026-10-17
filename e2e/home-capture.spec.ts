@@ -109,6 +109,76 @@ test.describe("Quick Capture", () => {
     expect(found.items).toHaveLength(1);
   });
 
+  test("a quick note can be typed or dictated with the small mic, and both end up in the same note", async ({ page }) => {
+    // A stand-in for the browser's own speech-to-text (Web Speech API): the test says the words.
+    await page.addInitScript(() => {
+      type Result = { 0: { transcript: string }; isFinal: boolean };
+      class FakeSpeech {
+        continuous = false;
+        interimResults = false;
+        lang = "";
+        onresult: ((e: { resultIndex: number; results: Result[] }) => void) | null = null;
+        onend: (() => void) | null = null;
+        onerror: ((e: { error: string }) => void) | null = null;
+        results: Result[] = [];
+        start() {
+          (window as unknown as { __speech: FakeSpeech }).__speech = this;
+        }
+        stop() {
+          setTimeout(() => this.onend?.(), 0);
+        }
+        say(words: string, isFinal: boolean) {
+          const r = { 0: { transcript: words }, isFinal };
+          if (this.results.length && !this.results[this.results.length - 1].isFinal) this.results[this.results.length - 1] = r;
+          else this.results.push(r);
+          this.onresult?.({ resultIndex: this.results.length - 1, results: this.results });
+        }
+      }
+      (window as unknown as { webkitSpeechRecognition: typeof FakeSpeech }).webkitSpeechRecognition = FakeSpeech;
+    });
+    const say = (words: string, isFinal = true) => page.evaluate(([w, f]) => (window as unknown as { __speech: { say: (w: string, f: boolean) => void } }).__speech.say(w as string, f as boolean), [words, isFinal] as const);
+
+    const tag = uid();
+    await page.goto("/");
+    await page.getByRole("button", { name: "Quick note" }).click();
+    const note = capture(page).getByLabel("Quick note");
+    // Typing works as ever…
+    await note.fill(`Typed first ${tag}.`);
+    // …and the mic dictates into the same note, after what's there; words appear as they're recognised.
+    const mic = capture(page).getByRole("button", { name: "Dictate" });
+    await expect(mic).toBeVisible();
+    await mic.click();
+    await expect(capture(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
+    await expect(capture(page).getByRole("status").filter({ hasText: "Listening" })).toBeVisible();
+    await say("then spoken", false);
+    await expect(note).toHaveValue(`Typed first ${tag}. then spoken`);
+    await say("then spoken aloud");
+    await expect(note).toHaveValue(`Typed first ${tag}. then spoken aloud`);
+    await capture(page).getByRole("button", { name: "Stop dictating" }).click();
+    await expect(capture(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
+    // Back to the keyboard to finish it.
+    await note.press("End");
+    await note.pressSequentially(" and typed again");
+    await expect(note).toHaveValue(`Typed first ${tag}. then spoken aloud and typed again`);
+    await capture(page).getByRole("button", { name: /Save note/ }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
+    const found = await (await page.request.get(`/api/v1/materials?q=${encodeURIComponent(tag)}`)).json();
+    expect(found.items).toHaveLength(1);
+  });
+
+  test("where the browser can't dictate, the mic says so and typing still works", async ({ page }) => {
+    await page.addInitScript(() => {
+      delete (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
+      delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Quick note" }).click();
+    await capture(page).getByRole("button", { name: "Dictate" }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Dictation isn't available in this browser" })).toBeVisible();
+    await capture(page).getByLabel("Quick note").fill("Still typed by hand");
+    await expect(capture(page).getByRole("button", { name: /Save note/ })).toBeEnabled();
+  });
+
   test("a voice note records at once, saves the original first, and says honestly when it can't be transcribed", async ({ page }) => {
     await fakeMicrophone(page, true);
     await page.goto("/");

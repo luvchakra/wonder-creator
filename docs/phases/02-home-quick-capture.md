@@ -193,10 +193,16 @@ Open a minimal sheet/modal:
 ```text
 Quick note
 
-[ text area ]
+[ text area                   🎤 ]
 
 Cancel                      Save
 ```
+
+**Type or dictate (owner, 17 Oct 2026):** a small mic in the corner of the note (`Dictate`) writes what's said into the
+same note through the browser's own speech-to-text, words appearing as they're recognised; tapping it again (`Stop
+dictating`) or typing hands back to the keyboard, and both can be mixed. Where the browser has no dictation the note says
+so and suggests typing or a Voice note. Nothing extra is recorded or uploaded; Voice note stays the way to keep the sound
+itself. Shared with the composer: `components/audio/use-dictation.ts`.
 
 Rules:
 

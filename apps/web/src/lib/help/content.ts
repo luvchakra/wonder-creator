@@ -165,7 +165,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ----------------------------------------------------------------------------------------- Capturing and keeping */
   {
     id: "capturing",
-    updated: "2026-10-16",
+    updated: "2026-10-17",
     title: "Capturing and keeping",
     blurb: "Get ordinary moments in quickly, and find them again.",
     topics: [
@@ -173,10 +173,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         slug: "quick-capture",
         title: "Quick Capture on Home",
         summary: "A note, a voice note, a picture or a short video in a few seconds.",
-        keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea"],
+        keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea", "dictate", "dictation", "speech to text", "mic"],
         steps: [
           "On Home, under Quick Capture, choose Quick note, Voice note, Quick Pic or Video Note.",
-          "For a note, write anything — a line, an idea, something you noticed — and save it. Ctrl or ⌘ with Enter saves too.",
+          "For a note, type anything — a line, an idea, something you noticed — or tap the small mic in the note (Dictate) and say it; the words appear as you speak. Tap it again (Stop dictating) or start typing to go back to the keyboard; you can mix both. Save note, or Ctrl or ⌘ with Enter, saves it.",
           "For a voice note, recording starts as soon as the sheet opens. Stop when you’re done, listen back if you like, then choose Save. A recording stops by itself at 20 minutes.",
           "Quick Pic and Video Note offer two ways in: Open the camera, or Choose from gallery. You can pick several from the gallery; each becomes its own Material.",
           "Once it’s saved, add it to a DejaVu if you like (suggested ones appear when there are any). Then choose Make something to start a Creation from it, or Done.",
@@ -184,6 +184,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         notes: [
           "A note written while you’re offline is kept on your device and sent when you’re back online. Each note keeps its own identity, so nothing lands twice.",
           "What you capture is private to you. It appears at once under My captures on Home.",
+          "Dictate uses your browser’s own speech-to-text, so it works only in browsers that offer it (some do it on their maker’s service). Where it isn’t available, the note says so: type instead, or record a Voice note.",
         ],
         links: [
           { label: "Home", href: "/" },
