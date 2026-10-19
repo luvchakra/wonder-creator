@@ -1090,6 +1090,41 @@ export const HELP_SECTIONS: HelpSection[] = [
     ],
   },
 
+  /* --------------------------------------------------------------------------------------------------- Release notes */
+  // One topic per release, newest first, titled "Release N · D Mon YYYY" (slug "release-N"). A release is written only
+  // when the owner confirms a version is live (docs/help.md › Release notes), and lists every user-facing feature merged
+  // since the entry below it, at a high level, in the words the screens use. Covered through: Release 1 = main at the
+  // merge of "Quick note: type or dictate with a small mic" (ad90762).
+  {
+    id: "release-notes",
+    updated: "2026-10-19",
+    title: "Release notes",
+    blurb: "What’s new in each release, newest first. A new entry is added when a version goes live.",
+    topics: [
+      {
+        slug: "release-1",
+        title: "Release 1 · 19 Oct 2026",
+        summary: "The first release: capturing, making, publishing and working together.",
+        keywords: ["release notes", "what’s new", "whats new", "new features", "updates", "changelog", "version", "latest", "first release"],
+        body: ["This is the first entry, so it covers everything in Wonder Creator today. Later releases list only what’s new since the one before."],
+        terms: [
+          { term: "Capture", text: "Quick note (typed, or dictated with the small mic), Voice note, Quick Pic and Video Note from Home. My captures lets you look back. Notes written offline are sent when you’re back online." },
+          { term: "Materials", text: "Bring in files, links and text, gather them in Collections, and keep a Source & rights note on each. Save someone’s published work to your Materials, with their name on it. DejaVu connects related things you’ve caught, and the Scrapbook keeps scraps." },
+          { term: "Making a Creation", text: "Writing, Carousel, Images, Video, Audio and Presentation each have their own page. The Working Table brings sources together with Use together, Versions keep checkpoints, and Change format makes a new Creation from the same ingredients. Undo and Redo while you write." },
+          { term: "Carousels", text: "Choose how many slides to start with, then Generate one more, Regenerate this image, Arrange the order, and edit each slide with text on the picture. Made from shows where a slide came from." },
+          { term: "CreativeMind and AI", text: "CreativeMind helps in context only. You choose what it may do and approve what matters, and you can use your own AI key. Where a service isn’t connected, the screen says Not connected." },
+          { term: "Publishing and sharing", text: "Share privately, publish a Creation as a page, keep a Creator Page of your own, and send published work onward through destinations." },
+          { term: "Together", text: "Pulse for conversations, asks and people. Communities (Public, Unlisted or Private). Huddles. Creative Rooms, where a piece is made of parts by different people, with Listen together, shared credits and publishing the song. Messages, and People to find collaborators." },
+          { term: "Brand work and business", text: "Campaigns with brands, and Business records for income and payouts. Not tax advice." },
+          { term: "Rights and licensing", text: "A Rights tab on every Creation, licenses you can offer, and plain-language guidance. Not legal advice." },
+          { term: "Your data and privacy", text: "See who can see what, download your data or delete your account, and review Security & activity." },
+          { term: "Around the app", text: "CreativeRadio plays licensed music by mood. On a phone or tablet you can install Wonder Creator to your home screen. This Help centre, for signed-in creators, with Account help available before you sign in." },
+        ],
+        notes: ["Anything that needs a service that isn’t connected shows Not connected on its own screen."],
+      },
+    ],
+  },
+
   /* --------------------------------------------------------------------------------------------------- Reaching us */
   {
     id: "contact",

@@ -27,7 +27,7 @@ The public footer links to **Account help**; signed in, the same footer slot is 
 
 ## What's on it
 
-A search box, eleven sections as chips, and every topic as a closed card that opens in place (a native disclosure, so it
+A search box, twelve sections as chips, and every topic as a closed card that opens in place (a native disclosure, so it
 works from the keyboard and without scripts):
 
 | Section | Topics |
@@ -42,6 +42,7 @@ works from the keyboard and without scripts):
 | Rights and licensing | The Rights tab · Licenses · Fees and payments · Using other people's material (plain language, not legal advice) |
 | Your data and privacy | Who can see what · Download your data or delete your account · Privacy requests and choices · Security & activity |
 | When something isn't working | The checklist · Can't sign in · A file or link won't come in · The microphone · "Not connected" · Can't publish · Huddle without voice or video · Can't find my Creation |
+| Release notes | One entry per release, newest first (Release 1 · 19 Oct 2026) |
 | Reaching us | Contact, privacy and security |
 
 ## Rules
@@ -76,6 +77,26 @@ works from the keyboard and without scripts):
 Each section carries `updated` (YYYY-MM-DD), shown as **Last updated** under its heading: the day its topics were last
 checked against the app. Change it when you change a topic in that section.
 
+## Release notes
+
+The **Release notes** section (just before *Reaching us*) says what's new in each release, at a high level, in the words the
+screens use. One topic per release, newest first, titled `Release N · D Mon YYYY` (slug `release-N`).
+
+* **When:** only when the owner confirms a new version is live. Not on merge, and not before: until then the section
+  doesn't change. The date is the day the owner confirmed it live.
+* **What goes in:** every user-facing feature, change or fix worth knowing that was merged since the entry below it,
+  grouped by area (the terms list), one line each. Find them with `git log --oneline <previous covered commit>..origin/main`
+  and read each merge. Leave out internal work (tests, CI, performance, refactors, docs) unless a creator would notice it.
+  No pull-request numbers, commit ids or internal names; features that show *Not connected* are described the way the
+  screens do, never as available. The first entry covers everything; later ones only what's new.
+* **How:** add the new topic at the top of the section's `topics`, bump the section's `updated`, and update the "covered
+  through" comment above the section in `content.ts` and the log below. The same pull request updates any older topic
+  the changes touch.
+
+| Release | Date | Covers |
+| --- | --- | --- |
+| 1 | 19 Oct 2026 | Everything up to and including `ad90762` ("Quick note: type or dictate with a small mic") |
+
 ## Tests
 
 * `apps/web/src/lib/help/content.test.ts` (unit): unique anchors; no empty topics or repeated lines; every internal link
@@ -84,6 +105,8 @@ checked against the app. Change it when you change a topic in that section.
 * `e2e/help.spec.ts`: the footer link, every section, opening a topic from the keyboard, search and its empty state,
   a deep link, the way to Contact, no sideways scrolling at 360/390/1280, 44px targets, axe with motion on and off, and
   (signed in) the account menu's *Get help* and the way back.
+* `content.test.ts` also checks the release notes: the section sits just before *Reaching us*, entries are numbered
+  without gaps, newest first, titled with a date, and carry no pull-request numbers or commit ids.
 * `e2e/help-access.spec.ts`: signed out `/help` is a 307 to sign-in with `no-store` and `noindex` and none of its text;
   signing in from there returns to `/help`; signed in it's a private 200; there is no help API (404); every public page
   loads signed out without signed-in help text or a `/help` link; Account help's links are public only.

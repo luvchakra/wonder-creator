@@ -201,7 +201,10 @@ it; uploads are checked, resized server-side and stripped of metadata (location 
 only** (owner, 16 Oct 2026): signed out it redirects to sign-in and back, it's never publicly cached or indexed, and its
 content is server-only (never imported by a client component; CI checks the build). Public: `/account-help` (sign-in,
 sign-up and password help), Contact, About and the legal pages. Opened from the signed-in footer and the account menu's
-**Get help**. **A change that adds, removes or renames a user-facing feature updates the help content in the same pull
+**Get help**. **Release notes (owner, 19 Oct 2026):** the Help centre has a *Release notes* section. When the owner confirms a new
+version is live, add a new entry at the top covering every user-facing feature merged since the previous entry (high
+level, in the screens' words; process in `docs/help.md` › Release notes). Never add one before that confirmation.
+**A change that adds, removes or renames a user-facing feature updates the help content in the same pull
 request** (`apps/web/src/lib/help/content.ts`, with its section's `updated` date; contract and rules in `docs/help.md`). Describe provider-gated features as "Not
 connected" the way the screens do; name no internal technology; invent no email address, reply time or promise; reach us only
 through Contact, the privacy request and the Security page.
