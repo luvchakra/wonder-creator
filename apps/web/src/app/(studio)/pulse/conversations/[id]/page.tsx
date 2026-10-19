@@ -27,20 +27,25 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     ...(detail.conversation.sourceEntityType ? [{ type: detail.conversation.sourceEntityType, id: detail.conversation.sourceEntityId! }] : []),
     ...detail.replies.filter((r) => r.attachmentType).map((r) => ({ type: r.attachmentType!, id: r.attachmentEntityId! })),
   ];
-  const [mats, arts] = await Promise.all([
-    refs.some((r) => r.type === "material") ? db.from("creative_materials").select("id, title, type").in("id", refs.filter((r) => r.type === "material").map((r) => r.id)) : Promise.resolve({ data: [] }),
-    refs.some((r) => r.type === "creation") ? db.from("artifacts").select("id, title").in("id", refs.filter((r) => r.type === "creation").map((r) => r.id)) : Promise.resolve({ data: [] }),
+  // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
+  const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;
+  // Four independent reads (attachments, communities and their pictures, DejaVu, the summary): one stage, not six.
+  const [[mats, arts], communities, dejavus, summary] = await Promise.all([
+    Promise.all([
+      refs.some((r) => r.type === "material") ? db.from("creative_materials").select("id, title, type").in("id", refs.filter((r) => r.type === "material").map((r) => r.id)) : Promise.resolve({ data: [] }),
+      refs.some((r) => r.type === "creation") ? db.from("artifacts").select("id, title").in("id", refs.filter((r) => r.type === "creation").map((r) => r.id)) : Promise.resolve({ data: [] }),
+    ]),
+    (async () => {
+      const rawCommunities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
+      const pictures = await communityAvatars(rawCommunities.map((c) => c.avatarObjectId));
+      return rawCommunities.map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null }));
+    })(),
+    entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] })),
+    readSummary(db, id, liveReplies).catch(() => null),
   ]);
   const visible: Record<string, { title: string; href: string }> = {};
   for (const m of mats.data ?? []) visible[m.id] = { title: m.title || "A Material", href: `/materials/${m.id}` };
   for (const a of arts.data ?? []) visible[a.id] = { title: a.title, href: `/creations/${a.id}` };
-  const rawCommunities = flagOn("communities_enabled") ? await topicCommunities(db, id).catch(() => []) : [];
-  const pictures = await communityAvatars(rawCommunities.map((c) => c.avatarObjectId));
-  const communities = rawCommunities.map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, picture: c.avatarObjectId ? (pictures[c.avatarObjectId] ?? null) : null }));
-  const dejavus = await entityDejaVus(db, "conversation", id).catch(() => ({ momentId: null, dejavus: [] }));
-  // "Conversation so far" (Phase 05 §9): what's stored now; a fresh one is written afterwards when it has fallen behind.
-  const liveReplies = detail.replies.filter((r) => !r.deleted && !r.removed).length;
-  const summary = await readSummary(db, id, liveReplies).catch(() => null);
   refreshSummaryLater(id, liveReplies, summary);
 
   return (

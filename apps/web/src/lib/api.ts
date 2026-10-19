@@ -44,6 +44,33 @@ function readNeedsShared(key: string, limit: number): boolean {
   return hit.n > limit / 4;
 }
 
+const creatorIds = new Map<string, { id: string; until: number }>();
+const CREATOR_ID_TTL_MS = 5 * 60_000;
+/**
+ * The creator row id for a signed-in user, remembered on this instance for a few minutes. It never changes for a user,
+ * and was looked up (a ~90 ms round trip) on every single API call — more than anything else a poll does. Only a
+ * found id is kept; every query that follows still runs as the user under RLS, so a stale entry (an account deleted
+ * a moment ago) can't read or change anything. Deleting an account forgets it (`forgetCreatorId`).
+ */
+async function creatorIdFor(db: Db, userId: string): Promise<string | null> {
+  const t = Date.now();
+  const hit = creatorIds.get(userId);
+  if (hit && hit.until > t) return hit.id;
+  const { data } = await db.from("creators").select("id").eq("user_id", userId).maybeSingle();
+  if (!data) {
+    creatorIds.delete(userId);
+    return null;
+  }
+  if (creatorIds.size > 5_000) for (const [k, v] of creatorIds) if (v.until <= t) creatorIds.delete(k);
+  creatorIds.set(userId, { id: data.id, until: t + CREATOR_ID_TTL_MS });
+  return data.id;
+}
+
+/** Drop a user's remembered creator id (their account was deleted). */
+export function forgetCreatorId(userId: string) {
+  creatorIds.delete(userId);
+}
+
 /** An extra, named budget inside a handler — e.g. cost-bearing image generation starts vs cheap lookups. */
 export async function checkBudget(key: string, limit: number, windowMs = 60 * 60_000) {
   await limiter.check(key, limit, windowMs);
@@ -100,7 +127,7 @@ export function withApi<P = Record<string, string>>(
       const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
       // The creator lookup and the rate limit don't depend on each other: each is a round trip, so they go together.
       const [creator] = await Promise.all([
-        userId ? db.from("creators").select("id").eq("user_id", userId).maybeSingle() : null,
+        userId ? creatorIdFor(db, userId) : null,
         (async () => {
           const key = `${userId || clientIp(req)}:${req.nextUrl.pathname}:${req.method}`;
           if ((req.method === "GET" || req.method === "HEAD") && !readNeedsShared(key, limit)) return;
@@ -108,9 +135,8 @@ export function withApi<P = Record<string, string>>(
         })(),
       ]);
       if (userId) {
-        const data = creator?.data;
-        if (!data && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
-        creatorId = data?.id ?? "";
+        if (!creator && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
+        creatorId = creator ?? "";
         // Two-step verification set up but not yet passed in this session: nothing proceeds until it is.
         if (!opts.allowPendingMfa && (await mfaPending(db))) throw new DomainError("unauthenticated", "Finish two-step verification to continue.");
       }

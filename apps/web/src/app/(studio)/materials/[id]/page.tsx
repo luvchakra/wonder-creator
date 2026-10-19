@@ -34,26 +34,33 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const { db, creator } = await requireSession();
   const m = await getMaterial(db, id).catch(() => null);
   if (!m) notFound();
-  const [url, intake, usedIn, collections, memberships, similar] = await Promise.all([
+  // Everything after the Material itself is asked at once: the few reads that need another's answer (the Creations it
+  // is used in, the thumbnails of similar Materials) are chained inside their own branch, so the page takes the Material
+  // plus one stage of two round trips at most — it used to take six in a row.
+  const [url, intake, arts, collections, memberships, [similar, thumbs], dejavus, rooms, obj] = await Promise.all([
     m.storage_object_id ? signedUrlFor(db, m.storage_object_id, 900) : Promise.resolve(null),
     db.from("intake_items").select("id, state, error_message").eq("material_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    db.from("lineage_edges").select("target_id, relationship").eq("source_type", "material").eq("source_id", id).eq("target_type", "artifact"),
+    (async () => {
+      const edges = await db.from("lineage_edges").select("target_id, relationship").eq("source_type", "material").eq("source_id", id).eq("target_type", "artifact");
+      const artIds = (edges.data ?? []).map((e) => e.target_id);
+      const { data } = artIds.length ? await db.from("artifacts").select("id, title, artifact_type").in("id", artIds) : { data: [] };
+      return data ?? [];
+    })(),
     listCollections(db).catch(() => []),
     db.from("material_collection_items").select("collection_id").eq("material_id", id),
-    similarMaterials(db, id).catch(() => []),
-  ]);
-  const [dejavus, rooms] = await Promise.all([
+    (async () => {
+      const found = await similarMaterials(db, id).catch(() => []);
+      const thumbs = await signedUrlsFor(
+        db,
+        found.filter((s) => s.type === "image" || s.type === "sketch").map((s) => s.storage_object_id),
+      );
+      return [found, thumbs] as const;
+    })(),
     entityDejaVus(db, "material", id).catch(() => ({ momentId: null, dejavus: [] })),
     // Only your own Material can go into a Room (the database refuses anything else).
     m.creator_id === creator.id ? roomChoices(db, creator.id, "material", id).catch(() => null) : Promise.resolve(null),
+    m.storage_object_id ? db.from("storage_objects").select("mime_type, size_bytes, original_filename, sha256").eq("id", m.storage_object_id).maybeSingle().then((r) => r.data) : Promise.resolve(null),
   ]);
-  const thumbs = await signedUrlsFor(
-    db,
-    similar.filter((s) => s.type === "image" || s.type === "sketch").map((s) => s.storage_object_id),
-  );
-  const artIds = (usedIn.data ?? []).map((e) => e.target_id);
-  const { data: arts } = artIds.length ? await db.from("artifacts").select("id, title, artifact_type").in("id", artIds) : { data: [] };
-  const obj = m.storage_object_id ? (await db.from("storage_objects").select("mime_type, size_bytes, original_filename, sha256").eq("id", m.storage_object_id).maybeSingle()).data : null;
   const related = (m.title ?? "").trim().slice(0, 60);
   // Navbar Context Strip: what it is and when, or what's happening to it (context-strip §11.5–11.8).
   const kind = KIND_LABEL[m.type] ?? "Material";
@@ -121,7 +128,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
         url={url}
         file={obj}
         intake={intake.data}
-        usedIn={arts ?? []}
+        usedIn={arts}
         collections={collections.map((c) => ({ id: c.id, name: c.name }))}
         inCollections={(memberships.data ?? []).map((r) => r.collection_id)}
         similar={similar.map((s) => ({

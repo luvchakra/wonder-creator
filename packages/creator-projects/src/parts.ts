@@ -30,29 +30,37 @@ const person = (c: CreatorRef) => (c ? { id: c.id, name: c.display_name, handle:
 
 /** The Room's parts in order, with who's on each and what each has produced so far. */
 export async function listParts(db: Db, projectId: string, viewerId: string): Promise<PartView[]> {
-  const { data, error } = await db
-    .from("project_parts")
-    .select("id, project_id, title, kind, artifact_type, credit, position, status, artifact_id, final_at, project_part_members(creator_id, status, creators:creators!project_part_members_creator_id_fkey(id, display_name, handle))")
-    .eq("project_id", projectId)
-    .order("position")
-    .order("created_at");
+  // Three stages, not five: the parts and the crew need only the Room's id; then the Creations behind the parts (and
+  // their version numbers) run beside the "made with" notes.
+  const [partsRes, crewIds] = await Promise.all([
+    db
+      .from("project_parts")
+      .select("id, project_id, title, kind, artifact_type, credit, position, status, artifact_id, final_at, project_part_members(creator_id, status, creators:creators!project_part_members_creator_id_fkey(id, display_name, handle))")
+      .eq("project_id", projectId)
+      .order("position")
+      .order("created_at"),
+    crewPeople(db, projectId),
+  ]);
+  const { data, error } = partsRes;
   if (error) throw fromDbError(error);
   const rows = data ?? [];
   if (!rows.length) return [];
-  const crewIds = await crewPeople(db, projectId);
   const artifactIds = rows.map((r) => r.artifact_id).filter((x): x is string => !!x);
   const artifacts = new Map<string, { id: string; title: string; artifact_type: string; updated_at: string; current_version_id: string | null }>();
   const versionNumbers = new Map<string, number>();
-  if (artifactIds.length) {
-    const { data: as } = await db.from("artifacts").select("id, title, artifact_type, updated_at, current_version_id").in("id", artifactIds);
-    for (const a of as ?? []) artifacts.set(a.id, a);
-    const current = (as ?? []).map((a) => a.current_version_id).filter((x): x is string => !!x);
-    if (current.length) {
-      const { data: vs } = await db.from("artifact_versions").select("id, version_number").in("id", current);
-      for (const v of vs ?? []) versionNumbers.set(v.id, v.version_number);
-    }
-  }
-  const madeWith = await latestMadeWith(db, rows.map((r) => r.id));
+  const [, madeWith] = await Promise.all([
+    (async () => {
+      if (!artifactIds.length) return;
+      const { data: as } = await db.from("artifacts").select("id, title, artifact_type, updated_at, current_version_id").in("id", artifactIds);
+      for (const a of as ?? []) artifacts.set(a.id, a);
+      const current = (as ?? []).map((a) => a.current_version_id).filter((x): x is string => !!x);
+      if (current.length) {
+        const { data: vs } = await db.from("artifact_versions").select("id, version_number").in("id", current);
+        for (const v of vs ?? []) versionNumbers.set(v.id, v.version_number);
+      }
+    })(),
+    latestMadeWith(db, rows.map((r) => r.id)),
+  ]);
   return rows.map((r) => {
     const members = (r.project_part_members as Array<{ creator_id: string; status: string; creators: CreatorRef }>) ?? [];
     const people = members

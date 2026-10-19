@@ -155,9 +155,10 @@ export async function liveCards(db: Db, opts: { limit?: number; creatorId?: stri
 
 /** Full room state; only readable by participants (RLS). */
 export async function roomState(db: Db, huddleId: string, myCreatorId: string) {
-  const huddle = await db.from("huddles").select("*").eq("id", huddleId).maybeSingle();
-  if (huddle.error) throw fromDbError(huddle.error);
-  const [participants, requests, messages] = await Promise.all([
+  // Everything that needs only the Huddle's id is asked together (this is polled every few seconds by everyone in a
+  // room, and each stage is a ~90 ms round trip); only the disciplines need what came back, so they are the second stage.
+  const [huddle, participants, requests, messages, invitations, myRequest] = await Promise.all([
+    db.from("huddles").select("*").eq("id", huddleId).maybeSingle(),
     db
       .from("huddle_participants")
       .select("creator_id, role, status, audio_on, video_on, joined_at, last_seen_at, creators(id, display_name, handle, avatar_object_id)")
@@ -171,12 +172,14 @@ export async function roomState(db: Db, huddleId: string, myCreatorId: string) {
       .eq("status", "pending")
       .order("created_at"),
     db.from("huddle_messages").select("id, creator_id, body, created_at").eq("huddle_id", huddleId).order("created_at").limit(200),
+    db
+      .from("huddle_invitations")
+      .select("invitee_creator_id, status, created_at, creators!huddle_invitations_invitee_creator_id_fkey(display_name, handle)")
+      .eq("huddle_id", huddleId)
+      .order("created_at"),
+    db.from("huddle_join_requests").select("id").eq("huddle_id", huddleId).eq("requester_creator_id", myCreatorId).eq("status", "pending").maybeSingle(),
   ]);
-  const invitations = await db
-    .from("huddle_invitations")
-    .select("invitee_creator_id, status, created_at, creators!huddle_invitations_invitee_creator_id_fkey(display_name, handle)")
-    .eq("huddle_id", huddleId)
-    .order("created_at");
+  if (huddle.error) throw fromDbError(huddle.error);
   const disciplines = await db
     .from("creator_disciplines")
     .select("creator_id, value")
@@ -184,7 +187,6 @@ export async function roomState(db: Db, huddleId: string, myCreatorId: string) {
     .eq("position", 0);
   const firstDiscipline = new Map((disciplines.data ?? []).map((d) => [d.creator_id, d.value]));
   const me = (participants.data ?? []).find((p) => p.creator_id === myCreatorId);
-  const myRequest = await db.from("huddle_join_requests").select("id").eq("huddle_id", huddleId).eq("requester_creator_id", myCreatorId).eq("status", "pending").maybeSingle();
   return {
     huddle: huddle.data,
     me: me ? { role: me.role, status: me.status } : null,

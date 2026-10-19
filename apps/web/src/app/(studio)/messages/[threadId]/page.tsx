@@ -1,5 +1,6 @@
 import { getThread, markThreadRead } from "@wonder/creator-projects";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { requireSession } from "@/lib/session";
 import { ThreadView } from "./thread-view";
 
@@ -11,7 +12,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ threadI
   const { db, creator } = await requireSession();
   const thread = await getThread(db, creator.id, threadId).catch(() => null);
   if (!thread) notFound();
-  await markThreadRead(db, creator.id, threadId);
+  // Marking it read isn't needed to draw the page, so the response doesn't wait for it.
+  after(() => markThreadRead(db, creator.id, threadId).catch(() => undefined));
   const other = thread.other.id;
 
   // What a message can be about: projects and pieces both of you can open.

@@ -8,6 +8,9 @@ import { outputModeOf } from "./working-set-options";
 
 export type Artifact = Tables<"artifacts">;
 export type ArtifactVersion = Tables<"artifact_versions">;
+
+/** Every column of a Creation except `search` (its full-text index, which nothing reads). Kept equal to the table by `artifacts.test.ts`. */
+export const ARTIFACT_COLUMNS = "id,creator_id,artifact_type,category,title,description,status,current_version_id,provenance_id,cover_material_id,privacy,featured_on_profile,created_at,updated_at,made_for,presentation" as const;
 export type LineageRelationship = Enums<"lineage_relationship">;
 export type ArtifactStatus = Enums<"artifact_status">;
 
@@ -160,11 +163,11 @@ export async function restoreVersion(db: Db, artifactId: string, versionId: stri
 }
 
 export async function getArtifact(db: Db, id: string): Promise<Artifact> {
-  return must(await db.from("artifacts").select("*").eq("id", id).maybeSingle(), "We couldn't find that Creation.");
+  return must(await db.from("artifacts").select(ARTIFACT_COLUMNS).eq("id", id).maybeSingle(), "We couldn't find that Creation.") as Artifact;
 }
 
 export async function listArtifacts(db: Db, opts: { status?: ArtifactStatus[]; q?: string; limit?: number; creatorId?: string } = {}) {
-  let q = db.from("artifacts").select("*").order("updated_at", { ascending: false }).limit(Math.min(opts.limit ?? 60, 200));
+  let q = db.from("artifacts").select(ARTIFACT_COLUMNS).order("updated_at", { ascending: false }).limit(Math.min(opts.limit ?? 60, 200));
   if (opts.status?.length) q = q.in("status", opts.status);
   if (opts.creatorId) q = q.eq("creator_id", opts.creatorId);
   if (opts.q?.trim()) {
@@ -178,6 +181,13 @@ export async function listArtifacts(db: Db, opts: { status?: ArtifactStatus[]; q
 
 export async function listVersions(db: Db, artifactId: string): Promise<ArtifactVersion[]> {
   const { data, error } = await db.from("artifact_versions").select("*").eq("artifact_id", artifactId).order("version_number", { ascending: false });
+  if (error) throw fromDbError(error);
+  return data ?? [];
+}
+
+/** Just the labels of a Creation's versions (id, number, name): for pickers, without every version's full content. */
+export async function listVersionHeads(db: Db, artifactId: string): Promise<Array<Pick<ArtifactVersion, "id" | "version_number" | "label">>> {
+  const { data, error } = await db.from("artifact_versions").select("id, version_number, label").eq("artifact_id", artifactId).order("version_number", { ascending: false });
   if (error) throw fromDbError(error);
   return data ?? [];
 }

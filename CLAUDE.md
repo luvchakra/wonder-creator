@@ -371,6 +371,52 @@ For every screen:
 11. Screenshot-test at 320/360/390/430/480px and a representative desktop viewport.
 12. Do not mark complete until density **and aesthetics** have been visually reviewed against the board.
 
+## Performance (owner's standing instruction, 6 and 19 Oct 2026)
+
+> "make the application fast and snappier … update the best practices for performance in claude.md so it's always followed moving ahead"
+
+The measured contract and the history are in `docs/performance.md`. **What costs time here is requests, not queries:** each
+database round trip is ~90 ms live (the small database also queues concurrent ones), queries themselves take under 10 ms.
+Follow these on every new or changed page, route and query; say in the PR how many dependent stages the page now takes.
+
+* **Count dependent round trips.** A page takes at most three stages: session → the object → everything about it. Ask
+  everything that needs only the route id and the viewer in one `Promise.all` (including things you'd normally do "after
+  the project loads": RLS already refuses what the viewer can't read). Chain only what truly needs an earlier answer, and
+  chain it *inside its own branch* so it doesn't hold the others up.
+* **No `await` in a loop, no N+1.** Batch with `.in(...)`, an embedded select, or one RPC. A `map` of `await`s over rows is a bug.
+* **Show the page before it is all there.** The shell and the one dominant action first; slower sections stream behind quiet
+  placeholders of the same height. Never a blocking spinner.
+* **Read only what you show.** Name the columns; never `select("*")` on a list or a hot read of a table with text, jsonb or
+  the full-text `search` column (`MATERIAL_COLUMNS` / `ARTIFACT_COLUMNS` are tested against the table). Every list has a
+  `.limit()` and a way to page. "Is there any?" is `limit(1)`, never a count; real counts are `head: true` or a grouped
+  SQL function, never rows loaded and counted in JavaScript (PostgREST caps at 1,000, so the count would also be wrong).
+* **Don't make the response wait for what it doesn't need.** Audit, telemetry, "mark read", re-indexing, summaries and
+  looking up the creator's own AI key go in `after()`. Events a later step depends on stay inside the request.
+* **Never ask twice.** A request's session, consents and avatar are memoised (`cache`/`WeakMap`); `withApi` remembers the
+  creator id; pass data you already hold instead of fetching it again (the Messages page asked `unread_messages()` twice).
+* **One call per poll, and polls behave.** A timer fetches one endpoint in one database call, pauses while the tab is
+  hidden and refetches when it returns, and slows down when nothing changes. Don't poll with a write. Don't poll what the
+  page already received from the server. Two components never fetch the same endpoint independently.
+* **Caching has rules.** JSON from `withApi` is `no-store`. Private, low-churn data may be sent `private, max-age=…`;
+  per-creator data is never `public`; anything a write can change is refreshed after the write (`router.refresh()` or a
+  refetch). Reference data shared by everyone (the soundtrack catalogue) is cached once, not read per request. Server-only
+  data stays server-only. Don't turn on `cacheComponents` or `staleTimes` without an app-wide invalidation rule (owner).
+* **Indexes come with the table.** A migration that adds a foreign key indexes the columns the app filters, joins, orders
+  or deletes by (a delete cascades through every child table) and anything an RLS policy looks up per row; match the
+  query: `(filter, order desc)` composites, partial indexes for `status`/`deleted_at`/`failed`. Don't index audit columns
+  (`created_by`, `updated_by`). Add a *split* write policy per command next to a `select` policy, never `for all`. Run
+  the performance advisors after DDL (`docs/performance.md` › Database: how to check it) and fix what they raise.
+* **Don't "optimise" what you haven't measured.** Time the thing first (`pg_stat_statements`, a function run as a creator
+  and timed twice, the local probe). The review of 19 Oct found the slowest query was connection warm-up, not SQL.
+* **Ship less JavaScript.** Sheets, canvases and panels load when opened (`next/dynamic`); a list page stays ≤ 200 KB gzipped;
+  heavy libraries (the Huddle media client, zod outside forms, the browser Supabase client) never ride on every page;
+  a client component never imports data meant for the server.
+* **Images are sized for where they show.** Cards and avatars use small derivatives (`docs/image-generation.md`), not the
+  original; every image has `width`/`height` (or an aspect ratio); the one above the fold is `fetchPriority="high"`, the
+  rest `loading="lazy"` and `decoding="async"`.
+* **Measure before and after.** A performance PR records the stages or requests per page before and after, and a database PR
+  the advisor result.
+
 ## Build-slot budget (owner's standing instruction, 10 Oct 2026)
 
 Vercel counts every deployment it **creates** against the plan's daily cap (100 on the free plan), including one the

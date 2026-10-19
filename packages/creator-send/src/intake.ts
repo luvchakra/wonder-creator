@@ -86,12 +86,12 @@ export async function receiveText(deps: IntakeDeps, input: { batchId: string; te
       sourceType: input.voice ? "voice_transcript" : "typed",
       provenance: { origin: input.voice ? "voice_recording" : "typed" },
     });
-    const withMat = must(await deps.service.from("intake_items").update({ material_id: material.id }).eq("id", item.id).select("*").single());
-    // Plain text: nothing to scan or extract.
-    let cur = await transition(deps, withMat, "validating");
-    cur = await transition(deps, cur, "security_review");
-    cur = await transition(deps, cur, "extracting");
-    cur = await transition(deps, cur, "normalizing");
+    // Plain text: nothing to scan or extract, so the item goes straight to "normalizing" (the state the earlier four
+    // one-step moves ended in) with its Material attached — two writes side by side instead of ten in a row.
+    const [cur] = await Promise.all([
+      deps.service.from("intake_items").update({ material_id: material.id, state: "normalizing" }).eq("id", item.id).eq("creator_id", deps.creatorId).select("*").single().then((r) => must(r)),
+      deps.service.from("creative_materials").update({ processing_state: "normalizing" }).eq("id", material.id).eq("creator_id", deps.creatorId),
+    ]);
     await enqueue(deps, cur.id); // understanding runs in the background
     results.push(cur);
   }

@@ -14,9 +14,11 @@ export const metadata = { title: "Messages" };
  */
 export default async function MessagesPage() {
   const { db, creator } = await requireSession();
+  // The unread rows feed both the direct threads' counts and the crew chats' lines: asked once, shared.
+  const unreadRows = unreadMessages(db).catch(() => []);
   const [threads, unread, crews] = await Promise.all([
-    listThreads(db, creator.id),
-    unreadMessages(db).catch(() => []),
+    listThreads(db, creator.id, { unread: unreadRows }),
+    unreadRows,
     db.from("crew_members").select("crew_id, crews!inner(id, project_id, name, status, projects!inner(title, status))").eq("creator_id", creator.id).eq("status", "active").limit(100),
   ]);
   const avatars = await avatarUrls(db, threads.map((t) => t.other.id)).catch(() => ({}) as Record<string, string>);

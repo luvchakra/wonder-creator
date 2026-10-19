@@ -2,6 +2,7 @@ import { DomainError, isDomainError, log } from "@wonder/core";
 import { MAX_UPLOAD_BYTES } from "@wonder/core/server";
 import { suggestDejaVusFromText, suggestNewDejaVu } from "@wonder/creator-moments";
 import type { Db } from "@wonder/db";
+import { selectProvider } from "@wonder/creator-brain";
 import { processIntake, receiveFile, receiveText, type IntakeDeps } from "@wonder/creator-send";
 import { after } from "next/server";
 import { z } from "zod";
@@ -53,7 +54,9 @@ export const POST = withApi(
     }
     if (claim.error) throw new DomainError("internal", "We couldn't save that. Try again.", { cause: claim.error });
 
-    const deps: IntakeDeps = { db, service, creatorId, provider: (await providerFor(creatorId)).provider };
+    // Saving the original needs no model, so the creator's own key isn't looked up (1-2 round trips) before it: the
+    // background work below resolves it once it's needed.
+    const deps: IntakeDeps = { db, service, creatorId, provider: selectProvider() };
     let intakeIds: string[] = [];
     let materialId: string | null = null;
     try {
@@ -81,15 +84,20 @@ export const POST = withApi(
       await service.from("capture_receipts").delete().eq("creator_id", creatorId).eq("client_id", input.clientId);
       throw e;
     }
-    await service.from("capture_receipts").update({ material_id: materialId }).eq("creator_id", creatorId).eq("client_id", input.clientId);
+    // The receipt and the Moment's id don't depend on each other.
+    const [, momentId] = await Promise.all([
+      service.from("capture_receipts").update({ material_id: materialId }).eq("creator_id", creatorId).eq("client_id", input.clientId),
+      materialId ? momentFor(db, materialId) : null,
+    ]);
     track(db, input.kind === "note" ? "quick_note_saved" : "voice_note_saved", creatorId, input.kind === "voice" ? { seconds: input.seconds } : {});
 
     // Understanding and transcription continue in the background (durable through the jobs table); then the words are
     // matched against the creator's DejaVus as *suggestions* only.
     after(async () => {
+      const working: IntakeDeps = { ...deps, provider: (await providerFor(creatorId).catch(() => null))?.provider ?? deps.provider };
       for (const id of intakeIds) {
         try {
-          await processIntake(deps, id);
+          await processIntake(working, id);
           await service.from("jobs").update({ status: "succeeded" }).eq("idempotency_key", `intake:${id}`);
         } catch (e) {
           log("warn", "capture.process_failed", { intakeId: id, code: isDomainError(e) ? e.code : "internal" });
@@ -108,7 +116,7 @@ export const POST = withApi(
         log("warn", "capture.suggest_failed", { code: isDomainError(e) ? e.code : "internal" });
       }
     });
-    return { materialId, momentId: materialId ? await momentFor(db, materialId) : null, duplicate: false };
+    return { materialId, momentId: momentId ?? null, duplicate: false };
   },
   { rateLimit: 30 },
 );

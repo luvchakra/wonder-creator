@@ -5,8 +5,9 @@ import { readJson, requireUuid, withApi } from "@/lib/api";
 /** Room state. Participants see everything; others only what RLS allows (their own request). */
 export const GET = withApi<{ id: string }>(async ({ db, creatorId }, { id }) => {
   const huddleId = requireUuid(id, "Huddle");
-  const state = await roomState(db, huddleId, creatorId);
-  const related = state.me?.status === "joined" ? await relatedItem(db, huddleId).catch(() => null) : null;
+  // The related piece is asked with the room state, not after it; only people in the room get to see it.
+  const [state, relatedRow] = await Promise.all([roomState(db, huddleId, creatorId), relatedItem(db, huddleId).catch(() => null)]);
+  const related = state.me?.status === "joined" ? relatedRow : null;
   return { ...state, related, media: { configured: selectMediaProvider().configured } };
 }, { rateLimit: 240 });
 

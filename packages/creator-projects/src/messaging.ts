@@ -87,7 +87,8 @@ export interface ThreadSummary {
   unread: number;
 }
 
-export async function listThreads(db: Db, viewerId: string): Promise<ThreadSummary[]> {
+/** `unread` can be passed in by a caller that already asked (the Messages page needs it twice), so it's asked once. */
+export async function listThreads(db: Db, viewerId: string, opts: { unread?: Awaited<ReturnType<typeof unreadMessages>> | Promise<Awaited<ReturnType<typeof unreadMessages>>> } = {}): Promise<ThreadSummary[]> {
   const [threads, unread] = await Promise.all([
     db
       .from("direct_threads")
@@ -97,7 +98,7 @@ export async function listThreads(db: Db, viewerId: string): Promise<ThreadSumma
       .order("created_at", { referencedTable: "direct_messages", ascending: false })
       .limit(1, { referencedTable: "direct_messages" })
       .limit(100),
-    unreadMessages(db),
+    opts.unread ?? unreadMessages(db),
   ]);
   if (threads.error) throw fromDbError(threads.error);
   const counts = new Map(unread.filter((u) => u.kind === "direct").map((u) => [u.id, u.unread]));
@@ -126,12 +127,6 @@ export interface DirectMessage {
 }
 
 export async function getThread(db: Db, viewerId: string, threadId: string, opts: { before?: string } = {}) {
-  const t = must(
-    await db.from("direct_threads").select("id, creator_a, creator_b, a:creators!direct_threads_creator_a_fkey(display_name, handle), b:creators!direct_threads_creator_b_fkey(display_name, handle)").eq("id", threadId).maybeSingle(),
-    "We couldn't find that conversation.",
-  );
-  const otherIsA = t.creator_b === viewerId;
-  const o = (otherIsA ? t.a : t.b) as { display_name: string; handle: string | null } | null;
   const limit = 50;
   let q = db
     .from("direct_messages")
@@ -140,7 +135,16 @@ export async function getThread(db: Db, viewerId: string, threadId: string, opts
     .order("created_at", { ascending: false })
     .limit(limit);
   if (opts.before) q = q.lt("created_at", opts.before);
-  const { data, error } = await q;
+  // The thread and its messages don't depend on each other (a thread the viewer can't open has no messages they can
+  // read either), so they're asked together: one round trip instead of two on every open and every poll.
+  const [thread, messages] = await Promise.all([
+    db.from("direct_threads").select("id, creator_a, creator_b, a:creators!direct_threads_creator_a_fkey(display_name, handle), b:creators!direct_threads_creator_b_fkey(display_name, handle)").eq("id", threadId).maybeSingle(),
+    q,
+  ]);
+  const t = must(thread, "We couldn't find that conversation.");
+  const otherIsA = t.creator_b === viewerId;
+  const o = (otherIsA ? t.a : t.b) as { display_name: string; handle: string | null } | null;
+  const { data, error } = messages;
   if (error) throw fromDbError(error);
   const rows = data ?? [];
   return {
