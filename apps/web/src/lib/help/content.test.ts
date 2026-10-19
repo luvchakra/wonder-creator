@@ -56,7 +56,7 @@ describe("help content", () => {
 
   it("covers what Wonder Creator does today", () => {
     const ids = HELP_SECTIONS.map((s) => s.id);
-    for (const id of ["getting-started", "capturing", "creating", "ai", "publishing", "together", "rights", "privacy", "troubleshooting", "contact"]) expect(ids, id).toContain(id);
+    for (const id of ["getting-started", "capturing", "creating", "ai", "publishing", "together", "rights", "privacy", "troubleshooting", "release-notes", "contact"]) expect(ids, id).toContain(id);
     const slugs = topics.map((t) => t.topic.slug);
     for (const slug of ["first-five-minutes", "quick-capture", "bring-in", "working-table", "carousel", "versions", "you-decide", "own-key", "publish-a-page", "creator-page", "huddles", "licenses", "your-data", "checklist", "contact-us"]) expect(slugs, slug).toContain(slug);
   });
@@ -153,6 +153,33 @@ describe("keeping help current (docs/help.md)", () => {
       }
     }
     expect(found).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("release notes (docs/help.md › Release notes)", () => {
+  const section = HELP_SECTIONS.find((s) => s.id === "release-notes");
+
+  it("is a section of its own, just before Reaching us", () => {
+    expect(section).toBeDefined();
+    const ids = HELP_SECTIONS.map((s) => s.id);
+    expect(ids.indexOf("release-notes")).toBe(ids.length - 2);
+    expect(ids[ids.length - 1]).toBe("contact");
+  });
+
+  it("has one entry per release, newest first, titled with its number and date", () => {
+    const topics = section!.topics;
+    expect(topics.length).toBeGreaterThan(0);
+    const numbers = topics.map((t) => {
+      const m = /^Release (\d+) · (\d{1,2}) ([A-Z][a-z]{2}) (\d{4})$/.exec(t.title);
+      expect(m, t.title).not.toBeNull();
+      expect(t.slug).toBe(`release-${m![1]}`);
+      return Number(m![1]);
+    });
+    expect(numbers, "newest release first, no gaps").toEqual(Array.from({ length: numbers.length }, (_, i) => numbers.length - i));
+  });
+
+  it("describes features at a high level: no pull-request numbers or commit ids", () => {
+    for (const t of section!.topics) expect(text(t), t.slug).not.toMatch(/#\d+|\b[0-9a-f]{7,40}\b/);
   });
 });
 

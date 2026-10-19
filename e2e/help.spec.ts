@@ -14,7 +14,7 @@ test.describe("Help", () => {
     await expect(visitor.getByRole("heading", { level: 1 })).toContainText("A little help along the way.");
 
     // Every section is there, as a heading and a chip that jumps to it.
-    const sections = ["Getting started", "Capturing and keeping", "Making a Creation", "CreativeMind and AI", "Publishing and sharing", "Together", "Brand work and business", "Rights and licensing", "Your data and privacy", "When something isn’t working", "Reaching us"];
+    const sections = ["Getting started", "Capturing and keeping", "Making a Creation", "CreativeMind and AI", "Publishing and sharing", "Together", "Brand work and business", "Rights and licensing", "Your data and privacy", "When something isn’t working", "Release notes", "Reaching us"];
     const chips = visitor.getByRole("navigation", { name: "Help sections" });
     for (const s of sections) {
       await expect(visitor.getByRole("heading", { level: 2, name: s })).toBeVisible();
