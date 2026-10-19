@@ -1294,7 +1294,7 @@ export function Studio({
                   className="block h-11 w-14 overflow-hidden rounded-lg border border-border-soft bg-cream-deep focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={t.thumbnailUrl!} alt="" className="size-full object-cover" />
+                  <img loading="lazy" decoding="async" src={t.thumbnailUrl!} alt="" className="size-full object-cover" />
                 </button>
               </li>
             ))}

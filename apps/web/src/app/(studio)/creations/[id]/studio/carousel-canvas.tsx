@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
 import { SlideFrame } from "@/components/carousel/slide-render";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { AddOneSheet, Arrange, CarouselComposer } from "../carousel/composer";
 import { DirectText } from "./direct-text";
 
@@ -99,11 +100,8 @@ export function CarouselCanvas({
     !!view.generating ||
     view.adding > 0 ||
     view.slides.some((s) => s.change && s.change.status !== "failed");
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(refresh, 3000);
-    return () => clearInterval(t);
-  }, [busy, refresh]);
+  // Follow images being made: every 3 s, slowing down if it takes a while; not while the tab is hidden.
+  usePoll(refresh, 3000, busy, { backoff: true, maxMs: 9000 });
 
   // News from "Use this" (adjusted while rendering; the fetch runs in the effect below).
   const [jumpTo, setJumpTo] = useState<string | null>(null);

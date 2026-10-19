@@ -398,7 +398,7 @@ function SourceBody({ row, sessionId, artifactId, onUsePart }: { row: WorkingSou
     <div id={`source-${row.id}`} className="mx-3 mb-2.5 space-y-2 rounded-xl bg-surface-muted/70 px-3 py-2.5">
       {row.thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={row.thumbnailUrl} alt="" className="max-h-40 w-auto max-w-full rounded-xl border border-border-soft object-cover" />
+        <img loading="lazy" decoding="async" src={row.thumbnailUrl} alt="" className="max-h-40 w-auto max-w-full rounded-xl border border-border-soft object-cover" />
       ) : null}
       {text ? <p className="line-clamp-4 whitespace-pre-line text-[13px] leading-snug text-ink-muted">{text}</p> : null}
       {detail?.audioUrl ? (

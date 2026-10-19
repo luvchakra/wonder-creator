@@ -66,7 +66,7 @@ function ScrapDetail({ id, post }: { id: string; post: ScrapbookPost }) {
           {images.map((a) => (
             // Signed, short-lived URL for a file the author attached to this scrap.
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={a.id} src={a.fileUrl!} alt={a.title} className="max-h-72 w-full rounded-xl object-cover" />
+            <img loading="lazy" decoding="async" key={a.id} src={a.fileUrl!} alt={a.title} className="max-h-72 w-full rounded-xl object-cover" />
           ))}
         </div>
       ) : null}

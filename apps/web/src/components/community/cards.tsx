@@ -52,7 +52,7 @@ export function CommunityCardItem({ card }: { card: CommunityCardView }) {
             <span className="line-clamp-4 font-display text-[15.5px] italic leading-snug text-ink">“{card.body}”</span>
             {card.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={card.imageUrl} alt="" className="mt-2 max-h-48 w-full rounded-xl object-cover" />
+              <img loading="lazy" decoding="async" src={card.imageUrl} alt="" className="mt-2 max-h-48 w-full rounded-xl object-cover" />
             ) : null}
           </Link>
           <p className="mt-1">
@@ -81,7 +81,7 @@ export function CommunityCardItem({ card }: { card: CommunityCardView }) {
           <Link href={`/creations/${card.id}`} className="flex items-center gap-3">
             {card.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={card.coverUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
+              <img loading="lazy" decoding="async" src={card.coverUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
             ) : (
               <span aria-hidden className="inline-flex size-16 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-accent">
                 <Sparkles className="size-5" />

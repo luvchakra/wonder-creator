@@ -19,7 +19,7 @@ export function ScrapbookPostCard({ post, linkToDetail = true }: { post: Scrapbo
               {a.fileUrl && a.mimeType?.startsWith("image/") ? (
                 // Signed, short-lived URL for a file the author attached to this post.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={a.fileUrl} alt={a.title} className="aspect-[4/3] w-full object-cover" />
+                <img loading="lazy" decoding="async" src={a.fileUrl} alt={a.title} className="aspect-[4/3] w-full object-cover" />
               ) : null}
               <div className="flex items-start gap-2 p-3">
                 <FileText className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden />

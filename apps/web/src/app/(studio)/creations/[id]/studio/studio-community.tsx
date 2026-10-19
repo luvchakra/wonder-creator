@@ -181,7 +181,7 @@ export function DejaVuIntake({
                   </span>
                   {m.thumbUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.thumbUrl} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
+                    <img loading="lazy" decoding="async" src={m.thumbUrl} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
                   ) : (
                     <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-[11px] text-ink-subtle">
                       {MOMENT_LABEL[dvKind(m)]!.slice(0, 1)}

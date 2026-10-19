@@ -307,7 +307,7 @@ function MomentRow({ m, dejavuName, onRemove }: { m: MomentView; dejavuName: str
     <>
       {m.thumbUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={m.thumbUrl} alt="" className="size-11 shrink-0 rounded-xl border border-border-soft object-cover" />
+        <img loading="lazy" decoding="async" src={m.thumbUrl} alt="" className="size-11 shrink-0 rounded-xl border border-border-soft object-cover" />
       ) : (
         <span aria-hidden className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-accent-ink">
           <Icon className="size-5" />

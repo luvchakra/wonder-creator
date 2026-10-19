@@ -43,7 +43,7 @@ export function MaterialVisual({ m, className }: { m: MaterialCardData; classNam
     return (
       <div className={cn("relative size-full", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={external} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+        <img loading="lazy" decoding="async" src={external} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
         {m.source_url?.includes("youtu") ? <PlayCircle className="absolute bottom-2 right-2 size-6 text-white drop-shadow" aria-hidden /> : null}
       </div>
     );
@@ -163,11 +163,11 @@ export function ArtifactCard({ a }: { a: ArtifactCardData }) {
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
         {a.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={a.coverUrl} alt="" className="size-full object-cover" />
+          <img loading="lazy" decoding="async" src={a.coverUrl} alt="" className="size-full object-cover" />
         ) : (
           <div className="relative size-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={def.category === "audio" ? BACKGROUNDS.pastelClouds : def.category === "visual" ? BACKGROUNDS.waves : def.category === "video" ? BACKGROUNDS.sunsetCoast : BACKGROUNDS.softForms} alt="" aria-hidden className="size-full object-cover opacity-80" />
+            <img loading="lazy" decoding="async" src={def.category === "audio" ? BACKGROUNDS.pastelClouds : def.category === "visual" ? BACKGROUNDS.waves : def.category === "video" ? BACKGROUNDS.sunsetCoast : BACKGROUNDS.softForms} alt="" aria-hidden className="size-full object-cover opacity-80" />
             <p className="absolute inset-x-3 bottom-3 line-clamp-2 font-display text-lg leading-tight text-navy">{a.title}</p>
           </div>
         )}

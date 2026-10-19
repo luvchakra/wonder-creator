@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { aspectClass } from "@/components/carousel/slide-render";
 
 /**
@@ -53,11 +54,8 @@ export function CarouselComposer({
 
   // Follow anything in flight (the first set, one more, a slide's new image). The page never waits on it.
   const busy = !!view.generating || view.adding > 0 || view.slides.some((s) => s.change && s.change.status !== "failed");
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(refresh, 3000);
-    return () => clearInterval(t);
-  }, [busy, refresh]);
+  // Follow images being made: every 3 s, slowing down if it takes a while; not while the tab is hidden.
+  usePoll(refresh, 3000, busy, { backoff: true, maxMs: 9000 });
 
   // Operational truth in the navbar (§32).
   useEffect(() => {
@@ -253,7 +251,7 @@ function Setup({ artifactId, sourceText, existing, onStarted }: { artifactId: st
           <span className="flex shrink-0 -space-x-3" aria-hidden>
             {existing.thumbnails.slice(0, 3).map((t) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={t} src={t} alt="" className="size-10 rounded-lg border-2 border-surface object-cover" />
+              <img loading="lazy" decoding="async" key={t} src={t} alt="" className="size-10 rounded-lg border-2 border-surface object-cover" />
             ))}
           </span>
           <p className="min-w-0 flex-1 text-[13px] text-ink-muted">You already have {existing.count} images for this Carousel.</p>
@@ -448,7 +446,7 @@ function SlideRow({
         <span className={cn("relative w-14 shrink-0 overflow-hidden rounded-lg bg-surface-muted", aspectClass(aspect))}>
           {slide.image?.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={slide.image.thumbnailUrl} alt="" className="size-full object-cover" />
+            <img loading="lazy" decoding="async" src={slide.image.thumbnailUrl} alt="" className="size-full object-cover" />
           ) : (
             <ImageOff className="absolute inset-0 m-auto size-4 text-ink-subtle" aria-hidden />
           )}
@@ -584,7 +582,7 @@ export function RegenerateSheet({ slide, index, onClose, onQueued }: { slide: Sl
     >
       {slide.image?.thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={slide.image.thumbnailUrl} alt="" className="h-20 w-auto rounded-lg object-cover" />
+        <img loading="lazy" decoding="async" src={slide.image.thumbnailUrl} alt="" className="h-20 w-auto rounded-lg object-cover" />
       ) : null}
     </InstructionSheet>
   );
@@ -673,7 +671,7 @@ export function Arrange({ artifactId, slides, aspect, onDone }: { artifactId: st
             <span className={cn("w-11 shrink-0 overflow-hidden rounded-md bg-surface-muted", aspectClass(aspect))}>
               {s.image?.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.image.thumbnailUrl} alt="" className="size-full object-cover" />
+                <img loading="lazy" decoding="async" src={s.image.thumbnailUrl} alt="" className="size-full object-cover" />
               ) : null}
             </span>
             <span className="min-w-0 flex-1 truncate font-display text-[14px] text-ink">{s.displayText.split("\n")[0] || "No words yet"}</span>

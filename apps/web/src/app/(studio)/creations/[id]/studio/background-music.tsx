@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mixSeconds, renderBedMix } from "@/components/audio/bed-mix";
 import { useSoundtrack } from "@/components/soundtrack/audio-provider";
-import { api, errorMessage } from "@/lib/client";
+import { api, apiCached, errorMessage } from "@/lib/client";
 import { sendToCreator } from "@/lib/send";
 
 /**
@@ -80,7 +80,7 @@ function MusicSheet({ artifactId, baseVersionId, take, bed, onClose, onSaved }: 
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    api<{ tracks: LibraryTrack[] }>("/api/v1/soundtrack")
+    apiCached<{ tracks: LibraryTrack[] }>("/api/v1/soundtrack", 5 * 60_000)
       .then((r) => live && setTracks(r.tracks))
       .catch((e) => live && setLoadError(errorMessage(e)));
     return () => {

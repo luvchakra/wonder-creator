@@ -239,7 +239,7 @@ export function SourcesView({ sources: initial, candidates, returned }: { source
                   <span aria-hidden className="relative isolate size-20 shrink-0 overflow-hidden rounded-xl bg-surface-muted">
                     {c.cover ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.cover} alt="" className="size-full object-cover" />
+                      <img loading="lazy" decoding="async" src={c.cover} alt="" className="size-full object-cover" />
                     ) : (
                       <>
                         <KitArt art={KIT.wash[WASHES[i % WASHES.length]!]} sizes="6rem" className="absolute inset-0 -z-10 size-full scale-125 object-cover" />

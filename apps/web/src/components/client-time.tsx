@@ -4,32 +4,65 @@ import { useSyncExternalStore } from "react";
 
 // One shared clock for all time labels. The server snapshot is null, so time text renders only
 // after hydration (no server/client mismatch when clocks or second boundaries differ).
+//
+// Labels like "5 min ago" change at most every 45 seconds, so most of the page is told every 15 seconds — a tick each
+// second re-rendered every label for the whole session. Only a live stopwatch (the Huddle's elapsed time) asks for
+// every second, and then only it is told every second. Nothing ticks while the tab is hidden; coming back ticks once.
 let now = Date.now();
-const listeners = new Set<() => void>();
+const slow = new Set<() => void>();
+const fast = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
+let lastSlow = 0;
+const SLOW_MS = 15_000;
 
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  if (!timer) {
-    now = Date.now();
-    timer = setInterval(() => {
-      now = Date.now();
-      listeners.forEach((l) => l());
-    }, 1000);
+function tick(force = false) {
+  now = Date.now();
+  fast.forEach((l) => l());
+  if (force || now - lastSlow >= SLOW_MS - 50) {
+    lastSlow = now;
+    slow.forEach((l) => l());
   }
-  return () => {
-    listeners.delete(cb);
-    if (!listeners.size && timer) {
-      clearInterval(timer);
-      timer = null;
+}
+const onVisibility = () => {
+  if (document.visibilityState === "visible") tick(true);
+};
+let every = 0;
+/** (Re)starts the timer only when the speed it needs changes: none, every 15 s, or every second. */
+function retime() {
+  const want = fast.size ? 1000 : slow.size ? SLOW_MS : 0;
+  if (want === every) return;
+  every = want;
+  if (timer) clearInterval(timer);
+  timer = null;
+  document.removeEventListener("visibilitychange", onVisibility);
+  if (!want) return;
+  document.addEventListener("visibilitychange", onVisibility);
+  timer = setInterval(() => document.visibilityState === "visible" && tick(), want);
+}
+function subscriber(set: Set<() => void>) {
+  return (cb: () => void) => {
+    set.add(cb);
+    if (!timer) {
+      now = Date.now();
+      lastSlow = now;
     }
+    retime();
+    return () => {
+      set.delete(cb);
+      retime();
+    };
   };
 }
+const subscribeSlow = subscriber(slow);
+const subscribeFast = subscriber(fast);
 
-/** Current time (updates every second) on the client; null during server render and hydration. */
-export function useNow(): Date | null {
+/**
+ * The current time on the client; null during server render and hydration. Updates every 15 seconds while the tab is
+ * visible, or every second with `everySecond` (for a stopwatch that shows seconds).
+ */
+export function useNow(everySecond = false): Date | null {
   const t = useSyncExternalStore(
-    subscribe,
+    everySecond ? subscribeFast : subscribeSlow,
     () => now,
     () => null,
   );

@@ -144,7 +144,7 @@ export function MaterialDetail({
   const preview =
     (m.type === "image" || m.type === "sketch") && url ? (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={url} alt={m.understanding?.summary ?? m.title ?? "Image"} className="max-h-[72vh] w-full object-contain lg:max-h-[58vh]" />
+      <img src={url} alt={m.understanding?.summary ?? m.title ?? "Image"} fetchPriority="high" decoding="async" className="max-h-[72vh] w-full object-contain lg:max-h-[58vh]" />
     ) : (m.type === "audio" || m.type === "voice") && url ? (
       <div className="bg-surface p-5">
         <audio controls src={url} className="w-full">
@@ -483,7 +483,7 @@ export function MaterialDetail({
                       <Link href={`/materials/${s.id}`} className="block overflow-hidden rounded-xl border border-border-soft hover:border-accent">
                         {s.thumb ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={s.thumb} alt="" className="aspect-square w-full bg-[#f3efe9] object-cover" />
+                          <img loading="lazy" decoding="async" src={s.thumb} alt="" className="aspect-square w-full bg-[#f3efe9] object-cover" />
                         ) : null}
                         <span className="block truncate px-2 py-1.5 text-[12px] text-ink">{s.title || `Untitled ${s.type}`}</span>
                       </Link>

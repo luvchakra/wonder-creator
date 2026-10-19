@@ -73,7 +73,7 @@ export function CommunityTab({ huddles, conversations, shared, handle, isMe, pag
                   <Link href={w.href} className="flex min-h-12 items-center gap-2.5 py-1.5 hover:underline">
                     {w.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={w.coverUrl} alt="" className="size-11 shrink-0 rounded-lg object-cover" />
+                      <img loading="lazy" decoding="async" src={w.coverUrl} alt="" className="size-11 shrink-0 rounded-lg object-cover" />
                     ) : null}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-medium text-ink">{w.title}</span>
