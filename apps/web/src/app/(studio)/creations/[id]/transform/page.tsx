@@ -1,4 +1,4 @@
-import { actionsFor, ARTIFACT_TYPES, artifactType, getRights, listVersions } from "@wonder/creator-studio";
+import { actionsFor, ARTIFACT_TYPES, artifactType, getRights, listVersionHeads } from "@wonder/creator-studio";
 import { notFound, redirect } from "next/navigation";
 import { PaletteScope } from "@/components/creative-palette";
 import { VisualDirections } from "@/components/visual-directions";
@@ -22,7 +22,7 @@ export default async function TransformPage({ params, searchParams }: { params: 
   if (a.creator_id !== creator.id) redirect(`/creations/${id}`);
 
   const [versions, rights, contributors, edges] = await Promise.all([
-    listVersions(db, id),
+    listVersionHeads(db, id),
     getRights(db, id),
     db.from("artifact_contributors").select("role, creators!artifact_contributors_contributor_creator_id_fkey(display_name)").eq("artifact_id", id),
     db.from("lineage_edges").select("source_id", { count: "exact", head: true }).eq("target_type", "artifact").eq("target_id", id).eq("source_type", "material").neq("relationship", "references"),

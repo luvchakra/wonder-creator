@@ -94,6 +94,68 @@ Local: `npm run build -w @wonder/web`, start the app, then a Playwright probe th
 Live: Supabase → Logs, or the MCP `query_logs` on `edge_logs`: `response.origin_time` per `request.path`, and
 `response.headers.x_envoy_upstream_service_time` for PostgREST's own share.
 
+## Full review (owner, 19 Oct 2026)
+
+Owner: "run a full review of the app and see where the performance can be optimised … queries, cache instead of direct
+queries, indexes … make the application fast and snappier." Three read-only audits (server loaders, browser fetching and
+caching, the database) plus the live project's own statistics (Supabase advisors, `pg_stat_statements`, a timed
+`notifications_feed()` as a real creator under RLS).
+
+**What the live database says.** Five creators, tiny tables: the typical query is under 1 ms and the cache hit rate is
+99.99 %, so the planner's choices (sequential scans) tell nothing yet. The advisors report no `auth_rls_initplan`
+findings, 61 unindexed foreign keys, 122 "unused" indexes (meaningless at this size: don't drop any) and two doubled
+policies. The slowest app query was `notifications_feed()` at a 158 ms mean — measured again as a real creator it takes
+**46 ms on a connection's first call and 10 ms after**, so the mean is connection warm-up, not the queries (each branch
+is under 10 ms). It was *not* rewritten. 5,495 rate-limit writes and 104,000 `set_config` calls a day confirm what the
+rules below already say: the cost is **requests**, not queries.
+
+### Done (this review)
+
+| Area | Change | Saves |
+|---|---|---|
+| Every API call | The creator row id is remembered on the instance for 5 minutes (`withApi`; it never changes, found ids only, forgotten on account deletion). Every query after it still runs as the user under RLS | 1 round trip on every API call; the only database trip before the handler on a poll |
+| Messages | Thread and its messages asked together (every open and poll); the Messages page asks `unread_messages()` once, not twice; the thread page marks read after the response | 1–2 round trips per open and per poll |
+| Huddle room state | 5 stages → 2 (everything that needs only the Huddle's id together; the related piece with it) | 3 round trips per poll for everyone in a room |
+| Creative Room page | Parts start with the Room; `listParts` 5 → 3 stages; `getProject` project ∥ items; next steps and the cover's picture join existing batches | ≈ 5 round trips |
+| Material page | 6 dependent stages → 2 (Creations-it's-used-in, similar Materials and their thumbnails chained inside their own branch) | ≈ 4 round trips |
+| Pulse conversation | 6 stages → 1 after the conversation; communities looked up together | ≈ 4 round trips |
+| Quick note | Plain text goes straight to "normalizing" in two parallel writes (ten sequential before); the creator's own AI key is looked up after the response; receipt and Moment together | ≈ 10 round trips (about 1 s) |
+| Lists and Creation reads | `select("*")` on Materials and Creations also sent the full-text index (`search`, about as big as the text again) with every row: columns are named now (`MATERIAL_COLUMNS`, `ARTIFACT_COLUMNS`, each checked against the table by a test); the share and transform pages read version names only | payload, PostgREST and JSON time of every list |
+| Home | "Has a Room?" and "has Materials?" stop at the first row instead of counting all of them | a count per Home load |
+| Search | Typing cancels the request still in flight; shelf items and semantic rows asked together | 1 round trip, no out-of-order results |
+| Telemetry | The beacon's consent check and log line run after the answer | the beacon's wait |
+| Database | 19 indexes (migration 095): queries the app runs, delete/cascade paths that would scan whole tables, the daily retention job; two doubled policies split by command; Home's visit marker doesn't wait for the disk flush; rate-limit counters vacuumed sooner | scale: tables are tiny today, these keep pages flat as they grow |
+
+### Not done, on purpose (and why)
+
+* **`notifications_feed()` / `live_huddle_cards()` rewrites** (suggested by the audit): measured at 10 ms warm; the risk of
+  changing RLS-sensitive SQL outweighs a gain nobody can feel. Revisit with `explain (analyze, buffers)` when a creator
+  has hundreds of Rooms and invitations. Same for the `crew_threads` `OR` policy shape.
+* **The other ~40 foreign-key indexes** the advisor lists: audit columns (`created_by`, `updated_by`, …) are never
+  queried; indexing them only slows writes. Add one when a query filters by it.
+* **`experimental.staleTimes` / `cacheComponents`**: would make navigation instant but shows stale lists after a write
+  made through an API call. Needs one app-wide rule for invalidation first; owner decision.
+* **A Postgres function for `materialCounts` and `topTags`** (they count rows in JavaScript, capped at 1,000): needs the
+  generated types regenerated against a local database; do it with the next migration that can run `npm run db:types`.
+* **Removing `api/v1` from the session-refresh proxy**: a long-lived tab that only polls would stop refreshing its
+  session. Needs a test with an expiring token first.
+
+### Next (client side, tracked in `docs/progress.md`)
+
+One poller helper (pause when hidden, resume with a fetch, back off) for the bell, messages, send inbox, image and
+carousel jobs, and run views; a shared client cache for repeated GETs (the soundtrack catalogue is fetched by the player
+and again by the music sheet; Your pictures twice); `Cache-Control: private` on low-churn GETs; the bell's first data from
+the server; thumbnails instead of full-size covers; a once-a-minute clock for relative times.
+
+### Database: how to check it
+
+* Advisors: Supabase MCP `get_advisors performance`, or Dashboard › Advisors. Run after any migration.
+* Slowest queries: `select left(query,160), calls, round(total_exec_time), round(mean_exec_time::numeric,2) from
+  pg_stat_statements order by total_exec_time desc limit 25`. Ignore PostgREST/auth/realtime internals.
+* A function as a creator: in one transaction `set local role authenticated; select set_config('request.jwt.claims',
+  '{"sub":"<auth user id>","role":"authenticated"}', true);` then time it twice (the first call on a connection is cold).
+  Roll back. Never `drop policy` or DDL through the MCP tool: it waits for a confirmation nobody sees.
+
 ## Build and deploy (7 Oct 2026)
 
 Owner: "optimize the build and deploy time. it takes very long now." Measured on the merge of #161:

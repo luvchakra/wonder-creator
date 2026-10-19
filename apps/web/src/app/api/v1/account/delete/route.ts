@@ -1,6 +1,6 @@
 import { DomainError } from "@wonder/core";
 import { z } from "zod";
-import { readJson, withApi } from "@/lib/api";
+import { forgetCreatorId, readJson, withApi } from "@/lib/api";
 import { requirePassword } from "@/lib/step-up";
 import { serviceClient } from "@/lib/supabase/service";
 
@@ -16,6 +16,7 @@ export const POST = withApi(async ({ db, userId, req }) => {
   if (files?.length) await service.storage.from("creator-media").remove(files.map((f) => f.path));
   const del = await service.auth.admin.deleteUser(userId);
   if (del.error) throw new DomainError("internal", "We couldn't delete your account. Please contact support.");
+  forgetCreatorId(userId);
   await db.auth.signOut();
   return { ok: true };
 }, { rateLimit: 3 });

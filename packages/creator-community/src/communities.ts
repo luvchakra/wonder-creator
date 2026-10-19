@@ -268,13 +268,9 @@ export async function removeTopic(db: Db, projectId: string, conversationId: str
 /** Communities a topic belongs to that the viewer can see (for the topic page's "In …" line). */
 export async function topicCommunities(db: Db, conversationId: string): Promise<Array<{ id: string; title: string; isHost: boolean; isMember: boolean; privacy: CommunityPrivacy; avatarObjectId: string | null }>> {
   const { data } = await db.from("open_conversation_links").select("project_id").eq("conversation_id", conversationId).eq("kind", "project");
-  const out: Array<{ id: string; title: string; isHost: boolean; isMember: boolean; privacy: CommunityPrivacy; avatarObjectId: string | null }> = [];
-  for (const l of data ?? []) {
-    if (!l.project_id) continue;
-    const c = await getCommunity(db, l.project_id).catch(() => null);
-    if (c) out.push({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, privacy: c.privacy, avatarObjectId: c.avatarObjectId });
-  }
-  return out;
+  // One lookup per community, all at once (they used to run one after another).
+  const found = await Promise.all((data ?? []).filter((l) => l.project_id).map((l) => getCommunity(db, l.project_id!).catch(() => null)));
+  return found.filter((c): c is NonNullable<typeof c> => !!c).map((c) => ({ id: c.id, title: c.title, isHost: c.isHost, isMember: c.isMember, privacy: c.privacy, avatarObjectId: c.avatarObjectId }));
 }
 
 /** Hosts set (or clear, with null) the community's profile picture: an image they uploaded. */

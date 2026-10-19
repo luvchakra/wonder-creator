@@ -75,9 +75,12 @@ export async function analyticsAllowed(db: Db): Promise<boolean> {
   return consents.some((c) => c.purpose === "product_analytics" && c.granted);
 }
 
+/** Records an outcome event if the creator allows it, and resolves when it has. For `after()`, which keeps the function alive until it does. */
+export async function trackAsync(db: Db, event: TelemetryEvent, creatorId: string, props: TelemetryProps = {}): Promise<void> {
+  if (await analyticsAllowed(db)) log("info", "telemetry", { event, creatorId, ...props });
+}
+
 /** Records an outcome event if the creator allows it. Never blocks or fails the request it's called from. */
 export function track(db: Db, event: TelemetryEvent, creatorId: string, props: TelemetryProps = {}) {
-  void analyticsAllowed(db).then((ok) => {
-    if (ok) log("info", "telemetry", { event, creatorId, ...props });
-  });
+  void trackAsync(db, event, creatorId, props).catch(() => undefined);
 }

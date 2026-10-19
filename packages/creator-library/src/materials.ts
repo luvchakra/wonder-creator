@@ -9,6 +9,13 @@ export type ProvenanceOrigin = TablesInsert<"provenance_records">["origin"];
 
 export const MATERIAL_BUCKET = "creator-media";
 
+/**
+ * Every column of a Material except `search`. That column is the full-text index (a list of every word with its
+ * positions: about as big as the text again) and nothing reads it, but `select("*")` sent it with every row of every
+ * list. A test (`materials.test.ts`) keeps this list equal to the table's columns.
+ */
+export const MATERIAL_COLUMNS = "id,creator_id,type,title,text_content,extracted_text,storage_object_id,source_url,source_type,metadata,understanding,provenance_id,security_status,processing_state,privacy,status,created_at,updated_at,description,source_note" as const;
+
 export const MATERIAL_FILTERS = ["all", "ideas", "notes", "images", "audio", "video", "documents", "links", "archived"] as const;
 export type MaterialFilter = (typeof MATERIAL_FILTERS)[number];
 
@@ -109,7 +116,7 @@ export async function listMaterials(
 ): Promise<MaterialListItem[]> {
   let q = db
     .from("creative_materials")
-    .select("*, creative_material_tags(tag)")
+    .select(`${MATERIAL_COLUMNS}, creative_material_tags(tag)` as const)
     .order("created_at", { ascending: false })
     .limit(Math.min(opts.limit ?? 60, 200));
   const filter = opts.filter ?? "all";
@@ -154,7 +161,7 @@ export function toTsQuery(q: string): string {
 
 export async function getMaterial(db: Db, id: string) {
   const m = must(
-    await db.from("creative_materials").select("*, creative_material_tags(tag), provenance_records(*)").eq("id", id).maybeSingle(),
+    await db.from("creative_materials").select(`${MATERIAL_COLUMNS}, creative_material_tags(tag), provenance_records(*)` as const).eq("id", id).maybeSingle(),
     "We couldn't find that material.",
   );
   return m;

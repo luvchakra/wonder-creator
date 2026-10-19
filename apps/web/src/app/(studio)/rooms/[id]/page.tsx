@@ -44,12 +44,16 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const asked: ProjectTab = (["work", "tasks", "chat", "contributions", "rights"] as const).find((t) => t === requested) ?? "overview";
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { db, creator } = await requireSession();
+  // The parts need only the Room's id and who's asking, so they start with the Room itself (a Room you can't open has
+  // none you can read either), and are awaited with the first batch below.
+  const partsP = listParts(db, id, creator.id);
+  partsP.catch(() => undefined);
   const data = await getProject(db, id).catch(() => null);
   if (!data) notFound();
   const { project: p, items } = data;
 
   const artifacts = items.filter((i) => i.artifact).map((i) => ({ id: i.itemId, cover_material_id: i.artifact!.cover_material_id }));
-  const [previews, covers, approvals, cover] = await Promise.all([
+  const [previews, covers, approvals, cover, parts] = await Promise.all([
     signedUrlsFor(
       db,
       items.map((i) => i.material?.storage_object_id),
@@ -57,14 +61,14 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     coverUrls(db, artifacts),
     projectConversationIds(db, id).then((conversationIds) => listApprovals(db, { state: "open", conversationIds })),
     p.cover_material_id ? db.from("creative_materials").select("storage_object_id").eq("id", p.cover_material_id).maybeSingle() : Promise.resolve({ data: null }),
+    // Parts (docs/creative-room-parts.md): what the work is made of, who's on each, and what happened.
+    partsP,
   ]);
   const coverObject =
     cover.data?.storage_object_id ??
     items.find((i) => i.material && (i.material.type === "image" || i.material.type === "sketch") && i.material.storage_object_id)?.material?.storage_object_id ??
     null;
   const canEdit = p.creator_id === creator.id;
-  // Parts (docs/creative-room-parts.md): what the work is made of, who's on each, and what happened.
-  const parts = await listParts(db, id, creator.id);
   // Everything that needs only the parts, at once (docs/performance.md): the timeline; the kept takes and the Room's mix,
   // so the work plays right here in its hero (owner, 6 Oct 2026); credits & shares (step 5a); and the crew.
   const [timeline, takes, mix, agreement, crew] = await Promise.all([
@@ -86,7 +90,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const inCrew = !!crew && crew.me?.status === "active";
   // Work and Chat need a crew; Tasks works for any project.
   const tab: ProjectTab = asked === "tasks" || asked === "contributions" || asked === "rights" || (inCrew && asked !== "overview") ? asked : "overview";
-  const [shared, chat, taskData, people, role, ledger, rights] = await Promise.all([
+  const [shared, chat, taskData, people, role, ledger, rights, nextSteps] = await Promise.all([
     crew ? listSharedItems(db, id) : Promise.resolve([]),
     inCrew && tab === "chat" ? listCrewMessages(db, creator.id, crew!.crew.id) : Promise.resolve(null),
     tab === "tasks" ? listTasks(db, id) : Promise.resolve(null),
@@ -94,12 +98,11 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     tab === "tasks" || tab === "contributions" ? db.rpc("project_role_of", { p_project: id }).then((r) => r.data as "owner" | "admin" | "member" | null) : Promise.resolve(null),
     tab === "contributions" ? listContributions(db, creator.id, { projectId: id }) : Promise.resolve(null),
     tab === "rights" ? getProjectRights(db, creator.id, id) : Promise.resolve(null),
-  ]);
-  // The overview's "next steps" (UI redesign §23): a few open tasks, soonest first.
-  const nextSteps =
+    // The overview's "next steps" (UI redesign §23): a few open tasks, soonest first.
     tab === "overview"
-      ? ((await db.from("project_tasks").select("id, title, status, due_on").eq("project_id", id).neq("status", "done").order("due_on", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(3)).data ?? [])
-      : [];
+      ? db.from("project_tasks").select("id, title, status, due_on").eq("project_id", id).neq("status", "done").order("due_on", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(3).then((r) => r.data ?? [])
+      : Promise.resolve([]),
+  ]);
   // What the crew can point a chat message at: pieces, open tasks, open change proposals and ownership claims.
   const chatContexts =
     tab === "chat" && chat
@@ -120,13 +123,15 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           ];
         })()
       : [];
-  const [avatars, owner, manages, excerpt] = await Promise.all([
+  const [avatars, owner, manages, excerpt, coverFallback] = await Promise.all([
     avatarUrls(db, [...new Set([...(crew?.active ?? []).map((m) => m.creatorId), ...parts.flatMap((x) => x.people.map((y) => y.id)), ...timeline.map((e) => e.actor?.id).filter((x): x is string => !!x)])]),
     canEdit ? Promise.resolve({ data: { display_name: creator.display_name } }) : db.from("creators").select("display_name").eq("id", p.creator_id).maybeSingle(),
     canEdit ? Promise.resolve(true) : parts.length ? db.rpc("project_role_of", { p_project: id }).then((r) => r.data === "admin") : Promise.resolve(false),
     partExcerpt(db, parts),
+    // The cover's picture, when it isn't one of the items already signed above.
+    coverObject && !previews[coverObject] ? signedUrlsFor(db, [coverObject]) : Promise.resolve({} as Record<string, string>),
   ]);
-  const coverUrl = coverObject ? (previews[coverObject] ?? (await signedUrlsFor(db, [coverObject]))[coverObject] ?? null) : null;
+  const coverUrl = coverObject ? (previews[coverObject] ?? coverFallback[coverObject] ?? null) : null;
 
   // The room's current Creation: the most recently touched one you can open (palette-spec §9.30–9.31).
   const activeCreationId = items.filter((i) => i.artifact && i.available).sort((a, b) => b.artifact!.updated_at.localeCompare(a.artifact!.updated_at))[0]?.itemId ?? null;

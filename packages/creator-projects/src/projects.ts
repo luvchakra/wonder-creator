@@ -148,21 +148,26 @@ type Row = {
 };
 
 export async function getProject(db: Db, id: string) {
-  const project = must(await db.from("projects").select("*").eq("id", id).maybeSingle(), "We couldn't find that Creative Room.");
-  const { data, error } = await db
-    .from("project_items")
-    .select(
-      `id, kind, note, label, added_at, shared, creator_id, material_id, reference_id, artifact_id, collection_id, conversation_id, huddle_id,
-       creative_materials(id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state),
-       artifacts(id, title, artifact_type, status, updated_at, cover_material_id),
-       reference_items(id, material_id, creative_materials(type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state)),
-       material_collections(id, name, status, updated_at),
-       conversations(id, title, updated_at)`,
-    )
-    .eq("project_id", id)
-    .order("position", { ascending: true, nullsFirst: false })
-    .order("added_at", { ascending: false })
-    .limit(500);
+  // The Room and its items need only the id, so they're asked together (RLS gives a Room you can't open no items either).
+  const [projectRes, itemsRes] = await Promise.all([
+    db.from("projects").select("*").eq("id", id).maybeSingle(),
+    db
+      .from("project_items")
+      .select(
+        `id, kind, note, label, added_at, shared, creator_id, material_id, reference_id, artifact_id, collection_id, conversation_id, huddle_id,
+         creative_materials(id, type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state),
+         artifacts(id, title, artifact_type, status, updated_at, cover_material_id),
+         reference_items(id, material_id, creative_materials(type, title, text_content, storage_object_id, metadata, source_url, created_at, processing_state)),
+         material_collections(id, name, status, updated_at),
+         conversations(id, title, updated_at)`,
+      )
+      .eq("project_id", id)
+      .order("position", { ascending: true, nullsFirst: false })
+      .order("added_at", { ascending: false })
+      .limit(500),
+  ]);
+  const project = must(projectRes, "We couldn't find that Creative Room.");
+  const { data, error } = itemsRes;
   if (error) throw fromDbError(error);
   const rows = (data ?? []) as unknown as Row[];
 

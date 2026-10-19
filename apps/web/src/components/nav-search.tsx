@@ -33,18 +33,24 @@ export function NavSearch({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   useEffect(() => {
     if (q.trim().length < 2) return;
+    // A newer keystroke cancels the request still on its way, so an old answer can't land after a newer one.
+    const ctrl = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
       setError(null);
       try {
-        setRes(await api<Results>(`/api/v1/search?q=${encodeURIComponent(q)}`));
+        const out = await api<Results>(`/api/v1/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        if (!ctrl.signal.aborted) setRes(out);
       } catch (e) {
-        setError(errorMessage(e));
+        if (!ctrl.signal.aborted) setError(errorMessage(e));
       } finally {
-        setLoading(false);
+        if (!ctrl.signal.aborted) setLoading(false);
       }
     }, 250);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
   }, [q]);
 
   useEffect(() => {

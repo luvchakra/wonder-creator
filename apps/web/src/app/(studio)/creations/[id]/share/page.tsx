@@ -1,4 +1,4 @@
-import { listShares, listVersions } from "@wonder/creator-studio";
+import { listShares, listVersionHeads } from "@wonder/creator-studio";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { ShareManager } from "./share-manager";
@@ -12,7 +12,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
   const { db, creator } = await requireSession();
   const { data: artifact } = await db.from("artifacts").select("id, title, creator_id, current_version_id, privacy, status").eq("id", id).maybeSingle();
   if (!artifact || artifact.creator_id !== creator.id) notFound();
-  const [versions, shares] = await Promise.all([listVersions(db, id), listShares(db, id)]);
+  const [versions, shares] = await Promise.all([listVersionHeads(db, id), listShares(db, id)]);
   return (
     <>
       <PaletteScope context={{ page: "share", permissions: ["edit", "publish", "rights", "collaborate", "invite"], ids: { artifactId: id } }} />

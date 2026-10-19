@@ -200,7 +200,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
   });
   // Has a Creative Room (their own, or one they were invited to) — an ordinary one: a Community is a Room opened as one,
   // and joining it isn't making something together (journey.ts). Row security shows only rooms the creator belongs to.
-  const roomCountP = safe("room_count", async () => (await db.from("projects").select("id", { count: "exact", head: true }).is("community_privacy", null).neq("status", "archived")).count ?? 0);
+  const roomCountP = safe("room_count", async () => (await db.from("projects").select("id").is("community_privacy", null).neq("status", "archived").limit(1)).data?.length ?? 0); // only "any?" is used, so stop at the first
   const communitiesP = f.communities_enabled
     ? safe("communities", async () => {
         const mine = await myCommunities(db, 12);
@@ -259,7 +259,7 @@ async function build(db: Db, creatorId: string, now: number): Promise<HomePayloa
     safe("publications", async () => (await db.from("publications").select("id, artifact_id, title, destination_name, updated_at").eq("creator_id", creatorId).eq("status", "failed").gt("updated_at", since).limit(5)).data ?? []),
     safe("live", liveCards(db, { limit: 1 })),
     safe("feed", listPosts(db, creatorId, { scope: "following", creatorId }, { limit: 8 })),
-    safe("materials", async () => (await db.from("creative_materials").select("id", { count: "exact", head: true }).eq("creator_id", creatorId)).count ?? 0),
+    safe("materials", async () => (await db.from("creative_materials").select("id").eq("creator_id", creatorId).limit(1)).data?.length ?? 0), // only "any?" is used
   ]);
   const community = communityP ? await communityP : null;
 

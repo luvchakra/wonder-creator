@@ -138,10 +138,14 @@ export async function unifiedSearch(db: Db, creatorId: string, s: SearchInput): 
   ]);
 
   // References: shelf items whose material matched, plus items whose note matched.
+  // The shelf items behind matched Materials and the rows for semantic matches are independent: one stage, not two.
   const refIds = refMaterials.map((m) => m.id);
-  const refByMaterial = refIds.length
-    ? ((await db.from("reference_items").select("id, material_id, note, reference_shelves(name), creative_materials!inner(title, type, status)").eq("creator_id", creatorId).in("material_id", refIds).limit(limit)).data ?? [])
-    : [];
+  const [refByMaterial, related] = await Promise.all([
+    refIds.length
+      ? db.from("reference_items").select("id, material_id, note, reference_shelves(name), creative_materials!inner(title, type, status)").eq("creator_id", creatorId).in("material_id", refIds).limit(limit).then((r) => r.data ?? [])
+      : Promise.resolve([]),
+    relatedRows(db, semantic, { materials: new Set(materials.map((m) => m.id)), artifacts: new Set(artifacts.map((a) => a.id)) }),
+  ]);
   const refs = new Map<string, SearchResults["references"][number]>();
   for (const r of [...refByMaterial, ...(references as typeof refByMaterial)]) {
     const m = r.creative_materials as unknown as { title: string | null; type: string; status: string };
@@ -149,7 +153,6 @@ export async function unifiedSearch(db: Db, creatorId: string, s: SearchInput): 
     refs.set(r.id, { id: r.id, materialId: r.material_id, title: m.title, type: m.type, shelf: (r.reference_shelves as { name: string } | null)?.name ?? null, note: r.note });
   }
 
-  const related = await relatedRows(db, semantic, { materials: new Set(materials.map((m) => m.id)), artifacts: new Set(artifacts.map((a) => a.id)) });
   const ql = s.q.toLowerCase();
   return {
     materials: want("material") ? [...materials, ...related.materials] : [],
