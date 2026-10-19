@@ -23,7 +23,7 @@ export function FromYourWorld({ connected, candidate, more, activeJobIds }: { co
         <div className={candidate.cover ? "flex gap-3" : "pr-14"}>
           {candidate.cover ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={candidate.cover} alt="" className="mt-1 size-20 shrink-0 rounded-xl object-cover shadow-[var(--shadow-card)]" />
+            <img loading="lazy" decoding="async" src={candidate.cover} alt="" className="mt-1 size-20 shrink-0 rounded-xl object-cover shadow-[var(--shadow-card)]" />
           ) : null}
           <div className="min-w-0">
           <p className="mt-0.5 font-display text-[19px] leading-snug text-ink">{candidate.title}</p>

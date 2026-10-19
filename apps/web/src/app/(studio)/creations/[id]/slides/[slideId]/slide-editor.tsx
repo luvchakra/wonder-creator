@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStripSignal } from "@/components/creative-palette";
 import { OverlayText, SlideFrame, composeSlide, encodeCanvas, loadImage } from "@/components/carousel/slide-render";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { RegenerateSheet } from "../../carousel/composer";
 import { BackLink } from "@/components/back-link";
 
@@ -90,11 +91,8 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
     }
   }, [artifactId, slideId]);
   const busy = !!slide.change && slide.change.status !== "failed";
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(refresh, 3000);
-    return () => clearInterval(t);
-  }, [busy, refresh]);
+  // Follow images being made: every 3 s, slowing down if it takes a while; not while the tab is hidden.
+  usePoll(refresh, 3000, busy, { backoff: true, maxMs: 9000 });
 
   // Autosave: the latest words / overlay / crop go out after a short pause (§34); the navbar says Saving… / Saved.
   const pending = useRef<Record<string, unknown>>({});
@@ -571,7 +569,7 @@ export function SlideEditor({ artifactId, slideId, initial }: { artifactId: stri
               >
                 {s.image?.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.image.thumbnailUrl} alt="" className="size-full object-cover" />
+                  <img loading="lazy" decoding="async" src={s.image.thumbnailUrl} alt="" className="size-full object-cover" />
                 ) : (
                   <span className="flex size-full items-center justify-center bg-white/10 text-xs">{i + 1}</span>
                 )}

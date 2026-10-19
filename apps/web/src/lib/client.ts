@@ -42,6 +42,25 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   return (type.includes("application/json") ? res.json() : res.text()) as Promise<T>;
 }
 
+const cached = new Map<string, { at: number; value: Promise<unknown> }>();
+/**
+ * A GET that several parts of the app may ask for (the soundtrack catalogue, "your pictures"): the answer is kept for
+ * `ttlMs`, and asked at the same time they share one request. Anything this tab changes through `api` since the answer
+ * arrived makes it stale at once, and a failed request is never kept. For data that is the same for a few minutes, not
+ * for anything polled.
+ */
+export function apiCached<T = unknown>(path: string, ttlMs: number): Promise<T> {
+  const hit = cached.get(path);
+  if (hit && Date.now() - hit.at < ttlMs && lastWriteAt() <= hit.at) return hit.value as Promise<T>;
+  const value = api<T>(path);
+  const entry = { at: Date.now(), value };
+  cached.set(path, entry);
+  value.catch(() => {
+    if (cached.get(path) === entry) cached.delete(path);
+  });
+  return value;
+}
+
 export function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : "Something went wrong. Please try again.";
 }

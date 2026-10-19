@@ -1,6 +1,7 @@
 "use client";
 import { buildQueue, isMood, moreLikeThis, previousAction, type MoodFilter, type Track } from "@wonder/creator-soundtrack";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { apiCached } from "@/lib/client";
 
 /**
  * The CreativeRadio engine (docs/ui-redesign/music-player.md §18–23; presentation name only — code, tables and APIs keep
@@ -196,9 +197,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (loadedLibrary.current) return;
     loadedLibrary.current = true;
     try {
-      const res = await fetch("/api/v1/soundtrack");
-      if (!res.ok) throw new Error();
-      const body = (await res.json()) as { tracks: LibraryTrack[]; favorites: string[] };
+      // Shared with the Music sheet in the Studio: the catalogue is the same for everyone and is asked for once.
+      const body = await apiCached<{ tracks: LibraryTrack[]; favorites: string[] }>("/api/v1/soundtrack", 5 * 60_000);
       setTracks(body.tracks);
       setFavorites(body.favorites);
       setReady(true);

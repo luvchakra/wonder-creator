@@ -126,6 +126,10 @@ rules below already say: the cost is **requests**, not queries.
 | Telemetry | The beacon's consent check and log line run after the answer | the beacon's wait |
 | Database | 19 indexes (migration 095): queries the app runs, delete/cascade paths that would scan whole tables, the daily retention job; two doubled policies split by command; Home's visit marker doesn't wait for the disk flush; rate-limit counters vacuumed sooner | scale: tables are tiny today, these keep pages flat as they grow |
 
+**After migration 095 (production, 19 Oct 2026):** unindexed foreign keys 61 → 48 (the rest are audit columns, left on
+purpose), doubled policies 2 → 0. "Unused index" rose 122 → 141: the new indexes haven't been used yet, which is expected
+with five creators — judge them by `pg_stat_user_indexes.idx_scan` once there is real traffic, not before.
+
 ### Not done, on purpose (and why)
 
 * **`notifications_feed()` / `live_huddle_cards()` rewrites** (suggested by the audit): measured at 10 ms warm; the risk of
@@ -140,12 +144,26 @@ rules below already say: the cost is **requests**, not queries.
 * **Removing `api/v1` from the session-refresh proxy**: a long-lived tab that only polls would stop refreshing its
   session. Needs a test with an expiring token first.
 
-### Next (client side, tracked in `docs/progress.md`)
+### Done (part 2: the browser)
 
-One poller helper (pause when hidden, resume with a fetch, back off) for the bell, messages, send inbox, image and
-carousel jobs, and run views; a shared client cache for repeated GETs (the soundtrack catalogue is fetched by the player
-and again by the music sheet; Your pictures twice); `Cache-Control: private` on low-churn GETs; the bell's first data from
-the server; thumbnails instead of full-size covers; a once-a-minute clock for relative times.
+| Area | Change |
+|---|---|
+| Polling | One helper, `usePoll` (`lib/use-poll.ts`, tested): runs only while the tab is visible, catches up the moment it returns, and can slow itself down (×1.5 up to a cap) for jobs that take a while. The bell, Messages, the Huddle room, the send inbox, image/carousel/slide jobs and creation runs all use it; they used to poll hidden tabs every 2.5–6 s |
+| Chats | A poll marks a thread (or the crew chat) read only when a newer message has arrived — it was a write on every tick; Messages' count also skips the fetch on navigation within 15 s, like the bell |
+| Repeated GETs | `apiCached` (`lib/client.ts`): the soundtrack catalogue (asked by the player and again by the Music sheet) and "your pictures" (asked by two sheets) are asked once for 5 min / 30 s, concurrent askers share one request, and any change this tab makes drops them |
+| Clocks | The shared clock behind every "5 min ago" ticked every second for the whole session; labels change at most every 45 s, so it ticks every 15 s (every second only for the Huddle stopwatch) and stops while the tab is hidden. The mini player's layout check runs every 2.5 s, not each second |
+| Images | `loading="lazy" decoding="async"` on card and list pictures (not heroes, canvases or share images); the published work's hero and the Material's picture are `fetchPriority="high"` |
+
+### Next
+
+* **Thumbnails.** Cards and avatars still load the stored original through `/api/v1/media/…`; storage image transformation
+  needs a paid plan, so the real fix is a small derivative made when a picture is brought in (sharp is already used for
+  the album) and linked from the Material. A migration plus the intake pipeline; its own piece of work.
+* **The bell's first data from the server** (Home already renders it) and one combined shell poll instead of two.
+* **`Cache-Control: private` on low-churn GETs** (settings, destinations, consents) once an invalidation rule exists.
+* **More round trips** the audit listed and this review left: `createArtifact` (≈ 9 in a row), the song, complete, People,
+  Community and Context pages, `workingSetView`, `listConversations`' per-card Material counts, the `materialCounts`/
+  `topTags` functions above.
 
 ### Database: how to check it
 

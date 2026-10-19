@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { MessageComposer, type ComposerOption } from "@/components/message-composer";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { BackLink } from "@/components/back-link";
 
 const POLL_MS = 10_000;
@@ -24,6 +25,9 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
   const [error, setError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
+  // The newest message already marked read: the page marks the thread read when it opens, and a poll only does it
+  // again when something new has arrived (it used to write on every tick).
+  const marked = useRef<string | null>(thread.messages.at(-1)?.id ?? null);
   const refresh = useCallback(async () => {
     try {
       const r = await api<Thread>(`/api/v1/messages/${thread.id}`);
@@ -32,18 +36,17 @@ export function ThreadView({ thread, about }: { thread: Thread; about: ComposerO
         const ids = new Set(r.messages.map((m) => m.id));
         return [...(firstLatest ? prev.filter((m) => m.at < firstLatest && !ids.has(m.id)) : []), ...r.messages];
       });
-      void api(`/api/v1/messages/${thread.id}/read`, { method: "POST" }).catch(() => undefined);
+      const newest = r.messages.at(-1)?.id ?? null;
+      if (newest && newest !== marked.current) {
+        marked.current = newest;
+        void api(`/api/v1/messages/${thread.id}/read`, { method: "POST" }).catch(() => undefined);
+      }
     } catch {
       // The next poll catches up.
     }
   }, [thread.id]);
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") void refresh();
-    }, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  usePoll(refresh, POLL_MS);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });

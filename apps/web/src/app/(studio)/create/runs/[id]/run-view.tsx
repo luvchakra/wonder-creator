@@ -4,8 +4,9 @@ import { Button, ErrorState, buttonClasses, cn } from "@wonder/ui";
 import { ArrowUpRight, Check, CircleAlert, CircleDashed, CircleSlash, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { BackLink } from "@/components/back-link";
 
 const POLL_MS = 1500;
@@ -38,17 +39,19 @@ export function RunView({ initial, providerLive }: { initial: RunProgress; provi
   const running = p.run.status === "running";
 
   // Poll the persisted stages while the run is going; the run itself doesn't depend on this page.
-  useEffect(() => {
-    if (!running) return;
-    const t = setInterval(async () => {
+  const runId = p.run.id;
+  usePoll(
+    async () => {
       try {
-        setP(await api<RunProgress>(`/api/v1/brain/runs/${p.run.id}`));
+        setP(await api<RunProgress>(`/api/v1/brain/runs/${runId}`));
       } catch {
         /* keep the last known state; the next poll will try again */
       }
-    }, POLL_MS);
-    return () => clearInterval(t);
-  }, [running, p.run.id]);
+    },
+    POLL_MS,
+    running,
+    { backoff: true, maxMs: POLL_MS * 3 },
+  );
 
   const current = p.stages.find((s) => s.state === "current");
   const failureText = p.run.failureCode ? (FAILURE_TEXT[p.run.failureCode] ?? FAILURE_TEXT.internal) : null;

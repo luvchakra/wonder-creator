@@ -29,6 +29,7 @@ import { CreatorPicker } from "@/components/creator-picker";
 import { useStripSignal } from "@/components/creative-palette";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { createClient } from "@/lib/supabase/client";
 import { forget } from "@/components/nav-memory";
 
@@ -74,7 +75,7 @@ export function HuddleRoom({
   const [audio, setAudio] = useState(false);
   const [video, setVideo] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
-  const now = useNow();
+  const now = useNow(true); // shows seconds, so it ticks every second
   const [preserveText, setPreserveText] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -126,12 +127,12 @@ export function HuddleRoom({
       .on("postgres_changes", { event: "*", schema: "public", table: "huddle_join_requests", filter: `huddle_id=eq.${huddleId}` }, () => refresh())
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "huddle_messages", filter: `huddle_id=eq.${huddleId}` }, () => refresh())
       .subscribe();
-    const poll = setInterval(refresh, state.me?.status === "joined" ? 4000 : 6000);
     return () => {
       void supabase.removeChannel(ch);
-      clearInterval(poll);
     };
-  }, [huddleId, refresh, state.me?.status]);
+  }, [huddleId, refresh]);
+  // The safety net beside realtime: pauses while the tab is hidden (the heartbeat below keeps presence), catches up on return.
+  usePoll(refresh, state.me?.status === "joined" ? 4000 : 6000);
 
   // Heartbeat while joined; detects dissolution and removal.
   useEffect(() => {

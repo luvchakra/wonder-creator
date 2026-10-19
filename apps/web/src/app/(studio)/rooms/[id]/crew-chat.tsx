@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RelativeTime } from "@/components/client-time";
 import { MessageComposer } from "@/components/message-composer";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 
 export interface ChatMessage {
   id: string;
@@ -49,10 +50,16 @@ export function CrewChat({
   const bottom = useRef<HTMLDivElement>(null);
   const titles = new Map(shared.map((s) => [s.itemId, s.title]));
 
+  // The chat is marked read when it opens (below); a poll does it again only when something new has arrived.
+  const marked = useRef<string | null>(initial.messages.reduce<string | null>((n, m) => (!n || m.at > n ? m.at : n), null));
   const refresh = useCallback(async () => {
     try {
       const r = await api<{ messages: ChatMessage[] }>(`/api/v1/crews/${crewId}/messages`);
-      void api(`/api/v1/crews/${crewId}/messages/read`, { method: "POST" }).catch(() => undefined);
+      const newest = r.messages.reduce<string | null>((n, m) => (!n || m.at > n ? m.at : n), null);
+      if (newest && newest !== marked.current) {
+        marked.current = newest;
+        void api(`/api/v1/crews/${crewId}/messages/read`, { method: "POST" }).catch(() => undefined);
+      }
       setMessages((prev) => {
         // Keep older pages already loaded; replace the latest window.
         const latestIds = new Set(r.messages.map((m) => m.id));
@@ -65,12 +72,7 @@ export function CrewChat({
     }
   }, [crewId]);
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") void refresh();
-    }, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  usePoll(refresh, POLL_MS);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });

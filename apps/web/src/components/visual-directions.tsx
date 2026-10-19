@@ -3,6 +3,7 @@ import { Button, Dialog, DialogContent, Field, Menu, MenuContent, MenuItem, Menu
 import { ArrowLeft, ArrowRight, Check, ImageOff, MoreHorizontal, RefreshCw, Save, Sparkles, Type, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { SlideTextDialog } from "./slide-text-dialog";
 
 type Asset = { id: string; sequence: number; imageUrl: string | null; thumbnailUrl: string | null; directionLabel: string | null; rationale: string | null; selected: boolean; savedMaterialId: string | null; revised?: boolean; qualityIntent?: "preview" | "standard" | "premium" };
@@ -61,18 +62,20 @@ export function VisualDirections({
   const changing = new Set((gen?.revisions ?? []).filter((r) => r.status !== "failed").map((r) => r.assetId));
   const follow = !!working || changing.size > 0;
   // Follow a generation (or an image being changed) in flight; the page never waits on it.
-  useEffect(() => {
-    if (!follow || !gen) return;
-    const t = setInterval(async () => {
+  const genId = gen?.id;
+  usePoll(
+    async () => {
       try {
-        const r = await api<{ generation: Generation }>(`/api/v1/image-generations/${gen.id}`);
+        const r = await api<{ generation: Generation }>(`/api/v1/image-generations/${genId}`);
         setReply((prev) => (prev ? { ...prev, state: "generation", generation: r.generation } : prev));
       } catch {
         // Keep the skeletons; the next tick tries again.
       }
-    }, 3000);
-    return () => clearInterval(t);
-  }, [follow, gen]);
+    },
+    3000,
+    follow && !!genId,
+    { backoff: true, maxMs: 9000 },
+  );
 
   async function create(regenerate = false) {
     setBusy(true);
@@ -388,7 +391,7 @@ export function VisualDirections({
                 <div className="flex items-start gap-3">
                   {changeFor?.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={changeFor.thumbnailUrl} alt="" className={cn("w-16 shrink-0 rounded-lg object-cover", aspect)} />
+                    <img loading="lazy" decoding="async" src={changeFor.thumbnailUrl} alt="" className={cn("w-16 shrink-0 rounded-lg object-cover", aspect)} />
                   ) : null}
                   <Field label="What should change?" htmlFor="change-image" className="min-w-0 flex-1">
                     <Textarea

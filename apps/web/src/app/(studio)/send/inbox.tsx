@@ -3,10 +3,11 @@ import { RelativeTime } from "@/components/client-time";
 import { Button, Card, Input, Textarea, cn } from "@wonder/ui";
 import { Camera, Check, CircleAlert, CloudUpload, FileText, Link2, Loader2, Mic, PenLine, ShieldAlert, Video } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import type { IntakeView } from "@/lib/intake-view";
 import { sendToCreator } from "@/lib/send";
+import { usePoll } from "@/lib/use-poll";
 
 type Item = IntakeView;
 
@@ -58,11 +59,8 @@ export function SendInbox({ initial }: { initial: Item[] }) {
   }, []);
 
   const inFlight = items.some((i) => !["ready", "failed", "quarantined", "understood"].includes(i.state));
-  useEffect(() => {
-    if (!inFlight) return;
-    const t = setInterval(refresh, 2500);
-    return () => clearInterval(t);
-  }, [inFlight, refresh]);
+  // While something is being understood: every 2.5 s, slowing down if it takes a while; not while the tab is hidden.
+  usePoll(refresh, 2500, inFlight, { backoff: true, maxMs: 10_000 });
 
   async function send(input: Parameters<typeof sendToCreator>[0]) {
     setBusy(true);

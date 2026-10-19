@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, errorMessage } from "@/lib/client";
+import { apiCached, errorMessage } from "@/lib/client";
 
 /** The creator's own pictures to choose from (the Images page's Add, a Video shot's frame). */
 export function YourPictures({ busy, onPick, verb = "Add" }: { busy: boolean; onPick: (materialId: string, previewUrl: string) => void; verb?: string }) {
@@ -8,7 +8,7 @@ export function YourPictures({ busy, onPick, verb = "Add" }: { busy: boolean; on
   const [failed, setFailed] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    api<{ items: Array<{ id: string; title: string | null; previewUrl: string | null }> }>("/api/v1/materials?filter=images")
+    apiCached<{ items: Array<{ id: string; title: string | null; previewUrl: string | null }> }>("/api/v1/materials?filter=images", 30_000)
       .then((r) => live && setItems(r.items.filter((m) => m.previewUrl).slice(0, 24)))
       .catch((e) => live && setFailed(errorMessage(e)));
     return () => {

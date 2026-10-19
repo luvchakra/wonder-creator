@@ -250,7 +250,7 @@ function PublishSheet({ state, onDone, busy }: { state: State; onDone: (body: Re
             {state.covers.map((c) => (
               <button key={c.objectId} type="button" role="radio" aria-checked={cover === c.objectId} aria-label="Use this cover" onClick={() => set({ coverObjectId: c.objectId })} className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.url} alt="" className={cn("size-16 rounded-lg object-cover", cover === c.objectId ? "ring-2 ring-accent ring-offset-2" : "opacity-80")} />
+                <img loading="lazy" decoding="async" src={c.url} alt="" className={cn("size-16 rounded-lg object-cover", cover === c.objectId ? "ring-2 ring-accent ring-offset-2" : "opacity-80")} />
               </button>
             ))}
           </div>

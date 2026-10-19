@@ -236,7 +236,7 @@ async function HomeRest({ db, creator, home: homeP, world: worldP }: { db: Db; c
                     icon={
                       home.spark.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={home.spark.imageUrl} alt="" className="size-10 rounded-lg object-cover" />
+                        <img loading="lazy" decoding="async" src={home.spark.imageUrl} alt="" className="size-10 rounded-lg object-cover" />
                       ) : (
                         <Sparkles className="size-5 text-orange" aria-hidden />
                       )
@@ -328,7 +328,7 @@ function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
               className="flex min-h-12 items-center gap-2.5 px-3 py-1.5 hover:bg-surface-muted"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.coverUrl ?? BACKGROUNDS.sunsetCoast} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
+              <img loading="lazy" decoding="async" src={c.coverUrl ?? BACKGROUNDS.sunsetCoast} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-[15.5px] leading-snug text-ink">{c.title}</span>
                 <span className={cn("block truncate text-[11.5px]", c.hint ? "text-accent-ink" : "text-ink-subtle")}>
@@ -408,7 +408,7 @@ function WorthHearing({ w, avatars }: { w: NonNullable<HomePayload["worthHearing
         icon={
           w.kind === "post" && w.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
+            <img loading="lazy" decoding="async" src={w.imageUrl} alt="" className="size-10 rounded-full object-cover" />
           ) : (
             <Avatar name={person.name} src={person.id ? avatars[person.id] : null} size={40} />
           )

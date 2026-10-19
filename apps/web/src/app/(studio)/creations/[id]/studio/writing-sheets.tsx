@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { VisualDirections } from "@/components/visual-directions";
-import { api, errorMessage } from "@/lib/client";
+import { api, apiCached, errorMessage } from "@/lib/client";
 
 /**
  * The Writing page's sheets (creation-pages.md §Writing): Cover (a picture of the creator's, or one CreativeMind makes
@@ -69,7 +69,7 @@ function CoverBody({
   const [making, setMaking] = useState(false);
   useEffect(() => {
     let live = true;
-    api<{ items: Picture[] }>("/api/v1/materials?filter=images")
+    apiCached<{ items: Picture[] }>("/api/v1/materials?filter=images", 30_000)
       .then((r) => live && setPictures(r.items.filter((m) => m.previewUrl).slice(0, 24)))
       .catch((e) => live && setError(errorMessage(e)));
     return () => {

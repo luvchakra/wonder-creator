@@ -179,7 +179,7 @@ export function PublishedWorkPage({ work, url, visitor = null }: { work: PublicW
             ) : null}
             {showCover ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={cover!} alt="" className="mb-8 max-h-[60dvh] w-full rounded-xl object-cover" />
+              <img src={cover!} alt="" fetchPriority="high" decoding="async" className="mb-8 max-h-[60dvh] w-full rounded-xl object-cover" />
             ) : null}
             {m.poem ? (
               // Line breaks, stanza spacing and indentation exactly as written (§7).

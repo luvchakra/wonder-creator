@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage, lastWriteAt } from "@/lib/client";
+import { usePoll } from "@/lib/use-poll";
 import { RelativeTime } from "./client-time";
 
 interface Item {
@@ -43,12 +44,10 @@ export function NotificationsButton() {
   // refresh being ~20 queries — and on a slow poll while visible. Opening the list always reads fresh.
   useEffect(() => {
     const first = setTimeout(() => (Date.now() - loadedAt.current > 15_000 || lastWriteAt() > loadedAt.current) && void load({ fresh: lastWriteAt() > loadedAt.current }), 0);
-    const t = setInterval(() => document.visibilityState === "visible" && void load(), POLL_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(t);
-    };
+    return () => clearTimeout(first);
   }, [load, pathname]);
+  // The slow poll pauses while the tab is hidden and catches up when it returns.
+  usePoll(() => load(), POLL_MS);
 
   const count = items?.length ?? 0;
   const label = count ? `Notifications, ${count} waiting` : "Notifications";

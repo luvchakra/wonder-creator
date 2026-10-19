@@ -152,7 +152,8 @@ function useClearOfPrimaryActions(active: boolean, panel: React.RefObject<HTMLDi
     measure();
     window.addEventListener("scroll", measure, { passive: true, capture: true });
     window.addEventListener("resize", measure);
-    const poll = setInterval(measure, 1000); // pages change under a persistent player
+    // Pages change under a persistent player: look again every few seconds, not while the tab is hidden.
+    const poll = setInterval(() => document.visibilityState === "visible" && measure(), 2500);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", measure, { capture: true });

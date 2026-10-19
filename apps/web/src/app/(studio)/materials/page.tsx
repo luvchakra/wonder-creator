@@ -184,7 +184,7 @@ export default async function SpacePage({ searchParams }: { searchParams: Promis
                       <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-[var(--shadow-card)] transition-shadow group-hover:shadow-[var(--shadow-lift)]">
                         {c.coverObjectId && collectionCovers[c.coverObjectId] ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={collectionCovers[c.coverObjectId]} alt="" className="size-full object-cover" />
+                          <img loading="lazy" decoding="async" src={collectionCovers[c.coverObjectId]} alt="" className="size-full object-cover" />
                         ) : (
                           <div className="flex size-full items-center justify-center bg-accent-softer text-accent-ink">
                             <Layers className="size-8" aria-hidden />
