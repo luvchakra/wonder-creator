@@ -134,7 +134,8 @@ test.describe("Quick Capture", () => {
           this.onresult?.({ resultIndex: this.results.length - 1, results: this.results });
         }
       }
-      (window as unknown as { webkitSpeechRecognition: typeof FakeSpeech }).webkitSpeechRecognition = FakeSpeech;
+      // Both names: current Chromium has the unprefixed SpeechRecognition natively, and the app prefers it.
+      for (const name of ["SpeechRecognition", "webkitSpeechRecognition"]) Object.defineProperty(window, name, { value: FakeSpeech, configurable: true, writable: true });
     });
     const say = (words: string, isFinal = true) => page.evaluate(([w, f]) => (window as unknown as { __speech: { say: (w: string, f: boolean) => void } }).__speech.say(w as string, f as boolean), [words, isFinal] as const);
 
