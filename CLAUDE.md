@@ -443,7 +443,8 @@ the numbers: `docs/performance.md` › Build-slot budget.
   test data on local stacks (never production). Before
   merging something risky (sign-in, permissions, database migrations, payments, a new cross-feature flow) run the
   affected specs locally: `npm run e2e:local -- e2e/<spec>.spec.ts`. **A red nightly is fixed before other work
-  merges**; find the root cause ("flaky" is not one). Never skip, disable or delete a test to make CI green, and never
+  merges**: before opening or merging any PR, check for an open issue "End-to-end tests failing on main" (and the latest
+  nightly run) and fix that first; find the root cause ("flaky" is not one). Never skip, disable or delete a test to make CI green, and never
   re-run a failed run hoping it passes. What runs where: `docs/testing.md`.
 * **Verify before pushing so there are no fix-up pushes:** lint, typecheck, the touched unit tests and a local build;
   push a branch once, when it's ready.

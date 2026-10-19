@@ -68,6 +68,8 @@ matter most as the codebase grows: the whole lint is 68 s cold and the whole uni
 
 **A red nightly is fixed before other work merges.** Find the root cause from the report, traces and app log; "flaky" is
 not a root cause. Fix forward, or roll back in Vercel (the previous production deployment stays a rollback candidate).
+Check before every merge: an open issue titled "End-to-end tests failing on main" means the last nightly is red. (A nightly that
+finds `main` unchanged since the last scheduled run is skipped and shows green: look at the run before it.)
 Never skip, disable or delete a test to make it green.
 
 ### Before launch: test freely (owner, 16 Oct 2026)
