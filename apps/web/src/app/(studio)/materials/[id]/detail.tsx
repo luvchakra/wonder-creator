@@ -1,17 +1,17 @@
 "use client";
 import { RelativeTime } from "@/components/client-time";
 import { Badge, Button, ConfirmDialog, Dialog, DialogContent, ErrorState, Field, Input, Select, TagInput, Textarea, buttonClasses } from "@wonder/ui";
-import { Archive, Download, ExternalLink, FolderPlus, Lock, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { Archive, Download, ExternalLink, FolderPlus, Lock, RotateCcw, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { VisualDirections } from "@/components/visual-directions";
 import { BackLink } from "@/components/back-link";
 import { forget } from "@/components/nav-memory";
 
-// Loaded when "Use in creation" is first pressed, like the Palette's Create.
+// Loaded when "Use in creation" is first chosen (from the Palette), like Create.
 const NewCreationSheet = dynamic(() => import("@/components/new-creation-sheet").then((m) => m.NewCreationSheet), { ssr: false });
 
 const ORIGIN: Record<string, string> = {
@@ -210,8 +210,10 @@ export function MaterialDetail({
   const [details, setDetails] = useState(false);
   useEffect(() => {
     const open = () => {
-      if (["#details", "#collections", "#rooms"].includes(window.location.hash)) {
-        setDetails(true);
+      const hash = window.location.hash;
+      if (["#details", "#collections", "#rooms", "#use"].includes(hash)) {
+        if (hash === "#use") setCreating(true);
+        else setDetails(true);
         history.replaceState(history.state, "", window.location.pathname + window.location.search);
       }
     };
@@ -224,7 +226,52 @@ export function MaterialDetail({
   // typed notes say nothing.
   const origin = m.provenance?.origin ?? "";
   const notableOrigin = ["huddle", "conversation", "ai_generated", "url", "youtube", "derived", "import"].includes(origin) ? ORIGIN[origin] : null;
-  const textDirty = editableText && text !== (m.text ?? "");
+
+  // A note's words save themselves (owner, 21 Oct 2026: "it should auto saved whatever is written"): a moment after the
+  // last keystroke, when the field loses focus, and when the page is hidden or left. One save at a time, always the
+  // latest words; the quiet line under the field says where it stands. No Save button, no refresh of the page.
+  const saved = useRef(m.text ?? "");
+  const latest = useRef(text);
+  const inFlight = useRef(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const flush = useCallback(async () => {
+    if (!editableText || inFlight.current) return;
+    inFlight.current = true;
+    try {
+      // Whatever was typed while a save was out goes in the next round; a failure waits for the next keystroke or blur.
+      while (latest.current !== saved.current) {
+        const sending = latest.current;
+        setSaveState("saving");
+        await api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { textContent: sending } });
+        saved.current = sending;
+      }
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    } finally {
+      inFlight.current = false;
+    }
+  }, [editableText, m.id]);
+  useEffect(() => {
+    latest.current = text;
+    if (!editableText || text === saved.current) return;
+    const t = setTimeout(() => void flush(), 700);
+    return () => clearTimeout(t);
+  }, [text, editableText, flush]);
+  useEffect(() => {
+    // Leaving (hiding the tab, or going to another page) sends what's still unsaved, so no word is lost.
+    const sendNow = () => {
+      if (!editableText || latest.current === saved.current) return;
+      void fetch(`/api/v1/materials/${m.id}`, { method: "PATCH", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ textContent: latest.current }) });
+      saved.current = latest.current;
+    };
+    const hide = () => document.visibilityState === "hidden" && sendNow();
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      sendNow();
+    };
+  }, [editableText, m.id]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
@@ -242,7 +289,12 @@ export function MaterialDetail({
       </header>
 
       {editableText ? (
-        <Textarea id="m-text" aria-label="Text" value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 font-display text-[17px]" />
+        <>
+          <Textarea id="m-text" aria-label="Text" value={text} onChange={(e) => setText(e.target.value)} onBlur={() => void flush()} className="min-h-40 font-display text-[17px]" />
+          <p role="status" aria-live="polite" className={saveState === "error" ? "px-1 text-[12.5px] text-danger" : "h-4 px-1 text-[12.5px] text-ink-subtle"}>
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Couldn't save yet. Keep writing; we'll try again." : ""}
+          </p>
+        </>
       ) : m.extracted ? (
         <details id="transcript" open={Boolean(m.metadata.transcription)} className="scroll-mt-20 rounded-2xl bg-surface-muted px-4 py-3">
           <summary className="cursor-pointer text-[14px] font-medium text-ink">{m.metadata.transcription ? "Transcript" : "Extracted text"}</summary>
@@ -260,21 +312,8 @@ export function MaterialDetail({
         </div>
       ) : null}
 
-      {/* One primary action; Details for the rest. Save appears only when the words changed. */}
-      <div className="flex flex-wrap items-center gap-2 px-1">
-        {textDirty ? (
-          <Button loading={busy === "text"} onClick={() => run("text", () => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { textContent: text } }), "Saved.")}>
-            Save
-          </Button>
-        ) : (
-          <Button aria-haspopup="dialog" onClick={() => setCreating(true)}>
-            <Sparkles className="size-4" aria-hidden /> Use in creation
-          </Button>
-        )}
-        <Button variant="secondary" aria-haspopup="dialog" onClick={() => setDetails(true)}>
-          Details
-        </Button>
-      </div>
+      {/* DejaVu: the one thing to choose here; Use in creation and Details live in the Palette. */}
+      {dejavu ? <div className="px-1">{dejavu}</div> : null}
       {msg && !details ? (
         <p role="status" className="px-1 text-[13px] text-success-ink">
           {msg}
@@ -317,7 +356,7 @@ export function MaterialDetail({
               {error ? <ErrorState title="That didn't work" body={error} /> : null}
             </section>
 
-            {m.understanding?.summary || dejavu ? (
+            {m.understanding?.summary ? (
               <section aria-label="What CreativeMind understood" className="space-y-2 border-t border-border-soft pt-4">
                 {m.understanding?.summary ? (
                   <>
@@ -334,7 +373,6 @@ export function MaterialDetail({
                     ) : null}
                   </>
                 ) : null}
-                {dejavu}
               </section>
             ) : null}
 

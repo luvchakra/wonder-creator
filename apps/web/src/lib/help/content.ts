@@ -229,8 +229,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Open Materials from the Palette. The tabs are All, Ideas & Material, In Progress, Created, Shared and Collections. Search sits at the top.",
           "In Ideas & Material you can filter by Notes, Photos, Audio, Video, Documents, Links or Archived.",
-          "Open a Material to read it, or to edit a note’s words and Save. Choose Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
-          "To make a Collection, open the Collections tab and choose New collection. Add Materials to it from a Material’s Details.",
+          "Open a Material to read it, or to edit a note’s words; they save as you write. Add a DejaVu right on the page. In the Palette, choose Use in creation to start from it, or Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
+          "To make a Collection, open the Collections tab and choose New collection. Add Materials to it from a Material’s Palette (Add to Collection).",
         ],
         notes: [
           "To delete a card quickly, press and hold it, or right-click it. You’re always asked first.",
@@ -248,7 +248,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         summary: "Name a person, place, idea or feeling that keeps coming back, and gather what belongs to it.",
         keywords: ["dejavu", "thread", "moments", "connect", "theme", "recurring", "memory", "suggestion"],
         steps: [
-          "After you capture something, choose Add under DejaVu. Or open a Material’s Details, or a Creation’s About, and add a DejaVu there.",
+          "After you capture something, choose Add under DejaVu. Or open a Material, or a Creation’s About, and add a DejaVu there.",
           "Give it a name, such as a place or a feeling. The same name is one thread, however it’s capitalised.",
           "Open All DejaVus to see your threads, how many Moments each holds and when you last used it.",
         ],
@@ -322,7 +322,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Open Create from the Palette. The sheet says “Make a new Creation”.",
           "Choose a format: Writing (article, story, poem), Carousel (social media), Images (visual series), Video (reel, short film), Audio (voice, podcast, song) or Presentation (deck, proposal). Each opens a page built for that format.",
-          "Or start from a Material: open it and choose Use in creation. Its words (a note’s text, a transcript) become the first draft, and the Material is recorded as the source.",
+          "Or start from a Material: open it and choose Use in creation from the Palette. Its words (a note’s text, a transcript) become the first draft, and the Material is recorded as the source.",
           "To make something with other people, choose Collaborate with others instead. That opens a new Creative Room.",
         ],
         notes: ["You can change the format later without losing your sources. See “Changing a Creation into another format”."],
@@ -689,7 +689,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "For a joint piece, say what it’s made of: Song (Lyrics, Tune, Voice), Podcast episode (Script, Host, Edit) or Illustrated story (Words, Pictures). Or choose Just a Room and add parts later, or none.",
           "Each person claims a part, which is a Creation of its own made on that format’s page. Several people can share a part, and someone can be invited to just one part without joining the whole room.",
           "The room shows the work first, each part as a row, and a timeline of what happened.",
-          "To bring something you already have into a room, open the Material and choose Details › Creative Rooms, or open a Creation’s Context › Creative Rooms, then pick the room and choose Add.",
+          "To bring something you already have into a room, open the Material and choose Add to a Creative Room in the Palette, or open a Creation’s Context › Creative Rooms, then pick the room and choose Add.",
         ],
         notes: [
           "A part is final when the people on it say so, and it can go back into rounds.",

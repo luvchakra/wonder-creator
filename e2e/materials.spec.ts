@@ -1,5 +1,5 @@
 import { strToU8, zipSync } from "fflate";
-import { expect, pngBytes, saveNote, sendItem, test, uid, uploadViaInbox, wavBytes, type Page } from "./fixtures";
+import { expect, pngBytes, saveNote, sendItem, test, uid, uploadViaInbox, wavBytes, type Page, openMaterialDetails, useMaterialInCreation } from "./fixtures";
 
 const HTML_MEDIA_HAVE_METADATA = 1;
 
@@ -123,7 +123,7 @@ test.describe("CreatorSend & material", () => {
     await page.goto(`/materials/${id}`);
     await expect(page.getByLabel("Text")).toHaveValue(text);
 
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     await page.getByRole("button", { name: "Delete" }).click();
     const dialog = page.getByRole("dialog", { name: "Delete this material permanently?" });
     await expect(dialog).toBeVisible();
@@ -133,7 +133,7 @@ test.describe("CreatorSend & material", () => {
     await page.reload();
     await expect(page.getByLabel("Text")).toHaveValue(text);
 
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("dialog", { name: "Delete this material permanently?" }).getByRole("button", { name: "Delete permanently" }).click();
     await expect(page).toHaveURL(/\/materials\?tab=ideas$/);
@@ -148,7 +148,7 @@ test.describe("CreatorSend & material", () => {
     const text = `Rain on the tin roof ${tag}\nThe sound arrives before the train.`;
     const id = await saveNote(page, text);
     await page.goto(`/materials/${id}`);
-    await page.getByRole("button", { name: "Use in creation" }).click();
+    await useMaterialInCreation(page);
     // The same sheet as the Palette's Create, with the words above the formats.
     const sheet = page.getByRole("dialog", { name: "Make a new Creation" });
     await expect(sheet.getByText(new RegExp(`Rain on the tin roof ${tag}`))).toBeVisible();
@@ -171,13 +171,13 @@ test.describe("CreatorSend & material", () => {
     const text = `Harbour lights ${uid()}`;
     const id = await saveNote(page, text);
     await page.goto(`/materials/${id}`);
-    // The words are the page; Save appears only once they change (and Use in creation steps aside meanwhile).
+    // The words are the page and save themselves: no Save button, and the page has no buttons of its own.
     await page.getByLabel("Text").fill(`${text}\nThe ferry horn at dusk.`);
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Use in creation" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Use in creation" })).toHaveCount(0);
     // The title and tags are under Details.
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     const details = page.getByRole("dialog", { name: "Details" });
     await details.getByLabel("Title").fill("Harbour notebook");
     await details.getByLabel("Tags").fill("sea");
@@ -187,7 +187,7 @@ test.describe("CreatorSend & material", () => {
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "Harbour notebook" })).toBeVisible();
     await expect(page.getByLabel("Text")).toHaveValue(`${text}\nThe ferry horn at dusk.`);
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     await expect(page.getByRole("button", { name: "Remove sea" })).toBeVisible();
   });
 
@@ -218,7 +218,7 @@ test.describe("CreatorSend & material", () => {
     await expect(page.getByRole("status").filter({ hasText: `Added to ${collection}.` })).toBeVisible();
 
     await page.reload();
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     await expect(page.getByLabel("Description")).toHaveValue("Low tide colours for the album cover.");
     await expect(page.getByLabel("Source & rights note")).toHaveValue("My own photo.");
     await expect(page.getByRole("list", { name: "In collections" })).toContainText(collection);
@@ -234,7 +234,7 @@ test.describe("CreatorSend & material", () => {
 
 /** Open Details and its "About the file" fold; returns the facts list. */
 async function aboutTheFile(page: Page) {
-  await page.getByRole("button", { name: "Details" }).click();
+  await openMaterialDetails(page);
   const details = page.getByRole("dialog", { name: "Details" });
   await details.getByText("About the file").click();
   return details.locator("dl").first();

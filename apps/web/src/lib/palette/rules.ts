@@ -88,8 +88,11 @@ export function rulesFor(ctx: PaletteContext): Rules {
           : ctx.entityType === "note" || ctx.entityType === "document"
             ? [{ ...explore, id: "ideas", label: "Extract ideas", score: 90 }]
             : [];
-      // Fewer buttons (owner, 4 Oct 2026): the page shows Use in creation and Details, so neither is repeated here.
-      return { title: "This Material", items: [...byKind, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), ...related, collect, room] };
+      // The page itself has no buttons (owner, 21 Oct 2026: words save themselves, DejaVu is the one thing to pick), so
+      // Use in creation and Details are here.
+      const use: PaletteItem = { id: "use", label: "Use in creation", icon: "spark", class: "create", target: route(`/materials/${m}#use`), score: 100 };
+      const details: PaletteItem = { id: "details", label: "Details", hint: "Title, tags, rights note, delete", icon: "pen", class: "context", target: route(`/materials/${m}#details`), score: 30 };
+      return { title: "This Material", items: [use, ...byKind, ...(byKind.some((x) => x.id === "ideas") ? [] : [explore]), ...related, collect, room, details] };
     }
 
     case "collection":
