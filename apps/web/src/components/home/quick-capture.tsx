@@ -1,12 +1,10 @@
 "use client";
-import { Button, Dialog, DialogContent, KIT, KitSparklesIcon, cn } from "@wonder/ui";
-import type { DejaVu } from "@wonder/creator-moments/shared";
-import { Camera, Check, Images, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
+import { Button, ConfirmDialog, Dialog, DialogContent, KIT, cn } from "@wonder/ui";
+import { Camera, Check, Images, Mic, PenLine, Square, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CreationSource } from "@/components/new-creation-sheet";
 import { useStripSignal } from "@/components/creative-palette";
-import { AddDejaVuSheet } from "@/components/dejavu/dejavu-chips";
 import { api, errorMessage } from "@/lib/client";
 import { PRIORITY } from "@/lib/context-strip/types";
 import { sendToCreator } from "@/lib/send";
@@ -14,6 +12,8 @@ import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/compone
 import { useDictation } from "@/components/audio/use-dictation";
 import { autosaveLine, useAutosave } from "@/lib/use-autosave";
 import { NoteEditor } from "./note-editor";
+import { VoiceEditor } from "@/components/audio/voice-editor";
+import type { Range } from "@/lib/audio-edit";
 import { trackClient } from "@/lib/track";
 import { CAPTURED_EVENT } from "./my-captures";
 
@@ -87,7 +87,6 @@ export function QuickCapture() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"text" | "voice">("text");
   const [saved, setSaved] = useState<Saved | null>(null);
-  const [savedInSheet, setSavedInSheet] = useState(false);
   const [synced, setSynced] = useState(0);
   const strip = useStripSignal();
 
@@ -147,17 +146,15 @@ export function QuickCapture() {
   }
   const begin = (which: "text" | "voice") => {
     setTab(which);
-    setSavedInSheet(false);
     setOpen(true);
     trackClient(which === "text" ? "quick_note_started" : "voice_note_started");
   };
-  // A note saves itself while it's written, so the sheet stays on the note; a voice note shows its saved panel.
+  // Notes and voice notes save themselves while the sheet is open, so it stays on what's being made.
   const onSaved = (r: Saved) => {
     setSaved((old) => {
       if (old?.url && old.url !== r.url) URL.revokeObjectURL(old.url);
       return r;
     });
-    setSavedInSheet(r.kind !== "note");
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
     else window.dispatchEvent(new Event(CAPTURED_EVENT));
   };
@@ -309,122 +306,29 @@ export function QuickCapture() {
         onOpenChange={(o) => {
           setOpen(o);
           // Closing a note: its last words are on their way; My captures reads them a moment later.
-          if (!o && saved?.kind === "note" && !saved.offline) setTimeout(() => window.dispatchEvent(new Event(CAPTURED_EVENT)), 1200);
+          if (!o && saved && !saved.offline) setTimeout(() => window.dispatchEvent(new Event(CAPTURED_EVENT)), 1200);
         }}
       >
         <DialogContent full title={tab === "text" ? "Quick note" : "Voice note"}>
-          {!open ? null : savedInSheet && saved ? (
-            <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
-          ) : (
+          {!open ? null : (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               {tab === "text" ? (
                 <NoteBody key="text" onSaved={(r) => onSaved({ kind: "note", ...r })} />
               ) : (
-                <VoiceBody key="voice" onWriteInstead={() => setTab("text")} onSaved={(r) => onSaved({ kind: "voice", ...r })} />
+                <VoiceBody
+                  key="voice"
+                  onDiscarded={() => {
+                    setOpen(false);
+                    setSaved(null);
+                    window.dispatchEvent(new Event(CAPTURED_EVENT));
+                  }}
+                  onWriteInstead={() => setTab("text")} onSaved={(r) => onSaved({ kind: "voice", ...r })} />
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
     </section>
-  );
-}
-
-/** Saved: a quiet confirmation, then — only if they arrive — DejaVu suggestions to accept or ignore, and "+ Add". */
-function SavedPanel({ saved, line, busy, onDone, onMake }: { saved: Saved; line: string; busy: boolean; onDone: () => void; onMake: (() => void) | null }) {
-  const { status, drop } = useCaptureStatus(saved.materialId);
-  const [attached, setAttached] = useState<DejaVu[]>([]);
-  const [momentId, setMomentId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const audio = useRef<HTMLAudioElement>(null);
-  const moment = momentId ?? status?.momentId ?? null;
-  async function resolve(s: Suggestion, accept: boolean) {
-    if (!moment) return;
-    try {
-      const r = await api<{ dejavu?: DejaVu }>(`/api/v1/moments/${moment}/dejavu-suggestions/${s.id}/${accept ? "accept" : "dismiss"}`, { method: "POST" });
-      if (r.dejavu) setAttached((a) => (a.some((d) => d.id === r.dejavu!.id) ? a : [...a, r.dejavu!]));
-      drop(s.id);
-    } catch {
-      /* it stays offered */
-    }
-  }
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2.5 rounded-2xl bg-surface-muted/70 px-3 py-2">
-        <Check className="size-5 shrink-0 text-success" aria-hidden />
-        <p className="min-w-0 flex-1 text-[14px] text-ink" role="status">
-          {line}
-          {saved.kind === "voice" && saved.seconds ? <span className="block text-[12.5px] text-ink-muted">{clock(saved.seconds)}</span> : null}
-        </p>
-        {saved.url ? (
-          <>
-            <audio ref={audio} src={saved.url} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} className="hidden" />
-            <button type="button" onClick={() => (playing ? audio.current?.pause() : void audio.current?.play())} aria-label={playing ? "Pause" : "Play"} className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-black/5">
-              {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      {saved.materialId ? (
-        <section aria-labelledby="suggested-dv" className="space-y-1">
-          <h3 id="suggested-dv" className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
-            {status?.suggestions.length ? "Suggested DejaVu" : "DejaVu"}
-          </h3>
-          <div className="flex flex-wrap items-center gap-x-1.5">
-            {attached.map((d) => (
-              <span key={d.id} className="inline-flex min-h-11 items-center">
-                <span className="inline-flex h-8 items-center gap-1 rounded-full bg-accent px-3 text-[13px] font-medium text-white">
-                  <Check className="size-3.5" aria-hidden /> {d.name}
-                </span>
-              </span>
-            ))}
-            {(status?.suggestions ?? []).map((s) => (
-              <span key={s.id} className="inline-flex min-h-11 items-center">
-                <span className="inline-flex h-8 items-center overflow-hidden rounded-full border border-border-soft bg-surface text-[13px] font-medium text-ink">
-                  <button type="button" onClick={() => resolve(s, true)} aria-label={`Add to ${s.name}`} className="h-full px-3 hover:bg-accent-softer">
-                    {s.name}
-                  </button>
-                  <button type="button" onClick={() => resolve(s, false)} aria-label={`Not ${s.name}`} className="h-full border-l border-border-soft px-2 text-ink-subtle hover:bg-surface-muted">
-                    <X className="size-3.5" aria-hidden />
-                  </button>
-                </span>
-              </span>
-            ))}
-            <button type="button" onClick={() => setAdding(true)} aria-haspopup="dialog" className="inline-flex min-h-11 items-center">
-              <span className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-accent-ink hover:bg-accent-softer">
-                <Plus className="size-4" aria-hidden /> Add
-              </span>
-            </button>
-          </div>
-          <AddDejaVuSheet
-            open={adding}
-            onOpenChange={setAdding}
-            entityType="material"
-            entityId={saved.materialId}
-            momentId={moment}
-            attached={attached}
-            onChanged={(next) => {
-              setMomentId(next.momentId);
-              setAttached(next.dejavus);
-            }}
-          />
-        </section>
-      ) : null}
-
-      {/* The next step is making something from this (start-small.md); Done just closes. Capturing another is one tap away on Home. */}
-      <div className="flex items-center justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onDone}>
-          Done
-        </Button>
-        {onMake ? (
-          <Button type="button" loading={busy} aria-haspopup="dialog" onClick={onMake}>
-            <KitSparklesIcon size={16} /> Make something
-          </Button>
-        ) : null}
-      </div>
-    </div>
   );
 }
 
@@ -512,13 +416,11 @@ function NoteBody({ onSaved }: { onSaved: (r: { materialId: string | null; offli
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const MAX_SECONDS = MAX_RECORD_SECONDS;
 
-function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: string | null; seconds: number; url: string }) => void; onWriteInstead: () => void }) {
+function VoiceBody({ onSaved, onWriteInstead, onDiscarded }: { onSaved: (r: { materialId: string | null; seconds: number; url: string }) => void; onWriteInstead: () => void; onDiscarded: () => void }) {
   // Recording starts as soon as the sheet opens (§6.2); the recorder is shared with the Audio page.
   const { state, seconds, levelRef: level, stop } = useAudioRecorder({ maxSeconds: MAX_SECONDS });
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const player = useRef<HTMLAudioElement | null>(null);
   const clientId = useRef<string>(crypto.randomUUID());
 
   const recorded = state.phase === "recorded" ? state : null;
@@ -531,18 +433,37 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
     };
   }, [recorded]);
 
-  // Upload with progress, so a slow connection shows movement; the recording stays here until it's saved.
-  function save() {
+  // No Save button (owner, 21 Oct 2026): the recording is saved as soon as it stops (with progress, so a slow connection
+  // shows movement), and edits — trims and cuts, which never change the recording — save themselves after that.
+  const [materialId, setMaterialId] = useState<string | null>(null);
+  const [edit, setEdit] = useState<Range[] | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const save = useCallback(() => {
     if (!recorded) return;
     setError(null);
     setProgress(0);
     uploadRecording(recorded, clientId.current, setProgress)
       .then((r) => {
         kept.current = true;
+        setMaterialId(r.materialId);
         onSaved({ materialId: r.materialId, seconds: recorded.seconds, url: recorded.url });
       })
       .catch((e) => setError(errorMessage(e)));
-  }
+  }, [recorded, onSaved]);
+  const started = useRef(false);
+  useEffect(() => {
+    if (!recorded || started.current) return;
+    started.current = true;
+    save();
+  }, [recorded, save]);
+  const edits = useAutosave({
+    value: edit,
+    saved: null,
+    enabled: !!materialId,
+    send: (v) => api(`/api/v1/materials/${materialId}`, { method: "PATCH", json: { audioEdit: v ? { keep: v } : null } }),
+    leave: (v) => ({ url: `/api/v1/materials/${materialId}`, method: "PATCH", json: { audioEdit: v ? { keep: v } : null } }),
+  });
 
   if (state.phase === "blocked")
     return (
@@ -558,22 +479,44 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
 
   if (recorded)
     return (
-      <div className="space-y-3">
-        <p className="font-medium text-ink">Voice note · {clock(recorded.seconds)}</p>
-        <audio ref={player} src={recorded.url} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} className="hidden" />
+      <div className="flex flex-1 flex-col justify-center">
+        <VoiceEditor
+          src={recorded.url}
+          type={recorded.blob.type}
+          onChange={setEdit}
+          onDelete={() => setConfirmDelete(true)}
+          status={progress !== null ? `Saving… ${progress}%` : error ? undefined : autosaveLine(materialId ? (edits.state === "idle" ? "saved" : edits.state) : "idle")}
+        />
         {error ? (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
+          <div role="alert" className="mt-2 flex items-center justify-center gap-2 text-[13px] text-danger">
+            <span>{error}</span>
+            <Button size="sm" variant="secondary" onClick={save}>
+              Try again
+            </Button>
+          </div>
         ) : null}
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="secondary" onClick={() => (playing ? player.current?.pause() : void player.current?.play())} aria-label={playing ? "Pause" : "Play"}>
-            {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />} {playing ? "Pause" : "Play"}
-          </Button>
-          <Button type="button" className="flex-1" onClick={save} loading={progress !== null}>
-            {progress !== null ? `Saving… ${progress}%` : error ? "Try again" : "Save"}
-          </Button>
-        </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          destructive
+          busy={deleting}
+          title="Delete this voice note?"
+          body="The recording is removed for good. This can't be undone."
+          confirmLabel="Delete"
+          onConfirm={async () => {
+            setDeleting(true);
+            try {
+              if (materialId) await api(`/api/v1/materials/${materialId}?confirm=true`, { method: "DELETE" });
+              setConfirmDelete(false);
+              onDiscarded();
+            } catch (e) {
+              setError(errorMessage(e));
+              setConfirmDelete(false);
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        />
       </div>
     );
 

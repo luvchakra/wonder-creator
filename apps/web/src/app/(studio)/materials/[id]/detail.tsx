@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
 import { autosaveLine, useAutosave } from "@/lib/use-autosave";
+import { VoiceEditor } from "@/components/audio/voice-editor";
+import { parseEdit, type Range } from "@/lib/audio-edit";
 import { VisualDirections } from "@/components/visual-directions";
 import { BackLink } from "@/components/back-link";
 import { forget } from "@/components/nav-memory";
@@ -129,6 +131,15 @@ export function MaterialDetail({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The edit already saved is the starting point, so undoing every cut clears it on the server too.
+  const savedEdit = parseEdit(m.metadata.audioEdit, 86_400);
+  const [audioEdit, setAudioEdit] = useState<Range[] | null>(savedEdit);
+  const audioSave = useAutosave({
+    value: audioEdit,
+    saved: savedEdit,
+    send: (v) => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { audioEdit: v ? { keep: v } : null } }),
+    leave: (v) => ({ url: `/api/v1/materials/${m.id}`, method: "PATCH", json: { audioEdit: v ? { keep: v } : null } }),
+  });
   const yt = typeof m.metadata.youtubeId === "string" ? (m.metadata.youtubeId as string) : null;
   const editableText = ["idea", "note", "text", "research", "inspiration"].includes(m.type);
   const downloadable = !!file && m.security === "clean";
@@ -146,6 +157,11 @@ export function MaterialDetail({
     (m.type === "image" || m.type === "sketch") && url ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={url} alt={m.understanding?.summary ?? m.title ?? "Image"} fetchPriority="high" decoding="async" className="max-h-[72vh] w-full object-contain lg:max-h-[58vh]" />
+    ) : (m.type === "audio" || m.type === "voice") && url && canGenerate ? (
+      // The creator's own recording: play, trim, cut, export, share, delete (edits save themselves).
+      <div className="bg-surface p-4">
+        <VoiceEditor src={url} type={file?.mime_type ?? ""} initialEdit={m.metadata.audioEdit} onChange={setAudioEdit} onDelete={() => setConfirmDelete(true)} status={autosaveLine(audioSave.state)} name={(m.title || "voice-note").replace(/[^\w\- ]+/g, "").trim() || "voice-note"} />
+      </div>
     ) : (m.type === "audio" || m.type === "voice") && url ? (
       <div className="bg-surface p-5">
         <audio controls src={url} className="w-full">

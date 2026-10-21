@@ -1,5 +1,6 @@
 "use client";
 import { cn } from "@wonder/ui";
+import { nextPlayable, type Range } from "@/lib/audio-edit";
 import { Mic, Pause, Play, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,7 @@ import { SectionTitle } from "./section-title";
  * videos as small frames — in one quiet row under the four ways in. The title opens all of them (`/captures`); each
  * tile opens its Material. A new capture appears at once. Nothing shows until there's something to look back on.
  */
-export type CaptureItem = { id: string; kind: "note" | "voice" | "photo" | "video"; text: string | null; title: string; seconds: number | null; mediaUrl: string | null; createdAt: string };
+export type CaptureItem = { id: string; kind: "note" | "voice" | "photo" | "video"; text: string | null; title: string; seconds: number | null; keep?: Range[] | null; mediaUrl: string | null; createdAt: string };
 export const CAPTURED_EVENT = "wc:captured";
 
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
@@ -82,7 +83,7 @@ function CaptureTile({ c, player }: { c: CaptureItem; player: ReturnType<typeof 
         <button
           type="button"
           disabled={!c.mediaUrl}
-          onClick={() => player.toggle(c.id, c.mediaUrl!)}
+          onClick={() => player.toggle(c.id, c.mediaUrl!, c.keep)}
           aria-label={on ? "Pause the voice note" : `Play the voice note${c.seconds ? `, ${clock(c.seconds)}` : ""}`}
           className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50"
         >
@@ -112,7 +113,7 @@ export function useVoice() {
   useEffect(() => () => el.current?.pause(), []);
   return {
     playing,
-    toggle(id: string, url: string) {
+    toggle(id: string, url: string, keep?: Range[] | null) {
       if (playing === id) {
         el.current?.pause();
         setPlaying(null);
@@ -121,6 +122,17 @@ export function useVoice() {
       el.current?.pause();
       const a = new Audio(url);
       a.onended = () => setPlaying(null);
+      // Trims and cuts made in the editor: start at the first kept part, skip what was cut, stop after the last.
+      if (keep?.length) {
+        a.currentTime = keep[0]![0];
+        a.ontimeupdate = () => {
+          const next = nextPlayable(keep, a.currentTime);
+          if (next === null) {
+            a.pause();
+            setPlaying(null);
+          } else if (next > a.currentTime + 0.05) a.currentTime = next;
+        };
+      }
       el.current = a;
       void a.play().then(() => setPlaying(id)).catch(() => setPlaying(null));
     },

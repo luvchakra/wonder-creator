@@ -179,12 +179,18 @@ test.describe("Quick Capture", () => {
     await expect(sheet.getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.waitForTimeout(1500);
     await sheet.getByRole("button", { name: "Stop" }).click();
-    await expect(sheet.getByText(/^Voice note · 0:0\d$/)).toBeVisible();
+    // It saves itself as soon as it stops; the editor is right there: play, trim, cut, undo, and more.
+    await expect(sheet.getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 30_000 });
     await expect(sheet.getByRole("button", { name: "Play" })).toBeVisible();
-    await sheet.getByRole("button", { name: "Save" }).click();
-    await expect(sheet.getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
+    await expect(sheet.getByRole("button", { name: "Trim to selection" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Cut selection" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: /^Save$/ })).toHaveCount(0);
+    await sheet.getByRole("button", { name: "Export, share or delete" }).click();
+    for (const item of [/Share to another app/, /Export as WAV/, /Export the original/, /Delete/]) await expect(page.getByRole("menuitem", { name: item })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await closeSheet(page);
     // No transcription provider here: the recording is kept and the line says so.
-    await expect(sheet.getByRole("status").filter({ hasText: "Transcription unavailable" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("region", { name: "Quick Capture" }).getByRole("status")).toContainText("Transcription unavailable", { timeout: 30_000 });
   });
 
   test("looking back: what was caught shows under Quick Capture at once, and all of it by day in My captures", async ({ page }) => {
@@ -207,9 +213,8 @@ test.describe("Quick Capture", () => {
     await expect(capture(page).getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.waitForTimeout(1200);
     await capture(page).getByRole("button", { name: "Stop" }).click();
-    await capture(page).getByRole("button", { name: "Save" }).click();
-    await expect(capture(page).getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
-    await capture(page).getByRole("button", { name: "Done" }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 30_000 });
+    await closeSheet(page);
     const jpg = await sharp({ create: { width: 640, height: 480, channels: 3, background: { r: 210, g: 160, b: 120 } } }).jpeg().toBuffer();
     await page.getByLabel("Choose a picture").setInputFiles({ name: "kettle.jpg", mimeType: "image/jpeg", buffer: jpg });
     await expect(page.getByRole("region", { name: "Quick Capture" }).getByText("Picture saved")).toBeVisible({ timeout: 30_000 });

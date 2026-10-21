@@ -291,3 +291,11 @@ stored as plain text with `**`, `_` and `- ` markers (`lib/mini-markdown.ts`), s
 reads it. Nothing at the bottom: the first words create the Material, later changes update it (`useAutosave`), and
 closing the screen keeps it. DejaVu suggestions for a note are no longer offered in the sheet; the DejaVu control is on
 the Material page.
+
+## Voice note editor (owner, 21 Oct 2026)
+Play/pause, trim to a selection, cut out any number of stretches, undo; export as WAV (edited, rendered in the browser)
+or the original; share to other apps (Web Share with files, download where the browser can't); delete (confirmed).
+Edits are non-destructive (`lib/audio-edit.ts`): the kept parts live in the Material's `metadata.audioEdit`, autosaved
+through `PATCH /api/v1/materials/:id` (`audioEdit`), and playback on Home, My captures and the Material page honours
+them. The recording saves itself on Stop. Transcripts are of the full recording. Not offered: MP3/AAC export (would need
+an encoder library).
