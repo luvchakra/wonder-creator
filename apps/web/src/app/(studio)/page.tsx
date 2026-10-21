@@ -74,12 +74,12 @@ export default async function HomePage() {
         <HomeCaptures db={db} creatorId={creator.id} />
       </Suspense>
 
-      {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, Continue, My Communities, My Testimonials — always here, never repeated below. */}
+      {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, My Creations, My Communities, My Testimonials — always here, never repeated below. */}
       <Suspense fallback={<SectionFallback title="My Scrapbook" rows={2} />}>
         <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
       </Suspense>
 
-      <Suspense fallback={<SectionFallback title="Continue" rows={3} />}>
+      <Suspense fallback={<SectionFallback title="My Creations" rows={3} />}>
         <HomeRest db={db} creator={{ id: creator.id, handle: creator.handle ?? null }} home={homeP} world={worldP} />
       </Suspense>
     </div>
@@ -284,11 +284,11 @@ async function HomeRest({ db, creator, home: homeP, world: worldP }: { db: Db; c
           <HomeCommunities mine={home.communities?.mine ?? null} hearing={home.worthHearing ? <WorthHearing w={home.worthHearing} avatars={home.avatars} /> : null} />
         ) : null}
 
+        {home.community ? <CommunityGlance g={home.community} avatars={home.avatars} /> : null}
+
         {flagOn("testimonials_enabled") ? <HomeTestimonials db={db} creator={creator} /> : null}
 
         {home.rooms ? <RoomsGlance items={home.rooms} avatars={home.avatars} /> : null}
-
-        {home.community ? <CommunityGlance g={home.community} avatars={home.avatars} /> : null}
 
         {home.recent?.length ? (
           <Module id="recent" label="Recent Creations">
@@ -316,7 +316,7 @@ function ContinueRows({ items }: { items: HomeInProgressItem[] }) {
   return (
     <section aria-labelledby="continue-title">
       <SectionTitle id="continue-title" href="/creations">
-        Continue
+        My Creations
       </SectionTitle>
       <ul aria-label="Creations in progress" className="divide-y divide-border-soft overflow-hidden rounded-2xl border border-border-soft bg-surface/90 shadow-[var(--shadow-card)]">
         {items.map((c, i) => (

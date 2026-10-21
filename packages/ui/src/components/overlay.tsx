@@ -16,20 +16,23 @@ export const DialogClose = D.Close;
  * A dialog — a bottom sheet on phones, centred from `sm`. Creative sheets may carry one small Vector Kit painting beside
  * the title (`art`); functional and warning dialogs stay plain.
  */
-export function DialogContent({ title, description, children, className, wide, art }: { title: string; description?: string; children: React.ReactNode; className?: string; wide?: boolean; art?: KitAsset }) {
+export function DialogContent({ title, description, children, className, wide, art, full }: { title: string; description?: string; children: React.ReactNode; className?: string; wide?: boolean; art?: KitAsset; full?: boolean }) {
   return (
     <D.Portal>
       <D.Overlay className="fixed inset-0 z-50 bg-navy/30 backdrop-blur-[2px] motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]" />
       <D.Content
         className={cn(
-          "fixed z-50 flex max-h-[88dvh] flex-col overflow-hidden bg-surface shadow-2xl focus:outline-none",
-          "inset-x-0 bottom-0 rounded-t-3xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl",
+          "fixed z-50 flex flex-col overflow-hidden bg-surface shadow-2xl focus:outline-none",
+          // `full`: on a phone the whole screen, no edges (a writing surface); from `sm` up the usual centred card.
+          full ? "inset-0 h-dvh sm:max-h-[88dvh]" : "max-h-[88dvh] inset-x-0 bottom-0 rounded-t-3xl",
+          "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl",
+          full && "sm:h-auto",
           wide ? "sm:max-w-2xl" : "sm:max-w-lg",
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border-soft px-5 pb-3 pt-5">
-          {art ? <KitArt art={art} sizes="3rem" className="-my-1 h-10 w-auto shrink-0" /> : null}
+        <div className={cn("flex items-start justify-between gap-4 px-5", full ? "items-center pb-1 pt-[max(0.5rem,env(safe-area-inset-top))]" : "border-b border-border-soft pb-3 pt-5")}>
+          {art && !full ? <KitArt art={art} sizes="3rem" className="-my-1 h-10 w-auto shrink-0" /> : null}
           <div className="min-w-0 flex-1">
             <D.Title className="text-lg font-semibold text-ink">{title}</D.Title>
             {description ? <D.Description className="mt-0.5 text-sm text-ink-muted">{description}</D.Description> : <D.Description className="sr-only">{title}</D.Description>}
@@ -38,7 +41,7 @@ export function DialogContent({ title, description, children, className, wide, a
             <X className="size-5" aria-hidden />
           </D.Close>
         </div>
-        <div className="overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">{children}</div>
+        <div className={cn("overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))]", full ? "flex min-h-0 flex-1 flex-col pt-1" : "pt-4")}>{children}</div>
       </D.Content>
     </D.Portal>
   );

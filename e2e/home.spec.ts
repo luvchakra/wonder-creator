@@ -27,7 +27,7 @@ test.describe("Home Canvas", () => {
     await page.goto("/");
     const rows = page.getByRole("list", { name: "Creations in progress" });
     await expect(rows.getByRole("link", { name: new RegExp(title) })).toContainText(/Poem · Edited (just now|\d+ min ago)/);
-    await expect(page.getByRole("heading", { name: "Continue" }).getByRole("link")).toHaveAttribute("href", "/creations");
+    await expect(page.getByRole("heading", { name: "My Creations" }).getByRole("link")).toHaveAttribute("href", "/creations");
     // Fewer buttons (owner, 4 Oct 2026): no "All …" rows — a section's title is its link.
     await expect(page.getByRole("link", { name: /^All (scraps|my creations|testimonials)$/ })).toHaveCount(0);
     // Sections only appear with something real in them: nothing happened, no one's waiting, nothing old to rediscover.
@@ -95,7 +95,7 @@ test.describe("Home Canvas", () => {
 
     // 2. Caught a note: Home moves on by itself, no reload — "make something from it", in the note's own words.
     await page.getByRole("button", { name: "Quick note" }).click();
-    const sheet = page.getByRole("dialog", { name: "Quick Capture" });
+    const sheet = page.getByRole("dialog", { name: "Quick note" });
     await sheet.getByLabel("Quick note").fill(`Rain on the tin roof ${tag}\nThe sound arrives before the train.`);
     await sheet.getByRole("button", { name: /Save note/ }).click();
     await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();

@@ -171,28 +171,12 @@ export function QuickCapture() {
   const camVideoRef = useRef<HTMLInputElement>(null);
   const [media, setMedia] = useState<{ kind: "photo" | "video"; error?: string } | null>(null);
   // Quick Pic / Video Note (owner, 8 Oct 2026: "should have camera option as well, full fledged camera"): a small sheet
-  // with two ways — the camera, or the gallery. On Android the camera is the phone's own camera app (every lens and
-  // mode), which a page can open but which can't hand the shot back: so the sheet waits, and when the creator returns
-  // it leads with "Choose what you just took". Elsewhere (iPhone, desktop) "the camera" is the system's camera sheet.
-  const [mediaSheet, setMediaSheet] = useState<{ kind: "photo" | "video"; back: boolean } | null>(null);
-  const awaitingCamera = useRef(false);
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && awaitingCamera.current) {
-        awaitingCamera.current = false;
-        setMediaSheet((s) => (s ? { ...s, back: true } : s));
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, []);
+  // with two ways — the camera, or the gallery. The camera is the phone's own camera, opened from the page in its capture
+  // mode, and the shot comes straight back. (A page can't open the camera app itself on Android: Chrome only starts apps
+  // that accept browser links, and camera apps don't, so the old `intent:` link silently did nothing — 21 Oct 2026.)
+  // For every lens and mode, shoot in the camera app and use Choose from gallery.
+  const [mediaSheet, setMediaSheet] = useState<{ kind: "photo" | "video" } | null>(null);
   function openCamera(kind: "photo" | "video") {
-    if (/android/i.test(navigator.userAgent)) {
-      awaitingCamera.current = true;
-      // The camera app itself (not the cut-down "take a photo for an app" mode); the picture lands in the gallery.
-      window.location.assign(kind === "photo" ? "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end" : "intent:#Intent;action=android.media.action.VIDEO_CAMERA;end");
-      return;
-    }
     setMediaSheet(null);
     (kind === "photo" ? camPicRef : camVideoRef).current?.click();
   }
@@ -202,7 +186,7 @@ export function QuickCapture() {
   }
   function start(key: "text" | "voice" | "photo" | "video") {
     if (key === "text" || key === "voice") begin(key);
-    else setMediaSheet({ kind: key, back: false });
+    else setMediaSheet({ kind: key });
   }
   async function captureMedia(kind: "photo" | "video", list: FileList | null) {
     const files = Array.from(list ?? []).slice(0, 10);
@@ -274,12 +258,7 @@ export function QuickCapture() {
         <DialogContent title={mediaSheet?.kind === "video" ? "Video Note" : "Quick Pic"} art={mediaSheet?.kind === "video" ? KIT.iconChip.video : KIT.iconChip.camera}>
           {mediaSheet ? (
             <div className="space-y-2">
-              {mediaSheet.back ? (
-                <p role="status" className="px-1 text-[13.5px] text-ink-muted">
-                  Back from the camera? Choose what you just took.
-                </p>
-              ) : null}
-              {(mediaSheet.back ? (["gallery", "camera"] as const) : (["camera", "gallery"] as const)).map((way) => {
+              {(["camera", "gallery"] as const).map((way) => {
                 const camera = way === "camera";
                 const Icon = camera ? Camera : Images;
                 return (
@@ -291,8 +270,8 @@ export function QuickCapture() {
                   >
                     <Icon className="size-5 shrink-0 text-accent" aria-hidden />
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-ink">{camera ? "Open the camera" : mediaSheet.back ? (mediaSheet.kind === "video" ? "Choose the video you just took" : "Choose the picture you just took") : "Choose from gallery"}</span>
-                      <span className="block text-[12px] text-ink-subtle">{camera ? (mediaSheet.kind === "video" ? "Record with the phone\u2019s camera, then come back and choose it" : "Shoot with the phone\u2019s camera, then come back and choose it") : "Pictures and videos already on your phone"}</span>
+                      <span className="block text-[14px] font-medium text-ink">{camera ? "Open the camera" : "Choose from gallery"}</span>
+                      <span className="block text-[12px] text-ink-subtle">{camera ? (mediaSheet.kind === "video" ? "Record a video now; it comes straight here" : "Take a picture now; it comes straight here") : "Pictures and videos already on your phone"}</span>
                     </span>
                   </button>
                 );
@@ -323,26 +302,11 @@ export function QuickCapture() {
       {making ? <NewCreationSheet open onOpenChange={(o) => !o && setMaking(null)} from={making} /> : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Quick Capture" art={KIT.iconChip.pencil}>
+        <DialogContent full title={tab === "text" ? "Quick note" : "Voice note"}>
           {!open ? null : savedInSheet && saved ? (
             <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
           ) : (
-            <div className="space-y-3">
-              <div role="tablist" aria-label="Capture" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
-                {(["text", "voice"] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === k}
-                    onClick={() => setTab(k)}
-                    className={cn("inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full text-[14px] font-medium", tab === k ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink")}
-                  >
-                    {k === "text" ? <PenLine className="size-4" aria-hidden /> : <Mic className="size-4" aria-hidden />}
-                    {k === "text" ? "Text" : "Voice"}
-                  </button>
-                ))}
-              </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
               {tab === "text" ? (
                 <NoteBody key="text" onCancel={() => setOpen(false)} onSaved={(r) => onSaved({ kind: "note", ...r })} />
               ) : (
@@ -488,7 +452,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
   }
   return (
     <form
-      className="space-y-3"
+      className="flex min-h-0 flex-1 flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         void save();
@@ -497,7 +461,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
       <label htmlFor="quick-note" className="sr-only">
         Quick note
       </label>
-      <div className="relative">
+      <div className="relative min-h-0 flex-1">
         <Textarea
           id="quick-note"
           autoFocus
@@ -514,7 +478,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
             }
           }}
           placeholder={dictation.listening ? "Listening…" : "Type, or tap the mic and say it…"}
-          className="min-h-36 pb-12 font-display text-[16px]"
+          className="h-full min-h-36 resize-none pb-12 font-display text-[16px]"
           maxLength={200000}
         />
         <IconButton
@@ -623,7 +587,7 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
     );
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-1 flex-col justify-center space-y-4">
       <p className="text-center font-display text-[32px] tabular-nums leading-none text-ink" aria-live="off">
         {clock(seconds)}
       </p>
