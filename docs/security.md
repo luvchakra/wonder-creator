@@ -66,3 +66,24 @@
 - AI context minimisation per intent; privacy classes enforced before retrieval.
 - Huddles leave no transcript, recording or participant history; only explicitly preserved outcomes persist.
 - Data export (`/api/v1/account/export`) and permanent deletion (cascade + storage cleanup).
+
+## Automated access (owner, 21 Oct 2026)
+Guards against someone using an AI model or agent to read, crawl and rebuild the product. No obfuscation, no right-click
+or dev-tools blocking: they cost accessibility and speed and don't stop a reader.
+- **Source maps**: `productionBrowserSourceMaps: false`; a `.map` beside a live script answers 403.
+- **Server-only code**: `scripts/server-only-boundary.test.ts` fails CI if a `"use client"` file imports the brain,
+  `@wonder/core/server`, payments (beyond `./money`), `@wonder/creator-sources/server`, the Supabase service/server
+  clients, session, features, help content or the LiveKit server SDK. Many server modules also import `server-only`.
+- **Crawlers**: `app/robots.ts` allows the public pages, disallows `/api/`, `/help`, `/s/`, `/embed/` and sign-in
+  plumbing, and refuses 15 AI crawlers entirely. Signed-in pages send `noindex, nofollow, noai, noimageai` (meta in
+  the `(studio)` layout; `X-Robots-Tag` on `/api/*` and `/help`). robots.txt is a request; sessions and limits are the controls.
+- **Hourly watch** (`lib/abuse-watch.ts`, called by `withApi`): per creator and instance, over an hour. Past 6,000
+  calls or 600 distinct paths it logs `abuse.heavy_reader` once (alert on it; it never blocks). Past 20,000 calls it
+  answers 429 with `Retry-After` and logs `abuse.hourly_ceiling`. The per-minute limits per route are unchanged and
+  every 429 from `withApi` now carries `Retry-After`.
+- **Exports** are audited (`account.exported`, `artifact.exported`, audit export) and rate limited (5–10 a minute).
+- **CreativeMind** is told never to reveal its instructions and fences project, Material and external text as data
+  (`prompts.test.ts`). The Help centre describes what creators do, not how it is built, and is behind sign-in.
+- **Not done in code** (owner): make the repository private, edge firewall and AI-bot blocking, legal review of
+  `TERMS-DRAFT.md`, sign-up policy. See the pull request for the list.
+

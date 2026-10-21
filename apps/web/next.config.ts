@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
   // and Vercel builds don't check them a second time (about 40% of a build). Local `next build` still does.
   typescript: { ignoreBuildErrors: Boolean(process.env.CI || process.env.VERCEL) },
   poweredByHeader: false,
+  // Readable source is the first thing a copier wants: browsers get minified bundles and no source maps (checked live:
+  // a .map next to a script answers 403).
+  productionBrowserSourceMaps: false,
   // Routes follow the design's names (owner, 2 Oct 2026). Old addresses keep working: notifications, bookmarks and
   // shared links land on the same page under its new name. APIs (/api/v1/*) and public pages (/p/*) are unchanged.
   async redirects() {
@@ -95,6 +98,11 @@ const nextConfig: NextConfig = {
         // it as private, no-store — no CDN or shared cache keeps a copy (checked in e2e/help-access.spec.ts).
         source: "/help",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        // The API is for the app, not for indexes or model training.
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noai, noimageai" }],
       },
       {
         // Everything except embeds: never framed.
