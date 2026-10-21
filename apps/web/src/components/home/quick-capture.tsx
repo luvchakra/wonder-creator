@@ -1,13 +1,13 @@
 "use client";
-import { Button, ConfirmDialog, Dialog, DialogContent, KIT, cn } from "@wonder/ui";
-import { Camera, Check, Images, Mic, PenLine, Square, Video } from "lucide-react";
+import { Button, ConfirmDialog, Dialog, DialogContent, cn } from "@wonder/ui";
+import { Check, Mic, PenLine, Square } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CreationSource } from "@/components/new-creation-sheet";
 import { useStripSignal } from "@/components/creative-palette";
 import { api, errorMessage } from "@/lib/client";
 import { PRIORITY } from "@/lib/context-strip/types";
-import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { useDictation } from "@/components/audio/use-dictation";
 import { autosaveLine, useAutosave } from "@/lib/use-autosave";
@@ -51,7 +51,7 @@ const writeQueue = (q: Pending[]) => {
 /** A fetch that never reached the server (offline, dropped connection), as opposed to a refusal. */
 const unreachable = (e: unknown) => e instanceof TypeError || !navigator.onLine;
 
-type Saved = { kind: "note" | "voice" | "photo" | "video"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null; count?: number; skipped?: number };
+type Saved = { kind: "note" | "voice"; materialId: string | null; offline?: boolean; seconds?: number; url?: string | null };
 
 /** Follows a saved capture quietly until it has settled (transcribed or not) and any suggestions are in. */
 function useCaptureStatus(materialId: string | null) {
@@ -89,6 +89,7 @@ export function QuickCapture() {
   const [saved, setSaved] = useState<Saved | null>(null);
   const [synced, setSynced] = useState(0);
   const strip = useStripSignal();
+  const router = useRouter();
 
   // Send notes kept on this device while offline, oldest first; each keeps its id, so nothing lands twice.
   const flush = useCallback(async () => {
@@ -159,65 +160,10 @@ export function QuickCapture() {
     else window.dispatchEvent(new Event(CAPTURED_EVENT));
   };
 
-  // Quick Pic and Video Note (owner, 7 Oct 2026: "allow users to choose from the gallery"): the phone's own chooser —
-  // the camera, or pictures and videos already taken — in one tap. No `capture` attribute: with it the browser skips the
-  // chooser and asks for the camera's "take a photo for an app" mode, which phones keep to a few modes (the full camera
-  // app, with all its lenses and modes, can't hand a picture back to a web page; shooting with it and choosing from the
-  // gallery here can). Files arrive untouched and each goes straight to a Material (through CreatorSend, which checks
-  // the bytes and sends big files browser → storage directly). Several can be chosen from the gallery at once.
-  const picRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLInputElement>(null);
-  const camPicRef = useRef<HTMLInputElement>(null);
-  const camVideoRef = useRef<HTMLInputElement>(null);
-  const [media, setMedia] = useState<{ kind: "photo" | "video"; error?: string } | null>(null);
-  // Quick Pic / Video Note (owner, 8 Oct 2026: "should have camera option as well, full fledged camera"): a small sheet
-  // with two ways — the camera, or the gallery. The camera is the phone's own camera, opened from the page in its capture
-  // mode, and the shot comes straight back. (A page can't open the camera app itself on Android: Chrome only starts apps
-  // that accept browser links, and camera apps don't, so the old `intent:` link silently did nothing — 21 Oct 2026.)
-  // For every lens and mode, shoot in the camera app and use Choose from gallery.
-  const [mediaSheet, setMediaSheet] = useState<{ kind: "photo" | "video" } | null>(null);
-  function openCamera(kind: "photo" | "video") {
-    setMediaSheet(null);
-    (kind === "photo" ? camPicRef : camVideoRef).current?.click();
-  }
-  function openGallery(kind: "photo" | "video") {
-    setMediaSheet(null);
-    (kind === "photo" ? picRef : videoRef).current?.click();
-  }
-  function start(key: "text" | "voice" | "photo" | "video") {
-    if (key === "text" || key === "voice") begin(key);
-    else setMediaSheet({ kind: key });
-  }
-  async function captureMedia(kind: "photo" | "video", list: FileList | null) {
-    const files = Array.from(list ?? []).slice(0, 10);
-    if (!files.length) return;
-    setMediaSheet(null);
-    const limit = (kind === "video" ? 100 : 20) * 1024 * 1024;
-    const fits = files.filter((f) => f.size <= limit);
-    if (!fits.length) {
-      setMedia({ kind, error: kind === "video" ? "That video is too long to save here — keep it under about two minutes." : "That picture is too large to save." });
-      return;
-    }
-    setSaved(null);
-    setMedia({ kind });
-    try {
-      const r = await sendToCreator({ files: fits, kind: "camera" });
-      if (!r.accepted.length) throw new Error(r.rejected[0]?.message ?? "We couldn't save it.");
-      trackClient(kind === "photo" ? "quick_pic_saved" : "video_note_saved");
-      setMedia(null);
-      window.dispatchEvent(new Event(CAPTURED_EVENT));
-      setSaved({ kind, materialId: r.accepted.length === 1 ? (r.accepted[0]?.materialId ?? null) : null, count: r.accepted.length, skipped: files.length - r.accepted.length });
-    } catch (e) {
-      setMedia({ kind, error: `${errorMessage(e)} Try again.` });
-    }
-  }
-
   const savedLine = saved
     ? saved.offline
       ? "Note saved on this device. It'll sync when you're back online."
-      : saved.kind === "photo" || saved.kind === "video"
-        ? `${(saved.count ?? 1) > 1 ? `${saved.count} ${saved.kind === "photo" ? "pictures" : "videos"} saved to Materials` : saved.kind === "photo" ? "Picture saved" : "Video saved"}${saved.skipped ? ` · ${saved.skipped} too large to save` : ""}`
-          : saved.kind === "voice" && status?.transcription === "unavailable"
+      : saved.kind === "voice" && status?.transcription === "unavailable"
         ? "Voice note saved · Transcription unavailable"
         : saved.kind === "voice"
           ? "Voice note saved"
@@ -227,66 +173,28 @@ export function QuickCapture() {
       : null;
 
   return (
-    <section aria-label="Quick Capture" className="space-y-1">
-      {/* Four ways to catch something, one tap each: words, voice, a picture, a short video. */}
-      <div className="grid grid-cols-4 gap-1.5">
+    <section aria-label="Quick Capture">
+      {/* Two ways to catch something, in the greeting's top-right corner over the flowers (owner, 21 Oct 2026): words and
+          voice. Pictures and videos come in through Bring in. Positioned against the header, outside the text's flow. */}
+      <div className="absolute right-0 top-0 flex gap-2">
         {(
           [
-            { key: "text", label: "Quick note", Icon: PenLine },
-            { key: "voice", label: "Voice note", Icon: Mic },
-            { key: "photo", label: "Quick Pic", Icon: Camera },
-            { key: "video", label: "Video Note", Icon: Video },
+            { key: "text", label: "Quick note", short: "Note", Icon: PenLine },
+            { key: "voice", label: "Voice note", short: "Voice", Icon: Mic },
           ] as const
-        ).map(({ key, label, Icon }) => {
-          const busy = media?.kind === key && !media.error;
-          return (
-            <button key={key} type="button" onClick={() => start(key)} disabled={busy} aria-haspopup="dialog" className="group min-h-11">
-              <span className="flex h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-surface/90 text-[12.5px] font-medium text-ink shadow-[var(--shadow-card)] transition-transform duration-150 group-hover:bg-surface group-active:scale-95 group-disabled:opacity-60 motion-reduce:transition-none">
-                <Icon className={cn("size-[18px] text-accent", busy && "animate-pulse motion-reduce:animate-none")} aria-hidden />
-                {label}
-              </span>
-            </button>
-          );
-        })}
+        ).map(({ key, label, short, Icon }) => (
+          <button key={key} type="button" onClick={() => begin(key)} aria-haspopup="dialog" aria-label={label} className="group flex w-12 flex-col items-center gap-1">
+            <span className="inline-flex size-12 items-center justify-center rounded-full border border-white/80 bg-surface/85 text-accent shadow-[var(--shadow-card)] backdrop-blur-sm transition-transform duration-150 group-hover:bg-surface group-active:scale-95 motion-reduce:transition-none">
+              <Icon className="size-5" aria-hidden />
+            </span>
+            <span aria-hidden className="text-[11.5px] font-medium text-ink-muted">
+              {short}
+            </span>
+          </button>
+        ))}
       </div>
-      {/* Gallery (several at once) and, where the phone has no camera app to open, the system's camera sheet. */}
-      <input ref={picRef} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
-      <input ref={videoRef} type="file" accept="video/*" multiple className="sr-only" tabIndex={-1} aria-label="Choose a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
-      <input ref={camPicRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a picture" onChange={(e) => (void captureMedia("photo", e.target.files), (e.target.value = ""))} />
-      <input ref={camVideoRef} type="file" accept="video/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Record a video" onChange={(e) => (void captureMedia("video", e.target.files), (e.target.value = ""))} />
-      <Dialog open={!!mediaSheet} onOpenChange={(o) => !o && setMediaSheet(null)}>
-        <DialogContent title={mediaSheet?.kind === "video" ? "Video Note" : "Quick Pic"} art={mediaSheet?.kind === "video" ? KIT.iconChip.video : KIT.iconChip.camera}>
-          {mediaSheet ? (
-            <div className="space-y-2">
-              {(["camera", "gallery"] as const).map((way) => {
-                const camera = way === "camera";
-                const Icon = camera ? Camera : Images;
-                return (
-                  <button
-                    key={way}
-                    type="button"
-                    onClick={() => (camera ? openCamera(mediaSheet.kind) : openGallery(mediaSheet.kind))}
-                    className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border-soft bg-surface p-3 text-left hover:border-accent/50 hover:bg-accent-softer"
-                  >
-                    <Icon className="size-5 shrink-0 text-accent" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-ink">{camera ? "Open the camera" : "Choose from gallery"}</span>
-                      <span className="block text-[12px] text-ink-subtle">{camera ? (mediaSheet.kind === "video" ? "Record a video now; it comes straight here" : "Take a picture now; it comes straight here") : "Pictures and videos already on your phone"}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      {media ? (
-        <p role={media.error ? "alert" : "status"} className={cn("px-1 text-[13px]", media.error ? "text-danger" : "text-ink-muted")}>
-          {media.error ?? (media.kind === "photo" ? "Saving your picture…" : "Saving your video…")}
-        </p>
-      ) : null}
-      {/* After the sheet closes, a quiet line says it's safe — and offers the next step (the Material itself is in My captures, just below). */}
-      <p role="status" className="px-1 text-[13px] text-ink-muted">
+      {/* After the sheet closes, a quiet line says it's safe — and offers the next step (the Material itself is in My captures). */}
+      <p role="status" className="mt-1 text-[13px] text-ink-muted empty:mt-0">
         {!open && savedLine ? (
           <span className="flex items-center gap-1.5">
             <Check className="size-4 shrink-0 text-success" aria-hidden />
@@ -305,8 +213,13 @@ export function QuickCapture() {
         open={open}
         onOpenChange={(o) => {
           setOpen(o);
-          // Closing a note: its last words are on their way; My captures reads them a moment later.
-          if (!o && saved && !saved.offline) setTimeout(() => window.dispatchEvent(new Event(CAPTURED_EVENT)), 1200);
+          // Closing after a capture: its last words are on their way. Home reads itself again a moment later, so its own
+          // card moves on (from "begin" to "make something from it", start-small.md).
+          if (!o && saved && !saved.offline)
+            setTimeout(() => {
+              window.dispatchEvent(new Event(CAPTURED_EVENT));
+              router.refresh();
+            }, 1200);
         }}
       >
         <DialogContent full title={tab === "text" ? "Quick note" : "Voice note"}>

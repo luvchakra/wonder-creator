@@ -175,15 +175,15 @@ export const HELP_SECTIONS: HelpSection[] = [
         summary: "A note, a voice note, a picture or a short video in a few seconds.",
         keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea", "dictate", "dictation", "speech to text", "mic"],
         steps: [
-          "On Home, under Quick Capture, choose Quick note, Voice note, Quick Pic or Video Note.",
+          "On Home, the two round buttons at the top right, beside the greeting, are Quick note and Voice note.",
           "A note or a voice note opens full screen, with just that one thing on it. For a note, type anything — a line, an idea, something you noticed — or tap the small mic and say it; the words appear as you speak. Tap it again or start typing to go back to the keyboard; you can mix both. There’s no Save button: the note saves itself as you write, and closing the screen keeps it. The three marks at the top make words bold, italic or a bulleted list.",
           "For a voice note, recording starts as soon as the screen opens, and it saves itself when you choose Stop. Then you can play it, select a stretch (drag across the waveform, or use the two sliders) and Trim to it or Cut it out, as many times as you like; Undo steps back. Your edits never change the recording itself. Under More: Share to another app (your phone’s share sheet), Export as WAV (with your edits), Export the original, or Delete. The same editor is on the voice note’s own page. A recording stops by itself at 20 minutes.",
-          "Quick Pic and Video Note offer two ways in: Open the camera, which takes a picture or video now and brings it straight here, or Choose from gallery. For every lens and mode your camera app has, shoot in the camera app first, then choose it from the gallery. You can pick several from the gallery; each becomes its own Material.",
+          "To bring in a picture or a video, open Materials and choose Bring Material in the Palette.",
           "Once it’s saved, add it to a DejaVu if you like (suggested ones appear when there are any). Then choose Make something to start a Creation from it, or Done.",
         ],
         notes: [
           "A note written while you’re offline is kept on your device and sent when you’re back online. Each note keeps its own identity, so nothing lands twice.",
-          "What you capture is private to you. It appears at once under My captures on Home.",
+          "What you capture is private to you. It appears at once in My captures (on Home, under the greeting).",
           "Dictate uses your browser’s own speech-to-text, so it works only in browsers that offer it (some do it on their maker’s service). Where it isn’t available, the note says so: type instead, or record a Voice note.",
         ],
         links: [
@@ -197,8 +197,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         summary: "Your notes, voice notes, pictures and videos, newest first — on Home and day by day.",
         keywords: ["my captures", "captures", "look back", "recent", "notes", "voice notes", "pictures", "videos", "history", "delete capture"],
         steps: [
-          "On Home, My captures (under Quick Capture) shows the last 10 things you caught, newest first. Voice notes play in place.",
-          "Choose the title, My captures, to see everything by day. Filter by All, Notes, Voice, Pictures or Videos.",
+          "On Home, under the greeting, choose My captures to see everything you caught, by day. Voice notes play in place.",
+          "Filter by All, Notes, Voice, Pictures or Videos.",
           "Open one to see it as a Material. To delete one, use its bin; you’re asked first, and it’s removed everywhere.",
         ],
         links: [{ label: "My captures", href: "/captures" }],
@@ -264,7 +264,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         summary: "A place for thoughts, reflections, sketches and fragments, in the order they happened.",
         keywords: ["scrapbook", "post", "thought", "reflection", "sketch", "fragment", "share", "replies", "attach"],
         steps: [
-          "Open Scrapbook from your account menu, or use My Scrapbook on Home.",
+          "Open Scrapbook from your account menu, or choose My Scrapbook on Home, under the greeting.",
           "Choose what you’re sharing — a thought, reflection, sketch or fragment — and write it under “What’s on your mind?”.",
           "Choose Who can see it: people who can see your profile, or only you. Choose Who can reply.",
           "Attach one of your own Materials or Creations if you like, then choose Share.",

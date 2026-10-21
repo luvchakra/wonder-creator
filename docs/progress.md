@@ -306,3 +306,9 @@ already checking while the bytes are inspected, the kind is set with the move to
 runs alongside), the Material is created clean and extracting, and the last intake write runs beside queueing the job.
 `/api/v1/send` receives several files side by side instead of one after another. Not changed: originals are still
 uploaded untouched (no client-side resizing), so a large photo on a slow connection still takes its upload time.
+
+## Home: two capture buttons in the corner, two doors (owner, 21 Oct 2026)
+Quick note and Voice note are two round buttons at the greeting's top right, over the flowers; Quick Pic and Video Note
+are gone from Home (pictures and videos come in through Bring Material). My captures and My Scrapbook are two door
+cards under the greeting instead of a strip of tiles and a Scrapbook list, so Home no longer queries either (one less
+streamed section). The Scrapbook strip components were removed. Closing a capture refreshes Home so its own card moves on.
