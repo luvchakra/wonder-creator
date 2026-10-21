@@ -176,7 +176,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea", "dictate", "dictation", "speech to text", "mic"],
         steps: [
           "On Home, under Quick Capture, choose Quick note, Voice note, Quick Pic or Video Note.",
-          "A note or a voice note opens full screen, with just that one thing on it. For a note, type anything — a line, an idea, something you noticed — or tap the small mic in the note (Dictate) and say it; the words appear as you speak. Tap it again (Stop dictating) or start typing to go back to the keyboard; you can mix both. Save note, or Ctrl or ⌘ with Enter, saves it.",
+          "A note or a voice note opens full screen, with just that one thing on it. For a note, type anything — a line, an idea, something you noticed — or tap the small mic and say it; the words appear as you speak. Tap it again or start typing to go back to the keyboard; you can mix both. There’s no Save button: the note saves itself as you write, and closing the screen keeps it. The three marks at the top make words bold, italic or a bulleted list.",
           "For a voice note, recording starts as soon as the sheet opens. Stop when you’re done, listen back if you like, then choose Save. A recording stops by itself at 20 minutes.",
           "Quick Pic and Video Note offer two ways in: Open the camera, which takes a picture or video now and brings it straight here, or Choose from gallery. For every lens and mode your camera app has, shoot in the camera app first, then choose it from the gallery. You can pick several from the gallery; each becomes its own Material.",
           "Once it’s saved, add it to a DejaVu if you like (suggested ones appear when there are any). Then choose Make something to start a Creation from it, or Done.",
@@ -229,7 +229,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Open Materials from the Palette. The tabs are All, Ideas & Material, In Progress, Created, Shared and Collections. Search sits at the top.",
           "In Ideas & Material you can filter by Notes, Photos, Audio, Video, Documents, Links or Archived.",
-          "Open a Material to read it, or to edit a note’s words; they save as you write. Add a DejaVu right on the page. In the Palette, choose Use in creation to start from it, or Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
+          "Open a Material to read it, or to edit a note’s words; they save as you write. Add a DejaVu right on the page. In the Palette, choose Use in creation to start from it, or Details to give it a title and description (these save as you write too), add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
           "To make a Collection, open the Collections tab and choose New collection. Add Materials to it from a Material’s Palette (Add to Collection).",
         ],
         notes: [

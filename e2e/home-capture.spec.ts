@@ -3,6 +3,8 @@ import { adminPatch, creatorIdOf, fakeMicrophone, expect, test, uid, type Page }
 
 // Phase 02 — Home orchestration + Quick Capture (docs/phases/02-home-quick-capture.md §18).
 
+/** The note has no buttons of its own; leaving it is the close mark (the words are already saved). */
+const closeSheet = (page: Page) => page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 const capture = (page: Page) => page.getByRole("dialog", { name: /^(Quick note|Voice note)$/ });
 
 
@@ -57,18 +59,10 @@ test.describe("Quick Capture", () => {
     // Focused at once; no title, Project, tags or DejaVu asked for.
     await expect(sheet.getByLabel("Quick note")).toBeFocused();
     await sheet.getByLabel("Quick note").fill(`The station should feel like waiting, not travelling — ${thread.toLowerCase()} ${tag}`);
-    await sheet.getByRole("button", { name: /Save note/ }).click();
-    await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
-    // The next step is right there: make something from it (no "capture another" — Home's row is one tap away).
-    await expect(sheet.getByRole("button", { name: "Make something" })).toBeVisible();
-    await expect(sheet.getByRole("button", { name: "Capture another" })).toHaveCount(0);
-
-    // Suggestions arrive later, as suggestions; the creator says yes.
-    const suggestion = sheet.getByRole("button", { name: `Add to ${thread}` });
-    await expect(suggestion).toBeVisible({ timeout: 30_000 });
-    await suggestion.click();
-    await expect(sheet.getByText(thread)).toBeVisible();
-    await sheet.getByRole("button", { name: "Done" }).click();
+    // No Save button: the note saves itself, and the sheet has nothing at the bottom.
+    await expect(sheet.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: /Save|Cancel|Done/ })).toHaveCount(0);
+    await closeSheet(page);
 
     // Back on Home: a quiet line offering the next step; the note itself sits in My captures. It's a Material with exactly one Moment, in the DejaVu.
     const line = page.getByRole("region", { name: "Quick Capture" }).getByRole("status");
@@ -78,7 +72,6 @@ test.describe("Quick Capture", () => {
     const materialId = (await tile.getAttribute("href"))!.split("/").pop()!;
     const moment = await (await page.request.get(`/api/v1/moments/by-entity?entityType=material&entityId=${materialId}`)).json();
     expect(moment.momentId).toBeTruthy();
-    expect(moment.dejavus.map((d: { name: string }) => d.name)).toEqual([thread]);
   });
 
   test("a retry with the same capture id lands exactly once", async ({ page }) => {
@@ -98,10 +91,8 @@ test.describe("Quick Capture", () => {
     await context.setOffline(true);
     await page.getByRole("button", { name: "Quick note" }).click();
     await capture(page).getByLabel("Quick note").fill(text);
-    await capture(page).getByRole("button", { name: /Save note/ }).click();
-    await expect(capture(page).getByRole("status").filter({ hasText: "saved on this device" })).toBeVisible();
-    await capture(page).getByRole("button", { name: "Done" }).click();
     await expect(page.getByText("Offline · saved locally").first()).toBeVisible();
+    await closeSheet(page);
 
     await context.setOffline(false);
     await expect(page.getByRole("region", { name: "Quick Capture" }).getByRole("status")).toContainText("Your offline note is saved now.", { timeout: 15_000 });
@@ -152,17 +143,16 @@ test.describe("Quick Capture", () => {
     await expect(capture(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
     await expect(capture(page).getByRole("status").filter({ hasText: "Listening" })).toBeVisible();
     await say("then spoken", false);
-    await expect(note).toHaveValue(`Typed first ${tag}. then spoken`);
+    await expect(note).toHaveText(`Typed first ${tag}. then spoken`);
     await say("then spoken aloud");
-    await expect(note).toHaveValue(`Typed first ${tag}. then spoken aloud`);
+    await expect(note).toHaveText(`Typed first ${tag}. then spoken aloud`);
     await capture(page).getByRole("button", { name: "Stop dictating" }).click();
     await expect(capture(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
     // Back to the keyboard to finish it.
     await note.press("End");
     await note.pressSequentially(" and typed again");
-    await expect(note).toHaveValue(`Typed first ${tag}. then spoken aloud and typed again`);
-    await capture(page).getByRole("button", { name: /Save note/ }).click();
-    await expect(capture(page).getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
+    await expect(note).toHaveText(`Typed first ${tag}. then spoken aloud and typed again`);
+    await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
     const found = await (await page.request.get(`/api/v1/materials?q=${encodeURIComponent(tag)}`)).json();
     expect(found.items).toHaveLength(1);
   });
@@ -177,7 +167,7 @@ test.describe("Quick Capture", () => {
     await capture(page).getByRole("button", { name: "Dictate" }).click();
     await expect(capture(page).getByRole("status").filter({ hasText: "Dictation isn't available in this browser" })).toBeVisible();
     await capture(page).getByLabel("Quick note").fill("Still typed by hand");
-    await expect(capture(page).getByRole("button", { name: /Save note/ })).toBeEnabled();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   });
 
   test("a voice note records at once, saves the original first, and says honestly when it can't be transcribed", async ({ page }) => {
@@ -208,9 +198,8 @@ test.describe("Quick Capture", () => {
     const words = `The tea stall's kettle sings before the train ${uid()}`;
     await page.getByRole("button", { name: "Quick note" }).click();
     await capture(page).getByLabel("Quick note").fill(words);
-    await capture(page).getByRole("button", { name: /Save note/ }).click();
-    await expect(capture(page).getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
-    await capture(page).getByRole("button", { name: "Done" }).click();
+    await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await closeSheet(page);
     // The note is there at once, without reloading Home.
     await expect(mine.getByRole("link", { name: new RegExp(words) })).toBeVisible();
 

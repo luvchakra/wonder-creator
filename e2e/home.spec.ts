@@ -97,9 +97,8 @@ test.describe("Home Canvas", () => {
     await page.getByRole("button", { name: "Quick note" }).click();
     const sheet = page.getByRole("dialog", { name: "Quick note" });
     await sheet.getByLabel("Quick note").fill(`Rain on the tin roof ${tag}\nThe sound arrives before the train.`);
-    await sheet.getByRole("button", { name: /Save note/ }).click();
-    await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();
-    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(sheet.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await sheet.getByRole("button", { name: "Close" }).click();
     const begin = page.getByRole("region", { name: "Make something from your note" });
     await expect(begin).toContainText(`Rain on the tin roof ${tag}`);
     await expect(page.getByText("Turn something you caught into a Creation.")).toBeVisible();

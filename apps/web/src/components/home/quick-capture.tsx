@@ -1,7 +1,7 @@
 "use client";
-import { Button, Dialog, DialogContent, IconButton, KIT, KitSparklesIcon, Textarea, cn } from "@wonder/ui";
+import { Button, Dialog, DialogContent, KIT, KitSparklesIcon, cn } from "@wonder/ui";
 import type { DejaVu } from "@wonder/creator-moments/shared";
-import { ArrowRight, Camera, Check, Images, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
+import { Camera, Check, Images, Mic, PenLine, Play, Pause, Plus, Square, Video, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CreationSource } from "@/components/new-creation-sheet";
@@ -12,6 +12,8 @@ import { PRIORITY } from "@/lib/context-strip/types";
 import { sendToCreator } from "@/lib/send";
 import { MAX_RECORD_SECONDS, uploadRecording, useAudioRecorder } from "@/components/audio/use-recorder";
 import { useDictation } from "@/components/audio/use-dictation";
+import { autosaveLine, useAutosave } from "@/lib/use-autosave";
+import { NoteEditor } from "./note-editor";
 import { trackClient } from "@/lib/track";
 import { CAPTURED_EVENT } from "./my-captures";
 
@@ -149,12 +151,13 @@ export function QuickCapture() {
     setOpen(true);
     trackClient(which === "text" ? "quick_note_started" : "voice_note_started");
   };
+  // A note saves itself while it's written, so the sheet stays on the note; a voice note shows its saved panel.
   const onSaved = (r: Saved) => {
     setSaved((old) => {
       if (old?.url && old.url !== r.url) URL.revokeObjectURL(old.url);
       return r;
     });
-    setSavedInSheet(true);
+    setSavedInSheet(r.kind !== "note");
     if (r.offline) strip("capture", { text: "Offline · saved locally", tone: "warning", priority: PRIORITY.offline });
     else window.dispatchEvent(new Event(CAPTURED_EVENT));
   };
@@ -301,14 +304,21 @@ export function QuickCapture() {
       </p>
       {making ? <NewCreationSheet open onOpenChange={(o) => !o && setMaking(null)} from={making} /> : null}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          // Closing a note: its last words are on their way; My captures reads them a moment later.
+          if (!o && saved?.kind === "note" && !saved.offline) setTimeout(() => window.dispatchEvent(new Event(CAPTURED_EVENT)), 1200);
+        }}
+      >
         <DialogContent full title={tab === "text" ? "Quick note" : "Voice note"}>
           {!open ? null : savedInSheet && saved ? (
             <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
           ) : (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               {tab === "text" ? (
-                <NoteBody key="text" onCancel={() => setOpen(false)} onSaved={(r) => onSaved({ kind: "note", ...r })} />
+                <NoteBody key="text" onSaved={(r) => onSaved({ kind: "note", ...r })} />
               ) : (
                 <VoiceBody key="voice" onWriteInstead={() => setTab("text")} onSaved={(r) => onSaved({ kind: "voice", ...r })} />
               )}
@@ -420,77 +430,65 @@ function SavedPanel({ saved, line, busy, onDone, onMake }: { saved: Saved; line:
 
 /* ------------------------------------------------------------------------------------------------- Quick note */
 
-function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { materialId: string | null; offline?: boolean }) => void }) {
+function NoteBody({ onSaved }: { onSaved: (r: { materialId: string | null; offline?: boolean }) => void }) {
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // One id per note, made when it's first saved, so a retry is the same note.
-  const clientId = useRef<string | null>(null);
+  // One id per note, made when it's first saved, so a retry is the same note; the Material it becomes follows.
+  const clientId = useRef<string>(crypto.randomUUID());
+  const materialId = useRef<string | null>(null);
   // Type, or tap the mic and say it: the browser's dictation writes into the same note.
   const dictation = useDictation(setText);
-  async function save() {
-    const body = text.trim();
-    if (!body || busy) return;
-    dictation.stop();
-    clientId.current ??= crypto.randomUUID();
-    const keepLocally = () => {
-      writeQueue([...readQueue().filter((p) => p.clientId !== clientId.current), { clientId: clientId.current!, text: body, at: new Date().toISOString() }]);
-      onSaved({ materialId: null, offline: true });
-    };
-    if (!navigator.onLine) return keepLocally();
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await api<{ materialId: string | null }>("/api/v1/capture", { method: "POST", json: { kind: "note", clientId: clientId.current, text: body } });
-      onSaved({ materialId: r.materialId });
-    } catch (e) {
-      if (unreachable(e)) keepLocally();
-      else setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  // No Save button (owner, 21 Oct 2026): the first words make the note, every later change updates it, and leaving the
+  // screen sends whatever is left. A note written offline is kept on this device and sent when the connection returns.
+  const auto = useAutosave({
+    value: text,
+    saved: "",
+    delayMs: 1000,
+    send: async (v) => {
+      const body = v.trim();
+      if (!body) return;
+      setError(null);
+      if (materialId.current) {
+        await api(`/api/v1/materials/${materialId.current}`, { method: "PATCH", json: { textContent: v } }).catch((e) => (setError(errorMessage(e)), Promise.reject(e)));
+        return;
+      }
+      if (!navigator.onLine) {
+        writeQueue([...readQueue().filter((p) => p.clientId !== clientId.current), { clientId: clientId.current, text: body, at: new Date().toISOString() }]);
+        onSaved({ materialId: null, offline: true });
+        return;
+      }
+      try {
+        const r = await api<{ materialId: string | null }>("/api/v1/capture", { method: "POST", json: { kind: "note", clientId: clientId.current, text: v } });
+        materialId.current = r.materialId;
+        onSaved({ materialId: r.materialId });
+      } catch (e) {
+        if (unreachable(e)) {
+          writeQueue([...readQueue().filter((p) => p.clientId !== clientId.current), { clientId: clientId.current, text: body, at: new Date().toISOString() }]);
+          onSaved({ materialId: null, offline: true });
+          return;
+        }
+        setError(errorMessage(e));
+        throw e;
+      }
+    },
+    leave: (v) =>
+      materialId.current
+        ? { url: `/api/v1/materials/${materialId.current}`, method: "PATCH", json: { textContent: v } }
+        : { url: "/api/v1/capture", method: "POST", json: { kind: "note", clientId: clientId.current, text: v } },
+  });
   return (
-    <form
-      className="flex min-h-0 flex-1 flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void save();
-      }}
-    >
-      <label htmlFor="quick-note" className="sr-only">
-        Quick note
-      </label>
-      <div className="relative min-h-0 flex-1">
-        <Textarea
-          id="quick-note"
-          autoFocus
-          value={text}
-          onChange={(e) => {
-            // Typing takes over from dictation, so what's typed is never written over.
-            if (dictation.listening) dictation.stop();
-            setText(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              void save();
-            }
-          }}
-          placeholder={dictation.listening ? "Listening…" : "Type, or tap the mic and say it…"}
-          className="h-full min-h-36 resize-none pb-12 font-display text-[16px]"
-          maxLength={200000}
-        />
-        <IconButton
-          label={dictation.listening ? "Stop dictating" : "Dictate"}
-          aria-pressed={dictation.listening}
-          variant={dictation.listening ? "soft" : "ghost"}
-          onClick={() => dictation.toggle(text)}
-          className="absolute bottom-1 right-1"
-        >
-          {dictation.listening ? <Square className="size-4 fill-current" aria-hidden /> : <Mic className="size-[18px]" aria-hidden />}
-        </IconButton>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col" onBlur={() => void auto.flush()}>
+      <NoteEditor
+        value={text}
+        label="Quick note"
+        placeholder={dictation.listening ? "Listening…" : "Type, or tap the mic and say it…"}
+        onChange={(md) => {
+          // Typing takes over from dictation, so what's typed is never written over.
+          if (dictation.listening) dictation.stop();
+          setText(md);
+        }}
+        dictation={{ listening: dictation.listening, onToggle: () => dictation.toggle(text) }}
+      />
       {dictation.notice ? (
         <p role="status" className="text-[13px] text-ink-muted">
           {dictation.notice}
@@ -500,19 +498,12 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
-      ) : null}
-      <div className="flex items-center justify-between gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-        <span className="text-[12px] tabular-nums text-ink-subtle" aria-hidden>
-          {text.length || ""}
-        </span>
-        <Button type="submit" loading={busy} disabled={!text.trim()}>
-          Save note <ArrowRight className="size-4" aria-hidden />
-        </Button>
-      </div>
-    </form>
+      ) : (
+        <p role="status" aria-live="polite" className="h-4 text-[12.5px] text-ink-subtle">
+          {autosaveLine(auto.state)}
+        </p>
+      )}
+    </div>
   );
 }
 

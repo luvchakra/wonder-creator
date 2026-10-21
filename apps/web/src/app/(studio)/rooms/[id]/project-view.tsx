@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { ArtifactCard, MaterialCard, type ArtifactCardData, type MaterialCardData } from "@/components/cards";
 import { RelativeTime } from "@/components/client-time";
 import { api, errorMessage } from "@/lib/client";
+import { autosaveLine, useAutosave } from "@/lib/use-autosave";
 import { CommunityPrivacyDialog } from "@/components/community/community-actions";
 import { BackLink } from "@/components/back-link";
 
@@ -774,37 +775,38 @@ function EditDialog({ project, onOpenChange, onSaved }: { project: Project; onOp
 
 function NoteDialog({ projectId, item, onOpenChange, onSaved }: { projectId: string; item: Item; onOpenChange: (o: boolean) => void; onSaved: () => void }) {
   const [note, setNote] = useState(item.note ?? "");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The note saves itself (owner, 21 Oct 2026); closing the dialog refreshes the Room so the note shows.
+  const url = `/api/v1/projects/${projectId}/items`;
+  const body = (v: string) => ({ itemId: item.id, note: v.trim() || null });
+  const auto = useAutosave({
+    value: note,
+    saved: item.note ?? "",
+    send: async (v) => {
+      try {
+        setError(null);
+        await api(url, { method: "PATCH", json: body(v) });
+      } catch (err) {
+        setError(errorMessage(err));
+        throw err;
+      }
+    },
+    leave: (v) => ({ url, method: "PATCH", json: body(v) }),
+  });
+  async function close(open: boolean) {
+    if (open) return onOpenChange(true);
+    await auto.flush();
+    onSaved();
+  }
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={(o) => void close(o)}>
       <DialogContent title="Note" description={`Why “${item.title}” belongs in this Creative Room.`}>
-        <form
-          className="space-y-4"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            try {
-              await api(`/api/v1/projects/${projectId}/items`, { method: "PATCH", json: { itemId: item.id, note: note.trim() || null } });
-              onSaved();
-            } catch (err) {
-              setError(errorMessage(err));
-              setBusy(false);
-            }
-          }}
-        >
-          <Field label="Note" htmlFor="item-note" error={error}>
-            <Textarea id="item-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className="min-h-24" autoFocus />
-          </Field>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={busy}>
-              Save note
-            </Button>
-          </div>
-        </form>
+        <Field label="Note" htmlFor="item-note" error={error}>
+          <Textarea id="item-note" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => void auto.flush()} maxLength={500} className="min-h-24" autoFocus />
+        </Field>
+        <p role="status" aria-live="polite" className="mt-1 h-4 text-[12.5px] text-ink-subtle">
+          {autosaveLine(auto.state)}
+        </p>
       </DialogContent>
     </Dialog>
   );
