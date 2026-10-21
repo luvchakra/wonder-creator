@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 import { flagOn, requireFeature } from "./features";
 import { mfaPending } from "./mfa";
 import { forgetNotifications } from "./notifications";
+import { noteUserCall } from "./abuse-watch";
 import { clientIp } from "./request-ip";
 import type { Flag } from "./flags";
 import { createClient } from "./supabase/server";
@@ -89,8 +90,10 @@ export interface ApiOptions {
   allowPendingMfa?: boolean;
 }
 
-function problem(status: number, code: string, message: string, requestId: string, details?: unknown) {
-  return NextResponse.json({ error: { code, message, details, requestId } }, { status, headers: { "x-request-id": requestId, "cache-control": "no-store" } });
+function problem(status: number, code: string, message: string, requestId: string, details?: unknown, retryAfterS?: number) {
+  const headers: Record<string, string> = { "x-request-id": requestId, "cache-control": "no-store" };
+  if (status === 429) headers["retry-after"] = String(retryAfterS ?? 60);
+  return NextResponse.json({ error: { code, message, details, requestId } }, { status, headers });
 }
 
 /**
@@ -123,6 +126,10 @@ export function withApi<P = Record<string, string>>(
       const { data: claims } = await db.auth.getClaims();
       const userId = (claims?.claims?.sub as string | undefined) ?? "";
       if (!userId && !opts.public) throw new DomainError("unauthenticated", "Please sign in to continue.");
+      if (userId) {
+        const wait = noteUserCall(userId, req.nextUrl.pathname);
+        if (wait !== null) return problem(429, "rate_limited", "You're going a little fast. Please try again in a while.", requestId, undefined, wait);
+      }
       let creatorId = "";
       const limit = opts.rateLimit ?? (req.method === "GET" ? 120 : 60);
       // The creator lookup and the rate limit don't depend on each other: each is a round trip, so they go together.

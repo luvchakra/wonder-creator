@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { FeaturesProvider } from "@/components/features";
 import { PaletteProvider } from "@/components/creative-palette";
@@ -8,6 +9,9 @@ import { mediaLink } from "@wonder/core/server";
 import { preloadPaletteButton } from "@/lib/brand-preload";
 import { flags } from "@/lib/features";
 import { requireSession } from "@/lib/session";
+
+// Signed-in screens are never indexed or used to train models.
+export const metadata: Metadata = { robots: { index: false, follow: false }, other: { robots: "noindex, nofollow, noai, noimageai" } };
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
