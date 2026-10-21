@@ -27,7 +27,7 @@ test.describe("Home Canvas", () => {
     await page.goto("/");
     const rows = page.getByRole("list", { name: "Creations in progress" });
     await expect(rows.getByRole("link", { name: new RegExp(title) })).toContainText(/Poem · Edited (just now|\d+ min ago)/);
-    await expect(page.getByRole("heading", { name: "Continue" }).getByRole("link")).toHaveAttribute("href", "/creations");
+    await expect(page.getByRole("heading", { name: "My Creations" }).getByRole("link")).toHaveAttribute("href", "/creations");
     // Fewer buttons (owner, 4 Oct 2026): no "All …" rows — a section's title is its link.
     await expect(page.getByRole("link", { name: /^All (scraps|my creations|testimonials)$/ })).toHaveCount(0);
     // Sections only appear with something real in them: nothing happened, no one's waiting, nothing old to rediscover.
