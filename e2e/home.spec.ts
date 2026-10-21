@@ -95,7 +95,7 @@ test.describe("Home Canvas", () => {
 
     // 2. Caught a note: Home moves on by itself, no reload — "make something from it", in the note's own words.
     await page.getByRole("button", { name: "Quick note" }).click();
-    const sheet = page.getByRole("dialog", { name: "Quick Capture" });
+    const sheet = page.getByRole("dialog", { name: "Quick note" });
     await sheet.getByLabel("Quick note").fill(`Rain on the tin roof ${tag}\nThe sound arrives before the train.`);
     await sheet.getByRole("button", { name: /Save note/ }).click();
     await expect(sheet.getByRole("status").filter({ hasText: "Note saved" })).toBeVisible();

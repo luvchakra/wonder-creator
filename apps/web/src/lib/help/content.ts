@@ -165,7 +165,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* ----------------------------------------------------------------------------------------- Capturing and keeping */
   {
     id: "capturing",
-    updated: "2026-10-17",
+    updated: "2026-10-21",
     title: "Capturing and keeping",
     blurb: "Get ordinary moments in quickly, and find them again.",
     topics: [
@@ -176,7 +176,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         keywords: ["quick note", "voice note", "quick pic", "video note", "record", "capture", "microphone", "photo", "offline", "idea", "dictate", "dictation", "speech to text", "mic"],
         steps: [
           "On Home, under Quick Capture, choose Quick note, Voice note, Quick Pic or Video Note.",
-          "For a note, type anything — a line, an idea, something you noticed — or tap the small mic in the note (Dictate) and say it; the words appear as you speak. Tap it again (Stop dictating) or start typing to go back to the keyboard; you can mix both. Save note, or Ctrl or ⌘ with Enter, saves it.",
+          "A note or a voice note opens full screen, with just that one thing on it. For a note, type anything — a line, an idea, something you noticed — or tap the small mic in the note (Dictate) and say it; the words appear as you speak. Tap it again (Stop dictating) or start typing to go back to the keyboard; you can mix both. Save note, or Ctrl or ⌘ with Enter, saves it.",
           "For a voice note, recording starts as soon as the sheet opens. Stop when you’re done, listen back if you like, then choose Save. A recording stops by itself at 20 minutes.",
           "Quick Pic and Video Note offer two ways in: Open the camera, or Choose from gallery. You can pick several from the gallery; each becomes its own Material.",
           "Once it’s saved, add it to a DejaVu if you like (suggested ones appear when there are any). Then choose Make something to start a Creation from it, or Done.",

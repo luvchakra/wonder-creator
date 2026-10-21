@@ -323,26 +323,11 @@ export function QuickCapture() {
       {making ? <NewCreationSheet open onOpenChange={(o) => !o && setMaking(null)} from={making} /> : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Quick Capture" art={KIT.iconChip.pencil}>
+        <DialogContent full title={tab === "text" ? "Quick note" : "Voice note"}>
           {!open ? null : savedInSheet && saved ? (
             <SavedPanel saved={saved} line={savedLine ?? ""} busy={makeBusy} onDone={() => setOpen(false)} onMake={saved.materialId ? () => void makeFrom(saved.materialId!) : null} />
           ) : (
-            <div className="space-y-3">
-              <div role="tablist" aria-label="Capture" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
-                {(["text", "voice"] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === k}
-                    onClick={() => setTab(k)}
-                    className={cn("inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full text-[14px] font-medium", tab === k ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink")}
-                  >
-                    {k === "text" ? <PenLine className="size-4" aria-hidden /> : <Mic className="size-4" aria-hidden />}
-                    {k === "text" ? "Text" : "Voice"}
-                  </button>
-                ))}
-              </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
               {tab === "text" ? (
                 <NoteBody key="text" onCancel={() => setOpen(false)} onSaved={(r) => onSaved({ kind: "note", ...r })} />
               ) : (
@@ -488,7 +473,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
   }
   return (
     <form
-      className="space-y-3"
+      className="flex min-h-0 flex-1 flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         void save();
@@ -497,7 +482,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
       <label htmlFor="quick-note" className="sr-only">
         Quick note
       </label>
-      <div className="relative">
+      <div className="relative min-h-0 flex-1">
         <Textarea
           id="quick-note"
           autoFocus
@@ -514,7 +499,7 @@ function NoteBody({ onCancel, onSaved }: { onCancel: () => void; onSaved: (r: { 
             }
           }}
           placeholder={dictation.listening ? "Listening…" : "Type, or tap the mic and say it…"}
-          className="min-h-36 pb-12 font-display text-[16px]"
+          className="h-full min-h-36 resize-none pb-12 font-display text-[16px]"
           maxLength={200000}
         />
         <IconButton
@@ -623,7 +608,7 @@ function VoiceBody({ onSaved, onWriteInstead }: { onSaved: (r: { materialId: str
     );
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-1 flex-col justify-center space-y-4">
       <p className="text-center font-display text-[32px] tabular-nums leading-none text-ink" aria-live="off">
         {clock(seconds)}
       </p>

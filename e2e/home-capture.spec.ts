@@ -3,7 +3,7 @@ import { adminPatch, creatorIdOf, fakeMicrophone, expect, test, uid, type Page }
 
 // Phase 02 — Home orchestration + Quick Capture (docs/phases/02-home-quick-capture.md §18).
 
-const capture = (page: Page) => page.getByRole("dialog", { name: "Quick Capture" });
+const capture = (page: Page) => page.getByRole("dialog", { name: /^(Quick note|Voice note)$/ });
 
 
 test.describe("Quick Capture", () => {
@@ -53,7 +53,7 @@ test.describe("Quick Capture", () => {
     await page.goto("/");
     await page.getByRole("region", { name: "Quick Capture" }).getByRole("button", { name: "Quick note" }).click();
     const sheet = capture(page);
-    await expect(sheet.getByRole("tab", { name: "Text" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("dialog", { name: "Quick note" })).toBeVisible();
     // Focused at once; no title, Project, tags or DejaVu asked for.
     await expect(sheet.getByLabel("Quick note")).toBeFocused();
     await sheet.getByLabel("Quick note").fill(`The station should feel like waiting, not travelling — ${thread.toLowerCase()} ${tag}`);
@@ -185,7 +185,7 @@ test.describe("Quick Capture", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Voice note" }).click();
     const sheet = capture(page);
-    await expect(sheet.getByRole("tab", { name: "Voice" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("dialog", { name: "Voice note" })).toBeVisible();
     await expect(sheet.getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.waitForTimeout(1500);
     await sheet.getByRole("button", { name: "Stop" }).click();
@@ -289,7 +289,7 @@ test.describe("Quick Capture", () => {
     const sheet = capture(page);
     await expect(sheet.getByRole("alert")).toContainText("Microphone access is off");
     await sheet.getByRole("button", { name: "Write a quick note" }).click();
-    await expect(sheet.getByRole("tab", { name: "Text" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("dialog", { name: "Quick note" })).toBeVisible();
     await expect(sheet.getByLabel("Quick note")).toBeVisible();
   });
 });
