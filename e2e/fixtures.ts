@@ -522,3 +522,16 @@ export async function fakeMicrophone(page: Page, allowed: boolean) {
     };
   }, allowed);
 }
+
+/** A Material page has no buttons of its own: Details and Use in creation are in the Palette, which opens them by address. */
+export async function openMaterialDetails(page: Page) {
+  await page.evaluate(() => {
+    location.hash = "details";
+  });
+  await expect(page.getByRole("dialog", { name: "Details" })).toBeVisible();
+}
+export async function useMaterialInCreation(page: Page) {
+  await page.evaluate(() => {
+    location.hash = "use";
+  });
+}

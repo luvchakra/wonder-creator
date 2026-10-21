@@ -41,13 +41,14 @@ describe("context-aware Palette", () => {
 
   it("follows the Material's medium (§9.5–9.8)", () => {
     const m = (entityType: PaletteContext["entityType"]) => labels({ page: "material", entityType, permissions: OWNER, ids: { materialId: "m1" }, facts: { related: "tide" } });
-    // The page itself shows Use in creation and Details (owner, 4 Oct 2026: fewer buttons), so the Palette doesn't repeat them.
-    expect(m("photo")).toEqual(["Find related", "Add to Collection", "Explore possibilities"]);
-    expect(m("audio")).toEqual(["Use the words", "Find related", "Add to Collection"]);
-    expect(m("note")).toEqual(["Extract ideas", "Find related", "Add to Collection"]);
+    // The Material page has no buttons of its own (owner, 21 Oct 2026), so Use in creation leads here and Details waits under More…
+    expect(m("photo")).toEqual(["Use in creation", "Find related", "Add to Collection"]);
+    expect(m("audio")).toEqual(["Use in creation", "Use the words", "Find related"]);
+    expect(m("note")).toEqual(["Use in creation", "Extract ideas", "Find related"]);
     // Adding it to a Creative Room waits under More…, and only for the creator's own Material.
     const own = resolvePalette({ page: "material", entityType: "photo", permissions: OWNER, ids: { materialId: "m1" }, facts: { related: "tide" } });
     expect(own.more.map((x) => x.label)).toContain("Add to a Creative Room");
+    expect(own.more.map((x) => x.label)).toContain("Details");
     const theirs = resolvePalette({ page: "material", entityType: "photo", permissions: [], ids: { materialId: "m1" } });
     expect([...theirs.primary, ...theirs.more].map((x) => x.id)).not.toContain("room");
   });

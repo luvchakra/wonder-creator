@@ -1,4 +1,4 @@
-import { expect, poemFromNote, test, type Page } from "./fixtures";
+import { expect, poemFromNote, test, type Page, openMaterialDetails } from "./fixtures";
 
 async function openStudio(page: Page, artifactId: string) {
   await page.goto(`/creations/${artifactId}/studio`);
@@ -141,7 +141,7 @@ test.describe("Studio, versions and lineage", () => {
     await source.click();
     await expect(page).toHaveURL(new RegExp(`/materials/${materialId}$`));
     await expect(page.getByText("in 1 Creation")).toBeVisible();
-    await page.getByRole("button", { name: "Details" }).click();
+    await openMaterialDetails(page);
     const usedIn = page.getByRole("dialog", { name: "Details" }).getByRole("region", { name: "Used in" });
     await expect(usedIn.getByRole("link")).toHaveAttribute("href", `/creations/${artifactId}`);
   });
