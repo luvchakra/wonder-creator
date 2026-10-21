@@ -226,13 +226,18 @@ export async function receiveFile(
     provenance: ext
       ? { origin: "import", sourceUrl: ext.sourceUrl, originalFilename: name, sha256: inspected.sha256, details: { provider: ext.provider, license: ext.license, licenseUrl: ext.licenseUrl, creator: ext.creator } }
       : { origin: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice_recording" : "upload", originalFilename: name, sha256: inspected.sha256 },
-    // Checked clean above, and extraction is next: written that way at once instead of two more updates.
-    securityStatus: "clean",
-    processingState: "extracting",
   });
-  // The intake takes its Material and moves on in one write; the background job is queued alongside.
-  [item] = await Promise.all([transition(deps, item, "extracting", { material_id: material.id, storage_object_id: obj.id }), enqueue(deps, item.id)]);
-  return item;
+  // A session can't set a material's scan or processing state (migration …008's guard resets them on insert), so the
+  // server marks it clean and extracting. That write, the intake taking its Material, and queueing the job don't depend
+  // on each other: they go together.
+  const [extracting] = await Promise.all([
+    transition(deps, item, "extracting", { material_id: material.id, storage_object_id: obj.id }),
+    deps.service.from("creative_materials").update({ security_status: "clean", processing_state: "extracting" }).eq("id", material.id).eq("creator_id", deps.creatorId).then(({ error }) => {
+      if (error) throw fromDbError(error);
+    }),
+    enqueue(deps, item.id),
+  ]);
+  return extracting;
 }
 
 export async function receiveUrl(deps: IntakeDeps, input: { batchId: string; url: string; instruction?: string | null }) {

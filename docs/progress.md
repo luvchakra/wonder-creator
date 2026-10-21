@@ -318,3 +318,6 @@ Public `/careers`, `/careers/{id}` (apply) and `/careers/status` (follow, withdr
 no applicant data. The career-site key is set by platform administrators in Settings › Careers (Vault, masked, audited;
 env fallback). Contract: `docs/careers.md`. Owner: set `WONDERCREATOR_PLATFORM_ADMIN_EMAILS`, paste the key, register the
 careers address in WonderJobs.
+Fix (same PR): the Quick Pic speed-up (#200) dropped the server write that marks a received file's Material clean — a
+session can't set it (…008's guard) — so files stayed "pending". Restored, run alongside the intake's last write and
+the job queueing (receiveFile stays at 7 dependent round trips); migration …097 repairs the one Material affected.
