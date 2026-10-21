@@ -284,3 +284,10 @@ and on leaving the page; a quiet Saving…/Saved line). Done: the Material page 
 notes/tags/shelf, a Creative Room item's note. Kept as explicit saves on purpose: forms that create something, anything
 that changes who can see it or rights (Share, conversation visibility, Settings, consent), names that must not be
 empty (rename, collection), and Memory entries.
+
+## Quick note: no buttons, a few formats (owner, 21 Oct 2026)
+A quick note is a borderless writing surface with bold, italic and a bulleted list (`components/home/note-editor.tsx`),
+stored as plain text with `**`, `_` and `- ` markers (`lib/mini-markdown.ts`), so everything that reads a note still
+reads it. Nothing at the bottom: the first words create the Material, later changes update it (`useAutosave`), and
+closing the screen keeps it. DejaVu suggestions for a note are no longer offered in the sheet; the DejaVu control is on
+the Material page.
