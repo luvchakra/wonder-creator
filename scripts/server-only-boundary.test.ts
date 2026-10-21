@@ -16,6 +16,8 @@ const FORBIDDEN = [
   /@\/lib\/supabase\/(service|server)/,
   /@\/lib\/(session|features|payments|sources|api)["']/,
   /@\/lib\/help\/content/,
+  /@\/lib\/careers\/wonderjobs/,
+  /@\/lib\/platform-admin/,
   /livekit-server-sdk/,
 ];
 

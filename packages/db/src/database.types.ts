@@ -593,6 +593,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"careers_connection": {
+                  Row: {
+                    "hint": string,"id": boolean,"updated_at": string,"updated_by": string | null,"vault_secret_id": string
+                  }
+                  Insert: {
+                    "hint": string,"id"?: boolean,"updated_at"?: string,"updated_by"?: string | null,"vault_secret_id": string
+                  }
+                  Update: {
+                    "hint"?: string,"id"?: boolean,"updated_at"?: string,"updated_by"?: string | null,"vault_secret_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "careers_connection_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "creators"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"carousel_slides": {
                   Row: {
                     "artifact_id": string,"asset_id": string | null,"created_at": string,"creator_id": string,"display_text": string,"id": string,"image_transform": NonNullable<Json>,"order_index": number,"overlay": NonNullable<Json>,"pending_asset_id": string | null,"source_text": string,"updated_at": string
@@ -4368,6 +4387,18 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"careers_key_clear":
+{ Args: { "p_creator": string }; Returns: undefined
+                           },
+"careers_key_secret":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"careers_key_store":
+{ Args: { "p_creator": string,"p_hint": string,"p_secret": string }; Returns: {
+              "hint": string,
+"updated_at": string
+            }[]
+                           },
 "campaign_agree_deliverable":
 { Args: { "p_deliverable": string }; Returns: undefined
                            },

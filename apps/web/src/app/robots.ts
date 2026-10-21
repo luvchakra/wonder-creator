@@ -26,7 +26,7 @@ const AI_CRAWLERS = [
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      { userAgent: "*", allow: "/", disallow: ["/api/", "/help", "/s/", "/embed/", "/auth/", "/consent", "/onboarding"] },
+      { userAgent: "*", allow: "/", disallow: ["/api/", "/help", "/s/", "/embed/", "/auth/", "/consent", "/onboarding", "/careers/status"] },
       { userAgent: AI_CRAWLERS, disallow: "/" },
     ],
   };

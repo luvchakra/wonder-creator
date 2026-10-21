@@ -1128,7 +1128,7 @@ export const HELP_SECTIONS: HelpSection[] = [
   /* --------------------------------------------------------------------------------------------------- Reaching us */
   {
     id: "contact",
-    updated: "2026-10-16",
+    updated: "2026-10-21",
     title: "Reaching us",
     blurb: "The ways to get in touch are the ones that already exist in the product.",
     topics: [
@@ -1149,6 +1149,19 @@ export const HELP_SECTIONS: HelpSection[] = [
           { label: "Security", href: "/legal/security" },
           { label: "Privacy notice", href: "/legal/privacy" },
         ],
+      },
+      {
+        slug: "careers",
+        title: "Working at Wonder Creator",
+        summary: "Open positions, applying, and following your application.",
+        keywords: ["careers", "jobs", "job", "hiring", "apply", "application", "work with us", "position", "vacancy", "resume", "résumé", "withdraw"],
+        steps: [
+          "Open Careers, at the foot of every public page, to see the positions open right now: where, how (remote, hybrid or on-site), the type and, when given, the pay.",
+          "Open a position to read it, share it, or apply. Add your name, email and a link to your résumé (Google Drive, Dropbox, LinkedIn or your own site), and tick the box to agree to how your application is kept.",
+          "You get an email confirming it, with a link to follow your application. That page shows its status and lets you withdraw it while that's still possible.",
+        ],
+        notes: ["Applications are handled by our hiring team's own system, not kept in your Wonder Creator account. If Careers says it isn't set up or is unavailable, try again later."],
+        links: [{ label: "Careers", href: "/careers" }],
       },
     ],
   },

@@ -312,3 +312,9 @@ Quick note and Voice note are two round buttons at the greeting's top right, ove
 are gone from Home (pictures and videos come in through Bring Material). My captures and My Scrapbook are two door
 cards under the greeting instead of a strip of tiles and a Scrapbook list, so Home no longer queries either (one less
 streamed section). The Scrapbook strip components were removed. Closing a capture refreshes Home so its own card moves on.
+
+## Careers through WonderJobs (owner, 21 Oct 2026)
+Public `/careers`, `/careers/{id}` (apply) and `/careers/status` (follow, withdraw), backed by WonderJobs; this app stores
+no applicant data. The career-site key is set by platform administrators in Settings › Careers (Vault, masked, audited;
+env fallback). Contract: `docs/careers.md`. Owner: set `WONDERCREATOR_PLATFORM_ADMIN_EMAILS`, paste the key, register the
+careers address in WonderJobs.

@@ -9,7 +9,7 @@ import type { HelpTopic } from "./types";
 export const PUBLIC_HELP_SLUGS = ["creating-an-account", "signing-in", "sign-in-trouble"] as const;
 
 /** Pages a signed-out visitor can open. A public topic links only to these, so nothing public points at a sign-in wall. */
-export const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/account-help", "/contact", "/about", "/legal/privacy", "/legal/terms", "/legal/security", "/legal/subprocessors"] as const;
+export const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/account-help", "/contact", "/about", "/careers", "/legal/privacy", "/legal/terms", "/legal/security", "/legal/subprocessors"] as const;
 
 export function isPublicPath(href: string): boolean {
   return (PUBLIC_PATHS as readonly string[]).includes(href.split(/[?#]/)[0]!);

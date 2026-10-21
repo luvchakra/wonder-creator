@@ -119,6 +119,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // An applicant's status link carries their token: never sent on as a referrer, never indexed. Listed after the
+        // catch-all so its Referrer-Policy wins.
+        source: "/careers/status",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
         // Embeds of private links the creator made embeddable (the page checks that): framable by https sites,
         // and the link token is never sent on as a referrer.
         source: "/embed/:token",
