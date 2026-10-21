@@ -36,6 +36,7 @@ const COLUMNS: Array<{ label: string; title: string; links: Array<[string, strin
       ["/sign-up", "Start Creating"],
       ["/sign-in", "Sign in"],
       ["/about", "About"],
+      ["/careers", "Careers"],
       ["/account-help", "Account help"],
       ["/contact", "Contact"],
     ],

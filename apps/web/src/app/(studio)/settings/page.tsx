@@ -4,6 +4,7 @@ import { selectMediaProvider } from "@wonder/creator-huddle/media";
 import { paymentsConfigFromEnv, paymentsReadiness } from "@wonder/creator-payments";
 import { PageTitle } from "@wonder/ui";
 import { avatarUrls } from "@/lib/avatars";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 import { requireSession } from "@/lib/session";
 import { SettingsView } from "./settings-view";
 import { PaletteScope } from "@/components/creative-palette";
@@ -61,6 +62,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           brand={brand}
           blocked={(blocks.data ?? []).map((b) => ({ id: b.blocked_creator_id, name: (b.creators as { display_name: string } | null)?.display_name ?? "Creator", handle: (b.creators as { handle: string | null } | null)?.handle ?? null }))}
           readiness={{ ai: providerReadiness(), mediaConfigured: selectMediaProvider().configured, payments: paymentsReadiness(paymentsConfigFromEnv()) }}
+          platformAdmin={isPlatformAdminEmail(user.user?.email)}
         />
       </div>
     </>
