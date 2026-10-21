@@ -299,3 +299,10 @@ Edits are non-destructive (`lib/audio-edit.ts`): the kept parts live in the Mate
 through `PATCH /api/v1/materials/:id` (`audioEdit`), and playback on Home, My captures and the Material page honours
 them. The recording saves itself on Stop. Transcripts are of the full recording. Not offered: MP3/AAC export (would need
 an encoder library).
+
+## Quick Pic saves faster (owner, 21 Oct 2026)
+Receiving a file (`receiveFile`) took 14 dependent database round trips; it now takes 7. The intake row is written
+already checking while the bytes are inspected, the kind is set with the move to the security check (the hash lookup
+runs alongside), the Material is created clean and extracting, and the last intake write runs beside queueing the job.
+`/api/v1/send` receives several files side by side instead of one after another. Not changed: originals are still
+uploaded untouched (no client-side resizing), so a large photo on a slow connection still takes its upload time.

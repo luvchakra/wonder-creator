@@ -52,11 +52,11 @@ async function transition(deps: IntakeDeps, item: IntakeItem, to: IntakeState, p
   return data;
 }
 
-async function newIntake(deps: IntakeDeps, row: { batchId: string; kind: InputKind; sourceUrl?: string | null; instruction?: string | null }): Promise<IntakeItem> {
+async function newIntake(deps: IntakeDeps, row: { batchId: string; kind: InputKind; sourceUrl?: string | null; instruction?: string | null; state?: IntakeState }): Promise<IntakeItem> {
   return must(
     await deps.service
       .from("intake_items")
-      .insert({ creator_id: deps.creatorId, batch_id: row.batchId, input_kind: row.kind, source_url: row.sourceUrl ?? null, instruction: row.instruction ?? null })
+      .insert({ creator_id: deps.creatorId, batch_id: row.batchId, input_kind: row.kind, source_url: row.sourceUrl ?? null, instruction: row.instruction ?? null, ...(row.state ? { state: row.state } : {}) })
       .select("*")
       .single(),
   );
@@ -148,13 +148,18 @@ export async function receiveFile(
   },
 ) {
   const name = safeFilename(input.filename);
-  const item0 = await newIntake(deps, { batchId: input.batchId, kind: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice" : "document", instruction: input.instruction });
-  let item = await transition(deps, item0, "validating");
+  // Each step here is a database round trip (~90 ms live), so the independent ones go together (Quick Pic was slow,
+  // owner, 21 Oct 2026): the intake row is written already checking while the bytes are inspected, the kind is set with
+  // the move to the security check, and the hash lookup runs alongside that.
+  const inspecting = inspectUpload(input.bytes, name ?? undefined).then(
+    (v) => ({ ok: true as const, v }),
+    (e: unknown) => ({ ok: false as const, e }),
+  );
+  let item = await newIntake(deps, { batchId: input.batchId, kind: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice" : "document", instruction: input.instruction, state: "validating" });
 
-  let inspected;
-  try {
-    inspected = await inspectUpload(input.bytes, name ?? undefined);
-  } catch (e) {
+  const result = await inspecting;
+  if (!result.ok) {
+    const e = result.e;
     const code = isDomainError(e) ? e.code : "internal";
     const message = isDomainError(e) ? e.message : "We couldn't check that file.";
     // Unsafe or unsupported bytes are not stored; the attempt is recorded.
@@ -162,13 +167,16 @@ export async function receiveFile(
     await publishEvent(deps.db, { type: "CreativeMaterialSecurityRejected", aggregate: "material", aggregateId: null, payload: { reason: code, intakeId: item.id } });
     throw e;
   }
+  const inspected = result.v;
   const kindForInput: InputKind =
     input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice" : inspected.kind === "text" ? "document" : inspected.kind === "pdf" ? "pdf" : inspected.kind;
-  item = must(await deps.service.from("intake_items").update({ input_kind: kindForInput }).eq("id", item.id).select("*").single());
-  item = await transition(deps, item, "security_review");
 
   // Hash reputation check before anything is stored. Known malware is never kept.
-  const scan = await (deps.scanner ?? selectMalwareScanner()).scan({ sha256: inspected.sha256, size: inspected.size, mime: inspected.mime });
+  const [moved, scan] = await Promise.all([
+    transition(deps, item, "security_review", { input_kind: kindForInput }),
+    (deps.scanner ?? selectMalwareScanner()).scan({ sha256: inspected.sha256, size: inspected.size, mime: inspected.mime }),
+  ]);
+  item = moved;
   if (scan.verdict === "malicious") {
     const message = "This file matches known malware, so we didn't keep it.";
     await transition(deps, item, "quarantined", { error_code: "security_rejected", error_message: message });
@@ -218,11 +226,12 @@ export async function receiveFile(
     provenance: ext
       ? { origin: "import", sourceUrl: ext.sourceUrl, originalFilename: name, sha256: inspected.sha256, details: { provider: ext.provider, license: ext.license, licenseUrl: ext.licenseUrl, creator: ext.creator } }
       : { origin: input.kind === "camera" ? "camera" : input.kind === "voice" ? "voice_recording" : "upload", originalFilename: name, sha256: inspected.sha256 },
+    // Checked clean above, and extraction is next: written that way at once instead of two more updates.
+    securityStatus: "clean",
+    processingState: "extracting",
   });
-  await deps.service.from("creative_materials").update({ security_status: "clean" }).eq("id", material.id).eq("creator_id", deps.creatorId);
-  item = must(await deps.service.from("intake_items").update({ material_id: material.id, storage_object_id: obj.id }).eq("id", item.id).select("*").single());
-  item = await transition(deps, item, "extracting");
-  await enqueue(deps, item.id);
+  // The intake takes its Material and moves on in one write; the background job is queued alongside.
+  [item] = await Promise.all([transition(deps, item, "extracting", { material_id: material.id, storage_object_id: obj.id }), enqueue(deps, item.id)]);
   return item;
 }
 
