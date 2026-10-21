@@ -229,7 +229,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         steps: [
           "Open Materials from the Palette. The tabs are All, Ideas & Material, In Progress, Created, Shared and Collections. Search sits at the top.",
           "In Ideas & Material you can filter by Notes, Photos, Audio, Video, Documents, Links or Archived.",
-          "Open a Material to read it, or to edit a note’s words; they save as you write. Add a DejaVu right on the page. In the Palette, choose Use in creation to start from it, or Details to give it a title and description, add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
+          "Open a Material to read it, or to edit a note’s words; they save as you write. Add a DejaVu right on the page. In the Palette, choose Use in creation to start from it, or Details to give it a title and description (these save as you write too), add tags, write a source and rights note (where it came from, who made it, any permissions), add it to a Collection or a Creative Room, see which Creations use it, download the original, archive it or delete it.",
           "To make a Collection, open the Collections tab and choose New collection. Add Materials to it from a Material’s Palette (Add to Collection).",
         ],
         notes: [

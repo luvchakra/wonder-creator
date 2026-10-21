@@ -182,8 +182,8 @@ test.describe("CreatorSend & material", () => {
     await details.getByLabel("Title").fill("Harbour notebook");
     await details.getByLabel("Tags").fill("sea");
     await details.getByLabel("Tags").press("Enter");
-    await details.getByRole("button", { name: "Save changes" }).click();
-    await expect(details.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    // The details save themselves too.
+    await expect(details.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "Harbour notebook" })).toBeVisible();
     await expect(page.getByLabel("Text")).toHaveValue(`${text}\nThe ferry horn at dusk.`);
@@ -209,8 +209,7 @@ test.describe("CreatorSend & material", () => {
 
     await page.getByLabel("Description").fill("Low tide colours for the album cover.");
     await page.getByLabel("Source & rights note").fill("My own photo.");
-    await page.getByRole("button", { name: "Save changes" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 
     await expect(page.getByText("Not in a collection yet.")).toBeVisible();
     await page.getByLabel("Collection", { exact: true }).selectOption({ label: collection });

@@ -5,8 +5,9 @@ import { Archive, Download, ExternalLink, FolderPlus, Lock, RotateCcw, Trash2 } 
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/client";
+import { autosaveLine, useAutosave } from "@/lib/use-autosave";
 import { VisualDirections } from "@/components/visual-directions";
 import { BackLink } from "@/components/back-link";
 import { forget } from "@/components/nav-memory";
@@ -227,51 +228,20 @@ export function MaterialDetail({
   const origin = m.provenance?.origin ?? "";
   const notableOrigin = ["huddle", "conversation", "ai_generated", "url", "youtube", "derived", "import"].includes(origin) ? ORIGIN[origin] : null;
 
-  // A note's words save themselves (owner, 21 Oct 2026: "it should auto saved whatever is written"): a moment after the
-  // last keystroke, when the field loses focus, and when the page is hidden or left. One save at a time, always the
-  // latest words; the quiet line under the field says where it stands. No Save button, no refresh of the page.
-  const saved = useRef(m.text ?? "");
-  const latest = useRef(text);
-  const inFlight = useRef(false);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const flush = useCallback(async () => {
-    if (!editableText || inFlight.current) return;
-    inFlight.current = true;
-    try {
-      // Whatever was typed while a save was out goes in the next round; a failure waits for the next keystroke or blur.
-      while (latest.current !== saved.current) {
-        const sending = latest.current;
-        setSaveState("saving");
-        await api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { textContent: sending } });
-        saved.current = sending;
-      }
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    } finally {
-      inFlight.current = false;
-    }
-  }, [editableText, m.id]);
-  useEffect(() => {
-    latest.current = text;
-    if (!editableText || text === saved.current) return;
-    const t = setTimeout(() => void flush(), 700);
-    return () => clearTimeout(t);
-  }, [text, editableText, flush]);
-  useEffect(() => {
-    // Leaving (hiding the tab, or going to another page) sends what's still unsaved, so no word is lost.
-    const sendNow = () => {
-      if (!editableText || latest.current === saved.current) return;
-      void fetch(`/api/v1/materials/${m.id}`, { method: "PATCH", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ textContent: latest.current }) });
-      saved.current = latest.current;
-    };
-    const hide = () => document.visibilityState === "hidden" && sendNow();
-    document.addEventListener("visibilitychange", hide);
-    return () => {
-      document.removeEventListener("visibilitychange", hide);
-      sendNow();
-    };
-  }, [editableText, m.id]);
+  // The words and the details save themselves (owner, 21 Oct 2026): no Save button anywhere on this page.
+  const words = useAutosave({
+    value: text,
+    saved: m.text ?? "",
+    enabled: editableText,
+    send: (v) => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { textContent: v } }),
+    leave: (v) => ({ url: `/api/v1/materials/${m.id}`, method: "PATCH", json: { textContent: v } }),
+  });
+  const facts = useAutosave({
+    value: { title, description, sourceNote, tags },
+    saved: { title: m.title ?? "", description: m.description ?? "", sourceNote: m.sourceNote ?? "", tags: m.tags },
+    send: (v) => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: v }),
+    leave: (v) => ({ url: `/api/v1/materials/${m.id}`, method: "PATCH", json: v }),
+  });
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
@@ -290,9 +260,9 @@ export function MaterialDetail({
 
       {editableText ? (
         <>
-          <Textarea id="m-text" aria-label="Text" value={text} onChange={(e) => setText(e.target.value)} onBlur={() => void flush()} className="min-h-40 font-display text-[17px]" />
-          <p role="status" aria-live="polite" className={saveState === "error" ? "px-1 text-[12.5px] text-danger" : "h-4 px-1 text-[12.5px] text-ink-subtle"}>
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Couldn't save yet. Keep writing; we'll try again." : ""}
+          <Textarea id="m-text" aria-label="Text" value={text} onChange={(e) => setText(e.target.value)} onBlur={() => void words.flush()} className="min-h-40 font-display text-[17px]" />
+          <p role="status" aria-live="polite" className={words.state === "error" ? "px-1 text-[12.5px] text-danger" : "h-4 px-1 text-[12.5px] text-ink-subtle"}>
+            {autosaveLine(words.state)}
           </p>
         </>
       ) : m.extracted ? (
@@ -340,19 +310,9 @@ export function MaterialDetail({
               <Field label="Tags" htmlFor="m-tags">
                 <TagInput id="m-tags" value={tags} onChange={setTags} placeholder="Add a tag…" max={20} />
               </Field>
-              <div className="flex items-center gap-3">
-                <Button
-                  loading={busy === "save"}
-                  onClick={() => run("save", () => api(`/api/v1/materials/${m.id}`, { method: "PATCH", json: { title, tags, description, sourceNote, ...(editableText ? { textContent: text } : {}) } }), "Saved.")}
-                >
-                  Save changes
-                </Button>
-                {msg ? (
-                  <p role="status" className="text-[13px] text-success-ink">
-                    {msg}
-                  </p>
-                ) : null}
-              </div>
+              <p role="status" aria-live="polite" className={facts.state === "error" ? "text-[12.5px] text-danger" : "h-4 text-[12.5px] text-ink-subtle"}>
+                {autosaveLine(facts.state)}
+              </p>
               {error ? <ErrorState title="That didn't work" body={error} /> : null}
             </section>
 

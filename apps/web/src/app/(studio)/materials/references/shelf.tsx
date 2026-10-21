@@ -3,9 +3,10 @@ import { Button, ConfirmDialog, Dialog, DialogContent, EmptyState, Field, IconBu
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MaterialVisual, type MaterialCardData } from "@/components/cards";
 import { api, errorMessage } from "@/lib/client";
+import { autosaveLine, useAutosave } from "@/lib/use-autosave";
 import { sendToCreator } from "@/lib/send";
 
 interface Item {
@@ -120,7 +121,26 @@ function ReferenceDetail({ item, shelves, onChanged, onError }: { item: Item; sh
   const [note, setNote] = useState(item.note ?? "");
   const [tags, setTags] = useState(item.tags);
   const [shelf, setShelf] = useState(item.shelfId ?? "");
-  const [busy, setBusy] = useState(false);
+  // Notes, tags and shelf save themselves (owner, 21 Oct 2026); moving to another shelf also refreshes the lists.
+  const lastShelf = useRef(item.shelfId ?? "");
+  const auto = useAutosave({
+    value: { note, tags, shelf },
+    saved: { note: item.note ?? "", tags: item.tags, shelf: item.shelfId ?? "" },
+    send: async (v) => {
+      onError(null);
+      try {
+        await api(`/api/v1/references/items/${item.id}`, { method: "PATCH", json: { note: v.note, tags: v.tags, shelfId: v.shelf || null } });
+      } catch (e) {
+        onError(errorMessage(e));
+        throw e;
+      }
+      if (v.shelf !== lastShelf.current) {
+        lastShelf.current = v.shelf;
+        onChanged();
+      }
+    },
+    leave: (v) => ({ url: `/api/v1/references/items/${item.id}`, method: "PATCH", json: { note: v.note, tags: v.tags, shelfId: v.shelf || null } }),
+  });
   return (
     <div className="rounded-3xl border border-border-soft bg-surface p-4 lg:sticky lg:top-24">
       <div className="aspect-[4/3] overflow-hidden rounded-2xl">
@@ -144,25 +164,10 @@ function ReferenceDetail({ item, shelves, onChanged, onError }: { item: Item; sh
         <Field label="Notes" htmlFor="ref-note">
           <Textarea id="ref-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="What do you love about it?" />
         </Field>
+        <p role="status" aria-live="polite" className="h-4 text-[12.5px] text-ink-subtle">
+          {autosaveLine(auto.state)}
+        </p>
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              onError(null);
-              try {
-                await api(`/api/v1/references/items/${item.id}`, { method: "PATCH", json: { note, tags, shelfId: shelf || null } });
-                onChanged();
-              } catch (e) {
-                onError(errorMessage(e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Save
-          </Button>
           <Link href={`/create?material=${item.material.id}`} className={buttonClasses({ size: "sm", variant: "soft" })}>
             Use in creation →
           </Link>
