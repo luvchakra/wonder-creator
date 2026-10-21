@@ -4387,18 +4387,6 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"careers_key_clear":
-{ Args: { "p_creator": string }; Returns: undefined
-                           },
-"careers_key_secret":
-{ Args: Record<PropertyKey, never>; Returns: string
-                           },
-"careers_key_store":
-{ Args: { "p_creator": string,"p_hint": string,"p_secret": string }; Returns: {
-              "hint": string,
-"updated_at": string
-            }[]
-                           },
 "campaign_agree_deliverable":
 { Args: { "p_deliverable": string }; Returns: undefined
                            },
@@ -4461,6 +4449,17 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"careers_key_clear":
+{ Args: { "p_creator": string }; Returns: undefined
+                           },
+"careers_key_secret":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"careers_key_store":
+{ Args: { "p_creator": string,"p_hint": string,"p_secret": string }; Returns: {
+              "hint": string,"updated_at": string
+            }[]
+                           },
 "carousel_seed":
 { Args: { "p_artifact": string,"p_rows": Json }; Returns: number
                            },
