@@ -174,6 +174,11 @@ export const updateMaterialSchema = z.object({
   status: z.enum(["active", "archived"]).optional(),
   description: z.string().trim().max(2000).optional(),
   sourceNote: z.string().trim().max(1000).optional(),
+  /** A voice note's non-destructive edit: the parts kept, in seconds of the original (null clears it). */
+  audioEdit: z
+    .object({ keep: z.array(z.tuple([z.number().min(0).max(86_400), z.number().min(0).max(86_400)])).min(1).max(200) })
+    .nullable()
+    .optional(),
 });
 
 export async function updateMaterial(db: Db, creatorId: string, id: string, raw: unknown): Promise<void> {
@@ -184,6 +189,14 @@ export async function updateMaterial(db: Db, creatorId: string, id: string, raw:
   if (input.status !== undefined) patch.status = input.status;
   if (input.description !== undefined) patch.description = input.description || null;
   if (input.sourceNote !== undefined) patch.source_note = input.sourceNote || null;
+  if (input.audioEdit !== undefined) {
+    // Kept beside the other metadata; the recording itself never changes (versions are immutable).
+    const cur = must(await db.from("creative_materials").select("metadata").eq("id", id).maybeSingle(), "We couldn't find that material.");
+    const meta = { ...((cur.metadata as Record<string, unknown> | null) ?? {}) };
+    if (input.audioEdit) meta.audioEdit = input.audioEdit;
+    else delete meta.audioEdit;
+    patch.metadata = meta as JsonValue;
+  }
   if (Object.keys(patch).length) {
     const res = await db.from("creative_materials").update(patch).eq("id", id).select("id");
     if (res.error) throw fromDbError(res.error);

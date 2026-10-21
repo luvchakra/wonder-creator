@@ -48,27 +48,25 @@ export const POST = withApi(
 
     const accepted: Array<{ id: string; materialId: string | null; state: string }> = [];
     const rejected: Array<{ name: string; message: string }> = [];
-    for (const f of files) {
-      try {
-        const item = await receiveFile(deps, {
-          batchId,
-          bytes: new Uint8Array(await f.arrayBuffer()),
-          filename: f.name,
-          kind: kind === "camera" || kind === "voice" ? kind : null,
-          instruction: text || null,
-        });
-        accepted.push({ id: item.id, materialId: item.material_id, state: item.state });
-      } catch (e) {
-        rejected.push({ name: f.name, message: isDomainError(e) ? e.message : "We couldn't accept this file." });
-      }
-    }
-    for (const u of uploaded) {
-      try {
-        const item = await receiveUploadedObject(deps, { batchId, path: u.path, filename: u.name, kind: kind === "camera" || kind === "voice" ? kind : null, instruction: text || null });
-        accepted.push({ id: item.id, materialId: item.material_id, state: item.state });
-      } catch (e) {
-        rejected.push({ name: u.name ?? "Upload", message: isDomainError(e) ? e.message : "We couldn't accept this file." });
-      }
+    // Files are received side by side (each is several round trips), and reported in the order they were sent.
+    const kindOf = kind === "camera" || kind === "voice" ? kind : null;
+    const received = await Promise.all([
+      ...files.map((f) =>
+        f.arrayBuffer().then((buf) => receiveFile(deps, { batchId, bytes: new Uint8Array(buf), filename: f.name, kind: kindOf, instruction: text || null })).then(
+          (item) => ({ ok: true as const, item }),
+          (e: unknown) => ({ ok: false as const, name: f.name, message: isDomainError(e) ? e.message : "We couldn't accept this file." }),
+        ),
+      ),
+      ...uploaded.map((u) =>
+        receiveUploadedObject(deps, { batchId, path: u.path, filename: u.name, kind: kindOf, instruction: text || null }).then(
+          (item) => ({ ok: true as const, item }),
+          (e: unknown) => ({ ok: false as const, name: u.name ?? "Upload", message: isDomainError(e) ? e.message : "We couldn't accept this file." }),
+        ),
+      ),
+    ]);
+    for (const r of received) {
+      if (r.ok) accepted.push({ id: r.item.id, materialId: r.item.material_id, state: r.item.state });
+      else rejected.push({ name: r.name, message: r.message });
     }
     for (const url of urls) {
       try {

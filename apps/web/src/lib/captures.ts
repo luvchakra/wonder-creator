@@ -1,4 +1,5 @@
 import "server-only";
+import { keptLength, parseEdit } from "./audio-edit";
 import { DomainError } from "@wonder/core";
 import { mediaLink } from "@wonder/core/server";
 import { signedUrlsFor } from "@wonder/creator-library";
@@ -59,7 +60,9 @@ export async function recentCaptures(db: Db, creatorId: string, opts: { kind?: C
   const signed = [...stable.values()].every(Boolean) ? {} : await signedUrlsFor(db, objects).catch(() => ({}) as Record<string, string>);
   const items = rows.map((r) => {
     const kind = kindOf(r);
-    const meta = (r.metadata ?? {}) as { durationSeconds?: unknown };
+    const meta = (r.metadata ?? {}) as { durationSeconds?: unknown; audioEdit?: unknown };
+    // A voice note's trims and cuts: playback keeps to them, and the length shown is what's kept.
+    const keep = kind === "voice" ? parseEdit(meta.audioEdit, 86_400) : null;
     const text = (kind === "note" ? r.text_content : r.extracted_text)?.trim() || null;
     return {
       id: r.id,
@@ -67,7 +70,8 @@ export async function recentCaptures(db: Db, creatorId: string, opts: { kind?: C
       text: text ? text.slice(0, 600) : null,
       // A voice note's stored name carries the server's clock ("Voice note 7 Oct, 02:30"); the time is shown in the viewer's own.
       title: (kind === "voice" && /^Voice note \d/.test(r.title ?? "") ? null : r.title) ?? (kind === "voice" ? "Voice note" : kind === "photo" ? "Picture" : kind === "video" ? "Video" : "Note"),
-      seconds: typeof meta.durationSeconds === "number" ? meta.durationSeconds : null,
+      seconds: keep ? Math.round(keptLength(keep)) : typeof meta.durationSeconds === "number" ? meta.durationSeconds : null,
+      keep,
       mediaUrl: r.storage_object_id && kind !== "note" ? (stable.get(r.storage_object_id) ?? signed[r.storage_object_id] ?? null) : null,
       createdAt: r.created_at,
     };

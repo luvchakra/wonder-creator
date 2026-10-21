@@ -291,3 +291,24 @@ stored as plain text with `**`, `_` and `- ` markers (`lib/mini-markdown.ts`), s
 reads it. Nothing at the bottom: the first words create the Material, later changes update it (`useAutosave`), and
 closing the screen keeps it. DejaVu suggestions for a note are no longer offered in the sheet; the DejaVu control is on
 the Material page.
+
+## Voice note editor (owner, 21 Oct 2026)
+Play/pause, trim to a selection, cut out any number of stretches, undo; export as WAV (edited, rendered in the browser)
+or the original; share to other apps (Web Share with files, download where the browser can't); delete (confirmed).
+Edits are non-destructive (`lib/audio-edit.ts`): the kept parts live in the Material's `metadata.audioEdit`, autosaved
+through `PATCH /api/v1/materials/:id` (`audioEdit`), and playback on Home, My captures and the Material page honours
+them. The recording saves itself on Stop. Transcripts are of the full recording. Not offered: MP3/AAC export (would need
+an encoder library).
+
+## Quick Pic saves faster (owner, 21 Oct 2026)
+Receiving a file (`receiveFile`) took 14 dependent database round trips; it now takes 7. The intake row is written
+already checking while the bytes are inspected, the kind is set with the move to the security check (the hash lookup
+runs alongside), the Material is created clean and extracting, and the last intake write runs beside queueing the job.
+`/api/v1/send` receives several files side by side instead of one after another. Not changed: originals are still
+uploaded untouched (no client-side resizing), so a large photo on a slow connection still takes its upload time.
+
+## Home: two capture buttons in the corner, two doors (owner, 21 Oct 2026)
+Quick note and Voice note are two round buttons at the greeting's top right, over the flowers; Quick Pic and Video Note
+are gone from Home (pictures and videos come in through Bring Material). My captures and My Scrapbook are two door
+cards under the greeting instead of a strip of tiles and a Scrapbook list, so Home no longer queries either (one less
+streamed section). The Scrapbook strip components were removed. Closing a capture refreshes Home so its own card moves on.

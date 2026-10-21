@@ -182,7 +182,7 @@ function VoiceRow({ c, player, onDelete }: { c: CaptureItem; player: ReturnType<
       <button
         type="button"
         disabled={!c.mediaUrl}
-        onClick={() => player.toggle(c.id, c.mediaUrl!)}
+        onClick={() => player.toggle(c.id, c.mediaUrl!, c.keep)}
         aria-label={on ? "Pause the voice note" : `Play the voice note${c.seconds ? `, ${clock(c.seconds)}` : ""}`}
         className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50"
       >

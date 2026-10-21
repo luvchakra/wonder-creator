@@ -53,34 +53,18 @@ test.describe("Home Canvas", () => {
     await expect(rows.getByRole("link")).toHaveText([new RegExp(`Newest ${tag}`), new RegExp(`Third ${tag}`), new RegExp(`Second ${tag}`)]);
     await expect(page.locator("[data-primary-action]")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Continue Creating" })).toHaveCount(0);
-    // The Scrapbook above works the same way: its title opens all scraps.
-    await page.getByRole("heading", { name: "My Scrapbook" }).getByRole("link").click();
+    // My Scrapbook is a door under the greeting.
+    await page.getByRole("navigation", { name: "Your captures and Scrapbook" }).getByRole("link", { name: /My Scrapbook/ }).click();
     await expect(page).toHaveURL(/\/scrapbook$/);
   });
 
-  test("My Scrapbook rows open in place, one at a time, and collapse; My Testimonials is always there", async ({ page, creator }) => {
+  test("Home is calm: the two doors, then the fixed sections, each once; My Testimonials is always there", async ({ page, creator }) => {
     void creator;
-    const tag = uid();
-    for (const body of [`First scrap ${tag}`, `Second scrap ${tag}. A longer thought that would be cut short in the row but reads whole once opened.`]) {
-      expect((await page.request.post("/api/v1/scrapbook", { data: { kind: "thought", body } })).ok()).toBe(true);
-    }
     await page.goto("/");
-    const rows = page.getByRole("region", { name: "My Scrapbook" }).getByRole("list", { name: "Last written in the Scrapbook" });
-    const second = rows.getByRole("button", { name: new RegExp(`Second scrap ${tag}`) });
-    const first = rows.getByRole("button", { name: new RegExp(`First scrap ${tag}`) });
-    await expect(second).toHaveAttribute("aria-expanded", "false");
-    await second.click();
-    await expect(second).toHaveAttribute("aria-expanded", "true");
-    await expect(rows.locator("[id^=scrap-]").getByText(/reads whole once opened/)).toBeVisible();
-    await expect(rows.getByRole("link", { name: /Open and reply/ })).toBeVisible();
-    // Opening another closes the first; Collapse closes everything.
-    await first.click();
-    await expect(first).toHaveAttribute("aria-expanded", "true");
-    await expect(rows.getByRole("button", { expanded: true })).toHaveCount(1);
-    await page.getByRole("region", { name: "My Scrapbook" }).getByRole("button", { name: "Collapse" }).click();
-    await expect(rows.getByRole("button", { expanded: true })).toHaveCount(0);
-    // Fixed sections, each once.
-    for (const name of ["My Scrapbook", "My Communities", "My Testimonials"]) await expect(page.getByRole("region", { name })).toHaveCount(1);
+    // My Scrapbook is no longer listed on Home (owner, 21 Oct 2026): a door to it, beside My captures.
+    await expect(page.getByRole("region", { name: "My Scrapbook" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Your captures and Scrapbook" }).getByRole("link", { name: /My Scrapbook/ })).toHaveAttribute("href", "/scrapbook");
+    for (const name of ["My Communities", "My Testimonials"]) await expect(page.getByRole("region", { name })).toHaveCount(1);
     await expect(page.getByRole("region", { name: "My Testimonials" })).toContainText("Nobody has written one yet");
   });
 

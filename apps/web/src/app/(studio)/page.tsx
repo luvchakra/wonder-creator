@@ -11,16 +11,14 @@ import { CommunityGlance, RoomsGlance } from "@/components/home/community-glance
 import { HomeCommunities } from "@/components/home/home-communities";
 import { HomeTestimonials, preloadHomeTestimonials } from "@/components/home/home-testimonials";
 import { ConnectionActions, FoundConnection } from "@/components/home/connection-actions";
-import { MyCaptures } from "@/components/home/my-captures";
+import { HomeDoors } from "@/components/home/home-doors";
 import { QuickCapture } from "@/components/home/quick-capture";
-import { ScrapbookStrip } from "@/components/home/scrapbook-strip";
 import { FromYourWorld } from "@/components/sources/from-your-world";
 import { SectionTitle } from "@/components/home/section-title";
 import { TrackedLink } from "@/components/home/tracked-link";
 import { preloadWatercolor } from "@/lib/brand-preload";
 import { scheduleDiscovery } from "@/lib/home/discover";
 import { journeyLine } from "@/lib/home/journey";
-import { recentCaptures } from "@/lib/captures";
 import { buildHomePayload, type HomeInProgressItem, type HomePayload } from "@/lib/home/payload";
 import { sweepStalePresence } from "@/lib/presence";
 import { requireSession } from "@/lib/session";
@@ -44,7 +42,7 @@ export default async function HomePage() {
   preloadWatercolor("cornerTopRight", CORNER_SIZES);
   after(sweepStalePresence);
 
-  // Streaming (docs/performance.md, phase 2): the greeting, Quick Capture and My Scrapbook go out at once; what Home
+  // Streaming (docs/performance.md, phase 2): the greeting, Quick Capture and the two doors go out at once; what Home
   // chooses to show needs its own queries, so it follows behind a calm placeholder instead of holding the whole page.
   const homeP = buildHomePayload(db, creator.id);
   const worldP = flagOn("personal_sources_enabled") && sourcesHomeOn() ? homeWorld(db) : Promise.resolve(null);
@@ -52,32 +50,26 @@ export default async function HomePage() {
   const first = (creator.display_name || "Creator").split(" ")[0];
 
   return (
-    <div id="home" className="mx-auto max-w-3xl space-y-3">
-      <header className="relative isolate">
+    <div id="home" className="mx-auto max-w-3xl space-y-4">
+      <header className="relative isolate min-h-[4.5rem]">
         {/* The supplied floral corner behind the welcome — decoration only, outside the layout. */}
         <div aria-hidden className="pointer-events-none absolute -right-4 -top-3 -z-10 w-[8.5rem] sm:-right-2 sm:w-[11rem]">
           <Watercolor name="cornerTopRight" sizes={CORNER_SIZES} priority className="h-auto w-full opacity-80" />
         </div>
-        <h1 className="pr-24 font-display text-[26px] leading-tight text-ink sm:text-[30px]">
+        <h1 className="pr-28 font-display text-[26px] leading-tight text-ink sm:text-[30px]">
           {greetingFor(new Date())}, <span className="break-words">{first}</span>
         </h1>
         {/* One short truth, as in the navbar: "3 things changed", "Nothing needs your attention." Same height while it comes. */}
         <Suspense fallback={<p aria-hidden className="mt-0.5 h-[19.5px]" />}>
           <HomeLine home={homeP} />
         </Suspense>
+        {/* Quick note and Voice note sit in the top-right corner, over the flowers (owner, 21 Oct 2026). */}
+        <QuickCapture />
       </header>
 
-      {/* Capture first (owner, 4 Oct 2026: "move the quick note, voice note above scrapbook"): note, voice, picture, video. */}
-      <QuickCapture />
-      {/* Looking back on what was caught (owner, 7 Oct 2026): the last few, right under the four ways in. */}
-      <Suspense fallback={null}>
-        <HomeCaptures db={db} creatorId={creator.id} />
-      </Suspense>
-
-      {/* Fixed sections (owner, 3 Oct 2026): My Scrapbook, My Creations, My Communities, My Testimonials — always here, never repeated below. */}
-      <Suspense fallback={<SectionFallback title="My Scrapbook" rows={2} />}>
-        <ScrapbookStrip db={db} viewer={{ id: creator.id, name: creator.display_name || "Creator" }} />
-      </Suspense>
+      {/* My captures and My Scrapbook are doors, not lists (owner, 21 Oct 2026); then the fixed sections: My Creations,
+          My Communities, My Testimonials — always here, never repeated below. */}
+      <HomeDoors />
 
       <Suspense fallback={<SectionFallback title="My Creations" rows={3} />}>
         <HomeRest db={db} creator={{ id: creator.id, handle: creator.handle ?? null }} home={homeP} world={worldP} />
@@ -86,16 +78,11 @@ export default async function HomePage() {
   );
 }
 
-async function HomeCaptures({ db, creatorId }: { db: Db; creatorId: string }) {
-  const { items } = await recentCaptures(db, creatorId, { limit: 10 }).catch(() => ({ items: [] }));
-  return <MyCaptures initial={items} />;
-}
-
 async function HomeLine({ home: homeP }: { home: Promise<HomePayload> }) {
   const home = await homeP;
   // While the first steps are still ahead and nothing else needs the creator, the line invites the next one.
   const line = home.mode === "quiet" ? (journeyLine(home.journey?.step ?? null) ?? "Nothing needs your attention.") : home.contextLine;
-  return <p className="mt-0.5 text-[13px] text-ink-muted">{line}</p>;
+  return <p className="mt-0.5 pr-28 text-[13px] text-ink-muted">{line}</p>;
 }
 
 /** A section on its way: its title, and quiet rows of the height it will have. No spinner, no motion. */

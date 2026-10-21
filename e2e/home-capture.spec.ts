@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import { adminPatch, creatorIdOf, fakeMicrophone, expect, test, uid, type Page } from "./fixtures";
 
 // Phase 02 — Home orchestration + Quick Capture (docs/phases/02-home-quick-capture.md §18).
@@ -11,41 +10,24 @@ const capture = (page: Page) => page.getByRole("dialog", { name: /^(Quick note|V
 test.describe("Quick Capture", () => {
   test.beforeEach(({ creator }) => void creator);
 
-  test("sits above My Scrapbook with four ways in; Quick Pic takes or chooses pictures, each saved as a Material", async ({ page }) => {
+  test("two ways in, at the greeting's top right; My captures and My Scrapbook are doors under it", async ({ page }) => {
     await page.goto("/");
     const quick = page.getByRole("region", { name: "Quick Capture" });
-    await expect(quick.locator("button")).toHaveText(["Quick note", "Voice note", "Quick Pic", "Video Note"]);
-    // Capture comes first, above the Scrapbook.
-    const [q, s] = await Promise.all([quick.boundingBox(), page.getByRole("region", { name: "My Scrapbook" }).boundingBox()]);
-    expect(q!.y).toBeLessThan(s!.y);
-    // Quick Pic offers two ways (owner, 8 Oct 2026): the camera — the phone's own camera app where there is one — or the gallery.
-    await quick.getByRole("button", { name: "Quick Pic" }).click();
-    const ways = page.getByRole("dialog", { name: "Quick Pic" });
-    await expect(ways.getByRole("button", { name: /Open the camera/ })).toBeVisible();
-    await expect(ways.getByRole("button", { name: /Choose from gallery/ })).toBeVisible();
-    await page.keyboard.press("Escape");
-    // The gallery inputs never force the camera's limited mode; the camera inputs (where no camera app can be opened) do.
-    const pick = page.getByLabel("Choose a picture");
-    await expect(pick).not.toHaveAttribute("capture");
-    await expect(page.getByLabel("Choose a video")).not.toHaveAttribute("capture");
-    await expect(page.getByLabel("Take a picture")).toHaveAttribute("capture", "environment");
-    // Several pictures chosen from the gallery each land as a Material.
-    const jpg = (r: number) => sharp({ create: { width: 800, height: 600, channels: 3, background: { r, g: 150, b: 90 } } }).jpeg().toBuffer();
-    await pick.setInputFiles([
-      { name: "harbour.jpg", mimeType: "image/jpeg", buffer: await jpg(230) },
-      { name: "pier.jpg", mimeType: "image/jpeg", buffer: await jpg(120) },
-    ]);
-    await expect(quick.getByText("2 pictures saved to Materials")).toBeVisible({ timeout: 30_000 });
-    // One picture (from the camera, or the gallery) lands without another step — and the next step is making something from it.
-    await pick.setInputFiles({ name: "harbour.jpg", mimeType: "image/jpeg", buffer: await jpg(200) });
-    await expect(quick.getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
-    await quick.getByRole("button", { name: "Make something" }).click();
-    const make = page.getByRole("dialog", { name: "Make a new Creation" });
-    await expect(make.getByRole("list", { name: "Formats" }).getByRole("button")).toHaveCount(6);
-    await expect(make).toContainText("This Material comes with it as its source.");
-    await page.keyboard.press("Escape");
-    // The picture itself is one tap away in My captures.
-    await expect(page.getByRole("list", { name: "Recent captures" }).getByRole("link", { name: /^Picture,/ }).first()).toBeVisible();
+    // Quick note and Voice note only (owner, 21 Oct 2026): pictures and videos come in through Bring Material.
+    await expect(quick.getByRole("button")).toHaveCount(2);
+    await expect(quick.getByRole("button", { name: "Quick note" })).toBeVisible();
+    await expect(quick.getByRole("button", { name: "Voice note" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Quick Pic|Video Note/ })).toHaveCount(0);
+    // In the header's top-right corner, beside the greeting.
+    const [greet, note] = await Promise.all([page.getByRole("heading", { level: 1 }).boundingBox(), quick.getByRole("button", { name: "Quick note" }).boundingBox()]);
+    expect(note!.x).toBeGreaterThan(greet!.x + greet!.width / 2);
+    expect(note!.y).toBeLessThan(greet!.y + greet!.height);
+    // No lists of captures or scraps on Home: two doors.
+    const doors = page.getByRole("navigation", { name: "Your captures and Scrapbook" });
+    await expect(doors.getByRole("link")).toHaveCount(2);
+    await expect(page.getByRole("list", { name: "Recent captures" })).toHaveCount(0);
+    await doors.getByRole("link", { name: /My captures/ }).click();
+    await expect(page).toHaveURL(/\/captures$/);
   });
 
   test("a quick note saves in seconds, once, as a Material with its Moment — and suggests a DejaVu it mentions", async ({ page }) => {
@@ -68,8 +50,8 @@ test.describe("Quick Capture", () => {
     const line = page.getByRole("region", { name: "Quick Capture" }).getByRole("status");
     await expect(line).toContainText("Note saved");
     await expect(line.getByRole("button", { name: "Make something" })).toBeVisible();
-    const tile = page.getByRole("list", { name: "Recent captures" }).getByRole("link").first();
-    const materialId = (await tile.getAttribute("href"))!.split("/").pop()!;
+    const found = (await (await page.request.get(`/api/v1/materials?q=${encodeURIComponent(tag)}`)).json()) as { items: Array<{ id: string }> };
+    const materialId = found.items[0]!.id;
     const moment = await (await page.request.get(`/api/v1/moments/by-entity?entityType=material&entityId=${materialId}`)).json();
     expect(moment.momentId).toBeTruthy();
   });
@@ -179,54 +161,43 @@ test.describe("Quick Capture", () => {
     await expect(sheet.getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.waitForTimeout(1500);
     await sheet.getByRole("button", { name: "Stop" }).click();
-    await expect(sheet.getByText(/^Voice note · 0:0\d$/)).toBeVisible();
+    // It saves itself as soon as it stops; the editor is right there: play, trim, cut, undo, and more.
+    await expect(sheet.getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 30_000 });
     await expect(sheet.getByRole("button", { name: "Play" })).toBeVisible();
-    await sheet.getByRole("button", { name: "Save" }).click();
-    await expect(sheet.getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
+    await expect(sheet.getByRole("button", { name: "Trim to selection" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Cut selection" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: /^Save$/ })).toHaveCount(0);
+    await sheet.getByRole("button", { name: "Export, share or delete" }).click();
+    for (const item of [/Share to another app/, /Export as WAV/, /Export the original/, /Delete/]) await expect(page.getByRole("menuitem", { name: item })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await closeSheet(page);
     // No transcription provider here: the recording is kept and the line says so.
-    await expect(sheet.getByRole("status").filter({ hasText: "Transcription unavailable" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("region", { name: "Quick Capture" }).getByRole("status")).toContainText("Transcription unavailable", { timeout: 30_000 });
   });
 
-  test("looking back: what was caught shows under Quick Capture at once, and all of it by day in My captures", async ({ page }) => {
+  test("looking back: what was caught is all in My captures, by day", async ({ page }) => {
     await fakeMicrophone(page, true);
     await page.goto("/");
-    const mine = page.getByRole("region", { name: "My captures" });
-    // Nothing caught yet: nothing to look back on, so nothing shows.
-    await expect(page.getByRole("region", { name: "Quick Capture" })).toBeVisible();
-    await expect(mine).toHaveCount(0);
-
     const words = `The tea stall's kettle sings before the train ${uid()}`;
     await page.getByRole("button", { name: "Quick note" }).click();
     await capture(page).getByLabel("Quick note").fill(words);
     await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
     await closeSheet(page);
-    // The note is there at once, without reloading Home.
-    await expect(mine.getByRole("link", { name: new RegExp(words) })).toBeVisible();
 
     await page.getByRole("button", { name: "Voice note" }).click();
     await expect(capture(page).getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.waitForTimeout(1200);
     await capture(page).getByRole("button", { name: "Stop" }).click();
-    await capture(page).getByRole("button", { name: "Save" }).click();
-    await expect(capture(page).getByRole("status").filter({ hasText: "Voice note saved" })).toBeVisible({ timeout: 30_000 });
-    await capture(page).getByRole("button", { name: "Done" }).click();
-    const jpg = await sharp({ create: { width: 640, height: 480, channels: 3, background: { r: 210, g: 160, b: 120 } } }).jpeg().toBuffer();
-    await page.getByLabel("Choose a picture").setInputFiles({ name: "kettle.jpg", mimeType: "image/jpeg", buffer: jpg });
-    await expect(page.getByRole("region", { name: "Quick Capture" }).getByText("Picture saved")).toBeVisible({ timeout: 30_000 });
+    await expect(capture(page).getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 30_000 });
+    await closeSheet(page);
 
-    // Newest first: the picture, the voice note (playable right here), the note.
-    const strip = mine.getByRole("list", { name: "Recent captures" });
-    await expect(strip.getByRole("listitem")).toHaveCount(3);
-    await expect(strip.getByRole("listitem").first().getByRole("link", { name: /^Picture,/ })).toBeVisible();
-    await expect(strip.getByRole("button", { name: /^Play the voice note/ })).toBeEnabled();
-
-    // The title opens all of them, by day, with one row of filters.
-    await mine.getByRole("link", { name: "My captures" }).click();
+    // The door opens all of them, by day, with one row of filters.
+    await page.getByRole("navigation", { name: "Your captures and Scrapbook" }).getByRole("link", { name: /My captures/ }).click();
     await expect(page).toHaveURL(/\/captures$/);
     await expect(page.getByRole("heading", { name: "My captures", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Today", level: 2 })).toBeVisible();
     await expect(page.getByRole("link", { name: new RegExp(words) })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Picture,/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Play the voice note/ })).toBeVisible();
     const kinds = page.getByRole("navigation", { name: "Kind of capture" });
     await expect(kinds.getByRole("link")).toHaveText(["All", "Notes", "Voice", "Pictures", "Videos"]);
     await kinds.getByRole("link", { name: "Voice" }).click();
@@ -261,14 +232,10 @@ test.describe("Quick Capture", () => {
     await expect(page.getByRole("status").filter({ hasText: "Note deleted." })).toBeAttached();
     await expect(page.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
 
-    // Gone for good: not on reload, not on Home.
+    // Gone for good, not just hidden.
     await page.reload();
     await expect(page.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
     await expect(page.getByRole("link", { name: new RegExp(drop) })).toHaveCount(0);
-    await page.goto("/");
-    const mine = page.getByRole("region", { name: "My captures" });
-    await expect(mine.getByRole("link", { name: new RegExp(keep) })).toBeVisible();
-    await expect(mine.getByRole("link", { name: new RegExp(drop) })).toHaveCount(0);
   });
 
   test("with the microphone refused, it says so and offers a quick note instead", async ({ page }) => {
