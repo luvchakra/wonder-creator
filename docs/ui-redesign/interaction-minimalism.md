@@ -1306,7 +1306,7 @@ The governing interaction rule is:
 ## Fewer buttons (owner, 4 Oct 2026)
 
 "Reduce the number of buttons on main page, if required show in palette, reduce options on palette as well. Make this a
-rule for all other pages." The rule (CLAUDE.md › Fewer buttons) supersedes the counts above where they differ:
+rule for all other pages." The rule (CLAUDE.md › Interaction and density) supersedes the counts above where they differ:
 
 - A section's title is its link ("My Scrapbook ›"); no "All X" / "See all" rows. A card is one link; no second link inside.
 - Setup invitations (e.g. Connect sources) live where the setting lives, not on content pages.
@@ -1315,3 +1315,16 @@ rule for all other pages." The rule (CLAUDE.md › Fewer buttons) supersedes the
 
 Home, first pass: "All scraps", "All my creations" and "All testimonials" rows became their section titles; From Pulse's
 "Explore ›" became its title; "From your world · Connect sources" shows only when a source has found something.
+
+## Review sequence (every screen)
+
+1. Identify the one most frequent or important action.
+2. Keep it visible and stable.
+3. Keep at most two secondary actions visible.
+4. Move everything else behind contextual reveal.
+5. Remove duplicated actions.
+6. Remove unnecessary intermediate screens.
+7. Remove decorative motion.
+8. Make sure each user action causes no more than one major transition.
+9. Verify consequential actions stay explicit.
+10. Verify reduced-motion mode and the E2E flow length before marking complete.
